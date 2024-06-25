@@ -10,7 +10,7 @@ import
   ./hashes,
   ./platforms/abstractions,
   ./serialization/io_limbs,
-  constantine/named/algebra,
+  constantine/named/algebras,
   ./math/[arithmetic, extension_fields],
   ./math/arithmetic/limbs_montgomery,
   ./math/ec_shortweierstrass,

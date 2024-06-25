@@ -11,7 +11,7 @@ import
   std/typetraits,
   # Internal
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/named/zoo_endomorphisms,
   constantine/math/arithmetic,
   constantine/math/extension_fields,

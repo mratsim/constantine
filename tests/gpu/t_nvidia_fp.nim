@@ -13,7 +13,7 @@ import
   # Internal
   constantine/platforms/code_generator/[llvm, nvidia, ir],
   constantine/platforms/static_for,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/io/io_bigints,
   constantine/math/arithmetic,
   constantine/math_compiler/fields_nvidia,

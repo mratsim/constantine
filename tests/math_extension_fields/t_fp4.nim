@@ -9,7 +9,7 @@
 import
   # Internals
   constantine/math/io/io_extfields,
-  constantine/named/algebra,
+  constantine/named/algebras,
   # Test utilities
   ./t_fp_tower_template
 

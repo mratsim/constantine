@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  constantine/named/algebra,
+  constantine/named/algebras,
   ./cyclotomic_subgroups,
   ./pairings_bn, ./pairings_bls12,
   constantine/math/extension_fields,

@@ -14,7 +14,7 @@
 # and the whole file should be deleted
 
 import
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/elliptic/[
     ec_twistededwards_affine,
     ec_twistededwards_projective

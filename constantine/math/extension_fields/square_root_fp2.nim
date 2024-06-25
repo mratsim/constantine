@@ -10,7 +10,7 @@ import
   constantine/platforms/abstractions,
   ./towers,
   constantine/math/arithmetic,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/named/zoo_square_roots_fp2
 
 # Square root

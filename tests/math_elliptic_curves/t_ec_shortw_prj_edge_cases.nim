@@ -17,7 +17,7 @@ import
   std/unittest,
   # Internals
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/extension_fields,
   constantine/math/io/[io_bigints, io_fields, io_extfields],

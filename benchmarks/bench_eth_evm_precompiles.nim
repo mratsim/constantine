@@ -10,7 +10,7 @@ import
   # Internals
   constantine/ethereum_evm_precompiles,
   constantine/serialization/codecs,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/[arithmetic, ec_shortweierstrass, extension_fields],
   constantine/math/io/[io_bigints, io_fields],
   constantine/named/zoo_subgroups,

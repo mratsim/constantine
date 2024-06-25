@@ -7,12 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/curves_primitives,
 
   constantine/math/extension_fields # generic sandwich
 
-export algebra, curves_primitives, extension_fields
+export algebras, curves_primitives, extension_fields
 
 # Overview
 # ------------------------------------------------------------

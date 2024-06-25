@@ -8,7 +8,7 @@
 
 import
   std/typetraits,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/platforms/abstractions,
   constantine/math/arithmetic,
   constantine/math/extension_fields,

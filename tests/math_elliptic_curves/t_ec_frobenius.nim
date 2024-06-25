@@ -12,7 +12,7 @@ import
   std/[times, unittest],
   # Internals
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/[arithmetic, extension_fields],
   constantine/math/io/[io_bigints, io_ec],
   constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],

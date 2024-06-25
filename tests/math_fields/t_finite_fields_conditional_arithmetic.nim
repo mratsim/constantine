@@ -10,7 +10,7 @@ import  std/unittest,
         constantine/platforms/abstractions,
         constantine/math/arithmetic,
         constantine/math/io/io_fields,
-        constantine/named/algebra
+        constantine/named/algebras
 
 echo "\n------------------------------------------------------\n"
 

@@ -15,7 +15,7 @@
 import
   # Internals
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/[arithmetic, extension_fields],
   constantine/math/ec_twistededwards,
   constantine/named/zoo_generators,

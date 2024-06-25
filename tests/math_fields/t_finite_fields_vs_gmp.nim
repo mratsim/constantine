@@ -16,7 +16,7 @@ import
   constantine/serialization/codecs,
   constantine/math/io/[io_bigints, io_fields],
   constantine/math/arithmetic,
-  constantine/named/algebra,
+  constantine/named/algebras,
   # Test utilities
   helpers/prng_unsafe
 

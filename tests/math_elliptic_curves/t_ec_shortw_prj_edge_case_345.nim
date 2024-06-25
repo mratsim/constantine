@@ -3,7 +3,7 @@
 import constantine/math/arithmetic
 import constantine/math/io/io_fields
 import constantine/math/io/io_bigints
-import constantine/named/algebra
+import constantine/named/algebras
 import constantine/math/extension_fields/towers
 import constantine/math/elliptic/ec_shortweierstrass_affine
 import constantine/math/elliptic/ec_shortweierstrass_projective

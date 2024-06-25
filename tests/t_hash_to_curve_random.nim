@@ -10,7 +10,7 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/named/zoo_subgroups,
   constantine/math/extension_fields,
   constantine/math/ec_shortweierstrass,

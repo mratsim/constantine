@@ -5,7 +5,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/io/[io_bigints, io_fields],
   constantine/math/arithmetic/finite_fields
 

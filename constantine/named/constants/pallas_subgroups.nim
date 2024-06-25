@@ -9,7 +9,7 @@
 import
   # Internals
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/ec_shortweierstrass
 

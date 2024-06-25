@@ -8,7 +8,7 @@
 
 import
   # Internals
-  ./algebra,
+  ./algebras,
   ./constants/bandersnatch_subgroups,
   ./constants/bls12_377_subgroups,
   ./constants/bls12_381_subgroups,

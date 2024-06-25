@@ -15,7 +15,7 @@ import
   constantine/hashes,
   std/unittest,
   constantine/serialization/[codecs, codecs_banderwagon, codecs_status_codes],
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/ec_twistededwards,
   constantine/math/io/[io_fields, io_bigints],
   constantine/math/arithmetic,

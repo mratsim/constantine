@@ -14,7 +14,7 @@
 
 import
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/named/constants/banderwagon_subgroups,
   constantine/math/ec_twistededwards,
   constantine/math/arithmetic/limbs_montgomery,

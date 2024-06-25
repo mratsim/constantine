@@ -8,7 +8,7 @@
 
 import
   # Internals
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/elliptic/ec_twistededwards_projective,
   constantine/math/arithmetic,
   # Test utilities

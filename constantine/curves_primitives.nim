@@ -8,7 +8,7 @@
 
 import
     ./platforms/abstractions,
-    ./named/algebra,
+    ./named/algebras,
     ./named/[zoo_subgroups, zoo_generators, zoo_pairings],
     ./math/[
       ec_shortweierstrass,
@@ -39,7 +39,7 @@ import
 
 export
   abstractions,
-  algebra.Curve
+  algebras.Curve
 
 # BigInt
 # ------------------------------------------------------------
@@ -58,9 +58,9 @@ func marshalBE*(dst: var openarray[byte], src: BigInt): bool =
 # ------------------------------------------------------------
 
 export
-  algebra.Fp,
-  algebra.Fr,
-  algebra.FF
+  algebras.Fp,
+  algebras.Fr,
+  algebras.FF
 
 func unmarshalBE*(dst: var FF, src: openarray[byte]): bool =
   ## Return true on success

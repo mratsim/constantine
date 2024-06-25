@@ -12,7 +12,7 @@ import
     constantine/math/elliptic/ec_scalar_mul_vartime,
     constantine/math/pairings/[pairings_generic, miller_accumulators],
     constantine/named/zoo_generators,
-    constantine/named/algebra,
+    constantine/named/algebras,
     constantine/hash_to_curve/[hash_to_curve, h2c_hash_to_field],
     constantine/hashes,
     constantine/platforms/views

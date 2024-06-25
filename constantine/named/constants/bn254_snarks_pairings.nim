@@ -8,7 +8,7 @@
 
 import
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/io/io_bigints,
   constantine/math/extension_fields,
   constantine/math/pairings/cyclotomic_subgroups,

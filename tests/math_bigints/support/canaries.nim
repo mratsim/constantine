@@ -9,7 +9,7 @@
 import
   constantine/platforms/abstractions,
   constantine/math/arithmetic/bigints,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective]
 
 # Canaries

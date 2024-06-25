@@ -17,7 +17,7 @@ import
   std/[unittest, times],
   # Internals
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/[arithmetic, extension_fields],
   constantine/math/elliptic/[
     ec_shortweierstrass_affine,

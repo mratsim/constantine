@@ -13,7 +13,7 @@ import
   constantine/platforms/abstractions,
   constantine/math/arithmetic,
   constantine/math/io/[io_bigints, io_fields],
-  constantine/named/algebra,
+  constantine/named/algebras,
   # Test utilities
   helpers/prng_unsafe
 

@@ -8,7 +8,7 @@
 
 import
   constantine/platforms/primitives,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/ec_shortweierstrass,
   constantine/math/elliptic/ec_scalar_mul_vartime,

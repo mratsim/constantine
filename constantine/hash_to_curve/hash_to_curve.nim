@@ -9,7 +9,7 @@
 import
   # Internals
   constantine/platforms/[abstractions, views],
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/named/[zoo_hash_to_curve, zoo_subgroups],
   constantine/math/[arithmetic, extension_fields],
   constantine/math/ec_shortweierstrass,

@@ -8,7 +8,7 @@
 
 import
   # Internals
-  constantine/named/algebra,
+  constantine/named/algebras,
   # Test utilities
   ./t_fp_tower_template
 

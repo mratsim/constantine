@@ -8,7 +8,7 @@
 
 import
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   ./bigints,
   ./finite_fields,
   ./limbs,

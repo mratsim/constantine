@@ -13,7 +13,7 @@ import
   constantine/platforms/abstractions,
   constantine/math/arithmetic,
   constantine/math/extension_fields,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/io/io_extfields,
   constantine/math/pairings/lines_eval,
   # Test utilities

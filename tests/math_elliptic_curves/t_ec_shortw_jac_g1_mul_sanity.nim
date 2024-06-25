@@ -10,7 +10,7 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/io/io_fields,
   constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul],

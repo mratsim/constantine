@@ -12,7 +12,7 @@ import
   # Internals
   constantine/platforms/abstractions,
   constantine/math/extension_fields,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/io/io_extfields,
   constantine/math/extension_fields
 

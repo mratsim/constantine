@@ -1,7 +1,7 @@
 import
   constantine/math/arithmetic,
   constantine/math/io/[io_bigints, io_fields],
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/platforms/abstractions,
   constantine/serialization/codecs,
   constantine/math_arbitrary_precision/arithmetic/bigints_views,

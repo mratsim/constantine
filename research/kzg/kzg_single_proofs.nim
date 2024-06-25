@@ -1,7 +1,7 @@
 # https://github.com/ethereum/research/blob/master/kzg_data_availability/kzg_proofs.py
 
 import
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/[arithmetic, primitives, extension_fields],
   constantine/math/elliptic/[
     ec_scalar_mul,

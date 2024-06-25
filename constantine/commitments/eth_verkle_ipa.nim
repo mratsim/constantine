@@ -10,7 +10,7 @@ import
   ./pedersen_commitments,
   ./eth_verkle_transcripts,
   ./protocol_quotient_check,
-  constantine/named/algebra,
+  constantine/named/algebras,
   ../math/polynomials/polynomials,
   ../math/[arithmetic, ec_shortweierstrass, ec_twistededwards],
   ../math/elliptic/ec_multi_scalar_mul,

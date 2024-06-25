@@ -10,7 +10,7 @@ import ethereum_eip4844_kzg {.all.}
 export ethereum_eip4844_kzg
 
 import
-  constantine/named/algebra,
+  constantine/named/algebras,
   ./math/[ec_shortweierstrass, arithmetic, extension_fields],
   ./math/polynomials/polynomials_parallel,
   ./hashes,

@@ -59,7 +59,7 @@ export hashes # generic sandwich on sha256
 
 import
     ./platforms/[abstractions, views, allocs],
-    ./named/algebra,
+    ./named/algebras,
     ./named/zoo_subgroups,
     ./math/[
       ec_shortweierstrass,
@@ -73,7 +73,7 @@ import
 
 export
   abstractions, # generic sandwich on SecretBool and SecretBool in Jacobian sumImpl
-  algebra, # generic sandwich on matchingBigInt
+  algebras, # generic sandwich on matchingBigInt
   extension_fields, # generic sandwich on extension field access
   ec_shortweierstrass, # generic sandwich on affine
 

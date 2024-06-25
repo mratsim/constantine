@@ -8,7 +8,7 @@
 
 import
   std/macros,
-  ./algebra,
+  ./algebras,
   ./constants/bls12_377_frobenius,
   ./constants/bls12_381_frobenius,
   ./constants/bn254_nogami_frobenius,

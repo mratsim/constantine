@@ -12,7 +12,7 @@ import
   ../serialization/endians,
   ../hashes,
   ../math/io/[io_bigints, io_fields],
-  constantine/named/algebra,
+  constantine/named/algebras,
   ../math/arithmetic/limbs_montgomery,
   ../math/extension_fields/towers
 

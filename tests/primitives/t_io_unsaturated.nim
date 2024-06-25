@@ -8,7 +8,7 @@
 
 import  std/[unittest,times],
         constantine/platforms/abstractions,
-        constantine/named/algebra,
+        constantine/named/algebras,
         constantine/math/arithmetic,
         constantine/math/arithmetic/limbs_unsaturated,
         constantine/math/io/io_bigints,

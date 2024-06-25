@@ -13,7 +13,7 @@ import
   pkg/jsony,
   # Internals
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/extension_fields,
   constantine/math/io/[io_bigints, io_ec],
   constantine/math/ec_shortweierstrass,

@@ -9,7 +9,7 @@
 import
   std/typetraits,
 
-  constantine/named/algebra,
+  constantine/named/algebras,
   ./math/io/[io_bigints, io_fields],
   ./math/[ec_shortweierstrass, arithmetic, extension_fields],
   ./math/arithmetic/limbs_montgomery,

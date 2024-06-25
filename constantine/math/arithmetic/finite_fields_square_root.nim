@@ -8,7 +8,7 @@
 
 import
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/named/zoo_square_roots,
   ./finite_fields_square_root_precomp,
   ./bigints, ./finite_fields, ./limbs_exgcd

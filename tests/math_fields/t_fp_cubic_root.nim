@@ -9,7 +9,7 @@
 import  std/unittest,
         constantine/platforms/abstractions,
         constantine/math/arithmetic,
-        constantine/named/algebra,
+        constantine/named/algebras,
         constantine/named/zoo_endomorphisms
 
 echo "\n------------------------------------------------------\n"

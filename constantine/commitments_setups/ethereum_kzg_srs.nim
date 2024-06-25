@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  constantine/named/algebra,
+  constantine/named/algebras,
   ../math/[ec_shortweierstrass, arithmetic, extension_fields],
   ../platforms/[allocs, bithacks, fileio],
   ../serialization/[codecs, codecs_status_codes, codecs_bls12_381],

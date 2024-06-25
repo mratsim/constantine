@@ -9,7 +9,7 @@
 import
   std/times,
   constantine/platforms/metering/[reports, tracer],
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/[arithmetic, extension_fields, ec_shortweierstrass],
   constantine/named/zoo_subgroups,
   constantine/math/pairings/pairings_generic,

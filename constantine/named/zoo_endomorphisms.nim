@@ -8,7 +8,7 @@
 
 import
   std/macros,
-  ./algebra,
+  ./algebras,
   ../math/extension_fields,
   ./constants/bls12_377_endomorphisms,
   ./constants/bls12_381_endomorphisms,

@@ -13,7 +13,7 @@ import
   constantine/platforms/abstractions,
   constantine/math/arithmetic,
   constantine/math/extension_fields,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/named/zoo_subgroups,
   constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   constantine/math/pairings/cyclotomic_subgroups,
@@ -28,7 +28,7 @@ export
   arithmetic, extension_fields,
   io_extfields,
   cyclotomic_subgroups,
-  abstractions, algebra
+  abstractions, algebras
 
 type
   RandomGen* = enum

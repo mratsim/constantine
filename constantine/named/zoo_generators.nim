@@ -8,7 +8,7 @@
 
 import
   std/macros,
-  ./algebra,
+  ./algebras,
   ./constants/bls12_381_generators,
   ./constants/bn254_snarks_generators,
   ./constants/bandersnatch_generators,

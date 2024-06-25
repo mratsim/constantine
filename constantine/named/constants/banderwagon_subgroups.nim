@@ -8,7 +8,7 @@
 
 import
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/extension_fields,
   constantine/math/elliptic/ec_twistededwards_affine

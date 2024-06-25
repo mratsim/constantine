@@ -8,7 +8,7 @@
 
 import
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective

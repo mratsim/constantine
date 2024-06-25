@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./named/algebra,
+  ./named/algebras,
   ./platforms/abstractions,
   ./threadpool,
   ./math/elliptic/ec_multi_scalar_mul_parallel,
@@ -29,12 +29,12 @@ export threadpool.shutdown
 # Base types
 # ------------------------------------------------------------
 
-export algebra.Curve
+export algebras.Curve
 export abstractions.BigInt
 export
-  algebra.Fp,
-  algebra.Fr,
-  algebra.FF
+  algebras.Fp,
+  algebras.Fr,
+  algebras.FF
 
 # Elliptic curve
 # ------------------------------------------------------------

@@ -8,7 +8,7 @@
 
 import
   std/macros,
-  ./algebra,
+  ./algebras,
   ../math/elliptic/ec_shortweierstrass_affine,
   ./constants/bls12_381_hash_to_curve_g1,
   ./constants/bls12_381_hash_to_curve_g2,

@@ -9,7 +9,7 @@
 import
   # Internals
   ../platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   ../math/[arithmetic, extension_fields],
   ../named/zoo_hash_to_curve,
   ./h2c_utilities

@@ -15,7 +15,7 @@
 import
   # Internals
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/extension_fields,
   constantine/named/zoo_square_roots,

@@ -39,7 +39,7 @@
 
 import
     constantine/platforms/abstractions,
-    constantine/named/algebra,
+    constantine/named/algebras,
     constantine/named/zoo_subgroups,
     constantine/math/[
       ec_shortweierstrass,

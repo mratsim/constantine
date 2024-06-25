@@ -8,7 +8,7 @@
 
 import
   std/macros,
-  ./algebra,
+  ./algebras,
   ./constants/bls12_381_sqrt_fp2,
   ./constants/bn254_nogami_sqrt_fp2,
   ./constants/bn254_snarks_sqrt_fp2

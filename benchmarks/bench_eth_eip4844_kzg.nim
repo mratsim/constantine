@@ -9,7 +9,7 @@
 import
   # Internals
   constantine/ethereum_eip4844_kzg_parallel,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/io/io_fields,
   constantine/threadpool/threadpool,
   constantine/csprngs/sysrand,

@@ -9,7 +9,7 @@
 import
   # Internal
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/arithmetic/assembly/[
     limbs_asm_mul_x86_adx_bmi2,

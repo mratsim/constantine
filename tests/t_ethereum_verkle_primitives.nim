@@ -17,7 +17,7 @@
 
 import
   std/[unittest, strutils],
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/ec_twistededwards,
   constantine/math/io/io_fields,
   constantine/serialization/[

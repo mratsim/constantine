@@ -9,7 +9,7 @@
 
 import
   std/unittest,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/ethereum_eip2333_bls12381_key_derivation,
   constantine/math/io/io_bigints,
   constantine/math/arithmetic/bigints,

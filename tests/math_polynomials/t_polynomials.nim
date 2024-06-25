@@ -11,7 +11,7 @@ import
   std/[times, unittest, algorithm],
   # Internals
   constantine/math/arithmetic,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/polynomials/polynomials,
   constantine/math/io/io_fields,
   # Test utilities

@@ -6,7 +6,7 @@
 
 import
   std/tables,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/io/[io_bigints, io_fields],
   constantine/math/arithmetic/finite_fields
 

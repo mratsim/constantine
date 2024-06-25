@@ -8,7 +8,7 @@
 
 import
   # Internals
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/extension_fields,
   constantine/math/elliptic/[
     ec_shortweierstrass_projective,

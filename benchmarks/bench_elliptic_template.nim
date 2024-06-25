@@ -15,7 +15,7 @@
 import
   # Internals
   constantine/platforms/abstractions,
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/io/io_bigints,
   constantine/math/elliptic/[

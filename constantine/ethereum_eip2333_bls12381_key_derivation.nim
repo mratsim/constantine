@@ -9,7 +9,7 @@
 import
   ./hashes,
   ./kdf/kdf_hkdf,
-  constantine/named/algebra,
+  constantine/named/algebras,
   ./math/arithmetic/[bigints, limbs_montgomery],
   ./math/io/io_bigints,
   ./platforms/primitives,

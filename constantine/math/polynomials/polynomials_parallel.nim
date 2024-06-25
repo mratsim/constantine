@@ -10,7 +10,7 @@ import ./polynomials {.all.}
 export polynomials
 
 import
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/platforms/[allocs, bithacks],
   ../../threadpool/threadpool

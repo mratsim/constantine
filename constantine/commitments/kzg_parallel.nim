@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  constantine/named/algebra,
+  constantine/named/algebras,
   ../math/[ec_shortweierstrass, arithmetic, extension_fields],
   ../math/elliptic/[ec_multi_scalar_mul_parallel, ec_shortweierstrass_batch_ops],
   ../math/pairings/pairings_generic,

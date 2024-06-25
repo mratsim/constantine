@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/elliptic/ec_shortweierstrass_affine,
   constantine/math/io/[io_fields, io_extfields]
 

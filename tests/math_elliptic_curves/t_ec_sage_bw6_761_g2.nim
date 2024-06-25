@@ -8,7 +8,7 @@
 
 import
   # Internals
-  constantine/named/algebra,
+  constantine/named/algebras,
   constantine/math/elliptic/ec_shortweierstrass_jacobian,
   constantine/math/elliptic/ec_shortweierstrass_projective,
   # Test utilities

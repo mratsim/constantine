@@ -8,7 +8,7 @@
 
 import
   std/macros,
-  ./algebra,
+  ./algebras,
   ./constants/bls12_377_pairings,
   ./constants/bls12_381_pairings,
   ./constants/bn254_nogami_pairings,
