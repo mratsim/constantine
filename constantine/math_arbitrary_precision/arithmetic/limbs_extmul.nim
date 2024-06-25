@@ -8,7 +8,7 @@
 
 import
   # Internal
-  ../../platforms/[abstractions, allocs],
+  constantine/platforms/[abstractions, allocs],
   ./limbs_views
 
 func prod_comba(r: var openArray[SecretWord], a, b: openArray[SecretWord]) {.noInline, tags: [Alloca].} =

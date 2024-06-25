@@ -1,4 +1,4 @@
-import ../constantine/threadpool
+import constantine/threadpool
 
 block:
   proc main() =

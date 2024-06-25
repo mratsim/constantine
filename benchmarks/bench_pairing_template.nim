@@ -14,21 +14,21 @@
 
 import
   # Internals
-  ../constantine/platforms/abstractions,
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/extension_fields,
-  ../constantine/math/ec_shortweierstrass,
-  ../constantine/math/constants/zoo_subgroups,
-  ../constantine/math/pairings/[
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/math/ec_shortweierstrass,
+  constantine/named/zoo_subgroups,
+  constantine/math/pairings/[
     cyclotomic_subgroups,
     lines_eval,
     pairings_bls12,
     pairings_bn
   ],
-  ../constantine/math/constants/zoo_pairings,
+  constantine/named/zoo_pairings,
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./bench_blueprint
 
 export abstractions

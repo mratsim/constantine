@@ -10,12 +10,12 @@ import
   # Standard library
   std/[unittest, times],
   # Internal
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/io/[io_bigints, io_fields],
-  ../../constantine/math/config/[curves, type_bigint],
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/io/[io_bigints, io_fields],
+  constantine/named/algebra,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 const Iters = 12
 

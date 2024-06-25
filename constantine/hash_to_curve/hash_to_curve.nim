@@ -8,16 +8,16 @@
 
 import
   # Internals
-  ../platforms/[abstractions, views],
-  ../math/config/curves,
-  ../math/[arithmetic, extension_fields],
-  ../math/constants/[zoo_hash_to_curve, zoo_subgroups],
-  ../math/ec_shortweierstrass,
+  constantine/platforms/[abstractions, views],
+  constantine/named/algebra,
+  constantine/named/[zoo_hash_to_curve, zoo_subgroups],
+  constantine/math/[arithmetic, extension_fields],
+  constantine/math/ec_shortweierstrass,
+  constantine/hashes,
   ./h2c_hash_to_field,
   ./h2c_map_to_isocurve_swu,
   ./h2c_isogeny_maps,
-  ./h2c_utilities,
-  ../hashes
+  ./h2c_utilities
 
 export abstractions, arithmetic # generic sandwich
 

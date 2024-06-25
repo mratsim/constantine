@@ -10,13 +10,13 @@ import
   # Standard library
   std/[tables, unittest, times],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/io/io_extfields,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/named/algebra,
+  constantine/math/io/io_extfields,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 const
   Iters = 8

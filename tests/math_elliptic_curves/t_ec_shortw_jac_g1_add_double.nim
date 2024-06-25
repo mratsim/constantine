@@ -8,8 +8,8 @@
 
 import
   # Internals
-  ../../constantine/math/config/[type_ff, curves],
-  ../../constantine/math/elliptic/ec_shortweierstrass_jacobian,
+  constantine/named/algebra,
+  constantine/math/elliptic/ec_shortweierstrass_jacobian,
   # Test utilities
   ./t_ec_template
 

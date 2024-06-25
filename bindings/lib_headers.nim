@@ -14,7 +14,7 @@
 
 import std/[os, strformat, strutils, intsets]
 import ./c_typedefs, ./lib_curves
-import ../constantine/platforms/static_for
+import constantine/platforms/static_for
 
 proc writeHeader_classicCurve(filepath: string, curve: string, modBits, orderBits: int, curve_decls: string) =
   var header = "\n"

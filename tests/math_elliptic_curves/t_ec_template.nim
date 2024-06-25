@@ -16,10 +16,10 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/[arithmetic, extension_fields],
-  ../../constantine/math/elliptic/[
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/math/[arithmetic, extension_fields],
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_jacobian_extended,
@@ -29,11 +29,11 @@ import
     ec_twistededwards_projective,
     ec_scalar_mul,
     ec_multi_scalar_mul],
-  ../../constantine/math/io/[io_bigints, io_fields, io_ec],
-  ../../constantine/math/constants/zoo_subgroups,
+  constantine/math/io/[io_bigints, io_fields, io_ec],
+  constantine/named/zoo_subgroups,
   # Test utilities
-  ../../helpers/prng_unsafe,
-  ../../constantine/math/elliptic/ec_scalar_mul_vartime
+  helpers/prng_unsafe,
+  constantine/math/elliptic/ec_scalar_mul_vartime
 
 export unittest, abstractions, arithmetic # Generic sandwich
 

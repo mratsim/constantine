@@ -10,12 +10,12 @@ import
   # Standard library
   std/[unittest, times, strutils],
   # Internal
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/io/[io_bigints, io_fields],
-  ../../constantine/math/config/curves,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/io/[io_bigints, io_fields],
+  constantine/named/algebra,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 
 static: doAssert defined(CTT_TEST_CURVES), "This modules requires the -d:CTT_TEST_CURVES compile option"

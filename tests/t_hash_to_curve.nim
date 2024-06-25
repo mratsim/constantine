@@ -12,13 +12,13 @@ import
   # 3rd party
   pkg/jsony,
   # Internals
-  ../constantine/platforms/abstractions,
-  ../constantine/math/config/curves,
-  ../constantine/math/extension_fields,
-  ../constantine/math/io/[io_bigints, io_ec],
-  ../constantine/math/ec_shortweierstrass,
-  ../constantine/hash_to_curve/hash_to_curve,
-  ../constantine/hashes
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/math/extension_fields,
+  constantine/math/io/[io_bigints, io_ec],
+  constantine/math/ec_shortweierstrass,
+  constantine/hash_to_curve/hash_to_curve,
+  constantine/hashes
 
 # Serialization
 # --------------------------------------------------------------------------

@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../config/curves,
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
   ./bigints,
   ./finite_fields,
   ./limbs,

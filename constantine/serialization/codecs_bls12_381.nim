@@ -38,14 +38,14 @@
 ##   - https://github.com/zkcrypto/bls12_381/blob/0.6.0/src/notes/serialization.rs
 
 import
-    ../platforms/abstractions,
-    ../math/config/curves,
-    ../math/[
+    constantine/platforms/abstractions,
+    constantine/named/algebra,
+    constantine/named/zoo_subgroups,
+    constantine/math/[
       ec_shortweierstrass,
       extension_fields,
-      arithmetic,
-      constants/zoo_subgroups],
-    ../math/io/[io_bigints, io_fields],
+      arithmetic],
+    constantine/math/io/[io_bigints, io_fields],
     ./codecs_status_codes
 
 type

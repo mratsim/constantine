@@ -7,19 +7,19 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../constantine/platforms/abstractions,
-  ../constantine/math/arithmetic,
-  ../constantine/math/arithmetic/limbs_montgomery,
-  ../constantine/math/config/curves,
-  ../constantine/math/elliptic/[
+  constantine/named/algebra,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/arithmetic/limbs_montgomery,
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_jacobian_extended,
     ec_twistededwards_affine,
     ec_twistededwards_projective],
-  ../constantine/math/io/io_bigints,
-  ../constantine/math/extension_fields/towers
+  constantine/math/io/io_bigints,
+  constantine/math/extension_fields/towers
 
 # ############################################################
 #

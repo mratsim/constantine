@@ -116,6 +116,34 @@ debug: # Don't allow printing secret words by default
 
 # ############################################################
 #
+#                        Big Integer
+#
+# ############################################################
+
+type
+  BigInt*[bits: static int] = object
+    ## Fixed-precision big integer
+    ##
+    ## - "bits" is the announced bit-length of the BigInt
+    ##   This is public data, usually equal to the curve prime bitlength.
+    ##
+    ## - "limbs" is an internal field that holds the internal representation
+    ##   of the big integer. Least-significant limb first. Within limbs words are native-endian.
+    ##
+    ## This internal representation can be changed
+    ## without notice and should not be used by external applications or libraries.
+    limbs*: array[bits.wordsRequired, SecretWord]
+
+debug:
+  func `$`*(a: BigInt): string =
+    result = "BigInt["
+    result.add $BigInt.bits
+    result.add "](limbs: "
+    result.add a.limbs.toString()
+    result.add ")"
+
+# ############################################################
+#
 #                    Signed Secret Words
 #
 # ############################################################

@@ -9,7 +9,7 @@
 import
   ./commitments/eth_verkle_ipa,
   ./math/[arithmetic, ec_twistededwards],
-  ./math/config/curves,
+  constantine/named/algebra,
   ./serialization/[codecs_status_codes, codecs_banderwagon]
 
 # ------------------------------------------------------------

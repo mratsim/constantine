@@ -7,9 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../config/curves,
-  ../constants/zoo_square_roots,
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/named/zoo_square_roots,
   ./finite_fields_square_root_precomp,
   ./bigints, ./finite_fields, ./limbs_exgcd
 

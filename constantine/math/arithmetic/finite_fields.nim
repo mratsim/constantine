@@ -27,16 +27,16 @@
 #     which requires a prime
 
 import
-  ../../platforms/abstractions,
+  constantine/platforms/[abstractions, type_ff],
   ../../serialization/endians,
-  ../config/[type_ff, curves_prop_field_core, curves_prop_field_derived],
+  constantine/named/properties_fields,
   ./bigints, ./bigints_montgomery
 
 when UseASM_X86_64:
   import ./assembly/limbs_asm_modular_x86
 
 when nimvm:
-  from ../config/precompute import montyResidue_precompute
+  from constantine/named/deriv/precompute import montyResidue_precompute
 else:
   discard
 

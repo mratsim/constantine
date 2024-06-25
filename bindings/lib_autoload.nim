@@ -6,16 +6,16 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ../constantine/platforms/loadtime_functions
+import constantine/platforms/loadtime_functions
 
-# When Constantine is built as a library, we want to minimize friction of using it. 
+# When Constantine is built as a library, we want to minimize friction of using it.
 # Hence we want to users to be able to directly use it without special ceremony.
 #
 # This is possible for dynamic libraries if --noMain isn't used.
 #
 #   https://github.com/nim-lang/Nim/blob/v2.0.0/compiler/cgen.nim#L1572-L1583
 #   https://github.com/nim-lang/Nim/blob/v2.0.0/lib/nimbase.h#L513
-# 
+#
 # The function DllMain is autoloaded on Windows
 # Functions tagged __attribute__((constructor)) are autoloaded on UNIX OSes
 #

@@ -8,7 +8,7 @@
 
 import
   # Internal
-  ../../platforms/[abstractions, allocs, bithacks],
+  constantine/platforms/[abstractions, allocs, bithacks],
   ./limbs_views,
   ./limbs_multiprec,
   ./limbs_fixedprec,

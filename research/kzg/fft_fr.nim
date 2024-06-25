@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../constantine/platforms/primitives,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/io/io_fields,
+  constantine/platforms/primitives,
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/io/io_fields,
   # Research
   ./strided_views,
   ./fft_lut
@@ -195,7 +195,7 @@ proc init*(T: type FFTDescriptor, maxScale: uint8): T =
 when isMainModule:
   import
     std/[times, monotimes, strformat],
-    ../../helpers/prng_unsafe
+    helpers/prng_unsafe
 
   proc roundtrip() =
     let fftDesc = FFTDescriptor[Fr[BLS12_381]].init(maxScale = 4)

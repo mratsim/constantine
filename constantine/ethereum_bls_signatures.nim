@@ -59,21 +59,21 @@ export hashes # generic sandwich on sha256
 
 import
     ./platforms/[abstractions, views, allocs],
-    ./math/config/curves,
+    ./named/algebra,
+    ./named/zoo_subgroups,
     ./math/[
       ec_shortweierstrass,
       extension_fields,
       arithmetic,
-      constants/zoo_subgroups
     ],
     ./math/io/[io_bigints, io_fields],
-    signatures/bls_signatures,
-    serialization/codecs_status_codes,
-    serialization/codecs_bls12_381
+    ./signatures/bls_signatures,
+    ./serialization/codecs_status_codes,
+    ./serialization/codecs_bls12_381
 
 export
   abstractions, # generic sandwich on SecretBool and SecretBool in Jacobian sumImpl
-  curves, # generic sandwich on matchingBigInt
+  algebra, # generic sandwich on matchingBigInt
   extension_fields, # generic sandwich on extension field access
   ec_shortweierstrass, # generic sandwich on affine
 

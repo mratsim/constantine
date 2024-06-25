@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/curves,
-  ../arithmetic,
-  ../io/io_fields,
-  ../../platforms/[allocs, bithacks, static_for]
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/io/io_fields,
+  constantine/platforms/[allocs, bithacks, static_for]
 
 ## ############################################################
 ##

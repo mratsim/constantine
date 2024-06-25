@@ -8,10 +8,10 @@
 
 import
   std/macros,
-  ../../platforms/primitives,
-  ../arithmetic,
-  ../extension_fields,
-  ../constants/zoo_frobenius
+  constantine/platforms/primitives,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/named/zoo_frobenius
 
 # Frobenius Map
 # ------------------------------------------------------------

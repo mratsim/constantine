@@ -14,17 +14,17 @@
 # and the whole file should be deleted
 
 import
-  ../constantine/math/config/[type_ff, curves],
-  ../constantine/math/elliptic/[
+  constantine/named/algebra,
+  constantine/math/elliptic/[
     ec_twistededwards_affine,
     ec_twistededwards_projective
   ],
-  ../constantine/serialization/[
+  constantine/serialization/[
     codecs_status_codes,
     codecs_banderwagon,
     codecs
   ],
-  ../constantine/math/arithmetic
+  constantine/math/arithmetic
 
 # ############################################################
 #

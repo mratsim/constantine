@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../constantine/math/config/curves,
-  ../constantine/curves_primitives_parallel,
-  ../constantine/platforms/allocs,
-  ../constantine/threadpool
+  constantine/named/algebra,
+  constantine/curves_primitives_parallel,
+  constantine/platforms/allocs,
+  constantine/threadpool
 
 export curves_primitives_parallel
 

@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../../constantine/math/config/curves,
-  ../../constantine/math/elliptic/ec_shortweierstrass_projective,
-  ../../constantine/math/arithmetic,
+  constantine/named/algebra,
+  constantine/math/elliptic/ec_shortweierstrass_projective,
+  constantine/math/arithmetic,
   # Test utilities
   ./t_ec_template
 

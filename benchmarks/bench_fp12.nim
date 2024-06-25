@@ -8,8 +8,8 @@
 
 import
   # Internals
-  ../constantine/math/config/curves,
-  ../constantine/math/extension_fields,
+  constantine/named/algebra,
+  constantine/math/extension_fields,
   # Helpers
   ./bench_fields_template
 

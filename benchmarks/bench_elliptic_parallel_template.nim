@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/elliptic/[
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
@@ -19,11 +19,11 @@ import
     ec_multi_scalar_mul,
     ec_scalar_mul, ec_scalar_mul_vartime,
     ec_multi_scalar_mul_parallel],
-  ../constantine/math/constants/zoo_subgroups,
+  constantine/named/zoo_subgroups,
   # Threadpool
-  ../constantine/threadpool/[threadpool, partitioners],
+  constantine/threadpool/[threadpool, partitioners],
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./bench_elliptic_template,
   ./bench_blueprint
 

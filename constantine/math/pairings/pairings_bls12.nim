@@ -7,16 +7,16 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../config/curves,
-  ../extension_fields,
-  ../elliptic/[
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/math/extension_fields,
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective
   ],
-  ../isogenies/frobenius,
-  ../constants/zoo_pairings,
-  ../arithmetic,
+  constantine/math/isogenies/frobenius,
+  constantine/named/zoo_pairings,
+  constantine/math/arithmetic,
   ./cyclotomic_subgroups,
   ./miller_loops
 

@@ -7,11 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/curves,
+  constantine/named/algebra,
   ./cyclotomic_subgroups,
   ./pairings_bn, ./pairings_bls12,
-  ../extension_fields,
-  ../constants/zoo_pairings
+  constantine/math/extension_fields,
+  constantine/named/zoo_pairings
 
 func pairing*[C](gt: var Fp12[C], P, Q: auto) {.inline.} =
   when family(C) == BarretoNaehrig:

@@ -6,13 +6,13 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ../config/curves,
+import constantine/named/algebra,
        ./ec_multi_scalar_mul_scheduler,
        ./ec_multi_scalar_mul,
        ./ec_endomorphism_accel,
-       ../extension_fields,
-       ../isogenies/frobenius,
-       ../constants/zoo_endomorphisms,
+       constantine/math/extension_fields,
+       constantine/math/isogenies/frobenius,
+       constantine/named/zoo_endomorphisms,
        ../../threadpool/[threadpool, partitioners]
 export bestBucketBitSize
 

@@ -7,9 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../extension_fields,
-  ../elliptic/ec_shortweierstrass_affine,
-  ../arithmetic,
+  constantine/math/extension_fields,
+  constantine/math/elliptic/ec_shortweierstrass_affine,
+  constantine/math/arithmetic,
   ./pairings_generic
 
 {.push raises: [].} # No exceptions allowed in core cryptographic operations

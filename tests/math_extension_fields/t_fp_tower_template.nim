@@ -17,13 +17,13 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/io/io_extfields,
+  constantine/platforms/abstractions,
+  constantine/math/extension_fields,
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/io/io_extfields,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 export unittest # Generic sandwich
 

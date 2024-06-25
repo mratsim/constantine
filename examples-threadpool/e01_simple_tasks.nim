@@ -1,4 +1,4 @@
-import ../constantine/threadpool
+import constantine/threadpool
 
 block: # Async without result
 

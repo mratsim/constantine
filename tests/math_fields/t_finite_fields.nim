@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  std/unittest,
-        ../../constantine/math/arithmetic,
-        ../../constantine/math/arithmetic/limbs_montgomery,
-        ../../constantine/math/io/[io_bigints, io_fields],
-        ../../constantine/math/config/curves
+        constantine/math/arithmetic,
+        constantine/math/arithmetic/limbs_montgomery,
+        constantine/math/io/[io_bigints, io_fields],
+        constantine/named/algebra
 
 static: doAssert defined(CTT_TEST_CURVES), "This modules requires the -d:CTT_TEST_CURVES compile option"
 

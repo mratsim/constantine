@@ -7,15 +7,15 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-    ../math/[ec_shortweierstrass, extension_fields],
-    ../math/io/io_bigints,
-    ../math/elliptic/ec_scalar_mul_vartime,
-    ../math/pairings/[pairings_generic, miller_accumulators],
-    ../math/constants/zoo_generators,
-    ../math/config/curves,
-    ../hash_to_curve/[hash_to_curve, h2c_hash_to_field],
-    ../hashes,
-    ../platforms/views
+    constantine/math/[ec_shortweierstrass, extension_fields],
+    constantine/math/io/io_bigints,
+    constantine/math/elliptic/ec_scalar_mul_vartime,
+    constantine/math/pairings/[pairings_generic, miller_accumulators],
+    constantine/named/zoo_generators,
+    constantine/named/algebra,
+    constantine/hash_to_curve/[hash_to_curve, h2c_hash_to_field],
+    constantine/hashes,
+    constantine/platforms/views
 
 # ############################################################
 #

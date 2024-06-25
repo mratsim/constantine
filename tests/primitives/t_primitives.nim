@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  std/[unittest, times, math],
-        ../../constantine/platforms/abstractions,
-        ../../helpers/prng_unsafe
+        constantine/platforms/abstractions,
+        helpers/prng_unsafe
 
 # Random seed for reproducibility
 var rng: RngState

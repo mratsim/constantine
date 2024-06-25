@@ -1,9 +1,9 @@
 import
   # Internals
-  ../constantine/hashes,
-  ../constantine/serialization/codecs,
+  constantine/hashes,
+  constantine/serialization/codecs,
   # Helpers
-  ../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 # Deal with platform mess
 # --------------------------------------------------------------------

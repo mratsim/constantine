@@ -8,14 +8,14 @@
 
 import
   # Internals
-  ../constantine/ethereum_eip4844_kzg_parallel,
-  ../constantine/math/io/io_fields,
-  ../constantine/math/config/[curves, type_ff],
-  ../constantine/threadpool/threadpool,
-  ../constantine/csprngs/sysrand,
-  ../constantine/platforms/primitives,
+  constantine/ethereum_eip4844_kzg_parallel,
+  constantine/named/algebra,
+  constantine/math/io/io_fields,
+  constantine/threadpool/threadpool,
+  constantine/csprngs/sysrand,
+  constantine/platforms/primitives,
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./bench_blueprint,
   # Standard library
   std/[os, strutils]

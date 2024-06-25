@@ -1,6 +1,6 @@
 import
   std/[os, unittest, strutils],
-  ../../constantine/proof_systems/constraint_systems/r1cs_circom_parser
+  constantine/proof_systems/constraint_systems/r1cs_circom_parser
 
 
 const TestDir = currentSourcePath.rsplit(DirSep, 1)[0]

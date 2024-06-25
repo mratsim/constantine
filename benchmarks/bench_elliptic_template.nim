@@ -14,24 +14,24 @@
 
 import
   # Internals
-  ../constantine/platforms/abstractions,
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/io/io_bigints,
-  ../constantine/math/elliptic/[
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/io/io_bigints,
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_batch_ops,
     ec_scalar_mul, ec_endomorphism_accel],
-    ../constantine/math/constants/zoo_subgroups,
+    constantine/named/zoo_subgroups,
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./platforms,
   ./bench_blueprint,
   # Reference unsafe scalar multiplication
-  ../constantine/math/elliptic/ec_scalar_mul_vartime
+  constantine/math/elliptic/ec_scalar_mul_vartime
 
 export notes
 export abstractions # generic sandwich on SecretBool and SecretBool in Jacobian sum

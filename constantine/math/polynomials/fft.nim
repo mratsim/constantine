@@ -7,12 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/curves,
-  ../arithmetic,
-  ../io/io_bigints,
-  ../ec_shortweierstrass,
-  ../elliptic/ec_scalar_mul_vartime,
-  ../../platforms/[abstractions, allocs, views]
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/io/io_bigints,
+  constantine/math/ec_shortweierstrass,
+  constantine/math/elliptic/ec_scalar_mul_vartime,
+  constantine/platforms/[abstractions, allocs, views]
 
 # ############################################################
 #
@@ -304,10 +304,10 @@ when isMainModule:
 
   import
     std/[times, monotimes, strformat],
-    ../../../helpers/prng_unsafe,
-    ../constants/zoo_generators,
-    ../io/[io_fields, io_ec],
-    ../../platforms/static_for
+    helpers/prng_unsafe,
+    constantine/named/zoo_generators,
+    constantine/math/io/[io_fields, io_ec],
+    constantine/platforms/static_for
 
   const ctt_eth_kzg_fr_pow2_roots_of_unity = [
     # primitive_root⁽ᵐᵒᵈᵘˡᵘˢ⁻¹⁾/⁽²^ⁱ⁾ for i in [0, 32)

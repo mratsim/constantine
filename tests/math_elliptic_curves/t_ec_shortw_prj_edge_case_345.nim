@@ -1,14 +1,14 @@
 # https://github.com/mratsim/constantine/issues/345
 
-import ../../constantine/math/arithmetic
-import ../../constantine/math/io/io_fields
-import ../../constantine/math/io/io_bigints
-import ../../constantine/math/config/curves
-import ../../constantine/math/extension_fields/towers
-import ../../constantine/math/elliptic/ec_shortweierstrass_affine
-import ../../constantine/math/elliptic/ec_shortweierstrass_projective
-import ../../constantine/math/elliptic/ec_scalar_mul
-import ../../constantine/math/elliptic/ec_scalar_mul_vartime
+import constantine/math/arithmetic
+import constantine/math/io/io_fields
+import constantine/math/io/io_bigints
+import constantine/named/algebra
+import constantine/math/extension_fields/towers
+import constantine/math/elliptic/ec_shortweierstrass_affine
+import constantine/math/elliptic/ec_shortweierstrass_projective
+import constantine/math/elliptic/ec_scalar_mul
+import constantine/math/elliptic/ec_scalar_mul_vartime
 
 #-------------------------------------------------------------------------------
 

@@ -8,7 +8,7 @@
 
 import
   std/atomics,
-  ../../platforms/allocs,
+  constantine/platforms/allocs,
   ../primitives/futexes,
   ../instrumentation,
   ./scoped_barriers

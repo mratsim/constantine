@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/extension_fields,
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
   # Helpers
   ./bench_pairing_template
 

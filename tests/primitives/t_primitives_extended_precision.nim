@@ -9,8 +9,8 @@
 
 import
   std/[unittest, times, math],
-  ../../constantine/platforms/abstractions,
-  ../../helpers/prng_unsafe
+  constantine/platforms/abstractions,
+  helpers/prng_unsafe
 
 suite "Extended precision bugs":
   test $uint32 & " sanity check":

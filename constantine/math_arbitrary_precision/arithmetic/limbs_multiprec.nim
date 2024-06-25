@@ -8,7 +8,7 @@
 
 import
   # Internal
-  ../../platforms/abstractions
+  constantine/platforms/abstractions
 
 # ############################################################
 #

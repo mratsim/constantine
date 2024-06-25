@@ -11,10 +11,9 @@
 #   - Burning memory to ensure secrets are not left after dealloc.
 
 import
-  ../../platforms/abstractions,
+  constantine/platforms/abstractions,
   ../../serialization/[codecs, io_limbs],
-  ../arithmetic/bigints,
-  ../config/type_bigint
+  constantine/math/arithmetic/bigints
 
 export BigInt, wordsRequired
 

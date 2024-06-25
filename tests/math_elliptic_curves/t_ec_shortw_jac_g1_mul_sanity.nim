@@ -10,13 +10,13 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
-  ../../constantine/math/config/curves,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/io/io_fields,
-  ../../constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul],
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/io/io_fields,
+  constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul],
   # Test utilities
-  ../../helpers/prng_unsafe,
-  ../../constantine/math/elliptic/ec_scalar_mul_vartime,
+  helpers/prng_unsafe,
+  constantine/math/elliptic/ec_scalar_mul_vartime,
   ./t_ec_template
 
 const

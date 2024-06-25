@@ -10,13 +10,13 @@ import
   # Standard library
   std/[os, times, strformat],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/[arithmetic, extension_fields, ec_shortweierstrass],
-  ../../constantine/math/io/io_extfields,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/pairings/pairings_bls12,
+  constantine/platforms/abstractions,
+  constantine/math/[arithmetic, extension_fields, ec_shortweierstrass],
+  constantine/math/io/io_extfields,
+  constantine/named/algebra,
+  constantine/math/pairings/pairings_bls12,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 # Testing multipairing
 # ----------------------------------------------

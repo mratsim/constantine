@@ -12,8 +12,8 @@ import
   # 3rd party
   pkg/jsony,
   # Internals
-  ../constantine/serialization/codecs,
-  ../constantine/ethereum_evm_precompiles
+  constantine/serialization/codecs,
+  constantine/ethereum_evm_precompiles
 
 # Test vector source:
 # - https://github.com/ethereum/go-ethereum/tree/release/1.14/core/vm/testdata/precompiles

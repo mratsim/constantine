@@ -278,16 +278,16 @@ if __name__ == "__main__":
       if embdeg//twdeg >= 2:
         f.write(inspect.cleandoc("""
           import
-            ../config/curves,
-            ../extension_fields,
-            ../io/io_extfields
+            constantine/named/algebra,
+            constantine/math/extension_fields,
+            constantine/math/io/io_extfields
         """))
       else:
         f.write(inspect.cleandoc("""
           import
-            ../config/curves,
-            ../extension_fields,
-            ../io/[io_fields, io_extfields]
+            constantine/named/algebra,
+            constantine/math/extension_fields,
+            constantine/math/io/[io_fields, io_extfields]
         """))
       f.write('\n\n')
       f.write(FrobMap)

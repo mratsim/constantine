@@ -22,7 +22,7 @@ import
     ec_scalar_mul, ec_scalar_mul_vartime,
     ec_multi_scalar_mul,
   ],
-  ./constants/zoo_generators
+  ../named/zoo_generators
 
 export ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_projective,
        ec_shortweierstrass_batch_ops, ec_scalar_mul, ec_scalar_mul_vartime,

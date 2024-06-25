@@ -8,11 +8,11 @@
 
 import
   # Internals
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/elliptic/ec_twistededwards_projective,
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/elliptic/ec_twistededwards_projective,
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./bench_elliptic_parallel_template
 
 # ############################################################

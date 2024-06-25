@@ -7,14 +7,14 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../config/curves,
-  ../elliptic/[
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective
   ],
-  ../arithmetic,
-  ../isogenies/frobenius,
+  constantine/math/arithmetic,
+  constantine/math/isogenies/frobenius,
   ./lines_eval
 
 # No exceptions allowed

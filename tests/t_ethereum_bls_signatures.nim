@@ -9,10 +9,10 @@
 import
   std/[os, unittest, strutils],
   pkg/jsony,
-  ../constantine/ethereum_bls_signatures_parallel,
-  ../constantine/serialization/codecs,
-  ../constantine/hashes,
-  ../constantine/threadpool/threadpool
+  constantine/ethereum_bls_signatures_parallel,
+  constantine/serialization/codecs,
+  constantine/hashes,
+  constantine/threadpool/threadpool
 
 type
   # https://github.com/ethereum/bls12-381-tests/blob/master/formats/

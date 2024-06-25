@@ -7,7 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./math/config/[curves, type_bigint, type_ff],
+  ./named/algebra,
+  ./platforms/abstractions,
   ./threadpool,
   ./math/elliptic/ec_multi_scalar_mul_parallel,
   ./math/ec_shortweierstrass
@@ -28,12 +29,12 @@ export threadpool.shutdown
 # Base types
 # ------------------------------------------------------------
 
-export curves.Curve
-export type_bigint.BigInt
+export algebra.Curve
+export abstractions.BigInt
 export
-  type_ff.Fp,
-  type_ff.Fr,
-  type_ff.FF
+  algebra.Fp,
+  algebra.Fr,
+  algebra.FF
 
 # Elliptic curve
 # ------------------------------------------------------------

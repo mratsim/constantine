@@ -13,19 +13,15 @@
 ## ############################################################
 
 import
-  ../platforms/abstractions,
-  ../math/config/curves,
-  ../math/elliptic/[
-    ec_twistededwards_affine,
-    ec_twistededwards_projective],
-  ../math/arithmetic/limbs_montgomery,
-  ../math/[
-    arithmetic/bigints,
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/named/constants/banderwagon_subgroups,
+  constantine/math/ec_twistededwards,
+  constantine/math/arithmetic/limbs_montgomery,
+  constantine/math/[
     extension_fields,
-    arithmetic,
-    constants/banderwagon_subgroups
-  ],
-  ../math/io/[io_bigints, io_fields],
+    arithmetic],
+  constantine/math/io/[io_bigints, io_fields],
   ./codecs_status_codes
 
 ## ############################################################

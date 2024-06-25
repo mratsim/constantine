@@ -12,9 +12,9 @@ import
   std/typetraits,
   # Internal
   ./io_bigints, ./io_fields,
-  ../../platforms/primitives,
-  ../arithmetic/finite_fields,
-  ../extension_fields/towers
+  constantine/platforms/primitives,
+  constantine/math/arithmetic/finite_fields,
+  constantine/math/extension_fields/towers
 
 export towers
 
