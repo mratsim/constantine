@@ -17,6 +17,10 @@ import
   constantine/math/extension_fields,
   constantine/math/isogenies/frobenius,
   ./ec_shortweierstrass_affine,
+  ./ec_shortweierstrass_projective,
+  ./ec_shortweierstrass_jacobian,
+  ./ec_twistededwards_affine,
+  ./ec_twistededwards_projective,
   ./ec_shortweierstrass_batch_ops
 
 # ############################################################
@@ -45,7 +49,7 @@ template decomposeEndoImpl[scalBits: static int](
   static: doAssert scalBits >= L, "Cannot decompose a scalar smaller than a mini-scalar or the decomposition coefficient"
   # Equal when no window or no negative handling, greater otherwise
   static: doAssert L >= ceilDiv_vartime(scalBits, M) + 1
-  const w = F.C.getCurveOrderBitwidth().wordsRequired()
+  const w = Fr[F.Name].bits().wordsRequired()
 
   # Upstream bug:
   #   {.noInit.} variables must be {.inject.} as well
@@ -326,8 +330,8 @@ func scalarMulEndo*[scalBits; EC](
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
   mixin affine
-  const C = P.F.C # curve
-  static: doAssert scalBits <= C.getCurveOrderBitwidth(), "Do not use endomorphism to multiply beyond the curve order"
+  const C = P.F.Name # curve
+  static: doAssert scalBits <= EC.getScalarField().bits(), "Do not use endomorphism to multiply beyond the curve order"
   when P.F is Fp:
     const M = 2
     # 1. Compute endomorphisms
@@ -513,8 +517,8 @@ func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) {.me
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
   mixin affine
-  const C = P0.F.C # curve
-  static: doAssert: scalBits <= C.getCurveOrderBitwidth()
+  const C = P0.F.Name # curve
+  static: doAssert: scalBits <= EC.getScalarField().bits()
 
   # 1. Compute endomorphisms
   when P0.G == G1:
@@ -525,7 +529,7 @@ func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) {.me
     P1.frobenius_psi(P0, 2)
 
   # 2. Decompose scalar into mini-scalars
-  const L = computeRecodedLength(C.getCurveOrderBitwidth(), 2)
+  const L = computeRecodedLength(EC.getScalarField().bits(), 2)
   var miniScalars {.noInit.}: array[2, BigInt[L]]
   var negatePoints {.noInit.}: array[2, SecretBool]
   miniScalars.decomposeEndo(negatePoints, scalar, P0.F)

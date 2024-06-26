@@ -28,7 +28,7 @@ import
 # See ./multi-pairing.md for 2 approaches to a miller loop accumulator:
 #
 # - Software Implementation, Algorithm 11.2 & 11.3
-#   Aranha, Dominguez Perez, A. Mrabet, Schwabe,
+#   Aranha, Dominguez Perez, Mrabet, Schwabe,
 #   Guide to Pairing-Based Cryptography, 2015
 #
 # - Pairing Implementation Revisited
@@ -63,8 +63,8 @@ const MillerAccumMax = 8
 
 type MillerAccumulator*[FF1, FF2; FpK: ExtensionField] = object
   accum: FpK
-  Ps: array[MillerAccumMax, ECP_ShortW_Aff[FF1, G1]]
-  Qs: array[MillerAccumMax, ECP_ShortW_Aff[FF2, G2]]
+  Ps: array[MillerAccumMax, EC_ShortW_Aff[FF1, G1]]
+  Qs: array[MillerAccumMax, EC_ShortW_Aff[FF2, G2]]
   len: uint32
   accOnce: bool
 
@@ -85,7 +85,7 @@ func consumeBuffers[FF1, FF2, FpK](ctx: var MillerAccumulator[FF1, FF2, FpK]) =
     ctx.accOnce = true
   ctx.len = 0
 
-func update*[FF1, FF2, FpK](ctx: var MillerAccumulator[FF1, FF2, FpK], P: ECP_ShortW_Aff[FF1, G1], Q: ECP_ShortW_Aff[FF2, G2]): bool =
+func update*[FF1, FF2, FpK](ctx: var MillerAccumulator[FF1, FF2, FpK], P: EC_ShortW_Aff[FF1, G1], Q: EC_ShortW_Aff[FF2, G2]): bool =
   ## Aggregate another set for pairing
   ## This returns `false` if P or Q are the infinity point
   ##

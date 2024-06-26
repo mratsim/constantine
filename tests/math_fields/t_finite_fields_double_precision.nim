@@ -26,14 +26,14 @@ echo "\n------------------------------------------------------\n"
 echo "test_finite_fields_double_precision xoshiro512** seed: ", seed
 
 template addsubnegTest(rng_gen: untyped): untyped =
-  proc `addsubneg _ rng_gen`(C: static Curve) =
+  proc `addsubneg _ rng_gen`(Name: static Algebra) =
     # Try to exercise all code paths for in-place/out-of-place add/sum/sub/diff/double/neg
     # (1 - (-a) - b + (-a) - 2a) + (2a + 2b + (-b))  == 1
-    let aFp = rng_gen(rng, Fp[C])
-    let bFp = rng_gen(rng, Fp[C])
-    var accumFp {.noInit.}: Fp[C]
-    var OneFp {.noInit.}: Fp[C]
-    var accum {.noInit.}, One {.noInit.}, a{.noInit.}, na{.noInit.}, b{.noInit.}, nb{.noInit.}, a2 {.noInit.}, b2 {.noInit.}: FpDbl[C]
+    let aFp = rng_gen(rng, Fp[Name])
+    let bFp = rng_gen(rng, Fp[Name])
+    var accumFp {.noInit.}: Fp[Name]
+    var OneFp {.noInit.}: Fp[Name]
+    var accum {.noInit.}, One {.noInit.}, a{.noInit.}, na{.noInit.}, b{.noInit.}, nb{.noInit.}, a2 {.noInit.}, b2 {.noInit.}: FpDbl[Name]
 
     OneFp.setOne()
     One.prod2x(OneFp, OneFp)
@@ -41,7 +41,7 @@ template addsubnegTest(rng_gen: untyped): untyped =
     b.prod2x(bFp, OneFp)
 
     block: # sanity check
-      var t: Fp[C]
+      var t: Fp[Name]
       t.redc2x(One)
       doAssert bool t.isOne()
 
@@ -49,7 +49,7 @@ template addsubnegTest(rng_gen: untyped): untyped =
     na.neg2xMod(a)
 
     block: # sanity check
-      var t0, t1: Fp[C]
+      var t0, t1: Fp[Name]
       t0.redc2x(na)
       t1.neg(aFp)
       doAssert bool(t0 == t1),
@@ -59,7 +59,7 @@ template addsubnegTest(rng_gen: untyped): untyped =
         "  t1: " & t1.toHex() & "\n"
 
     block: # sanity check
-      var t0, t1: Fp[C]
+      var t0, t1: Fp[Name]
       t0.redc2x(a2)
       t1.double(aFp)
       doAssert bool(t0 == t1),
@@ -76,7 +76,7 @@ template addsubnegTest(rng_gen: untyped): untyped =
     accum.sum2xMod(accum, na)
     accum.diff2xMod(accum, a2)
 
-    var t{.noInit.}: FpDbl[C]
+    var t{.noInit.}: FpDbl[Name]
     t.sum2xMod(a2, b2)
     t.sum2xMod(t, nb)
 
@@ -88,12 +88,12 @@ template addsubnegTest(rng_gen: untyped): untyped =
         "  accumFp: " & accumFp.toHex()
 
 template mulTest(rng_gen: untyped): untyped =
-  proc `mul _ rng_gen`(C: static Curve) =
-    let a = rng_gen(rng, Fp[C])
-    let b = rng_gen(rng, Fp[C])
+  proc `mul _ rng_gen`(Name: static Algebra) =
+    let a = rng_gen(rng, Fp[Name])
+    let b = rng_gen(rng, Fp[Name])
 
-    var r_fp{.noInit.}, r_fpDbl{.noInit.}: Fp[C]
-    var tmpDbl{.noInit.}: FpDbl[C]
+    var r_fp{.noInit.}, r_fpDbl{.noInit.}: Fp[Name]
+    var tmpDbl{.noInit.}: FpDbl[Name]
 
     r_fp.prod(a, b)
     tmpDbl.prod2x(a, b)
@@ -102,10 +102,10 @@ template mulTest(rng_gen: untyped): untyped =
     doAssert bool(r_fp == r_fpDbl)
 
 template sqrTest(rng_gen: untyped): untyped =
-  proc `sqr _ rng_gen`(C: static Curve) =
-    let a = rng_gen(rng, Fp[C])
+  proc `sqr _ rng_gen`(Name: static Algebra) =
+    let a = rng_gen(rng, Fp[Name])
 
-    var mulDbl{.noInit.}, sqrDbl{.noInit.}: FpDbl[C]
+    var mulDbl{.noInit.}, sqrDbl{.noInit.}: FpDbl[Name]
 
     mulDbl.prod2x(a, a)
     sqrDbl.square2x(a)

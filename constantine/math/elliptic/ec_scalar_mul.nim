@@ -13,7 +13,12 @@ import
   constantine/math/extension_fields,
   constantine/math/io/io_bigints,
   constantine/named/zoo_endomorphisms,
-  ./ec_endomorphism_accel
+  ./ec_endomorphism_accel,
+  ./ec_shortweierstrass_affine,
+  ./ec_shortweierstrass_projective,
+  ./ec_shortweierstrass_jacobian,
+  ./ec_twistededwards_affine,
+  ./ec_twistededwards_projective
 
 # ############################################################
 #                                                            #
@@ -237,8 +242,8 @@ func scalarMul*[EC](P: var EC, scalar: BigInt) {.inline, meter.} =
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
   ## Those will be assumed to maintain constant-time property
-  when BigInt.bits <= EC.F.C.getCurveOrderBitwidth() and
-       EC.F.C.hasEndomorphismAcceleration():
+  when BigInt.bits <= EC.getScalarField().bits() and
+       EC.F.Name.hasEndomorphismAcceleration():
     # TODO, min amount of bits for endomorphisms?
     when EC.F is Fp:
       P.scalarMulGLV_m2w2(scalar)

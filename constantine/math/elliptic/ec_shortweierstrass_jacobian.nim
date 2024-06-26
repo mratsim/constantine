@@ -25,7 +25,7 @@ export Subgroup
 #
 # ############################################################
 
-type ECP_ShortW_Jac*[F; G: static Subgroup] = object
+type EC_ShortW_Jac*[F; G: static Subgroup] = object
   ## Elliptic curve point for a curve in Short Weierstrass form
   ##   y² = x³ + a x + b
   ##
@@ -37,7 +37,10 @@ type ECP_ShortW_Jac*[F; G: static Subgroup] = object
   ## Note that jacobian coordinates are not unique
   x*, y*, z*: F
 
-func isNeutral*(P: ECP_ShortW_Jac): SecretBool {.inline.} =
+template getScalarField*(EC: type EC_ShortW_Jac): untyped =
+  Fr[EC.F.Name]
+
+func isNeutral*(P: EC_ShortW_Jac): SecretBool {.inline.} =
   ## Returns true if P is the neutral element / identity element
   ## and false otherwise, i.e. ∀Q, P+Q == Q
   ## For Short Weierstrass curves, this is the infinity point.
@@ -49,7 +52,7 @@ func isNeutral*(P: ECP_ShortW_Jac): SecretBool {.inline.} =
   # (yZ³)² = (xZ²)³ which is true for any x, y coordinates
   result = P.z.isZero()
 
-func setNeutral*(P: var ECP_ShortW_Jac) {.inline.} =
+func setNeutral*(P: var EC_ShortW_Jac) {.inline.} =
   ## Set P to the neutral element / identity element
   ## i.e. ∀Q, P+Q == Q
   ## For Short Weierstrass curves, this is the infinity point.
@@ -57,11 +60,11 @@ func setNeutral*(P: var ECP_ShortW_Jac) {.inline.} =
   P.y.setOne()
   P.z.setZero()
 
-func `==`*(P, Q: ECP_ShortW_Jac): SecretBool {.meter.} =
+func `==`*(P, Q: EC_ShortW_Jac): SecretBool {.meter.} =
   ## Constant-time equality check
   ## This is a costly operation
   # Reminder: the representation is not unique
-  type F = ECP_ShortW_Jac.F
+  type F = EC_ShortW_Jac.F
 
   var z1z1 {.noInit.}, z2z2 {.noInit.}: F
   var a{.noInit.}, b{.noInit.}: F
@@ -82,7 +85,7 @@ func `==`*(P, Q: ECP_ShortW_Jac): SecretBool {.meter.} =
   # Ensure a zero-init point doesn't propagate 0s and match any
   result = result and not(P.isNeutral() xor Q.isNeutral())
 
-func ccopy*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac, ctl: SecretBool) {.inline.} =
+func ccopy*(P: var EC_ShortW_Jac, Q: EC_ShortW_Jac, ctl: SecretBool) {.inline.} =
   ## Constant-time conditional copy
   ## If ctl is true: Q is copied into P
   ## if ctl is false: Q is not copied and P is unmodified
@@ -91,7 +94,7 @@ func ccopy*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac, ctl: SecretBool) {.inline.
     ccopy(fP, fQ, ctl)
 
 func trySetFromCoordsXandZ*[F; G](
-       P: var ECP_ShortW_Jac[F, G],
+       P: var EC_ShortW_Jac[F, G],
        x, z: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## Y² = X³ + aXZ⁴ + bZ⁶  (Jacobian coordinates)
@@ -121,7 +124,7 @@ func trySetFromCoordsXandZ*[F; G](
   P.z = z
 
 func trySetFromCoordX*[F; G](
-       P: var ECP_ShortW_Jac[F, G],
+       P: var EC_ShortW_Jac[F, G],
        x: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
@@ -147,26 +150,25 @@ func trySetFromCoordX*[F; G](
   P.x = x
   P.z.setOne()
 
-func neg*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) {.inline.} =
+func neg*(P: var EC_ShortW_Jac, Q: EC_ShortW_Jac) {.inline.} =
   ## Negate ``P``
   P.x = Q.x
   P.y.neg(Q.y)
   P.z = Q.z
 
-func neg*(P: var ECP_ShortW_Jac) {.inline.} =
+func neg*(P: var EC_ShortW_Jac) {.inline.} =
   ## Negate ``P``
   P.y.neg()
 
-func cneg*(P: var ECP_ShortW_Jac, ctl: CTBool)  {.inline.} =
+func cneg*(P: var EC_ShortW_Jac, ctl: CTBool)  {.inline.} =
   ## Conditional negation.
   ## Negate if ``ctl`` is true
   P.y.cneg(ctl)
 
 template sumImpl[F; G: static Subgroup](
-       r: var ECP_ShortW_Jac[F, G],
-       P, Q: ECP_ShortW_Jac[F, G],
-       CoefA: typed
-     ) {.dirty.} =
+       r: var EC_ShortW_Jac[F, G],
+       P, Q: EC_ShortW_Jac[F, G],
+       CoefA: typed) {.dirty.} =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
   ## with the curve ``a`` being a parameter for summing on isogenous curves.
   ##
@@ -336,10 +338,9 @@ template sumImpl[F; G: static Subgroup](
   r = o
 
 func sum*[F; G: static Subgroup](
-       r: var ECP_ShortW_Jac[F, G],
-       P, Q: ECP_ShortW_Jac[F, G],
-       CoefA: static F
-     ) {.meter.} =
+       r: var EC_ShortW_Jac[F, G],
+       P, Q: EC_ShortW_Jac[F, G],
+       CoefA: static F) {.meter.} =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
   ## with the curve ``a`` being a parameter for summing on isogenous curves.
   ##
@@ -361,9 +362,8 @@ func sum*[F; G: static Subgroup](
   r.sumImpl(P, Q, CoefA)
 
 func sum*[F; G: static Subgroup](
-       r: var ECP_ShortW_Jac[F, G],
-       P, Q: ECP_ShortW_Jac[F, G]
-     ) {.meter.} =
+       r: var EC_ShortW_Jac[F, G],
+       P, Q: EC_ShortW_Jac[F, G]) {.meter.} =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
   ##
   ##   R = P + Q
@@ -379,13 +379,12 @@ func sum*[F; G: static Subgroup](
   ## that P == Q or P == -Q or P or Q are the infinity points
   ## to simple side-channel attacks (SCA)
   ## This is done by using a "complete" or "exception-free" addition law.
-  r.sumImpl(P, Q, F.C.getCoefA())
+  r.sumImpl(P, Q, F.Name.getCoefA())
 
-func madd*[F; G: static Subgroup](
-       r: var ECP_ShortW_Jac[F, G],
-       P: ECP_ShortW_Jac[F, G],
-       Q: ECP_ShortW_Aff[F, G]
-     ) {.meter.} =
+func mixedSum*[F; G: static Subgroup](
+       r: var EC_ShortW_Jac[F, G],
+       P: EC_ShortW_Jac[F, G],
+       Q: EC_ShortW_Aff[F, G]) {.meter.} =
   ## Elliptic curve mixed addition for Short Weierstrass curves in Jacobian coordinates
   ## with the curve ``a`` being a parameter for summing on isogenous curves.
   ##
@@ -434,7 +433,7 @@ func madd*[F; G: static Subgroup](
 
   # "when" static evaluation doesn't shortcut booleans :/
   # which causes issues when CoefA isn't an int but Fp or Fp2
-  const CoefA = F.C.getCoefA()
+  const CoefA = F.Name.getCoefA()
   when CoefA is int:
     const CoefA_eq_zero = CoefA == 0
     const CoefA_eq_minus3 {.used.} = CoefA == -3
@@ -557,7 +556,7 @@ func madd*[F; G: static Subgroup](
 
   r = o
 
-func double*[F; G: static Subgroup](r: var ECP_ShortW_Jac[F, G], P: ECP_ShortW_Jac[F, G]) {.meter.} =
+func double*[F; G: static Subgroup](r: var EC_ShortW_Jac[F, G], P: EC_ShortW_Jac[F, G]) {.meter.} =
   ## Elliptic curve point doubling for Short Weierstrass curves in projective coordinate
   ##
   ##   R = [2] P
@@ -570,7 +569,7 @@ func double*[F; G: static Subgroup](r: var ECP_ShortW_Jac[F, G], P: ECP_ShortW_J
   ## ``r`` is initialized/overwritten with the sum
   ##
   ## Implementation is constant-time.
-  when F.C.getCoefA() == 0:
+  when F.Name.getCoefA() == 0:
     # "dbl-2009-l" doubling formula - https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
     #
     #     Cost: 2M + 5S + 6add + 3*2 + 1*3 + 1*8.
@@ -617,48 +616,52 @@ func double*[F; G: static Subgroup](r: var ECP_ShortW_Jac[F, G], P: ECP_ShortW_J
   else:
     {.error: "Not implemented.".}
 
-func `+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) {.inline.} =
+func `+=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Jac) {.inline.} =
   ## In-place point addition
   P.sum(P, Q)
 
-func `+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Aff) {.inline.} =
+func `+=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Aff) {.inline.} =
   ## In-place mixed point addition
-  P.madd(P, Q)
+  P.mixedSum(P, Q)
 
-func double*(P: var ECP_ShortW_Jac) {.inline.} =
+func double*(P: var EC_ShortW_Jac) {.inline.} =
   ## In-place point doubling
   P.double(P)
 
-func diff*(r: var ECP_ShortW_Jac, P, Q: ECP_ShortW_Jac) {.inline.} =
+func diff*(r: var EC_ShortW_Jac, P, Q: EC_ShortW_Jac) {.inline.} =
   ## r = P - Q
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
   r.sum(P, nQ)
 
-func diff*(r: var ECP_ShortW_Jac, P: ECP_ShortW_Jac, Q: ECP_ShortW_Aff) {.inline.} =
+func `-=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Jac) {.inline.} =
+  ## In-place point substraction
+  P.diff(P, Q)
+
+func mixedDiff*(r: var EC_ShortW_Jac, P: EC_ShortW_Jac, Q: EC_ShortW_Aff) {.inline.} =
   ## r = P - Q
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
-  r.madd(P, nQ)
+  r.mixedSum(P, nQ)
 
-func `-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac or ECP_ShortW_Aff) {.inline.} =
+func `-=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Aff) {.inline.} =
   ## In-place point substraction
-  P.diff(P, Q)
+  P.mixedDiff(P, Q)
 
 # Conversions
 # -----------
 
-template affine*[F, G](_: type ECP_ShortW_Jac[F, G]): typedesc =
+template affine*[F, G](_: type EC_ShortW_Jac[F, G]): untyped =
   ## Returns the affine type that corresponds to the Jacobian type input
-  ECP_ShortW_Aff[F, G]
+  EC_ShortW_Aff[F, G]
 
-template jacobian*[F, G](_: type ECP_ShortW_Aff[F, G]): typedesc =
+template jacobian*[F, G](_: type EC_ShortW_Aff[F, G]): untyped =
   ## Returns the jacobian type that corresponds to the affine type input
-  ECP_ShortW_Jac[F, G]
+  EC_ShortW_Jac[F, G]
 
 func affine*[F; G](
-       aff: var ECP_ShortW_Aff[F, G],
-       jac: ECP_ShortW_Jac[F, G]) {.meter.} =
+       aff: var EC_ShortW_Aff[F, G],
+       jac: EC_ShortW_Jac[F, G]) {.meter.} =
   var invZ {.noInit.}, invZ2{.noInit.}: F
   invZ.inv(jac.z)
   invZ2.square(invZ, skipFinalSub = true)
@@ -668,8 +671,8 @@ func affine*[F; G](
   aff.y.prod(jac.y, invZ)
 
 func fromAffine*[F; G](
-       jac: var ECP_ShortW_Jac[F, G],
-       aff: ECP_ShortW_Aff[F, G]) {.inline.} =
+       jac: var EC_ShortW_Jac[F, G],
+       aff: EC_ShortW_Aff[F, G]) {.inline.} =
   jac.x = aff.x
   jac.y = aff.y
   jac.z.setOne()
@@ -683,8 +686,8 @@ func fromAffine*[F; G](
 # to hours of computations. Those primitives do not need constant-timeness.
 
 func sum_vartime*[F; G: static Subgroup](
-       r: var ECP_ShortW_Jac[F, G],
-       p, q: ECP_ShortW_Jac[F, G])
+       r: var EC_ShortW_Jac[F, G],
+       p, q: EC_ShortW_Jac[F, G])
        {.tags:[VarTime], meter.} =
   ## **Variable-time** Jacobian addition
   ##
@@ -799,10 +802,10 @@ func sum_vartime*[F; G: static Subgroup](
       r.z.prod(p.z, q.z, skipFinalSub = true)
       r.z *= H
 
-func madd_vartime*[F; G: static Subgroup](
-       r: var ECP_ShortW_Jac[F, G],
-       p: ECP_ShortW_Jac[F, G],
-       q: ECP_ShortW_Aff[F, G])
+func mixedSum_vartime*[F; G: static Subgroup](
+       r: var EC_ShortW_Jac[F, G],
+       p: EC_ShortW_Jac[F, G],
+       q: EC_ShortW_Aff[F, G])
        {.tags:[VarTime], meter.} =
   ## **Variable-time** Jacobian mixed addition
   ##
@@ -899,7 +902,7 @@ func madd_vartime*[F; G: static Subgroup](
   else:
     r.z.prod(H, p.z)
 
-func diff_vartime*(r: var ECP_ShortW_Jac, P, Q: ECP_ShortW_Jac) {.inline.} =
+func diff_vartime*(r: var EC_ShortW_Jac, P, Q: EC_ShortW_Jac) {.inline.} =
   ## r = P - Q
   ##
   ## This MUST NOT be used with secret data.
@@ -909,7 +912,7 @@ func diff_vartime*(r: var ECP_ShortW_Jac, P, Q: ECP_ShortW_Jac) {.inline.} =
   nQ.neg(Q)
   r.sum_vartime(P, nQ)
 
-func msub_vartime*(r: var ECP_ShortW_Jac, P: ECP_ShortW_Jac, Q: ECP_ShortW_Aff) {.inline.} =
+func mixedDiff_vartime*(r: var EC_ShortW_Jac, P: EC_ShortW_Jac, Q: EC_ShortW_Aff) {.inline.} =
   ## r = P - Q
   ##
   ## This MUST NOT be used with secret data.
@@ -917,18 +920,18 @@ func msub_vartime*(r: var ECP_ShortW_Jac, P: ECP_ShortW_Jac, Q: ECP_ShortW_Aff) 
   ## This is highly VULNERABLE to timing attacks and power analysis attacks.
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
-  r.madd_vartime(P, nQ)
+  r.mixedSum_vartime(P, nQ)
 
-template `~+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) =
+template `~+=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Jac) =
   ## Variable-time in-place point addition
   P.sum_vartime(P, Q)
 
-template `~+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Aff) =
+template `~+=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Aff) =
   ## Variable-time in-place point mixed addition
-  P.madd_vartime(P, Q)
+  P.mixedSum_vartime(P, Q)
 
-template `~-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) =
+template `~-=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Jac) =
   P.diff_vartime(P, Q)
 
-template `~-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Aff) =
-  P.msub_vartime(P, Q)
+template `~-=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Aff) =
+  P.mixedDiff_vartime(P, Q)

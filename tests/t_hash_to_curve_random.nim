@@ -29,7 +29,7 @@ rng.seed(seed)
 echo "\n------------------------------------------------------\n"
 echo "Hash-to-curve (randomized) xoshiro512** seed: ", seed
 
-proc testH2C_consistency[EC: ECP_ShortW](curve: typedesc[EC]) =
+proc testH2C_consistency[EC: EC_ShortW](curve: typedesc[EC]) =
   var P{.noInit.}: EC
   let msg = rng.random_byte_seq(32)
   sha256.hashToCurve(
@@ -46,16 +46,16 @@ proc testH2C_consistency[EC: ECP_ShortW](curve: typedesc[EC]) =
 suite "Hash-to-curve produces points on curve and in correct subgroup":
   test "BLS12-381 G1":
     for i in 0 ..< Iters:
-      testH2C_consistency(ECP_ShortW_Aff[Fp[BLS12_381], G1])
+      testH2C_consistency(EC_ShortW_Aff[Fp[BLS12_381], G1])
   test "BLS12-381 G2":
     for i in 0 ..< Iters:
-      testH2C_consistency(ECP_ShortW_Aff[Fp2[BLS12_381], G2])
+      testH2C_consistency(EC_ShortW_Aff[Fp2[BLS12_381], G2])
   test "BN254_Snarks G1":
     for i in 0 ..< Iters:
-      testH2C_consistency(ECP_ShortW_Aff[Fp[BN254_Snarks], G1])
+      testH2C_consistency(EC_ShortW_Aff[Fp[BN254_Snarks], G1])
   test "BN254_Snarks G2":
     for i in 0 ..< Iters:
-      testH2C_consistency(ECP_ShortW_Aff[Fp2[BN254_Snarks], G2])
+      testH2C_consistency(EC_ShortW_Aff[Fp2[BN254_Snarks], G2])
 
 proc testH2C_guidovranken_fuzz_failure_2() =
   # From Guido Vranken differential fuzzing
@@ -75,10 +75,10 @@ proc testH2C_guidovranken_fuzz_failure_2() =
             0xf1, 0xaf, 0xa5, 0x06, 0x78, 0x80, 0xde, 0xf0,
             0x0d, 0xdf]
 
-  var r{.noInit}: ECP_ShortW_Jac[Fp[BLS12_381], G1]
+  var r{.noInit}: EC_ShortW_Jac[Fp[BLS12_381], G1]
   sha256.hashToCurve(128, r, aug, msg, dst)
 
-  let expected = ECP_ShortW_Jac[Fp[BLS12_381], G1].fromHex(
+  let expected = EC_ShortW_Jac[Fp[BLS12_381], G1].fromHex(
     x = "0x48f2bbee30aa236feaa7fb924d8a3de3090ff160f9972a8afda302bd248248527dcc59ce195cd5f5a1488417cfc64cc",
     y = "0xe91b0a3cdea4981741791c8e9b4287d2f693c6626d8e4408ecaaa473e6ff2f691f5f23f8b7b46bdf3560e7cca67e5bc"
   )

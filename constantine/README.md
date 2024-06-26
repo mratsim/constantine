@@ -1,6 +1,13 @@
 # Constantine-backed protocols
 
-This folder stores protocol implemented on top of Constantine.
+This folder stores protocols implemented on top of Constantine.
+
+It also provides low-level "Named math objects" like named elliptic curves or fields.
+
+Warning ⚠️:
+    The low-level APIs have no stability guarantee.
+    Use high-level protocols which are designed according to a stable specs
+    and with misuse resistance in mind.
 
 <!-- TOC -->
 

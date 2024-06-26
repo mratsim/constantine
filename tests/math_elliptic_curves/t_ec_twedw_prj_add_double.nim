@@ -17,25 +17,25 @@ const
   Iters = 8
 
 run_EC_addition_tests(
-    ec = ECP_TwEdwards_Prj[Fp[Edwards25519]],
+    ec = EC_TwEdw_Prj[Fp[Edwards25519]],
     Iters = Iters,
     moduleName = "test_ec_twistededwards_projective_add_double_" & $Edwards25519
   )
 
 run_EC_addition_tests(
-    ec = ECP_TwEdwards_Prj[Fp[Jubjub]],
+    ec = EC_TwEdw_Prj[Fp[Jubjub]],
     Iters = Iters,
     moduleName = "test_ec_twistededwards_projective_add_double_" & $Jubjub
   )
 
 run_EC_addition_tests(
-    ec = ECP_TwEdwards_Prj[Fp[Bandersnatch]],
+    ec = EC_TwEdw_Prj[Fp[Bandersnatch]],
     Iters = Iters,
     moduleName = "test_ec_twistededwards_projective_add_double_" & $Bandersnatch
   )
 
 run_EC_addition_tests(
-    ec = ECP_TwEdwards_Prj[Fp[Banderwagon]],
+    ec = EC_TwEdw_Prj[Fp[Banderwagon]],
     Iters = Iters,
     moduleName = "test_ec_twistededwards_projective_add_double_" & $Banderwagon
   )

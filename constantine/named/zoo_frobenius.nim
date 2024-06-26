@@ -17,7 +17,7 @@ import
 
 {.experimental: "dynamicBindSym".}
 
-macro frobMapConst*(C: static Curve, coef, p_pow: static int): untyped =
+macro frobMapConst*(Name: static Algebra, coef, p_pow: static int): untyped =
   ## Access the field Frobenius map a -> a^(p^p_pow)
   ## Call with
   ## frobMapConst(Curve, coef, p_pow)
@@ -25,11 +25,11 @@ macro frobMapConst*(C: static Curve, coef, p_pow: static int): untyped =
   ## With pow the
   return nnkBracketExpr.newTree(
     nnkBracketExpr.newTree(
-      bindSym($C & "_FrobeniusMapCoefficients"),
+      bindSym($Name & "_FrobeniusMapCoefficients"),
       newLit(p_pow-1)
     ),
     newLit coef
   )
 
-macro frobPsiConst*(C: static Curve, psipow, coefpow: static int): untyped =
-  return bindSym($C & "_FrobeniusPsi_psi" & $psipow & "_coef" & $coefpow)
+macro frobPsiConst*(Name: static Algebra, psipow, coefpow: static int): untyped =
+  return bindSym($Name & "_FrobeniusPsi_psi" & $psipow & "_coef" & $coefpow)

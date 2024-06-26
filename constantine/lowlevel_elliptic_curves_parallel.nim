@@ -15,9 +15,14 @@ import
 
 # ############################################################
 #
-#            Generator for low-level parallel primitives API
+#         Low-level named Elliptic Curve Parallel API
 #
 # ############################################################
+
+# Warning ⚠️:
+#     The low-level APIs have no stability guarantee.
+#     Use high-level protocols which are designed according to a stable specs
+#     and with misuse resistance in mind.
 
 # Threadpool
 # ------------------------------------------------------------
@@ -29,7 +34,7 @@ export threadpool.shutdown
 # Base types
 # ------------------------------------------------------------
 
-export algebras.Curve
+export algebras.Algebra
 export abstractions.BigInt
 export
   algebras.Fp,
@@ -41,10 +46,10 @@ export
 
 export
   ec_shortweierstrass.Subgroup,
-  ec_shortweierstrass.ECP_ShortW_Aff,
-  ec_shortweierstrass.ECP_ShortW_Jac,
-  ec_shortweierstrass.ECP_ShortW_Prj,
-  ec_shortweierstrass.ECP_ShortW
+  ec_shortweierstrass.EC_ShortW_Aff,
+  ec_shortweierstrass.EC_ShortW_Jac,
+  ec_shortweierstrass.EC_ShortW_Prj,
+  ec_shortweierstrass.EC_ShortW
 
 export
   ec_multi_scalar_mul_parallel.multiScalarMul_vartime_parallel

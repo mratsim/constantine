@@ -71,7 +71,7 @@ func absorb*(ctx: var EthVerkleTranscript, label: openArray[char], v: uint64) =
   ctx.update(label)
   ctx.update(v.toBytes(bigEndian))
 
-func absorb*(ctx: var EthVerkleTranscript, label: openArray[char], point: ECP_TwEdwards[Fp[Banderwagon]]) =
+func absorb*(ctx: var EthVerkleTranscript, label: openArray[char], point: EC_TwEdw[Fp[Banderwagon]]) =
   var bytes {.noInit.}: array[32, byte]
   bytes.serialize(point)
   ctx.absorb(label, bytes)
@@ -81,12 +81,12 @@ func absorb*(ctx: var EthVerkleTranscript, label: openArray[char], scalar: Fr[Ba
   bytes.serialize_fr(scalar, littleEndian)
   ctx.absorb(label, bytes)
 
-func absorb(ctx: var EthVerkleTranscript, label: openArray[char], scalar: matchingOrderBigInt(Banderwagon)) =
+func absorb(ctx: var EthVerkleTranscript, label: openArray[char], scalar: Fr[Banderwagon].getBigInt()) =
   var bytes {.noInit.}: array[32, byte]
   bytes.serialize_scalar(scalar, littleEndian)
   ctx.absorb(label, bytes)
 
-func squeezeChallenge*(ctx: var EthVerkleTranscript, label: openArray[char], challenge: var matchingOrderBigInt(Banderwagon)) =
+func squeezeChallenge*(ctx: var EthVerkleTranscript, label: openArray[char], challenge: var Fr[Banderwagon].getBigInt()) =
   ## Generating a challenge based on the Fiat-Shamir transform
   ctx.domainSeparator(label)
 
@@ -96,7 +96,7 @@ func squeezeChallenge*(ctx: var EthVerkleTranscript, label: openArray[char], cha
 
   var big {.noInit.}: BigInt[32*8]
   big.unmarshal(digest, littleEndian)
-  discard challenge.reduce_vartime(big, Fr[Banderwagon].fieldMod())
+  discard challenge.reduce_vartime(big, Fr[Banderwagon].getModulus())
 
   # Reset the Transcript state & absorb the freshly generated challenge
   ctx.init()
@@ -104,6 +104,6 @@ func squeezeChallenge*(ctx: var EthVerkleTranscript, label: openArray[char], cha
 
 func squeezeChallenge*(ctx: var EthVerkleTranscript, label: openArray[char], challenge: var Fr[Banderwagon]) =
   ## Generating a challenge based on the Fiat-Shamir transform
-  var big {.noInit.}: matchingOrderBigInt(Banderwagon)
+  var big {.noInit.}: Fr[Banderwagon].getBigInt()
   ctx.squeezeChallenge(label, big)
   challenge.fromBig(big)

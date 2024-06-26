@@ -17,8 +17,8 @@ import
   constantine/math/isogenies/frobenius,
   constantine/named/zoo_endomorphisms
 
-func pow_bls12_377_abs_x[ECP: ECP_ShortW[Fp[BLS12_377], G1] or
-       ECP_ShortW[Fp2[BLS12_377], G2]](
+func pow_bls12_377_abs_x[ECP: EC_ShortW[Fp[BLS12_377], G1] or
+       EC_ShortW[Fp2[BLS12_377], G2]](
        r{.noalias.}: var ECP,
        P{.noalias.}: ECP
      ) =
@@ -48,8 +48,8 @@ func pow_bls12_377_abs_x[ECP: ECP_ShortW[Fp[BLS12_377], G1] or
   r.double_repeated(46)
   r += P
 
-func pow_bls12_377_x[ECP: ECP_ShortW[Fp[BLS12_377], G1] or
-       ECP_ShortW[Fp2[BLS12_377], G2]](
+func pow_bls12_377_x[ECP: EC_ShortW[Fp[BLS12_377], G1] or
+       EC_ShortW[Fp2[BLS12_377], G2]](
        r{.noalias.}: var ECP,
        P{.noalias.}: ECP
      ) {.inline.}=
@@ -59,8 +59,8 @@ func pow_bls12_377_x[ECP: ECP_ShortW[Fp[BLS12_377], G1] or
   ## Requires r and P to not alias
   pow_bls12_377_abs_x(r, P)
 
-func pow_bls12_377_minus_x[ECP: ECP_ShortW[Fp[BLS12_377], G1] or
-       ECP_ShortW[Fp2[BLS12_377], G2]](
+func pow_bls12_377_minus_x[ECP: EC_ShortW[Fp[BLS12_377], G1] or
+       EC_ShortW[Fp2[BLS12_377], G2]](
        r{.noalias.}: var ECP,
        P{.noalias.}: ECP
      ) {.inline.}=
@@ -85,13 +85,13 @@ const Cofactor_Eff_BLS12_377_G2 = BigInt[629].fromHex"0x1f60243677e30653648d3d95
   ## Effective cofactor from Budroni et al https://eprint.iacr.org/2017/419.pdf
   ## (3x² − 3)*cofactor
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BLS12_377], G1]) {.inline.} =
+func clearCofactorReference*(P: var EC_ShortW_Prj[Fp[BLS12_377], G1]) {.inline.} =
   ## Clear the cofactor of BLS12_377 G1
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BLS12_377_G1)
   P.neg()
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BLS12_377], G2]) {.inline.} =
+func clearCofactorReference*(P: var EC_ShortW_Prj[Fp2[BLS12_377], G2]) {.inline.} =
   ## Clear the cofactor of BLS12_377 G2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BLS12_377_G2)
@@ -105,7 +105,7 @@ func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BLS12_377], G2]) {.inline
 # BLS12 G1
 # ------------------------------------------------------------
 
-func clearCofactorFast*(P: var ECP_ShortW[Fp[BLS12_377], G1]) =
+func clearCofactorFast*(P: var EC_ShortW[Fp[BLS12_377], G1]) =
   ## Clear the cofactor of BLS12_377 G1
   ##
   ## Wahby et al "Fast and simple constant-time hashing to the BLS12-377 elliptic curve", https://eprint.iacr.org/2019/403
@@ -144,7 +144,7 @@ func clearCofactorFast*(P: var ECP_ShortW[Fp[BLS12_377], G1]) =
 # with Psi (ψ) - untwist-Frobenius-Twist function
 # and x the curve BLS parameter
 
-func clearCofactorFast*(P: var ECP_ShortW[Fp2[BLS12_377], G2]) =
+func clearCofactorFast*(P: var EC_ShortW[Fp2[BLS12_377], G2]) =
   ## Clear the cofactor of BLS12_377 G2
   ## Optimized using endomorphisms
   ## P -> [x²-x-1]P + [x-1] ψ(P) + ψ²([2]P)
@@ -172,7 +172,7 @@ func clearCofactorFast*(P: var ECP_ShortW[Fp2[BLS12_377], G2]) =
 #
 # ############################################################
 
-func isInSubgroup*(P: ECP_ShortW[Fp[BLS12_377], G1]): SecretBool =
+func isInSubgroup*(P: EC_ShortW[Fp[BLS12_377], G1]): SecretBool =
   ## Returns true if P is in G1 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
@@ -195,7 +195,7 @@ func isInSubgroup*(P: ECP_ShortW[Fp[BLS12_377], G1]): SecretBool =
 
   return t0 == t1
 
-func isInSubgroup*(P: ECP_ShortW[Fp2[BLS12_377], G2]): SecretBool =
+func isInSubgroup*(P: EC_ShortW[Fp2[BLS12_377], G2]): SecretBool =
   ## Returns true if P is in G2 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
@@ -211,23 +211,23 @@ func isInSubgroup*(P: ECP_ShortW[Fp2[BLS12_377], G2]): SecretBool =
 
   return t0 == t1
 
-func isInSubgroup*(P: ECP_ShortW_Aff[Fp[BLS12_377], G1]): SecretBool =
+func isInSubgroup*(P: EC_ShortW_Aff[Fp[BLS12_377], G1]): SecretBool =
   ## Returns true if P is in 𝔾1 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
   ##
   ## Warning ⚠: Assumes that P is on curve
-  var t{.noInit.}: ECP_ShortW_Prj[Fp[BLS12_377], G1]
+  var t{.noInit.}: EC_ShortW_Prj[Fp[BLS12_377], G1]
   t.fromAffine(P)
   return t.isInSubgroup()
 
 
-func isInSubgroup*(P: ECP_ShortW_Aff[Fp2[BLS12_377], G2]): SecretBool =
+func isInSubgroup*(P: EC_ShortW_Aff[Fp2[BLS12_377], G2]): SecretBool =
   ## Returns true if P is in 𝔾2 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
   ##
   ## Warning ⚠: Assumes that P is on curve
-  var t{.noInit.}: ECP_ShortW_Jac[Fp2[BLS12_377], G2]
+  var t{.noInit.}: EC_ShortW_Jac[Fp2[BLS12_377], G2]
   t.fromAffine(P)
   return t.isInSubgroup()

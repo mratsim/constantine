@@ -34,24 +34,24 @@ export
   pallas_sqrt,
   vesta_sqrt
 
-func hasSqrtAddchain*(C: static Curve): static bool =
-  when C in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761, Edwards25519}:
+func hasSqrtAddchain*(Name: static Algebra): static bool =
+  when Name in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761, Edwards25519}:
     true
   else:
     false
 
 {.experimental: "dynamicBindSym".}
 
-macro tonelliShanks*(C: static Curve, value: untyped): untyped =
+macro tonelliShanks*(Name: static Algebra, value: untyped): untyped =
   ## Get Square Root via Tonelli-Shanks related constants
-  return bindSym($C & "_TonelliShanks_" & $value)
+  return bindSym($Name & "_TonelliShanks_" & $value)
 
-macro sqrtDlog*(C: static Curve, value: untyped): untyped =
+macro sqrtDlog*(Name: static Algebra, value: untyped): untyped =
   ## Get Square Root via Square Root Dlog related constants
-  return bindSym($C & "_SqrtDlog_" & $value)
+  return bindSym($Name & "_SqrtDlog_" & $value)
 
-func hasTonelliShanksAddchain*(C: static Curve): static bool =
-  when C in {Bandersnatch, Banderwagon, BLS12_377}:
+func hasTonelliShanksAddchain*(Name: static Algebra): static bool =
+  when Name in {Bandersnatch, Banderwagon, BLS12_377}:
     true
   else:
     false

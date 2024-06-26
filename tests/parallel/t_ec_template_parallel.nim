@@ -42,7 +42,7 @@ type
     Long01Sequence
 
 func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen): EC {.noInit.} =
-  when EC is (ECP_ShortW_Aff or ECP_TwEdwards_Aff):
+  when EC is (EC_ShortW_Aff or EC_TwEdw_Aff):
     if gen == Uniform:
       result = rng.random_unsafe(EC)
     elif gen == HighHammingWeight:
@@ -88,10 +88,10 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
           let tp = Threadpool.new()
           defer: tp.shutdown()
 
-          var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
+          var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](n)
 
           for i in 0 ..< n:
-            points[i] = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+            points[i] = rng.random_point(EC_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
 
           var r_batch{.noinit.}, r_ref{.noInit.}: EC
 
@@ -113,19 +113,19 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
           let tp = Threadpool.new()
           defer: tp.shutdown()
 
-          var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
+          var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](n)
 
           let halfN = n div 2
 
           for i in 0 ..< halfN:
-            points[i] = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+            points[i] = rng.random_point(EC_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
 
           for i in halfN ..< n:
             # The special cases test relies on internal knowledge that we sum(points[i], points[i+n/2]
             # It should be changed if scheduling change, for example if we sum(points[2*i], points[2*i+1])
             let c = rng.random_unsafe(3)
             if c == 0:
-              points[i] = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+              points[i] = rng.random_point(EC_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
             elif c == 1:
               points[i] = points[i-halfN]
             else:
@@ -161,19 +161,19 @@ proc run_EC_multi_scalar_mul_parallel_impl*[N: static int](
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
-      let bucketBits = bestBucketBitSize(n, ec.F.C.getCurveOrderBitwidth(), useSignedBuckets = false, useManualTuning = false)
+      let bucketBits = bestBucketBitSize(n, ec.getScalarField().bits(), useSignedBuckets = false, useManualTuning = false)
       test $ec & " Parallel Multi-scalar-mul (N=" & $n & ", bucket bits (default): " & $bucketBits & ")":
         proc test(EC: typedesc, gen: RandomGen) =
           let tp = Threadpool.new()
           defer: tp.shutdown()
           var points = newSeq[affine(EC)](n)
-          var coefs = newSeq[BigInt[EC.F.C.getCurveOrderBitwidth()]](n)
+          var coefs = newSeq[BigInt[EC.getScalarField().bits()]](n)
 
           for i in 0 ..< n:
             var tmp = rng.random_unsafe(EC)
             tmp.clearCofactor()
             points[i].affine(tmp)
-            coefs[i] = rng.random_unsafe(BigInt[EC.F.C.getCurveOrderBitwidth()])
+            coefs[i] = rng.random_unsafe(BigInt[EC.getScalarField().bits()])
 
           var naive, naive_tmp: EC
           naive.setNeutral()

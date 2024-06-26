@@ -8,11 +8,17 @@
 
 import
   constantine/named/algebras,
-  constantine/curves_primitives,
+  constantine/[
+    lowlevel_bigints,
+    lowlevel_fields,
+    lowlevel_extension_fields,
+    lowlevel_elliptic_curves
+  ]
 
-  constantine/math/extension_fields # generic sandwich
+export algebras, lowlevel_bigints, lowlevel_fields, lowlevel_extension_fields, lowlevel_elliptic_curves
 
-export algebras, curves_primitives, extension_fields
+import constantine/math/extension_fields # generic sandwich
+export extension_fields
 
 # Overview
 # ------------------------------------------------------------
@@ -300,37 +306,37 @@ template genBindingsExtFieldSqrt*(Field: untyped) =
 
   {.pop}
 
-template genBindings_EC_ShortW_Affine*(ECP, Field: untyped) =
+template genBindings_EC_ShortW_Affine*(EC, Field: untyped) =
   when appType == "lib":
     {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:
     {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
   # --------------------------------------------------------------------------------------
-  func `ctt _ ECP _ is_eq`(P, Q: ECP): SecretBool =
+  func `ctt _ EC _ is_eq`(P, Q: EC): SecretBool =
     P == Q
 
-  func `ctt _ ECP _ is_neutral`(P: ECP): SecretBool =
+  func `ctt _ EC _ is_neutral`(P: EC): SecretBool =
     P.isNeutral()
 
-  func `ctt _ ECP _ set_neutral`(P: var ECP) =
+  func `ctt _ EC _ set_neutral`(P: var EC) =
     P.setNeutral()
 
-  func `ctt _ ECP _ ccopy`(P: var ECP, Q: ECP, ctl: SecretBool) =
+  func `ctt _ EC _ ccopy`(P: var EC, Q: EC, ctl: SecretBool) =
     P.ccopy(Q, ctl)
 
-  func `ctt _ ECP _ is_on_curve`(x, y: Field): SecretBool =
-    isOnCurve(x, y, ECP.G)
+  func `ctt _ EC _ is_on_curve`(x, y: Field): SecretBool =
+    isOnCurve(x, y, EC.G)
 
-  func `ctt _ ECP _ neg`(P: var ECP, Q: ECP) =
+  func `ctt _ EC _ neg`(P: var EC, Q: EC) =
     P.neg(Q)
 
-  func `ctt _ ECP _ neg_in_place`(P: var ECP) =
+  func `ctt _ EC _ neg_in_place`(P: var EC) =
     P.neg()
 
   {.pop.}
 
-template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarBig, ScalarField: untyped) =
+template genBindings_EC_ShortW_NonAffine*(EC, EcAff, ScalarBig, ScalarField: untyped) =
   # TODO: remove the need of explicit ScalarBig and ScalarField
 
   when appType == "lib":
@@ -339,82 +345,82 @@ template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarBig, ScalarField: 
     {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
   # --------------------------------------------------------------------------------------
-  func `ctt _ ECP _ is_eq`(P, Q: ECP): SecretBool =
+  func `ctt _ EC _ is_eq`(P, Q: EC): SecretBool =
     P == Q
 
-  func `ctt _ ECP _ is_neutral`(P: ECP): SecretBool =
+  func `ctt _ EC _ is_neutral`(P: EC): SecretBool =
     P.isNeutral()
 
-  func `ctt _ ECP _ set_neutral`(P: var ECP) =
+  func `ctt _ EC _ set_neutral`(P: var EC) =
     P.setNeutral()
 
-  func `ctt _ ECP _ ccopy`(P: var ECP, Q: ECP, ctl: SecretBool) =
+  func `ctt _ EC _ ccopy`(P: var EC, Q: EC, ctl: SecretBool) =
     P.ccopy(Q, ctl)
 
-  func `ctt _ ECP _ neg`(P: var ECP, Q: ECP) =
+  func `ctt _ EC _ neg`(P: var EC, Q: EC) =
     P.neg(Q)
 
-  func `ctt _ ECP _ neg_in_place`(P: var ECP) =
+  func `ctt _ EC _ neg_in_place`(P: var EC) =
     P.neg()
 
-  func `ctt _ ECP _ cneg_in_place`(P: var ECP, ctl: SecretBool) =
+  func `ctt _ EC _ cneg_in_place`(P: var EC, ctl: SecretBool) =
     P.neg()
 
-  func `ctt _ ECP _ sum`(r: var ECP, P, Q: ECP) =
+  func `ctt _ EC _ sum`(r: var EC, P, Q: EC) =
     r.sum(P, Q)
 
-  func `ctt _ ECP _ add_in_place`(P: var ECP, Q: ECP) =
+  func `ctt _ EC _ add_in_place`(P: var EC, Q: EC) =
     P += Q
 
-  func `ctt _ ECP _ diff`(r: var ECP, P, Q: ECP) =
+  func `ctt _ EC _ diff`(r: var EC, P, Q: EC) =
     r.diff(P, Q)
 
-  func `ctt _ ECP _ double`(r: var ECP, P: ECP) =
+  func `ctt _ EC _ double`(r: var EC, P: EC) =
     r.double(P)
 
-  func `ctt _ ECP _ double_in_place`(P: var ECP) =
+  func `ctt _ EC _ double_in_place`(P: var EC) =
     P.double()
 
-  func `ctt _ ECP _ affine`(dst: var ECP_Aff, src: ECP) =
+  func `ctt _ EC _ affine`(dst: var EcAff, src: EC) =
     dst.affine(src)
 
-  func `ctt _ ECP _ from_affine`(dst: var ECP, src: ECP_Aff) =
+  func `ctt _ EC _ from_affine`(dst: var EC, src: EcAff) =
     dst.fromAffine(src)
 
-  func `ctt _ ECP _ batch_affine`(dst: ptr UncheckedArray[ECP_Aff], src: ptr UncheckedArray[ECP], n: csize_t) =
+  func `ctt _ EC _ batch_affine`(dst: ptr UncheckedArray[EcAff], src: ptr UncheckedArray[EC], n: csize_t) =
     dst.batchAffine(src, cast[int](n))
 
-  func `ctt _ ECP _ scalar_mul_big_coef`(
-    P: var ECP, scalar: ScalarBig) =
+  func `ctt _ EC _ scalar_mul_big_coef`(
+    P: var EC, scalar: ScalarBig) =
 
     P.scalarMul(scalar)
 
-  func `ctt _ ECP _ scalar_mul_fr_coef`(
-        P: var ECP, scalar: ScalarField) =
+  func `ctt _ EC _ scalar_mul_fr_coef`(
+        P: var EC, scalar: ScalarField) =
 
     P.scalarMul(scalar)
 
-  func `ctt _ ECP _ scalar_mul_big_coef_vartime`(
-    P: var ECP, scalar: ScalarBig) =
+  func `ctt _ EC _ scalar_mul_big_coef_vartime`(
+    P: var EC, scalar: ScalarBig) =
 
     P.scalarMul_vartime(scalar)
 
-  func `ctt _ ECP _ scalar_mul_fr_coef_vartime`(
-        P: var ECP, scalar: ScalarField) =
+  func `ctt _ EC _ scalar_mul_fr_coef_vartime`(
+        P: var EC, scalar: ScalarField) =
 
     P.scalarMul_vartime(scalar)
 
-  func `ctt _ ECP _ multi_scalar_mul_big_coefs_vartime`(
-          r: var ECP,
+  func `ctt _ EC _ multi_scalar_mul_big_coefs_vartime`(
+          r: var EC,
           coefs: ptr UncheckedArray[ScalarBig],
-          points: ptr UncheckedArray[ECP_Aff],
+          points: ptr UncheckedArray[EcAff],
           len: csize_t) =
     r.multiScalarMul_vartime(coefs, points, cast[int](len))
 
-  func `ctt _ ECP _ multi_scalar_mul_fr_coefs_vartime`(
-          r: var ECP,
+  func `ctt _ EC _ multi_scalar_mul_fr_coefs_vartime`(
+          r: var EC,
           coefs: ptr UncheckedArray[ScalarField],
-          points: ptr UncheckedArray[ECP_Aff],
+          points: ptr UncheckedArray[EcAff],
           len: csize_t)=
     r.multiScalarMul_vartime(coefs, points, cast[int](len))
 

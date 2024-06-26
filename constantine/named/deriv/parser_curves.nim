@@ -9,12 +9,12 @@ import
   # Standard library
   std/macros,
   # Internal
-  constantine/platforms/type_ff,
   constantine/math/io/[io_bigints, io_fields],
   ../config_fields_and_curves,
+  ../properties_fields,
   ./parser_fields
 
-export CurveFamily, Curve, SexticTwist
+export Algebra, CurveFamily, SexticTwist
 
 # ############################################################
 #

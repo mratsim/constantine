@@ -32,12 +32,12 @@ type
   ECFFT_Descriptor*[EC] = object
     ## Metadata for FFT on Elliptic Curve
     order*: int
-    rootsOfUnity*: ptr UncheckedArray[matchingOrderBigInt(EC.F.C)]
+    rootsOfUnity*: ptr UncheckedArray[getBigInt(EC.F.Name, kScalarField)]
       ## domain, starting and ending with 1, length is cardinality+1
       ## This allows FFT and inverse FFT to use the same buffer for roots.
 
 func computeRootsOfUnity[EC](ctx: var ECFFT_Descriptor[EC], generatorRootOfUnity: auto) =
-  static: doAssert typeof(generatorRootOfUnity) is Fr[EC.F.C]
+  static: doAssert typeof(generatorRootOfUnity) is Fr[EC.F.Name]
 
   ctx.rootsOfUnity[0].setOne()
 
@@ -50,7 +50,7 @@ func computeRootsOfUnity[EC](ctx: var ECFFT_Descriptor[EC], generatorRootOfUnity
 
 func new*(T: type ECFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
   result.order = order
-  result.rootsOfUnity = allocHeapArrayAligned(matchingOrderBigInt(T.EC.F.C), order+1, alignment = 64)
+  result.rootsOfUnity = allocHeapArrayAligned(T.EC.getScalarField().getBigInt(), order+1, alignment = 64)
 
   result.computeRootsOfUnity(generatorRootOfUnity)
 
@@ -137,9 +137,9 @@ func ifft_vartime*[EC](
   var voutput = output.toStridedView()
   fft_internal(voutput, vals.toStridedView(), rootz)
 
-  var invLen {.noInit.}: matchingOrderBigInt(EC.F.C)
+  var invLen {.noInit.}: EC.F.getBigInt()
   invLen.fromUint(vals.len.uint64)
-  invLen.invmod_vartime(invLen, EC.F.C.getCurveOrder())
+  invLen.invmod_vartime(invLen, EC.F.getModulus())
 
   for i in 0 ..< output.len:
     output[i].scalarMul_vartime(invLen)
@@ -346,7 +346,7 @@ when isMainModule:
     Fr[BLS12_381].fromHex"0x4b5371495990693fad1715b02e5713b5f070bb00e28a193d63e7cb4906ffc93f"
   ]
 
-  type EC_G1 = ECP_ShortW_Prj[Fp[BLS12_381], G1]
+  type EC_G1 = EC_ShortW_Prj[Fp[BLS12_381], G1]
 
   proc roundtrip() =
     let fftDesc = ECFFT_Descriptor[EC_G1].new(order = 1 shl 4, ctt_eth_kzg_fr_pow2_roots_of_unity[4])
@@ -355,7 +355,7 @@ when isMainModule:
     var data = newSeq[EC_G1](fftDesc.order)
     data[0].setGenerator()
     for i in 1 ..< fftDesc.order:
-      data[i].madd(data[i-1], BLS12_381.getGenerator("G1"))
+      data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
 
     var coefs = newSeq[EC_G1](data.len)
     let fftOk = fft_vartime(fftDesc, coefs, data)
@@ -406,7 +406,7 @@ when isMainModule:
       var data = newSeq[EC_G1](fftDesc.order)
       data[0].setGenerator()
       for i in 1 ..< fftDesc.order:
-        data[i].madd(data[i-1], BLS12_381.getGenerator("G1"))
+        data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
 
       var coefsOut = newSeq[EC_G1](data.len)
 
@@ -456,8 +456,8 @@ when isMainModule:
       echo "optimal tile size for uint64: ", optTile, "x", optTile," (", sizeof(uint64) * optTile * optTile, " bytes)"
 
     block:
-      let optTile = 1 shl optimalLogTileSize(ECP_ShortW_Aff[Fp[BLS12_381], G1])
-      echo "optimal tile size for ECP_ShortW_Aff[Fp[BLS12_381], G1]: ", optTile, "x", optTile," (", sizeof(ECP_ShortW_Aff[Fp[BLS12_381], G1]) * optTile * optTile, " bytes)"
+      let optTile = 1 shl optimalLogTileSize(EC_ShortW_Aff[Fp[BLS12_381], G1])
+      echo "optimal tile size for EC_ShortW_Aff[Fp[BLS12_381], G1]: ", optTile, "x", optTile," (", sizeof(EC_ShortW_Aff[Fp[BLS12_381], G1]) * optTile * optTile, " bytes)"
 
   roundtrip()
   warmup()

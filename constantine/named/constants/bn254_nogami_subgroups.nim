@@ -16,8 +16,8 @@ import
   constantine/math/io/io_bigints,
   constantine/math/isogenies/frobenius
 
-func pow_BN254_Nogami_abs_u*[ECP: ECP_ShortW[Fp[BN254_Nogami], G1] or
-       ECP_ShortW[Fp2[BN254_Nogami], G2]](
+func pow_BN254_Nogami_abs_u*[ECP: EC_ShortW[Fp[BN254_Nogami], G1] or
+       EC_ShortW[Fp2[BN254_Nogami], G2]](
        r{.noalias.}: var ECP,
        P{.noalias.}: ECP
      ) =
@@ -29,8 +29,8 @@ func pow_BN254_Nogami_abs_u*[ECP: ECP_ShortW[Fp[BN254_Nogami], G1] or
   r.double_repeated(55)
   r += P
 
-func pow_BN254_Nogami_u[ECP: ECP_ShortW[Fp[BN254_Nogami], G1] or
-       ECP_ShortW[Fp2[BN254_Nogami], G2]](
+func pow_BN254_Nogami_u[ECP: EC_ShortW[Fp[BN254_Nogami], G1] or
+       EC_ShortW[Fp2[BN254_Nogami], G2]](
        r{.noalias.}: var ECP,
        P{.noalias.}: ECP
      ) {.inline.}=
@@ -39,8 +39,8 @@ func pow_BN254_Nogami_u[ECP: ECP_ShortW[Fp[BN254_Nogami], G1] or
   pow_BN254_Nogami_abs_u(r, P)
   r.neg()
 
-func pow_BN254_Nogami_minus_u[ECP: ECP_ShortW[Fp[BN254_Nogami], G1] or
-       ECP_ShortW[Fp2[BN254_Nogami], G2]](
+func pow_BN254_Nogami_minus_u[ECP: EC_ShortW[Fp[BN254_Nogami], G1] or
+       EC_ShortW[Fp2[BN254_Nogami], G2]](
        r{.noalias.}: var ECP,
        P{.noalias.}: ECP
      ) {.inline, used.}=
@@ -61,12 +61,12 @@ const Cofactor_Eff_BN254_Nogami_G2 = BigInt[444].fromHex"0xab11da940a5bd10e25327
   # Effective cofactor from Fuentes-Casteneda et al
   # −(18x³ + 12x² + 3x + 1)*cofactor
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BN254_Nogami], G1]) {.inline.} =
+func clearCofactorReference*(P: var EC_ShortW_Prj[Fp[BN254_Nogami], G1]) {.inline.} =
   ## Clear the cofactor of BN254_Nogami G1
   ## BN curves have a G1 cofactor of 1 so this is a no-op
   discard
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BN254_Nogami], G2]) {.inline.} =
+func clearCofactorReference*(P: var EC_ShortW_Prj[Fp2[BN254_Nogami], G2]) {.inline.} =
   ## Clear the cofactor of BN254_Nogami G2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BN254_Nogami_G2)
@@ -80,7 +80,7 @@ func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BN254_Nogami], G2]) {.inl
 # BN G1
 # ------------------------------------------------------------
 
-func clearCofactorFast*(P: var ECP_ShortW[Fp[BN254_Nogami], G1]) {.inline.} =
+func clearCofactorFast*(P: var EC_ShortW[Fp[BN254_Nogami], G1]) {.inline.} =
   ## Clear the cofactor of BN254_Nogami G1
   ## BN curves have a prime order r hence all points on curve are in G1
   ## Hence this is a no-op
@@ -92,7 +92,7 @@ func clearCofactorFast*(P: var ECP_ShortW[Fp[BN254_Nogami], G1]) {.inline.} =
 # Implementation
 # Fuentes-Castaneda et al, "Fast Hashing to G2 on Pairing-Friendly Curves", https://doi.org/10.1007/978-3-642-28496-0_25*
 
-func clearCofactorFast*(P: var ECP_ShortW[Fp2[BN254_Nogami], G2]) {.inline.} =
+func clearCofactorFast*(P: var EC_ShortW[Fp2[BN254_Nogami], G2]) {.inline.} =
   ## Clear the cofactor of BN254_Nogami G2
   ## Optimized using endomorphisms
   ## P' → [x]P + [3x]ψ(P) + [x]ψ²(P) + ψ³(P)
@@ -114,7 +114,7 @@ func clearCofactorFast*(P: var ECP_ShortW[Fp2[BN254_Nogami], G2]) {.inline.} =
 #
 # ############################################################
 
-func isInSubgroup*(P: ECP_ShortW[Fp[BN254_Nogami], G1]): SecretBool {.inline.} =
+func isInSubgroup*(P: EC_ShortW[Fp[BN254_Nogami], G1]): SecretBool {.inline.} =
   ## Returns true if P is in G1 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
@@ -123,7 +123,7 @@ func isInSubgroup*(P: ECP_ShortW[Fp[BN254_Nogami], G1]): SecretBool {.inline.} =
   ## Warning ⚠: Assumes that P is on curve
   return CtTrue
 
-func isInSubgroup*(P: ECP_ShortW_Jac[Fp2[BN254_Nogami], G2] or ECP_ShortW_Prj[Fp2[BN254_Nogami], G2]): SecretBool =
+func isInSubgroup*(P: EC_ShortW_Jac[Fp2[BN254_Nogami], G2] or EC_ShortW_Prj[Fp2[BN254_Nogami], G2]): SecretBool =
   ## Returns true if P is in G2 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
@@ -151,12 +151,12 @@ func isInSubgroup*(P: ECP_ShortW_Jac[Fp2[BN254_Nogami], G2] or ECP_ShortW_Prj[Fp
 
   return t0 == t1
 
-func isInSubgroup*(P: ECP_ShortW_Aff[Fp2[BN254_Nogami], G2]): SecretBool =
+func isInSubgroup*(P: EC_ShortW_Aff[Fp2[BN254_Nogami], G2]): SecretBool =
   ## Returns true if P is in 𝔾2 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
   ##
   ## Warning ⚠: Assumes that P is on curve
-  var t{.noInit.}: ECP_ShortW_Jac[Fp2[BN254_Nogami], G2]
+  var t{.noInit.}: EC_ShortW_Jac[Fp2[BN254_Nogami], G2]
   t.fromAffine(P)
   return t.isInSubgroup()

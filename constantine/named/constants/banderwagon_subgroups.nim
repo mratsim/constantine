@@ -19,7 +19,7 @@ import
 #
 # ############################################################
 
-func isInSubgroup*(P: ECP_TwEdwards_Aff[Fp[Banderwagon]]): SecretBool =
+func isInSubgroup*(P: EC_TwEdw_Aff[Fp[Banderwagon]]): SecretBool =
   ## Checks if the point is in the quotient subgroup
   ## The group law does not change because what we quotiented by was a subgroup.
   ## These are still points on the bandersnatch curve and form a group under point addition.

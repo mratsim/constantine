@@ -75,8 +75,8 @@ func sqrx_complex_sparebit_asm_adx*(
   v2.double(a.c1)
   v0.diff(a.c0, a.c1)
   v1.sum(a.c0, a.c1)
-  r.c1.mres.limbs.mulMont_CIOS_sparebit_asm_adx(a.c0.mres.limbs, v2.mres.limbs, Fp.fieldMod().limbs, Fp.getNegInvModWord())
-  r.c0.mres.limbs.mulMont_CIOS_sparebit_asm_adx(v0.mres.limbs, v1.mres.limbs, Fp.fieldMod().limbs, Fp.getNegInvModWord())
+  r.c1.mres.limbs.mulMont_CIOS_sparebit_asm_adx(a.c0.mres.limbs, v2.mres.limbs, Fp.getModulus().limbs, Fp.getNegInvModWord())
+  r.c0.mres.limbs.mulMont_CIOS_sparebit_asm_adx(v0.mres.limbs, v1.mres.limbs, Fp.getModulus().limbs, Fp.getNegInvModWord())
 
 # 𝔽p2 multiplication
 # ------------------------------------------------------------
@@ -115,11 +115,11 @@ func mul_fp2_complex_asm_adx*(
   # see https://github.com/mratsim/constantine/issues/229
   r.c0.mres.limbs.redcMont_asm_adx(
     d.c0.limbs2x,
-    Fp.fieldMod().limbs,
+    Fp.getModulus().limbs,
     Fp.getNegInvModWord(),
     Fp.getSpareBits())
   r.c1.mres.limbs.redcMont_asm_adx(
     d.c1.limbs2x,
-    Fp.fieldMod().limbs,
+    Fp.getModulus().limbs,
     Fp.getNegInvModWord(),
     Fp.getSpareBits())

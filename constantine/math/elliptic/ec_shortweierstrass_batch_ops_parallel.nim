@@ -26,15 +26,15 @@ import
 
 proc sum_reduce_vartime_parallelChunks[F; G: static Subgroup](
        tp: Threadpool,
-       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
-       points: openArray[ECP_ShortW_Aff[F, G]]) {.noInline.} =
+       r: var (EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G]),
+       points: openArray[EC_ShortW_Aff[F, G]]) {.noInline.} =
   ## Batch addition of `points` into `r`
   ## `r` is overwritten
   ## Scales better for large number of points
 
   # Chunking constants in ec_shortweierstrass_batch_ops.nim
   const maxTempMem = 262144 # 2¹⁸ = 262144
-  const maxChunkSize = maxTempMem div sizeof(ECP_ShortW_Aff[F, G])
+  const maxChunkSize = maxTempMem div sizeof(EC_ShortW_Aff[F, G])
   const minChunkSize = (maxChunkSize * 60) div 100 # We want 60%~100% full chunks
 
   let chunkDesc = balancedChunksPrioSize(
@@ -62,20 +62,20 @@ proc sum_reduce_vartime_parallelChunks[F; G: static Subgroup](
     for i in 0 ..< chunkDesc.numChunks:
       r.sum_vartime(r, partialResults[i])
   else:
-    let partialResultsAffine = allocStackArray(ECP_ShortW_Aff[F, G], chunkDesc.numChunks)
+    let partialResultsAffine = allocStackArray(EC_ShortW_Aff[F, G], chunkDesc.numChunks)
     partialResultsAffine.batchAffine(partialResults, chunkDesc.numChunks)
     r.sum_reduce_vartime(partialResultsAffine, chunkDesc.numChunks)
 
 proc sum_reduce_vartime_parallelAccums[F; G: static Subgroup](
        tp: Threadpool,
-       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
-       points: openArray[ECP_ShortW_Aff[F, G]]) =
+       r: var (EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G]),
+       points: openArray[EC_ShortW_Aff[F, G]]) =
   ## Batch addition of `points` into `r`
   ## `r` is overwritten
   ## 2x faster for low number of points
 
   const maxTempMem = 1 shl 18 # 2¹⁸ = 262144
-  const maxChunkSize = maxTempMem div sizeof(ECP_ShortW_Aff[F, G])
+  const maxChunkSize = maxTempMem div sizeof(EC_ShortW_Aff[F, G])
   type Acc = EcAddAccumulator_vartime[typeof(r), F, G, maxChunkSize]
 
   let ps = points.asUnchecked()
@@ -109,8 +109,8 @@ proc sum_reduce_vartime_parallelAccums[F; G: static Subgroup](
 
 proc sum_reduce_vartime_parallel*[F; G: static Subgroup](
        tp: Threadpool,
-       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
-       points: openArray[ECP_ShortW_Aff[F, G]]) {.inline.} =
+       r: var (EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G]),
+       points: openArray[EC_ShortW_Aff[F, G]]) {.inline.} =
   ## Parallel Batch addition of `points` into `r`
   ## `r` is overwritten
 

@@ -22,8 +22,8 @@ const BLS12_381_Fr_primitive_root = 7
 func buildRootLUT(F: type Fr): array[32, F] =
   ## [pow(PRIMITIVE_ROOT, (MODULUS - 1) // (2**i), MODULUS) for i in range(32)]
 
-  var exponent {.noInit.}: BigInt[F.C.getCurveOrderBitwidth()]
-  exponent = F.C.getCurveOrder()
+  var exponent {.noInit.}: BigInt[F.bits()]
+  exponent = F.getModulus()
   exponent -= One
 
   # Start by the end
@@ -44,5 +44,5 @@ func buildRootLUT(F: type Fr): array[32, F] =
 let BLS12_381_Fr_ScaleToRootOfUnity* = buildRootLUT(Fr[BLS12_381])
 
 {.experimental: "dynamicBindSym".}
-macro scaleToRootOfUnity*(C: static Curve): untyped =
-  return bindSym($C & "_Fr_ScaleToRootOfUnity")
+macro scaleToRootOfUnity*(Name: static Algebra): untyped =
+  return bindSym($Name & "_Fr_ScaleToRootOfUnity")

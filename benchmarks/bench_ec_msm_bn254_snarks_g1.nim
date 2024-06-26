@@ -38,7 +38,7 @@ proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    var ctx = createBenchMsmContext(ECP_ShortW_Jac[Fp[curve], G1], testNumPoints)
+    var ctx = createBenchMsmContext(EC_ShortW_Jac[Fp[curve], G1], testNumPoints)
     separator()
     for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)

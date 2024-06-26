@@ -16,7 +16,7 @@ import
   constantine/platforms/abstractions,
   constantine/serialization/codecs
 
-type SecretKey = matchingOrderBigInt(BLS12_381)
+type SecretKey = Fr[BLS12_381].getBigInt()
 
 proc toBytes(hex: string): seq[byte] =
   doAssert (hex.len and 1) == 0, "Input hex must have an even number of characters"

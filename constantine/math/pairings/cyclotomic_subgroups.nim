@@ -35,7 +35,7 @@ import
 # 𝔽pⁿ -> Gϕₙ - Mapping to Cyclotomic group
 # ----------------------------------------------------------------
 
-func finalExpEasy*[C: static Curve](f: var Fp6[C]) {.meter.} =
+func finalExpEasy*[Name: static Algebra](f: var Fp6[Name]) {.meter.} =
   ## Easy part of the final exponentiation
   ##
   ## This maps the result of the Miller loop into the cyclotomic subgroup Gϕ₆
@@ -115,7 +115,7 @@ func finalExpEasy*[C: static Curve](f: var Fp6[C]) {.meter.} =
   f.frobenius_map(g)    # f = f^((p³-1) p)
   f *= g                # f = f^((p³-1) (p+1))
 
-func finalExpEasy*[C: static Curve](f: var Fp12[C]) {.meter.} =
+func finalExpEasy*[Name: static Algebra](f: var Fp12[Name]) {.meter.} =
   ## Easy part of the final exponentiation
   ##
   ## This maps the result of the Miller loop into the cyclotomic subgroup Gϕ₁₂
@@ -411,10 +411,10 @@ func cyclotomic_exp*[FT](r: var FT, a: FT, exponent: static BigInt, invert: bool
   if invert:
     r.cyclotomic_inv()
 
-func isInCyclotomicSubgroup*[C](a: Fp6[C]): SecretBool =
+func isInCyclotomicSubgroup*[Name](a: Fp6[Name]): SecretBool =
   ## Check if a ∈ Fpⁿ: a^Φₙ(p) = 1
   ## Φ₆(p) = p²-p+1
-  var t{.noInit.}, p{.noInit.}: Fp6[C]
+  var t{.noInit.}, p{.noInit.}: Fp6[Name]
 
   t.frobenius_map(a, 2)  # a^(p²)
   t *= a                 # a^(p²+1)
@@ -422,10 +422,10 @@ func isInCyclotomicSubgroup*[C](a: Fp6[C]): SecretBool =
 
   return t == p and not a.isZero()
 
-func isInCyclotomicSubgroup*[C](a: Fp12[C]): SecretBool =
+func isInCyclotomicSubgroup*[Name](a: Fp12[Name]): SecretBool =
   ## Check if a ∈ Fpⁿ: a^Φₙ(p) = 1
   ## Φ₁₂(p) = p⁴-p²+1
-  var t{.noInit.}, p2{.noInit.}: Fp12[C]
+  var t{.noInit.}, p2{.noInit.}: Fp12[Name]
 
   p2.frobenius_map(a, 2) # a^(p²)
   t.frobenius_map(p2, 2) # a^(p⁴)

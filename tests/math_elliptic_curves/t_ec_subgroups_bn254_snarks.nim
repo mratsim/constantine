@@ -19,13 +19,13 @@ const
   ItersMul = Iters div 4
 
 run_EC_subgroups_cofactors_impl(
-    ec = ECP_ShortW_Prj[Fp[BN254_Snarks], G1],
+    ec = EC_ShortW_Prj[Fp[BN254_Snarks], G1],
     ItersMul = ItersMul,
     moduleName = "test_ec_subgroups_g1_" & $BN254_Snarks
   )
 
 run_EC_subgroups_cofactors_impl(
-    ec = ECP_ShortW_Prj[Fp2[BN254_Snarks], G2],
+    ec = EC_ShortW_Prj[Fp2[BN254_Snarks], G2],
     ItersMul = ItersMul,
     moduleName = "test_ec_subgroups_g2_" & $BN254_Snarks
   )

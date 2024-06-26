@@ -18,7 +18,7 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Prj[Fp[BW6_761], G2],
+    ec = EC_ShortW_Prj[Fp[BW6_761], G2],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g2_mul_sanity_" & $BW6_761
   )

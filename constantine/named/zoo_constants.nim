@@ -17,20 +17,20 @@ import
 
 {.experimental: "dynamicBindSym".}
 
-macro getCoefB_G2*(C: static Curve): untyped =
+macro getCoefB_G2*(Name: static Algebra): untyped =
   ## A pairing curve has the following equation on G1
   ##   y² = x³ + b
   ## and on G2
   ##   y² = x³ + b/µ (D-Twist)
   ##   y² = x³ + b*µ (M-Twist)
   ## with µ the non-residue (sextic non-residue with a sextic twist)
-  return bindSym($C & "_coefB_G2")
+  return bindSym($Name & "_coefB_G2")
 
-macro getCoefB_G2_times_3*(C: static Curve): untyped =
+macro getCoefB_G2_times_3*(Name: static Algebra): untyped =
   ## A pairing curve has the following equation on G1
   ##   y² = x³ + b
   ## and on G2
   ##   y² = x³ + b/µ (D-Twist)
   ##   y² = x³ + b*µ (M-Twist)
   ## with µ the non-residue (sextic non-residue with a sextic twist)
-  return bindSym($C & "_coefB_G2_times_3")
+  return bindSym($Name & "_coefB_G2_times_3")

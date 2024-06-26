@@ -48,60 +48,54 @@ import
     constantine/math/io/[io_bigints, io_fields],
     ./codecs_status_codes
 
-type
-  Scalar = matchingOrderBigInt(BLS12_381)
-  G1P = ECP_ShortW_Aff[Fp[BLS12_381], G1]
-  G2P = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
-
-
 const pre = "ctt_bls12_381_"
 import ../zoo_exports
 
 # Input validation
 # ------------------------------------------------------------------------------------------------
 
-func validate_scalar*(scalar: Scalar): CttCodecScalarStatus {.libPrefix: pre.} =
+func validate_scalar*(scalar: Fr[BLS12_381].getBigInt()): CttCodecScalarStatus {.libPrefix: pre.} =
   ## Validate a scalar
   ## Regarding timing attacks, this will leak information
   ## if the scalar is 0 or larger than the curve order.
   if scalar.isZero().bool():
     return cttCodecScalar_Zero
-  if bool(scalar >= BLS12_381.getCurveOrder()):
+  if bool(scalar >= Fr[BLS12_381].getModulus()):
     return cttCodecScalar_ScalarLargerThanCurveOrder
   return cttCodecScalar_Success
 
-func validate_g1*(g1Point: G1P): CttCodecEccStatus {.libPrefix: pre.} =
+func validate_g1*(g1P: EC_ShortW_Aff[Fp[BLS12_381], G1]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Validate a G1 point
   ## This is an expensive operation that can be cached
-  if g1Point.isNeutral().bool():
+  if g1P.isNeutral().bool():
     return cttCodecEcc_PointAtInfinity
-  if not isOnCurve(g1Point.x, g1Point.y, G1).bool():
+  if not isOnCurve(g1P.x, g1P.y, G1).bool():
     return cttCodecEcc_PointNotOnCurve
-  if not g1Point.isInSubgroup().bool():
+  if not g1P.isInSubgroup().bool():
     return cttCodecEcc_PointNotInSubgroup
   return cttCodecEcc_Success
 
-func validate_g2*(g2Point: G2P): CttCodecEccStatus {.libPrefix: pre.} =
+func validate_g2*(g2P: EC_ShortW_Aff[Fp2[BLS12_381], G2]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Validate a G2 point.
   ## This is an expensive operation that can be cached
-  if g2Point.isNeutral().bool():
+  if g2P.isNeutral().bool():
     return cttCodecEcc_PointAtInfinity
-  if not isOnCurve(g2Point.x, g2Point.y, G2).bool():
+  if not isOnCurve(g2P.x, g2P.y, G2).bool():
     return cttCodecEcc_PointNotOnCurve
-  if not g2Point.isInSubgroup().bool():
+  if not g2P.isInSubgroup().bool():
     return cttCodecEcc_PointNotInSubgroup
   return cttCodecEcc_Success
 
 # Codecs
 # ------------------------------------------------------------------------------------------------
 
-func serialize_scalar*(dst: var array[32, byte], scalar: Scalar): CttCodecScalarStatus {.libPrefix: pre, discardable.} =
+func serialize_scalar*(dst: var array[32, byte], scalar: Fr[BLS12_381].getBigInt()): CttCodecScalarStatus {.libPrefix: pre, discardable.} =
   ## Serialize a scalar
   ## Returns cttCodecScalar_Success if successful
   dst.marshal(scalar, bigEndian)
   return cttCodecScalar_Success
 
-func deserialize_scalar*(dst: var Scalar, src: array[32, byte]): CttCodecScalarStatus {.libPrefix: pre.} =
+func deserialize_scalar*(dst: var Fr[BLS12_381].getBigInt(), src: array[32, byte]): CttCodecScalarStatus {.libPrefix: pre.} =
   ## Deserialize a scalar
   ## Also validates the scalar range
   ##
@@ -118,17 +112,17 @@ func deserialize_scalar*(dst: var Scalar, src: array[32, byte]): CttCodecScalarS
   return cttCodecScalar_Success
 
 
-func serialize_g1_compressed*(dst: var array[48, byte], g1Point: G1P): CttCodecEccStatus {.libPrefix: pre, discardable.} =
+func serialize_g1_compressed*(dst: var array[48, byte], g1P: EC_ShortW_Aff[Fp[BLS12_381], G1]): CttCodecEccStatus {.libPrefix: pre, discardable.} =
   ## Serialize a BLS12-381 G1 point in compressed (Zcash) format
   ##
   ## Returns cttCodecEcc_Success if successful
-  if g1Point.isNeutral().bool():
+  if g1P.isNeutral().bool():
     for i in 0 ..< dst.len:
       dst[i] = byte 0
     dst[0] = byte 0b11000000 # Compressed + Infinity
     return cttCodecEcc_Success
 
-  dst.marshal(g1Point.x, bigEndian)
+  dst.marshal(g1P.x, bigEndian)
   # The curve equation has 2 solutions for y² = x³ + 4 with y unknown and x known
   # The lexicographically largest will have bit 381 set to 1
   # (and bit 383 for the compressed representation)
@@ -136,12 +130,12 @@ func serialize_g1_compressed*(dst: var array[48, byte], g1Point: G1P): CttCodecE
   # The field contains [0, p-1] hence lexicographically largest
   # are numbers greater or equal (p-1)/2
   # https://github.com/zkcrypto/bls12_381/blob/0.7.0/src/fp.rs#L271-L277
-  let lexicographicallyLargest = byte(g1Point.y.toBig() >= Fp[BLS12_381].getPrimeMinus1div2())
+  let lexicographicallyLargest = byte(g1P.y.toBig() >= Fp[BLS12_381].getPrimeMinus1div2())
   dst[0] = dst[0] or (0b10000000 or (lexicographicallyLargest shl 5))
 
   return cttCodecEcc_Success
 
-func deserialize_g1_compressed_unchecked*(dst: var G1P, src: array[48, byte]): CttCodecEccStatus {.libPrefix: pre.} =
+func deserialize_g1_compressed_unchecked*(dst: var EC_ShortW_Aff[Fp[BLS12_381], G1], src: array[48, byte]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Deserialize a BLS12-381 G1 point in compressed (Zcash) format.
   ##
   ## Warning ⚠:
@@ -165,11 +159,11 @@ func deserialize_g1_compressed_unchecked*(dst: var G1P, src: array[48, byte]): C
     return cttCodecEcc_PointAtInfinity
 
   # General case
-  var t{.noInit.}: matchingBigInt(BLS12_381)
+  var t{.noInit.}: Fp[BLS12_381].getBigInt()
   t.unmarshal(src, bigEndian)
   t.limbs[t.limbs.len-1] = t.limbs[t.limbs.len-1] and (MaxWord shr 3) # The first 3 bytes contain metadata to mask out
 
-  if bool(t >= BLS12_381.Mod()):
+  if bool(t >= Fp[BLS12_381].getModulus()):
     return cttCodecEcc_CoordinateGreaterThanOrEqualModulus
 
   var x{.noInit.}: Fp[BLS12_381]
@@ -185,7 +179,7 @@ func deserialize_g1_compressed_unchecked*(dst: var G1P, src: array[48, byte]): C
 
   return cttCodecEcc_Success
 
-func deserialize_g1_compressed*(dst: var G1P, src: array[48, byte]): CttCodecEccStatus {.libPrefix: pre.} =
+func deserialize_g1_compressed*(dst: var EC_ShortW_Aff[Fp[BLS12_381], G1], src: array[48, byte]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Deserialize a BLS12-381 G1 point in compressed (Zcash) format
   ## This also validates the G1 point
   ##
@@ -201,29 +195,29 @@ func deserialize_g1_compressed*(dst: var G1P, src: array[48, byte]): CttCodecEcc
   return cttCodecEcc_Success
 
 
-func serialize_g2_compressed*(dst: var array[96, byte], g2Point: G2P): CttCodecEccStatus {.libPrefix: pre.} =
+func serialize_g2_compressed*(dst: var array[96, byte], g2P: EC_ShortW_Aff[Fp2[BLS12_381], G2]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Serialize a BLS12-381 G2 point in compressed (Zcash) format
   ##
   ## Returns cttCodecEcc_Success if successful
-  if g2Point.isNeutral().bool():
+  if g2P.isNeutral().bool():
     for i in 0 ..< dst.len:
       dst[i] = byte 0
     dst[0] = byte 0b11000000 # Compressed + Infinity
     return cttCodecEcc_Success
 
-  dst.toOpenArray(0, 48-1).marshal(g2Point.x.c1, bigEndian)
-  dst.toOpenArray(48, 96-1).marshal(g2Point.x.c0, bigEndian)
+  dst.toOpenArray(0, 48-1).marshal(g2P.x.c1, bigEndian)
+  dst.toOpenArray(48, 96-1).marshal(g2P.x.c0, bigEndian)
 
   let isLexicographicallyLargest =
-    if g2Point.y.c1.isZero().bool():
-      byte(g2Point.y.c0.toBig() >= Fp[BLS12_381].getPrimePlus1div2())
+    if g2P.y.c1.isZero().bool():
+      byte(g2P.y.c0.toBig() >= Fp[BLS12_381].getPrimePlus1div2())
     else:
-      byte(g2Point.y.c1.toBig() >= Fp[BLS12_381].getPrimePlus1div2())
+      byte(g2P.y.c1.toBig() >= Fp[BLS12_381].getPrimePlus1div2())
   dst[0] = dst[0] or (byte 0b10000000 or (isLexicographicallyLargest shl 5))
 
   return cttCodecEcc_Success
 
-func deserialize_g2_compressed_unchecked*(dst: var G2P, src: array[96, byte]): CttCodecEccStatus {.libPrefix: pre.} =
+func deserialize_g2_compressed_unchecked*(dst: var EC_ShortW_Aff[Fp2[BLS12_381], G2], src: array[96, byte]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Deserialize a BLS12-381 G2 point in compressed (Zcash) format.
   ##
   ## Warning ⚠:
@@ -247,18 +241,18 @@ func deserialize_g2_compressed_unchecked*(dst: var G2P, src: array[96, byte]): C
     return cttCodecEcc_PointAtInfinity
 
   # General case
-  var t{.noInit.}: matchingBigInt(BLS12_381)
+  var t{.noInit.}: Fp[BLS12_381].getBigInt()
   t.unmarshal(src.toOpenArray(0, 48-1), bigEndian)
   t.limbs[t.limbs.len-1] = t.limbs[t.limbs.len-1] and (MaxWord shr 3) # The first 3 bytes contain metadata to mask out
 
-  if bool(t >= BLS12_381.Mod()):
+  if bool(t >= Fp[BLS12_381].getModulus()):
     return cttCodecEcc_CoordinateGreaterThanOrEqualModulus
 
   var x{.noInit.}: Fp2[BLS12_381]
   x.c1.fromBig(t)
 
   t.unmarshal(src.toOpenArray(48, 96-1), bigEndian)
-  if bool(t >= BLS12_381.Mod()):
+  if bool(t >= Fp[BLS12_381].getModulus()):
     return cttCodecEcc_CoordinateGreaterThanOrEqualModulus
 
   x.c0.fromBig(t)
@@ -278,7 +272,7 @@ func deserialize_g2_compressed_unchecked*(dst: var G2P, src: array[96, byte]): C
 
   return cttCodecEcc_Success
 
-func deserialize_g2_compressed*(dst: var G2P, src: array[96, byte]): CttCodecEccStatus {.libPrefix: pre.} =
+func deserialize_g2_compressed*(dst: var EC_ShortW_Aff[Fp2[BLS12_381], G2], src: array[96, byte]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Deserialize a BLS12-381 G2 point in compressed (Zcash) format
   ##
   ## Returns cttCodecEcc_Success if successful

@@ -258,7 +258,7 @@ func scalarMulEndo_minHammingWeight_windowed_vartime*[scalBits: static int; EC](
     var endomorphisms {.noInit.}: array[M-1, EC]
     when P.G == G1:
       endomorphisms[0] = P
-      endomorphisms[0].x *= EC.F.C.getCubicRootOfUnity_mod_p()
+      endomorphisms[0].x *= EC.F.Name.getCubicRootOfUnity_mod_p()
     else:
       endomorphisms[0].frobenius_psi(P, 2)
 
@@ -351,8 +351,8 @@ func scalarMul_vartime*[scalBits; EC](P: var EC, scalar: BigInt[scalBits]) {.met
 
   let usedBits = scalar.limbs.getBits_LE_vartime()
 
-  when scalBits == EC.F.C.getCurveOrderBitwidth() and
-       EC.F.C.hasEndomorphismAcceleration():
+  when scalBits == EC.getScalarField().bits() and
+       EC.F.Name.hasEndomorphismAcceleration():
     if usedBits >= L:
       when EC.F is Fp:
         P.scalarMulEndo_minHammingWeight_windowed_vartime(scalar, window = 4)

@@ -26,10 +26,10 @@ export ec_twistededwards_affine, ec_twistededwards_projective,
        ec_twistededwards_batch_ops, ec_scalar_mul, ec_scalar_mul_vartime,
        ec_multi_scalar_mul
 
-type ECP_TwEdwards*[F] = ECP_TwEdwards_Aff[F] | ECP_TwEdwards_Prj[F]
+type EC_TwEdw*[F] = EC_TwEdw_Aff[F] | EC_TwEdw_Prj[F]
 
-func setGenerator*[F](g: var ECP_TwEdwards[F]) {.inline.} =
-  when g is ECP_TwEdwards_Aff:
-    g = F.C.getGenerator()
+func setGenerator*[F](g: var EC_TwEdw[F]) {.inline.} =
+  when g is EC_TwEdw_Aff:
+    g = F.Name.getGenerator()
   else:
-    g.fromAffine(F.C.getGenerator())
+    g.fromAffine(F.Name.getGenerator())

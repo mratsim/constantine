@@ -43,13 +43,13 @@ const BLS12_377_pairing_finalexponent* = block:
 
 func millerLoopAddchain*(
        f: var Fp12[BLS12_377],
-       Q: ECP_ShortW_Aff[Fp2[BLS12_377], G2],
-       P: ECP_ShortW_Aff[Fp[BLS12_377], G1]
+       Q: EC_ShortW_Aff[Fp2[BLS12_377], G2],
+       P: EC_ShortW_Aff[Fp[BLS12_377], G1]
      ) =
   ## Miller Loop for BLS12-377 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
 
-  var T {.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_377], G2]
+  var T {.noInit.}: EC_ShortW_Prj[Fp2[BLS12_377], G2]
 
   f.miller_init_double_then_add(T, Q, P, 5)                # 0b100001
   f.miller_accum_double_then_add(T, Q, P, 2)               # 0b10000101
@@ -60,14 +60,14 @@ func millerLoopAddchain*(
 
 func millerLoopAddchain*(
        f: var Fp12[BLS12_377],
-       Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[BLS12_377], G2]],
-       Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[BLS12_377], G1]],
+       Qs: ptr UncheckedArray[EC_ShortW_Aff[Fp2[BLS12_377], G2]],
+       Ps: ptr UncheckedArray[EC_ShortW_Aff[Fp[BLS12_377], G1]],
        N: int
      ) {.noInline.} =
   ## Miller Loop for BLS12-377 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
 
-  var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[BLS12_377], G2], N)
+  var Ts = allocStackArray(EC_ShortW_Prj[Fp2[BLS12_377], G2], N)
 
   f.miller_init_double_then_add( Ts, Qs, Ps, N, 5)               # 0b100001
   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 2)               # 0b10000101

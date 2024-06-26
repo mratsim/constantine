@@ -18,7 +18,7 @@ const
   Iters = 8
 
 run_EC_addition_tests(
-    ec = ECP_ShortW_Jac[Fp2[BN254_Snarks], G2],
+    ec = EC_ShortW_Jac[Fp2[BN254_Snarks], G2],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_jacobian_g2_add_double_" & $BN254_Snarks
   )

@@ -559,7 +559,7 @@ func bucketReduce*[N, EC, ECaff](
 
   if kAffine in buckets.status[N-1]:
     if kNonAffine in buckets.status[N-1]:
-      accumBuckets.madd_vartime(buckets.pt[N-1], buckets.ptAff[N-1])
+      accumBuckets.mixedSum_vartime(buckets.pt[N-1], buckets.ptAff[N-1])
     else:
       accumBuckets.fromAffine(buckets.ptAff[N-1])
   elif kNonAffine in buckets.status[N-1]:
@@ -573,7 +573,7 @@ func bucketReduce*[N, EC, ECaff](
     if kAffine in buckets.status[k]:
       if kNonAffine in buckets.status[k]:
         var t{.noInit.}: EC
-        t.madd_vartime(buckets.pt[k], buckets.ptAff[k])
+        t.mixedSum_vartime(buckets.pt[k], buckets.ptAff[k])
         accumBuckets ~+= t
       else:
         accumBuckets ~+= buckets.ptAff[k]

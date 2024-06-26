@@ -10,14 +10,27 @@ import
   # Internals
   constantine/named/algebras,
   constantine/math/elliptic/ec_twistededwards_projective,
-  constantine/math/arithmetic,
   # Test utilities
   ./t_ec_template
 
-const numPoints = [1, 2, 8, 16, 32, 64, 128, 1024, 2048, 16384] # 32768, 262144, 1048576]
+const
+  Iters = 12
+  ItersMul = Iters div 4
 
-run_EC_multi_scalar_mul_impl(
-    ec = ECP_TwEdwards_Prj[Fp[Bandersnatch]],
-    numPoints = numPoints,
-    moduleName = "test_ec_twistededwards_prj_multi_scalar_mul_" & $Bandersnatch
+run_EC_mul_vs_ref_impl(
+    ec = EC_TwEdw_Prj[Fp[Edwards25519]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_twistededwards_projective_mul_vs_ref_" & $Edwards25519
+  )
+
+run_EC_mul_vs_ref_impl(
+    ec = EC_TwEdw_Prj[Fp[Jubjub]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_twistededwards_projective_mul_vs_ref_" & $Jubjub
+  )
+
+run_EC_mul_vs_ref_impl(
+    ec = EC_TwEdw_Prj[Fp[Bandersnatch]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_twistededwards_projective_mul_vs_ref_" & $Bandersnatch
   )

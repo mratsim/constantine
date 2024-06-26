@@ -41,9 +41,9 @@ func derivePubkey*[Pubkey, SecKey](pubkey: var Pubkey, seckey: SecKey) =
   ## 0 is INVALID
   const Group = Pubkey.G
   type Field = Pubkey.F
-  const EC = Field.C
+  const EC = Field.Name
 
-  var pk {.noInit.}: ECP_ShortW_Jac[Field, Group]
+  var pk {.noInit.}: EC_ShortW_Jac[Field, Group]
   pk.setGenerator()
   pk.scalarMul(seckey)
   pubkey.affine(pk)
@@ -79,7 +79,7 @@ func coreSign*[Sig, SecKey](
   ## - `message` is the message to hash
   ## - `domainSepTag` is the protocol domain separation tag (DST).
 
-  type ECP_Jac = ECP_ShortW_Jac[Sig.F, Sig.G]
+  type ECP_Jac = EC_ShortW_Jac[Sig.F, Sig.G]
 
   var sig {.noInit.}: ECP_Jac
   H.hashToCurve(k, sig, augmentation, message, domainSepTag)
@@ -100,16 +100,16 @@ func coreVerify*[Pubkey, Sig](
   ## This assumes that the PublicKey and Signatures
   ## have been pre-checked for non-infinity and being in the correct subgroup
   ## (likely on deserialization)
-  var Q {.noInit.}: ECP_ShortW_Aff[Sig.F, Sig.G]
-  var negG {.noInit.}: ECP_ShortW_Aff[Pubkey.F, Pubkey.G]
+  var Q {.noInit.}: EC_ShortW_Aff[Sig.F, Sig.G]
+  var negG {.noInit.}: EC_ShortW_Aff[Pubkey.F, Pubkey.G]
 
-  negG.neg(Pubkey.F.C.getGenerator($Pubkey.G))
+  negG.neg(Pubkey.F.Name.getGenerator($Pubkey.G))
   H.hashToCurve(k, Q, augmentation, message, domainSepTag)
 
-  when Sig.F.C.getEmbeddingDegree() == 12:
-    var gt {.noInit.}: Fp12[Sig.F.C]
+  when Sig.F.Name.getEmbeddingDegree() == 12:
+    var gt {.noInit.}: Fp12[Sig.F.Name]
   else:
-    {.error: "Not implemented: signature on k=" & $Sig.F.C.getEmbeddingDegree() & " for curve " & $$Sig.F.C.}
+    {.error: "Not implemented: signature on k=" & $Sig.F.Name.getEmbeddingDegree() & " for curve " & $$Sig.F.Name.}
 
   # e(PK, H(msg))*e(sig, -G) == 1
   when Sig.G == G2:
@@ -175,7 +175,7 @@ func init*(ctx: var BLSAggregateSigAccumulator, domainSepTag: openArray[byte]) {
   for i in ctx.dst_len ..< ctx.domainSepTag.len:
     ctx.domainSepTag[i] = byte 0
 
-func update*[Pubkey: ECP_ShortW_Aff](
+func update*[Pubkey: EC_ShortW_Aff](
        ctx: var BLSAggregateSigAccumulator,
        pubkey: Pubkey,
        message: openArray[byte]): bool {.genCharAPI.} =
@@ -192,7 +192,7 @@ func update*[Pubkey: ECP_ShortW_Aff](
   when Pubkey.G == G1:
     # Pubkey on G1, H(message) and Signature on G2
     type FF2 = BLSAggregateSigAccumulator.FF2
-    var hmsgG2_aff {.noInit.}: ECP_ShortW_Aff[FF2, G2]
+    var hmsgG2_aff {.noInit.}: EC_ShortW_Aff[FF2, G2]
     H.hashToCurve(
       k, output = hmsgG2_aff,
       augmentation = "", message,
@@ -203,7 +203,7 @@ func update*[Pubkey: ECP_ShortW_Aff](
   else:
     # Pubkey on G2, H(message) and Signature on G1
     type FF1 = BLSAggregateSigAccumulator.FF1
-    var hmsgG1_aff {.noInit.}: ECP_ShortW_Aff[FF1, G1]
+    var hmsgG1_aff {.noInit.}: EC_ShortW_Aff[FF1, G1]
     H.hashToCurve(
       k, output = hmsgG1_aff,
       augmentation = "", message,
@@ -211,7 +211,7 @@ func update*[Pubkey: ECP_ShortW_Aff](
 
     return ctx.millerAccum.update(hmsgG1_aff, pubkey)
 
-func update*[Pubkey: ECP_ShortW_Aff](
+func update*[Pubkey: EC_ShortW_Aff](
        ctx: var BLSAggregateSigAccumulator,
        pubkey: Pubkey,
        message: View[byte]): bool {.inline.} =
@@ -229,7 +229,7 @@ func merge*(ctxDst: var BLSAggregateSigAccumulator, ctxSrc: BLSAggregateSigAccum
   ctxDst.millerAccum.merge(ctxSrc.millerAccum)
   return true
 
-func finalVerify*[F, G](ctx: var BLSAggregateSigAccumulator, aggregateSignature: ECP_ShortW_Aff[F, G]): bool =
+func finalVerify*[F, G](ctx: var BLSAggregateSigAccumulator, aggregateSignature: EC_ShortW_Aff[F, G]): bool =
   ## Finish batch and/or aggregate signature verification and returns the final result.
   ##
   ## Returns false if nothing was accumulated
@@ -240,12 +240,12 @@ func finalVerify*[F, G](ctx: var BLSAggregateSigAccumulator, aggregateSignature:
   type Fpk = BLSAggregateSigAccumulator.Fpk
 
   when G == G2:
-    type PubKey = ECP_ShortW_Aff[FF1, G1]
+    type PubKey = EC_ShortW_Aff[FF1, G1]
   else:
-    type PubKey = ECP_ShortW_Aff[FF2, G2]
+    type PubKey = EC_ShortW_Aff[FF2, G2]
 
   var negG {.noInit.}: Pubkey
-  negG.neg(Pubkey.F.C.getGenerator($Pubkey.G))
+  negG.neg(Pubkey.F.Name.getGenerator($Pubkey.G))
 
   when G == G2:
     if not ctx.millerAccum.update(negG, aggregateSignature):
@@ -263,7 +263,7 @@ func finalVerify*[F, G](ctx: var BLSAggregateSigAccumulator, aggregateSignature:
 # ------------------------------------------------------------
 
 type
-  BLSBatchSigAccumulator*[H: CryptoHash, FF1, FF2; Fpk: ExtensionField; SigAccum: ECP_ShortW_Jac, k: static int] = object
+  BLSBatchSigAccumulator*[H: CryptoHash, FF1, FF2; Fpk: ExtensionField; SigAccum: EC_ShortW_Jac, k: static int] = object
     ## An accumulator for Batched BLS signature verification
 
     # An accumulator for the Miller loops
@@ -356,7 +356,7 @@ func init*(
 
   H.hash(ctx.secureBlinding, secureRandomBytes, accumSepTag)
 
-func update*[Pubkey, Sig: ECP_ShortW_Aff](
+func update*[Pubkey, Sig: EC_ShortW_Aff](
        ctx: var BLSBatchSigAccumulator,
        pubkey: Pubkey,
        message: openArray[byte],
@@ -412,8 +412,8 @@ func update*[Pubkey, Sig: ECP_ShortW_Aff](
 
   when Pubkey.G == G1:
     # Pubkey on G1, H(message) and Signature on G2
-    var pkG1_jac {.noInit.}: ECP_ShortW_Jac[Pubkey.F, Pubkey.G]
-    var sigG2_jac {.noInit.}: ECP_ShortW_Jac[Sig.F, Sig.G]
+    var pkG1_jac {.noInit.}: EC_ShortW_Jac[Pubkey.F, Pubkey.G]
+    var sigG2_jac {.noInit.}: EC_ShortW_Jac[Sig.F, Sig.G]
 
     pkG1_jac.fromAffine(pubkey)
     sigG2_jac.fromAffine(signature)
@@ -430,11 +430,11 @@ func update*[Pubkey, Sig: ECP_ShortW_Aff](
       ctx.aggSig += sigG2_jac
 
     type FF1 = BLSBatchSigAccumulator.FF1
-    var pkG1_aff {.noInit.}: ECP_ShortW_Aff[FF1, G1]
+    var pkG1_aff {.noInit.}: EC_ShortW_Aff[FF1, G1]
     pkG1_aff.affine(pkG1_jac)
 
     type FF2 = BLSBatchSigAccumulator.FF2
-    var hmsgG2_aff {.noInit.}: ECP_ShortW_Aff[FF2, G2]
+    var hmsgG2_aff {.noInit.}: EC_ShortW_Aff[FF2, G2]
     H.hashToCurve(
       k, output = hmsgG2_aff,
       augmentation = "", message,
@@ -444,8 +444,8 @@ func update*[Pubkey, Sig: ECP_ShortW_Aff](
 
   else:
     # Pubkey on G2, H(message) and Signature on G1
-    var hmsgG1_jac {.noInit.}: ECP_ShortW_Jac[Sig.F, Sig.G]
-    var sigG1_jac {.noInit.}: ECP_ShortW_Jac[Sig.F, Sig.G]
+    var hmsgG1_jac {.noInit.}: EC_ShortW_Jac[Sig.F, Sig.G]
+    var sigG1_jac {.noInit.}: EC_ShortW_Jac[Sig.F, Sig.G]
 
     H.hashToCurve(
       k, output = hmsgG1_jac,
@@ -466,11 +466,11 @@ func update*[Pubkey, Sig: ECP_ShortW_Aff](
       ctx.aggSig += sigG1_jac
 
     type FF1 = BLSBatchSigAccumulator.FF1
-    var hmsgG1_aff {.noInit.}: ECP_ShortW_Aff[FF1, G1]
+    var hmsgG1_aff {.noInit.}: EC_ShortW_Aff[FF1, G1]
     hmsgG1_aff.affine(hmsgG1_jac)
     return ctx.millerAccum.update(hmsgG1_aff, pubkey)
 
-func update*[Pubkey, Sig: ECP_ShortW_Aff](
+func update*[Pubkey, Sig: EC_ShortW_Aff](
        ctx: var BLSBatchSigAccumulator,
        pubkey: Pubkey,
        message: View[byte],
@@ -523,12 +523,12 @@ func finalVerify*(ctx: var BLSBatchSigAccumulator): bool =
   type Fpk = BLSBatchSigAccumulator.Fpk
 
   when BLSBatchSigAccumulator.SigAccum.G == G2:
-    type PubKey = ECP_ShortW_Aff[FF1, G1]
+    type PubKey = EC_ShortW_Aff[FF1, G1]
   else:
-    type PubKey = ECP_ShortW_Aff[FF2, G2]
+    type PubKey = EC_ShortW_Aff[FF2, G2]
 
   var negG {.noInit.}: Pubkey
-  negG.neg(Pubkey.F.C.getGenerator($Pubkey.G))
+  negG.neg(Pubkey.F.Name.getGenerator($Pubkey.G))
 
   var aggSig {.noInit.}: ctx.aggSig.typeof().affine()
   aggSig.affine(ctx.aggSig)
@@ -552,9 +552,9 @@ func finalVerify*(ctx: var BLSBatchSigAccumulator): bool =
 #
 # ############################################################
 
-func aggregate*[T: ECP_ShortW_Aff](r: var T, points: openarray[T]) =
+func aggregate*[T: EC_ShortW_Aff](r: var T, points: openarray[T]) =
   ## Aggregate pubkeys or signatures
-  var accum {.noinit.}: ECP_ShortW_Jac[T.F, T.G]
+  var accum {.noinit.}: EC_ShortW_Jac[T.F, T.G]
   accum.sum_reduce_vartime(points)
   r.affine(accum)
 
@@ -601,7 +601,7 @@ func aggregateVerify*[Msg, Pubkey, Sig](
 
   type FF1 = Pubkey.F
   type FF2 = Sig.F
-  type FpK = Sig.F.C.getGT()
+  type FpK = Sig.F.Name.getGT()
 
   var accum {.noinit.}: BLSAggregateSigAccumulator[H, FF1, FF2, Fpk, k]
   accum.init(domainSepTag)
@@ -644,9 +644,9 @@ func batchVerify*[Msg, Pubkey, Sig](
 
   type FF1 = Pubkey.F
   type FF2 = Sig.F
-  type FpK = Sig.F.C.getGT()
+  type FpK = Sig.F.Name.getGT()
 
-  var accum {.noinit.}: BLSBatchSigAccumulator[H, FF1, FF2, Fpk, ECP_ShortW_Jac[Sig.F, Sig.G], k]
+  var accum {.noinit.}: BLSBatchSigAccumulator[H, FF1, FF2, Fpk, EC_ShortW_Jac[Sig.F, Sig.G], k]
   accum.init(domainSepTag, secureRandomBytes, accumSepTag = "serial")
 
   for i in 0 ..< pubkeys.len:

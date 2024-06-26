@@ -181,7 +181,7 @@ func ifft*[F](
 
 proc init*(T: type FFTDescriptor, maxScale: uint8): T =
   result.maxWidth = 1 shl maxScale
-  result.rootOfUnity = scaleToRootOfUnity(T.F.C)[maxScale]
+  result.rootOfUnity = scaleToRootOfUnity(T.F.Name)[maxScale]
   result.expandedRootsOfUnity =
     result.rootOfUnity.expandRootOfUnity()
     # Aren't you tired of reading about unity?

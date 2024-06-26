@@ -17,13 +17,13 @@ import
 const numPoints = [1, 2, 8, 16, 128, 1024, 2048, 16384, 32768] # 262144, 1048576]
 
 run_EC_batch_add_impl(
-    ec = ECP_ShortW_JacExt[Fp[BN254_Snarks], G1],
+    ec = EC_ShortW_JacExt[Fp[BN254_Snarks], G1],
     numPoints = numPoints,
     moduleName = "test_ec_shortweierstrass_jacobian_extended_batch_add_" & $BN254_Snarks
   )
 
 run_EC_batch_add_impl(
-    ec = ECP_ShortW_JacExt[Fp[BLS12_381], G1],
+    ec = EC_ShortW_JacExt[Fp[BLS12_381], G1],
     numPoints = numPoints,
     moduleName = "test_ec_shortweierstrass_jacobian_extended_batch_add_" & $BLS12_381
   )

@@ -19,7 +19,7 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Jac[Fp2[BLS12_381], G2],
+    ec = EC_ShortW_Jac[Fp2[BLS12_381], G2],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_jacobian_g2_mul_sanity_" & $BLS12_381
   )

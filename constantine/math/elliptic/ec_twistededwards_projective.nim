@@ -21,7 +21,7 @@ import
 #
 # ############################################################
 
-type ECP_TwEdwards_Prj*[F] = object
+type EC_TwEdw_Prj*[F] = object
   ## Elliptic curve point for a curve in Twisted Edwards form
   ##   ax²+y²=1+dx²y²
   ## with a, d ≠ 0 and a ≠ d
@@ -33,13 +33,16 @@ type ECP_TwEdwards_Prj*[F] = object
   ## hence (aX² + Y²)Z² = Z⁴ + dX²Y²
   x*, y*, z*: F
 
-func `==`*(P, Q: ECP_TwEdwards_Prj): SecretBool =
+template getScalarField*(EC: type EC_TwEdw_Prj): untyped =
+  Fr[EC.F.Name]
+
+func `==`*(P, Q: EC_TwEdw_Prj): SecretBool =
   ## Constant-time equality check
   ## This is a costly operation
   # Reminder: the representation is not unique
   # Isogeny-based constructions to create
   # prime order curves overload this generic equality check.
-  var a{.noInit.}, b{.noInit.}: ECP_TwEdwards_Prj.F
+  var a{.noInit.}, b{.noInit.}: EC_TwEdw_Prj.F
 
   a.prod(P.x, Q.z)
   b.prod(Q.x, P.z)
@@ -49,7 +52,7 @@ func `==`*(P, Q: ECP_TwEdwards_Prj): SecretBool =
   b.prod(Q.y, P.z)
   result = result and a == b
 
-func isNeutral*(P: ECP_TwEdwards_Prj): SecretBool {.inline.} =
+func isNeutral*(P: EC_TwEdw_Prj): SecretBool {.inline.} =
   ## Returns true if P is the neutral element / identity element
   ## and false otherwise, i.e. ∀Q, P+Q == Q
   ## Contrary to Short Weierstrass curve, the neutral element is on the curve
@@ -57,7 +60,7 @@ func isNeutral*(P: ECP_TwEdwards_Prj): SecretBool {.inline.} =
   # prime order curves overload this generic identity check.
   result = P.x.isZero() and (P.y == P.z)
 
-func setNeutral*(P: var ECP_TwEdwards_Prj) {.inline.} =
+func setNeutral*(P: var EC_TwEdw_Prj) {.inline.} =
   ## Set P to the neutral element / identity element
   ## i.e. ∀Q, P+Q == Q.
   ## Contrary to Short Weierstrass curve, the neutral element is on the curve
@@ -65,7 +68,7 @@ func setNeutral*(P: var ECP_TwEdwards_Prj) {.inline.} =
   P.y.setOne()
   P.z.setOne()
 
-func ccopy*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Prj, ctl: SecretBool) {.inline.} =
+func ccopy*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Prj, ctl: SecretBool) {.inline.} =
   ## Constant-time conditional copy
   ## If ctl is true: Q is copied into P
   ## if ctl is false: Q is not copied and P is unmodified
@@ -74,7 +77,7 @@ func ccopy*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Prj, ctl: SecretBool) {.i
     ccopy(fP, fQ, ctl)
 
 func trySetFromCoordX*[F](
-       P: var ECP_TwEdwards_Prj[F],
+       P: var EC_TwEdw_Prj[F],
        x: F): SecretBool =
   ## Try to create a point on the elliptic curve from X co-ordinate
   ##   ax²+y²=1+dx²y²    (affine coordinate)
@@ -84,7 +87,7 @@ func trySetFromCoordX*[F](
   ## return true and update `P` if `y` leads to a valid point
   ## return false otherwise, in that case `P` is undefined.
 
-  var Q{.noInit.}: ECP_TwEdwards_Aff[F]
+  var Q{.noInit.}: EC_TwEdw_Aff[F]
   result = Q.trySetFromCoordX(x)
 
   P.x = Q.x
@@ -92,7 +95,7 @@ func trySetFromCoordX*[F](
   P.z.setOne()
 
 func trySetFromCoordX_vartime*[F](
-       P: var ECP_TwEdwards_Prj[F],
+       P: var EC_TwEdw_Prj[F],
        x: F): SecretBool =
   ## this is not in constant time
   ## Try to create a point on the elliptic curve from X co-ordinate
@@ -103,7 +106,7 @@ func trySetFromCoordX_vartime*[F](
   ## return true and update `P` if `y` leads to a valid point
   ## return false otherwise, in that case `P` is undefined.
 
-  var Q{.noInit.}: ECP_TwEdwards_Aff[F]
+  var Q{.noInit.}: EC_TwEdw_Aff[F]
   result = Q.trySetFromCoordX_vartime(x)
 
   P.x = Q.x
@@ -112,7 +115,7 @@ func trySetFromCoordX_vartime*[F](
 
 
 func trySetFromCoordY*[F](
-       P: var ECP_TwEdwards_Prj[F],
+       P: var EC_TwEdw_Prj[F],
        y: F): SecretBool =
   ## Try to create a point the elliptic curve
   ##   ax²+y²=1+dx²y²     (affine coordinate)
@@ -134,7 +137,7 @@ func trySetFromCoordY*[F](
   ##       - a generator point is defined
   ##       i.e. you can't test unless everything is already working
 
-  var Q{.noInit.}: ECP_TwEdwards_Aff[F]
+  var Q{.noInit.}: EC_TwEdw_Aff[F]
   result = Q.trySetFromCoordY(y)
 
   P.x = Q.x
@@ -142,7 +145,7 @@ func trySetFromCoordY*[F](
   P.z.setOne()
 
 func trySetFromCoordsYandZ*[F](
-       P: var ECP_TwEdwards_Prj[F],
+       P: var EC_TwEdw_Prj[F],
        y, z: F): SecretBool =
   ## Try to create a point the elliptic curve
   ##   ax²+y²=1+dx²y²     (affine coordinate)
@@ -162,31 +165,31 @@ func trySetFromCoordsYandZ*[F](
   ##       - a generator point is defined
   ##       i.e. you can't test unless everything is already working
 
-  var Q{.noInit.}: ECP_TwEdwards_Aff[F]
+  var Q{.noInit.}: EC_TwEdw_Aff[F]
   result = Q.trySetFromCoordY(y)
 
   P.x.prod(Q.x, z)
   P.y.prod(Q.y, z)
   P.z = z
 
-func neg*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Prj) {.inline.} =
+func neg*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Prj) {.inline.} =
   ## Negate ``P``
   P.x.neg(Q.x)
   P.y = Q.y
   P.z = Q.z
 
-func neg*(P: var ECP_TwEdwards_Prj) {.inline.} =
+func neg*(P: var EC_TwEdw_Prj) {.inline.} =
   ## Negate ``P``
   P.x.neg()
 
-func cneg*(P: var ECP_TwEdwards_Prj, ctl: CTBool) {.inline.} =
+func cneg*(P: var EC_TwEdw_Prj, ctl: CTBool) {.inline.} =
   ## Conditional negation.
   ## Negate if ``ctl`` is true
   P.x.cneg(ctl)
 
 func sum*[F](
-       r: var ECP_TwEdwards_Prj[F],
-       P, Q: ECP_TwEdwards_Prj[F]) =
+       r: var EC_TwEdw_Prj[F],
+       P, Q: EC_TwEdw_Prj[F]) =
   ## Elliptic curve point addition for Twisted Edwards curves in projective coordinates
   ##
   ##   R = P + Q
@@ -226,15 +229,15 @@ func sum*[F](
   C.prod(P.x, Q.x)
   D.prod(P.y, Q.y)
   E.prod(C, D)
-  when F.C.getCoefD() is int:
+  when F.Name.getCoefD() is int:
     # conversion at compile-time
     const coefD = block:
       var d: F
-      d.fromInt F.C.getCoefD()
+      d.fromInt F.Name.getCoefD()
       d
     E *= coefD
   else:
-    E *= F.C.getCoefD()
+    E *= F.Name.getCoefD()
   F.diff(B, E)
   G.sum(B, E)
 
@@ -248,10 +251,10 @@ func sum*[F](
   E.sum(C, D)     # E = C+D
 
   # Y3 = A*G*(D-a*C)
-  when F.C.getCoefA() == -1:
+  when F.Name.getCoefA() == -1:
     r.y = E       # (D-a*C) = D+C
   else:
-    r.y.prod(C, F.C.getCoefA())
+    r.y.prod(C, F.Name.getCoefA())
     r.y.diff(D, r.y)
   r.y *= A
   r.y *= G
@@ -264,10 +267,10 @@ func sum*[F](
   # Z3 = F*G
   r.z.prod(F, G)
 
-func madd*[F](
-       r: var ECP_TwEdwards_Prj[F],
-       P: ECP_TwEdwards_Prj[F],
-       Q: ECP_TwEdwards_Aff[F]) =
+func mixedSum*[F](
+       r: var EC_TwEdw_Prj[F],
+       P: EC_TwEdw_Prj[F],
+       Q: EC_TwEdw_Aff[F]) =
   ## Elliptic curve point mixed addition for Twisted Edwards curves in projective coordinates
   ##
   ##   R = P + Q
@@ -285,7 +288,7 @@ func madd*[F](
   ## to simple side-channel attacks (SCA)
   ## This is done by using a "complete" or "exception-free" addition law.
   #
-  # https://www.hyperelliptic.org/EFD/g1p/auto-twisted-projective.html#addition-madd-2008-bbjlp
+  # https://www.hyperelliptic.org/EFD/g1p/auto-twisted-projective.html#addition-mixedSum-2008-bbjlp
   # Cost: 9M + 1S + 1*a + 1*d + 7add.
   #   B = Z1²
   #   C = X1*X2
@@ -305,15 +308,15 @@ func madd*[F](
   C.prod(P.x, Q.x)
   D.prod(P.y, Q.y)
   E.prod(C, D)
-  when F.C.getCoefD() is int:
+  when F.Name.getCoefD() is int:
     # conversion at compile-time
     const coefD = block:
       var d: F
-      d.fromInt F.C.getCoefD()
+      d.fromInt F.Name.getCoefD()
       d
     E *= coefD
   else:
-    E *= F.C.getCoefD()
+    E *= F.Name.getCoefD()
   F.diff(B, E)
   G.sum(B, E)
 
@@ -327,10 +330,10 @@ func madd*[F](
   E.sum(C, D)     # E = C+D
 
   # Y3 = A*G*(D-a*C)
-  when F.C.getCoefA() == -1:
+  when F.Name.getCoefA() == -1:
     r.y = E       # (D-a*C) = D+C
   else:
-    r.y.prod(C, F.C.getCoefA())
+    r.y.prod(C, F.Name.getCoefA())
     r.y.diff(D, r.y)
   r.y *= P.z
   r.y *= G
@@ -343,7 +346,7 @@ func madd*[F](
   # Z3 = F*G
   r.z.prod(F, G)
 
-func double*[F](r: var ECP_TwEdwards_Prj[F], P: ECP_TwEdwards_Prj[F]) =
+func double*[F](r: var EC_TwEdw_Prj[F], P: EC_TwEdw_Prj[F]) =
   ## Elliptic curve point doubling for Twisted Edwards curves in projective coordinates
   ##
   ##   R = [2] P
@@ -385,7 +388,7 @@ func double*[F](r: var ECP_TwEdwards_Prj[F], P: ECP_TwEdwards_Prj[F]) =
   r.x.double()
 
   D.square(P.y)
-  E *= F.C.getCoefA()
+  E *= F.Name.getCoefA()
 
   r.y.sum(E, D)    # Ry stores F = E+D
   H.square(P.z)
@@ -397,51 +400,51 @@ func double*[F](r: var ECP_TwEdwards_Prj[F], P: ECP_TwEdwards_Prj[F]) =
   E -= D           # C stores E-D
   r.y *= E
 
-func `+=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Prj) {.inline.} =
+func `+=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Prj) {.inline.} =
   ## In-place point addition
   P.sum(P, Q)
 
-func `+=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Aff) {.inline.} =
+func `+=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Aff) {.inline.} =
   ## In-place point mixed addition
-  P.madd(P, Q)
+  P.mixedSum(P, Q)
 
-func double*(P: var ECP_TwEdwards_Prj) {.inline.} =
+func double*(P: var EC_TwEdw_Prj) {.inline.} =
   ## In-place EC doubling
   P.double(P)
 
-func diff*(r: var ECP_TwEdwards_Prj, P, Q: ECP_TwEdwards_Prj) {.inline.} =
+func diff*(r: var EC_TwEdw_Prj, P, Q: EC_TwEdw_Prj) {.inline.} =
   ## r = P - Q
   ## Can handle r and Q aliasing
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
   r.sum(P, nQ)
 
-func msub*(r: var ECP_TwEdwards_Prj, P: ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Aff) {.inline.} =
+func mixedDiff*(r: var EC_TwEdw_Prj, P: EC_TwEdw_Prj, Q: EC_TwEdw_Aff) {.inline.} =
   ## r = P - Q
   ## Can handle r and Q aliasing
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
-  r.madd(P, nQ)
+  r.mixedSum(P, nQ)
 
-func `-=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Prj) {.inline.} =
+func `-=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Prj) {.inline.} =
   ## In-place point substraction
   P.diff(P, Q)
 
-func `-=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Aff) {.inline.} =
+func `-=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Aff) {.inline.} =
   ## In-place point substraction
-  P.msub(P, Q)
+  P.mixedDiff(P, Q)
 
-template affine*[F](_: type ECP_TwEdwards_Prj[F]): typedesc =
+template affine*[F](_: type EC_TwEdw_Prj[F]): untyped =
   ## Returns the affine type that corresponds to the Jacobian type input
-  ECP_TwEdwards_Aff[F]
+  EC_TwEdw_Aff[F]
 
-template projective*[F](_: type ECP_TwEdwards_Aff[F]): typedesc =
+template projective*[F](_: type EC_TwEdw_Aff[F]): untyped =
   ## Returns the projective type that corresponds to the affine type input
-  ECP_TwEdwards_Prj[F]
+  EC_TwEdw_Prj[F]
 
 func affine*[F](
-       aff: var ECP_TwEdwards_Aff[F],
-       proj: ECP_TwEdwards_Prj[F]) =
+       aff: var EC_TwEdw_Aff[F],
+       proj: EC_TwEdw_Prj[F]) =
   var invZ {.noInit.}: F
   invZ.inv(proj.z)
 
@@ -449,8 +452,8 @@ func affine*[F](
   aff.y.prod(proj.y, invZ)
 
 func fromAffine*[F](
-       proj: var ECP_TwEdwards_Prj[F],
-       aff: ECP_TwEdwards_Aff[F]) {.inline.} =
+       proj: var EC_TwEdw_Prj[F],
+       aff: EC_TwEdw_Aff[F]) {.inline.} =
   proj.x = aff.x
   proj.y = aff.y
   proj.z.setOne()
@@ -460,40 +463,40 @@ func fromAffine*[F](
 # For generic vartime operations on both ShortWeierstrass curves and Twisted Edwards
 
 func sum_vartime*[F](
-       r: var ECP_TwEdwards_Prj[F],
-       P, Q: ECP_TwEdwards_Prj[F]) {.inline.} =
+       r: var EC_TwEdw_Prj[F],
+       P, Q: EC_TwEdw_Prj[F]) {.inline.} =
   r.sum(P, Q)
 
-func madd_vartime*[F](
-       r: var ECP_TwEdwards_Prj[F],
-       P: ECP_TwEdwards_Prj[F],
-       Q: ECP_TwEdwards_Aff[F]) {.inline.} =
-  r.madd(P, Q)
+func mixedSum_vartime*[F](
+       r: var EC_TwEdw_Prj[F],
+       P: EC_TwEdw_Prj[F],
+       Q: EC_TwEdw_Aff[F]) {.inline.} =
+  r.mixedSum(P, Q)
 
 func diff_vartime*[F](
-       r: var ECP_TwEdwards_Prj[F],
-       P, Q: ECP_TwEdwards_Prj[F]) {.inline.} =
+       r: var EC_TwEdw_Prj[F],
+       P, Q: EC_TwEdw_Prj[F]) {.inline.} =
   r.diff(P, Q)
 
-func msub_vartime*[F](
-       r: var ECP_TwEdwards_Prj[F],
-       P: ECP_TwEdwards_Prj[F],
-       Q: ECP_TwEdwards_Aff[F]) {.inline.} =
-  r.msub(P, Q)
+func mixedDiff_vartime*[F](
+       r: var EC_TwEdw_Prj[F],
+       P: EC_TwEdw_Prj[F],
+       Q: EC_TwEdw_Aff[F]) {.inline.} =
+  r.mixedDiff(P, Q)
 
-template `~+=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Prj) =
+template `~+=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Prj) =
   ## Variable-time in-place point addition
   P.sum_vartime(P, Q)
 
-template `~+=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Aff) =
+template `~+=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Aff) =
   ## Variable-time in-place point mixed addition
-  P.madd_vartime(P, Q)
+  P.mixedSum_vartime(P, Q)
 
-template `~-=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Prj) =
+template `~-=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Prj) =
   P.diff_vartime(P, Q)
 
-template `~-=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Aff) =
-  P.msub_vartime(P, Q)
+template `~-=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Aff) =
+  P.mixedDiff_vartime(P, Q)
 
 # ############################################################
 #
@@ -501,7 +504,7 @@ template `~-=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Aff) =
 #
 # ############################################################
 
-func `==`*(P, Q: ECP_TwEdwards_Prj[Fp[Banderwagon]]): SecretBool =
+func `==`*(P, Q: EC_TwEdw_Prj[Fp[Banderwagon]]): SecretBool =
   ## Equality check for points in the Banderwagon Group
   ## The equality check is optimized for the quotient group
   ## This is a costly operation
@@ -518,7 +521,7 @@ func `==`*(P, Q: ECP_TwEdwards_Prj[Fp[Banderwagon]]): SecretBool =
   rhs.prod(Q.x, P.y)
   result = result and lhs == rhs
 
-func isNeutral*(P: ECP_TwEdwards_Prj[Fp[Banderwagon]]): SecretBool {.inline.} =
+func isNeutral*(P: EC_TwEdw_Prj[Fp[Banderwagon]]): SecretBool {.inline.} =
   ## Returns true if P is the neutral/identity element
   ## in the Banderwagon group
   ## and false otherwise

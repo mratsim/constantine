@@ -127,11 +127,11 @@ func toHex*(line: Line): string =
 # Line evaluation
 # -----------------------------------------------------------------------
 
-func line_update[F1, F2](line: var Line[F2], P: ECP_ShortW_Aff[F1, G1]) =
+func line_update[F1, F2](line: var Line[F2], P: EC_ShortW_Aff[F1, G1]) =
   ## Update the line evaluation with P
   ## after addition or doubling
   ## P in G1
-  static: doAssert F1.C == F2.C
+  static: doAssert F1.Name == F2.Name
   # D-Twist: line at P(xₚ, yₚ):
   #   a.yₚ + b.xₚ w + c w³
   #
@@ -230,7 +230,7 @@ func line_update[F1, F2](line: var Line[F2], P: ECP_ShortW_Aff[F1, G1]) =
 
 func line_eval_fused_double[Field](
        line: var Line[Field],
-       T: var ECP_ShortW_Prj[Field, G2]) =
+       T: var EC_ShortW_Prj[Field, G2]) =
   ## Fused line evaluation and elliptic point doubling
   # Grewal et al, 2012 adapted to Scott 2019 line notation
 
@@ -247,13 +247,13 @@ func line_eval_fused_double[Field](
   C.square(T.z)     # C = Z²
 
   # E = 3b'Z² = 3bξ Z² (M-Twist) or 3b/ξ Z² (D-Twist)
-  when Field.C.getSexticTwist() == M_Twist and E.fromComplexExtension():
-    const b3 = 3*Field.C.getCoefB()
+  when Field.Name.getSexticTwist() == M_Twist and E.fromComplexExtension():
+    const b3 = 3*Field.Name.getCoefB()
     E.prod(C, b3)
     E *= SexticNonResidue
   else:
     E = C
-    E.mulCheckSparse(Field.C.getCoefB_G2_times_3())
+    E.mulCheckSparse(Field.Name.getCoefB_G2_times_3())
 
   F.prod(E, 3)      # F = 3E = 9b'Z²
   G.sum(B, F)
@@ -280,8 +280,8 @@ func line_eval_fused_double[Field](
 
 func line_eval_fused_add[Field](
        line: var Line[Field],
-       T: var ECP_ShortW_Prj[Field, G2],
-       Q: ECP_ShortW_Aff[Field, G2]) =
+       T: var EC_ShortW_Prj[Field, G2],
+       Q: EC_ShortW_Aff[Field, G2]) =
   ## Fused line evaluation and elliptic point addition
   # Grewal et al, 2012 adapted to Scott 2019 line notation
   var
@@ -334,26 +334,26 @@ func line_eval_fused_add[Field](
 
 func line_double*[F1, F2](
        line: var Line[F2],
-       T: var ECP_ShortW_Prj[F2, G2],
-       P: ECP_ShortW_Aff[F1, G1]) {.meter.} =
+       T: var EC_ShortW_Prj[F2, G2],
+       P: EC_ShortW_Aff[F1, G1]) {.meter.} =
   ## Doubling step of the Miller loop
   ## T in G2, P in G1
   ##
   ## Compute lt,t(P)
-  static: doAssert F1.C == F2.C
+  static: doAssert F1.Name == F2.Name
   line_eval_fused_double(line, T)
   line.line_update(P)
 
 func line_add*[F1, F2](
        line: var Line[F2],
-       T: var ECP_ShortW_Prj[F2, G2],
-       Q: ECP_ShortW_Aff[F2, G2],
-       P: ECP_ShortW_Aff[F1, G1]) {.meter.} =
+       T: var EC_ShortW_Prj[F2, G2],
+       Q: EC_ShortW_Aff[F2, G2],
+       P: EC_ShortW_Aff[F1, G1]) {.meter.} =
   ## Addition step of the Miller loop
   ## T and Q in G2, P in G1
   ##
   ## Compute lt,q(P)
-  static: doAssert F1.C == F2.C
+  static: doAssert F1.Name == F2.Name
   line_eval_fused_add(line, T, Q)
   line.line_update(P)
 
@@ -405,13 +405,13 @@ func mul_sparse_by_line_a00bc0*[Fpk, Fpkdiv6](f: var Fpk, l: Line[Fpkdiv6]) =
   #    = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
 
   static:
-    doAssert Fpk.C.getSexticTwist() == D_Twist
+    doAssert Fpk.Name.getSexticTwist() == D_Twist
     doAssert f is QuadraticExt, "This assumes 𝔽pᵏ as a quadratic extension of 𝔽pᵏᐟ²"
     doAssert f.c0 is CubicExt, "This assumes 𝔽pᵏᐟ² as a cubic extension of 𝔽pᵏᐟ⁶"
 
   type Fpkdiv2 = typeof(f.c0)
 
-  when Fpk.C.has_large_field_elem():
+  when Fpk.Name.has_large_field_elem():
     var
       v0 {.noInit.}: Fpkdiv2
       v1 {.noInit.}: Fpkdiv2
@@ -492,7 +492,7 @@ func prod_x00yz0_x00yz0_into_abcdefghij00*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   # Now we can apply Karasuba¹² for a total of 6 multiplications
 
   static:
-    doAssert Fpk.C.getSexticTwist() == D_Twist
+    doAssert Fpk.Name.getSexticTwist() == D_Twist
     doAssert f is QuadraticExt, "This assumes 𝔽pᵏ as a quadratic extension of 𝔽pᵏᐟ²"
     doAssert f.c0 is CubicExt, "This assumes 𝔽pᵏᐟ² as a cubic extension of 𝔽pᵏᐟ⁶"
 
@@ -560,13 +560,13 @@ func mul_sparse_by_line_cb00a0*[Fpk, Fpkdiv6](f: var Fpk, l: Line[Fpkdiv6]) =
   #    = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
 
   static:
-    doAssert Fpk.C.getSexticTwist() == M_Twist
+    doAssert Fpk.Name.getSexticTwist() == M_Twist
     doAssert f is QuadraticExt, "This assumes 𝔽pᵏ as a quadratic extension of 𝔽pᵏᐟ²"
     doAssert f.c0 is CubicExt, "This assumes 𝔽pᵏᐟ² as a cubic extension of 𝔽pᵏᐟ⁶"
 
   type Fpkdiv2 = typeof(f.c0)
 
-  when Fpk.C.has_large_field_elem():
+  when Fpk.Name.has_large_field_elem():
     var
       v0 {.noInit.}: Fpkdiv2
       v1 {.noInit.}: Fpkdiv2
@@ -646,7 +646,7 @@ func prod_zy00x0_zy00x0_into_abcdef00ghij*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   # Now we can apply Karasuba¹² for a total of 6 multiplications
 
   static:
-    doAssert Fpk.C.getSexticTwist() == M_Twist
+    doAssert Fpk.Name.getSexticTwist() == M_Twist
     doAssert f is QuadraticExt, "This assumes 𝔽pᵏ as a quadratic extension of 𝔽pᵏᐟ²"
     doAssert f.c0 is CubicExt, "This assumes 𝔽pᵏᐟ² as a cubic extension of 𝔽pᵏᐟ⁶"
 
@@ -713,7 +713,7 @@ func mul_sparse_by_line_acb000*[Fpk, Fpkdiv6](f: var Fpk, l: Line[Fpkdiv6]) =
   ## with coordinate (a,b,c) matching 𝔽pᵏ coordinates acb000
 
   static:
-    doAssert Fpk.C.getSexticTwist() == D_Twist
+    doAssert Fpk.Name.getSexticTwist() == D_Twist
     doAssert f is CubicExt, "This assumes 𝔽pᵏ as a cubic extension of 𝔽pᵏᐟ³"
     doAssert f.c0 is QuadraticExt, "This assumes 𝔽pᵏᐟ³ as a quadratic extension of 𝔽pᵏᐟ⁶"
 
@@ -738,7 +738,7 @@ func mul_sparse_by_line_acb000*[Fpk, Fpkdiv6](f: var Fpk, l: Line[Fpkdiv6]) =
   #    = a0 b0 + a2 b0 - v0 + v1
   #    = a2 b0 + v1
 
-  when Fpk.C.has_large_field_elem():
+  when Fpk.Name.has_large_field_elem():
     var b0 {.noInit.}, v0{.noInit.}, v1{.noInit.}, t{.noInit.}: Fpkdiv3
 
     b0.c0 = l.a
@@ -825,7 +825,7 @@ func prod_xzy000_xzy000_into_abcdefghij00*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   # hence r1 can be compute for 2 extra muls in 𝔽pᵏᐟ⁶ only
 
   static:
-    doAssert Fpk.C.getSexticTwist() == D_Twist
+    doAssert Fpk.Name.getSexticTwist() == D_Twist
     doAssert f is CubicExt, "This assumes 𝔽pᵏ as a cubic extension of 𝔽pᵏᐟ³"
     doAssert f.c0 is QuadraticExt, "This assumes 𝔽pᵏᐟ³ as a quadratic extension of 𝔽pᵏᐟ⁶"
 
@@ -883,7 +883,7 @@ func mul_sparse_by_line_ca00b0*[Fpk, Fpkdiv6](f: var Fpk, l: Line[Fpkdiv6]) =
   ## with coordinate (a,b,c) matching 𝔽pᵏ coordinates ca00b0
 
   static:
-    doAssert Fpk.C.getSexticTwist() == M_Twist
+    doAssert Fpk.Name.getSexticTwist() == M_Twist
     doAssert f is CubicExt, "This assumes 𝔽pᵏ as a cubic extension of 𝔽pᵏᐟ³"
     doAssert f.c0 is QuadraticExt, "This assumes 𝔽pᵏᐟ³ as a cubic extension of 𝔽pᵏᐟ⁶"
 
@@ -908,7 +908,7 @@ func mul_sparse_by_line_ca00b0*[Fpk, Fpkdiv6](f: var Fpk, l: Line[Fpkdiv6]) =
   # r2 = (a0 + a2) * (b0 + b2) - v0 - v2 + v1
   #    = (a0 + a2) * (b0 + b2) - v0 - v2
 
-  when Fpk.C.has_large_field_elem():
+  when Fpk.Name.has_large_field_elem():
     var b0 {.noInit.}, v0{.noInit.}, v2{.noInit.}, t{.noInit.}: Fpkdiv3
 
     b0.c0 = l.c
@@ -997,7 +997,7 @@ func prod_zx00y0_zx00y0_into_abcd00efghij*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   # hence r2 can be compute for 2 extra muls in 𝔽pᵏᐟ⁶ only
 
   static:
-    doAssert Fpk.C.getSexticTwist() == M_Twist
+    doAssert Fpk.Name.getSexticTwist() == M_Twist
     doAssert f is CubicExt, "This assumes 𝔽pᵏ as a cubic extension of 𝔽pᵏᐟ³"
     doAssert f.c0 is QuadraticExt, "This assumes 𝔽pᵏᐟ³ as a quadratic extension of 𝔽pᵏᐟ⁶"
 
@@ -1057,7 +1057,7 @@ func mul_sparse_by_abcdefghij00_quad_over_cube*[Fpk](
   ## with each representing 𝔽pᵏᐟ⁶ coordinate
 
   static:
-    doAssert Fpk.C.getSexticTwist() == D_Twist
+    doAssert Fpk.Name.getSexticTwist() == D_Twist
     doAssert a is QuadraticExt, "This assumes 𝔽pᵏ as a quadratic extension of 𝔽pᵏᐟ²"
     doAssert a.c0 is CubicExt, "This assumes 𝔽pᵏᐟ² as a cubic extension of 𝔽pᵏᐟ⁶"
 
@@ -1073,7 +1073,7 @@ func mul_sparse_by_abcdefghij00_quad_over_cube*[Fpk](
   # r0 = a0 b0 + ξ a1 b1
   # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1
 
-  when Fpk.C.has_large_field_elem():
+  when Fpk.Name.has_large_field_elem():
     var v0 {.noInit.}, v1 {.noInit.}, v2 {.noInit.}: Fpkdiv2
 
     # v2 <- (a0 + a1)(b0 + b1)
@@ -1131,7 +1131,7 @@ func mul_sparse_by_abcdef00ghij_quad_over_cube*[Fpk](
   ## with each representing 𝔽pᵏᐟ⁶ coordinate
 
   static:
-    doAssert Fpk.C.getSexticTwist() == M_Twist
+    doAssert Fpk.Name.getSexticTwist() == M_Twist
     doAssert a is QuadraticExt, "This assumes 𝔽pᵏ as a quadratic extension of 𝔽pᵏᐟ²"
     doAssert a.c0 is CubicExt, "This assumes 𝔽pᵏᐟ² as a cubic extension of 𝔽pᵏᐟ⁶"
 
@@ -1147,7 +1147,7 @@ func mul_sparse_by_abcdef00ghij_quad_over_cube*[Fpk](
   # r0 = a0 b0 + ξ a1 b1
   # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1
 
-  when Fpk.C.has_large_field_elem():
+  when Fpk.Name.has_large_field_elem():
     var v0 {.noInit.}, v1 {.noInit.}, v2 {.noInit.}: Fpkdiv2
 
     # v2 <- (a0 + a1)(b0 + b1)
@@ -1206,7 +1206,7 @@ func mul_sparse_by_abcd00efghij_cube_over_quad*[Fpk](
   ## with each representing 𝔽pᵏᐟ⁶ coordinate
 
   static:
-    doAssert Fpk.C.getSexticTwist() == M_Twist
+    doAssert Fpk.Name.getSexticTwist() == M_Twist
     doAssert a is CubicExt, "This assumes 𝔽pᵏ as a cubic extension of 𝔽pᵏᐟ³"
     doAssert a.c0 is QuadraticExt, "This assumes 𝔽pᵏᐟ³ as a quadratic extension of 𝔽pᵏᐟ⁶"
 
@@ -1277,7 +1277,7 @@ func mul_sparse_by_abcdefghij00_cube_over_quad*[Fpk](
   ## with each representing 𝔽pᵏᐟ⁶ coordinate
 
   static:
-    doAssert Fpk.C.getSexticTwist() == D_Twist
+    doAssert Fpk.Name.getSexticTwist() == D_Twist
     doAssert a is CubicExt, "This assumes 𝔽pᵏ as a cubic extension of 𝔽pᵏᐟ³"
     doAssert a.c0 is QuadraticExt, "This assumes 𝔽pᵏᐟ³ as a quadratic extension of 𝔽pᵏᐟ⁶"
 
@@ -1346,12 +1346,12 @@ func mul_sparse_by_abcdefghij00_cube_over_quad*[Fpk](
 
 func mul_by_line*[Fpk, Fpkdiv6](f: var Fpk, line: Line[Fpkdiv6]) {.inline, meter.} =
   ## Multiply an element of Fp12 by a sparse line function
-  when Fpk.C.getSexticTwist() == D_Twist:
+  when Fpk.Name.getSexticTwist() == D_Twist:
     when f is CubicExt:
       f.mul_sparse_by_line_acb000(line)
     else:
       f.mul_sparse_by_line_a00bc0(line)
-  elif Fpk.C.getSexticTwist() == M_Twist:
+  elif Fpk.Name.getSexticTwist() == M_Twist:
     when f is CubicExt:
       f.mul_sparse_by_line_ca00b0(line)
     else:
@@ -1363,12 +1363,12 @@ func prod_from_2_lines*[Fpk, Fpkdiv6](f: var Fpk, line0, line1: Line[Fpkdiv6]) {
   ## Multiply 2 lines function
   ## and store the result in f
   ## f is overwritten
-  when Fpk.C.getSexticTwist() == D_Twist:
+  when Fpk.Name.getSexticTwist() == D_Twist:
     when f is CubicExt:
       f.prod_xzy000_xzy000_into_abcdefghij00(line0, line1)
     else:
       f.prod_x00yz0_x00yz0_into_abcdefghij00(line0, line1)
-  elif Fpk.C.getSexticTwist() == M_Twist:
+  elif Fpk.Name.getSexticTwist() == M_Twist:
     when f is CubicExt:
       f.prod_zx00y0_zx00y0_into_abcd00efghij(line0, line1)
     else:
@@ -1378,12 +1378,12 @@ func prod_from_2_lines*[Fpk, Fpkdiv6](f: var Fpk, line0, line1: Line[Fpkdiv6]) {
 
 func mul_by_prod_of_2_lines*[Fpk](f: var Fpk, g: Fpk) {.inline, meter.} =
   ## Multiply f by the somewhat sparse product of 2 lines
-  when Fpk.C.getSexticTwist() == D_Twist:
+  when Fpk.Name.getSexticTwist() == D_Twist:
     when f is CubicExt:
       f.mul_sparse_by_abcdefghij00_cube_over_quad(g)
     else:
       f.mul_sparse_by_abcdefghij00_quad_over_cube(g)
-  elif Fpk.C.getSexticTwist() == M_Twist:
+  elif Fpk.Name.getSexticTwist() == M_Twist:
     when f is CubicExt:
       f.mul_sparse_by_abcd00efghij_cube_over_quad(g)
     else:

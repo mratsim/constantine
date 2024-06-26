@@ -27,16 +27,16 @@ echo "test_finite_fields_mulsquare xoshiro512** seed: ", seed
 
 static: doAssert defined(CTT_TEST_CURVES), "This modules requires the -d:CTT_TEST_CURVES compile option"
 
-proc sanity(C: static Curve) =
-  test "Squaring 0,1,2 with " & $Curve(C) & " [FastSquaring = " & $(Fp[C].getSpareBits() >= 2) & "]":
+proc sanity(Name: static Algebra) =
+  test "Squaring 0,1,2 with " & $Algebra(C) & " [FastSquaring = " & $(Fp[Name].getSpareBits() >= 2) & "]":
         block: # 0² mod
-          var n: Fp[C]
+          var n: Fp[Name]
 
           n.fromUint(0'u32)
           let expected = n
 
           # Out-of-place
-          var r: Fp[C]
+          var r: Fp[Name]
           r.square(n)
           # In-place
           n.square()
@@ -46,13 +46,13 @@ proc sanity(C: static Curve) =
             bool(n == expected)
 
         block: # 1² mod
-          var n: Fp[C]
+          var n: Fp[Name]
 
           n.fromUint(1'u32)
           let expected = n
 
           # Out-of-place
-          var r: Fp[C]
+          var r: Fp[Name]
           r.square(n)
           # In-place
           n.square()
@@ -62,13 +62,13 @@ proc sanity(C: static Curve) =
             bool(n == expected)
 
         block: # 2² mod
-          var n, expected: Fp[C]
+          var n, expected: Fp[Name]
 
           n.fromUint(2'u32)
           expected.fromUint(4'u32)
 
           # Out-of-place
-          var r: Fp[C]
+          var r: Fp[Name]
           r.square(n)
           # In-place
           n.square()
@@ -113,22 +113,10 @@ proc mainSelectCases() =
 
 mainSelectCases()
 
-proc randomCurve(C: static Curve) =
-  let a = rng.random_unsafe(Fp[C])
+proc randomCurve(Name: static Algebra) =
+  let a = rng.random_unsafe(Fp[Name])
 
-  var r_mul, r_sqr: Fp[C]
-
-  r_mul.prod(a, a)
-  r_sqr.square(a)
-
-  doAssert bool(r_mul == r_sqr), block:
-    "\nMul: " & r_mul.toHex() &
-    "\nSqr: " & r_sqr.toHex()
-
-proc randomHighHammingWeight(C: static Curve) =
-  let a = rng.random_highHammingWeight(Fp[C])
-
-  var r_mul, r_sqr: Fp[C]
+  var r_mul, r_sqr: Fp[Name]
 
   r_mul.prod(a, a)
   r_sqr.square(a)
@@ -137,10 +125,22 @@ proc randomHighHammingWeight(C: static Curve) =
     "\nMul: " & r_mul.toHex() &
     "\nSqr: " & r_sqr.toHex()
 
-proc random_long01Seq(C: static Curve) =
-  let a = rng.random_long01Seq(Fp[C])
+proc randomHighHammingWeight(Name: static Algebra) =
+  let a = rng.random_highHammingWeight(Fp[Name])
 
-  var r_mul, r_sqr: Fp[C]
+  var r_mul, r_sqr: Fp[Name]
+
+  r_mul.prod(a, a)
+  r_sqr.square(a)
+
+  doAssert bool(r_mul == r_sqr), block:
+    "\nMul: " & r_mul.toHex() &
+    "\nSqr: " & r_sqr.toHex()
+
+proc random_long01Seq(Name: static Algebra) =
+  let a = rng.random_long01Seq(Fp[Name])
+
+  var r_mul, r_sqr: Fp[Name]
 
   r_mul.prod(a, a)
   r_sqr.square(a)
@@ -320,17 +320,17 @@ suite "Modular squaring - bugs highlighted by property-based testing":
       bool(a2sqr == expected)
 
 
-proc random_sumprod(C: static Curve, N: static int) =
+proc random_sumprod(Name: static Algebra, N: static int) =
   template sumprod_test(random_instancer: untyped) =
     block:
-      var a: array[N, Fp[C]]
-      var b: array[N, Fp[C]]
+      var a: array[N, Fp[Name]]
+      var b: array[N, Fp[Name]]
 
       for i in 0 ..< N:
-        a[i] = rng.random_instancer(Fp[C])
-        b[i] = rng.random_instancer(Fp[C])
+        a[i] = rng.random_instancer(Fp[Name])
+        b[i] = rng.random_instancer(Fp[Name])
 
-      var r, r_ref, t: Fp[C]
+      var r, r_ref, t: Fp[Name]
 
       r_ref.prod(a[0], b[0])
       for i in 1 ..< N:
@@ -343,14 +343,14 @@ proc random_sumprod(C: static Curve, N: static int) =
 
   template sumProdMax() =
     block:
-      var a: array[N, Fp[C]]
-      var b: array[N, Fp[C]]
+      var a: array[N, Fp[Name]]
+      var b: array[N, Fp[Name]]
 
       for i in 0 ..< N:
         a[i].setMinusOne()
         b[i].setMinusOne()
 
-      var r, r_ref, t: Fp[C]
+      var r, r_ref, t: Fp[Name]
 
       r_ref.prod(a[0], b[0])
       for i in 1 ..< N:

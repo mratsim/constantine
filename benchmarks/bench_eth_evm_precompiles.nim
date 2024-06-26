@@ -78,20 +78,20 @@ func gasBls12PairingCheck(length: int): int =
 # Constructors
 # -----------------------------------------------------------------------------------------------------
 
-func clearCofactor[F; G: static Subgroup](ec: var ECP_ShortW_Aff[F, G]) =
+func clearCofactor[F; G: static Subgroup](ec: var EC_ShortW_Aff[F, G]) =
   # For now we don't have any affine operation defined
-  var t {.noInit.}: ECP_ShortW_Prj[F, G]
+  var t {.noInit.}: EC_ShortW_Prj[F, G]
   t.fromAffine(ec)
   t.clearCofactor()
   ec.affine(t)
 
 proc createPairingInputsBN254(length: int): seq[byte] =
   var buf: array[32, byte]
-  const C = BN254_Snarks
+  const Name = BN254_Snarks
   for _ in 0 ..< length:
-    var P = rng.random_unsafe(ECP_ShortW_Aff[Fp[C], G1])
+    var P = rng.random_unsafe(EC_ShortW_Aff[Fp[Name], G1])
     P.clearCofactor()
-    var Q = rng.random_unsafe(ECP_ShortW_Aff[Fp2[C], G2])
+    var Q = rng.random_unsafe(EC_ShortW_Aff[Fp2[Name], G2])
     Q.clearCofactor()
 
     buf.marshal(P.x, bigEndian)
@@ -114,11 +114,11 @@ proc createPairingInputsBN254(length: int): seq[byte] =
 
 proc createPairingInputsBLS12381(length: int): seq[byte] =
   var buf: array[64, byte]
-  const C = BLS12_381
+  const Name = BLS12_381
   for _ in 0 ..< length:
-    var P = rng.random_unsafe(ECP_ShortW_Aff[Fp[C], G1])
+    var P = rng.random_unsafe(EC_ShortW_Aff[Fp[Name], G1])
     P.clearCofactor()
-    var Q = rng.random_unsafe(ECP_ShortW_Aff[Fp2[C], G2])
+    var Q = rng.random_unsafe(EC_ShortW_Aff[Fp2[Name], G2])
     Q.clearCofactor()
 
     buf.marshal(P.x, bigEndian)
@@ -311,7 +311,7 @@ proc main() =
   for i in 1..8:
     pairingCtxBLS.benchBls12PairingCheck(i, ItersPairing)
   separator()
-  let msmG1Ctx = createMsmInputs(ECP_ShortW_Jac[Fp[BLS12_381], G1], 128)
+  let msmG1Ctx = createMsmInputs(EC_ShortW_Jac[Fp[BLS12_381], G1], 128)
   msmG1Ctx.benchBls12MsmG1(  2, ItersMsm)
   msmG1Ctx.benchBls12MsmG1(  4, ItersMsm)
   msmG1Ctx.benchBls12MsmG1(  8, ItersMsm)
@@ -320,7 +320,7 @@ proc main() =
   msmG1Ctx.benchBls12MsmG1( 64, ItersMsm)
   msmG1Ctx.benchBls12MsmG1(128, ItersMsm)
   separator()
-  let msmG2Ctx = createMsmInputs(ECP_ShortW_Jac[Fp2[BLS12_381], G2], 128)
+  let msmG2Ctx = createMsmInputs(EC_ShortW_Jac[Fp2[BLS12_381], G2], 128)
   msmG2Ctx.benchBls12MsmG2(  2, ItersMsm)
   msmG2Ctx.benchBls12MsmG2(  4, ItersMsm)
   msmG2Ctx.benchBls12MsmG2(  8, ItersMsm)

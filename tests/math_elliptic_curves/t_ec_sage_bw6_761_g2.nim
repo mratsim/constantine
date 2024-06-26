@@ -14,29 +14,29 @@ import
   # Test utilities
   ./t_ec_sage_template
 
-# When ECP_ShortW_Aff[Fp[Foo], G1]
-# and ECP_ShortW_Aff[Fp[Foo], G2]
+# When EC_ShortW_Aff[Fp[Foo], G1]
+# and EC_ShortW_Aff[Fp[Foo], G2]
 # are generated in the same file (i.e. twists and base curve are both on Fp)
 # this creates bad codegen, in the C code, the `value`parameter gets the wrong type
 # TODO: upstream
 
-staticFor(bits, [BW6_761.getCurveOrderBitwidth()]):
+staticFor(bits, [Fr[BW6_761].bits()]):
   # run_scalar_mul_test_vs_sage(
-  #   ECP_ShortW_Prj[Fp[BW6_761], G1], bits,
+  #   EC_ShortW_Prj[Fp[BW6_761], G1], bits,
   #   "t_ec_sage_bw6_761_g1_projective"
   # )
 
   # run_scalar_mul_test_vs_sage(
-  #   ECP_ShortW_Jac[Fp[BW6_761], G1], bits,
+  #   EC_ShortW_Jac[Fp[BW6_761], G1], bits,
   #   "t_ec_sage_bw6_761_g1_jacobian"
   # )
 
   run_scalar_mul_test_vs_sage(
-    ECP_ShortW_Prj[Fp[BW6_761], G2], bits,
+    EC_ShortW_Prj[Fp[BW6_761], G2], bits,
     "t_ec_sage_bw6_761_g2_projective"
   )
 
   run_scalar_mul_test_vs_sage(
-    ECP_ShortW_Jac[Fp[BW6_761], G2], bits,
+    EC_ShortW_Jac[Fp[BW6_761], G2], bits,
     "t_ec_sage_bw6_761_g2_jacobian"
   )

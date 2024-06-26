@@ -12,7 +12,7 @@ import
   ./config_fields_and_curves,
   ./deriv/parser_curves
 
-export CurveFamily, Curve, SexticTwist
+export Algebra, CurveFamily, SexticTwist
 
 # ############################################################
 #
@@ -22,58 +22,62 @@ export CurveFamily, Curve, SexticTwist
 
 {.experimental: "dynamicBindSym".}
 
-template getCurveBitwidth*(C: Curve): int =
-  ## Returns the number of bits taken by the curve modulus
-  CurveBitWidth[C]
+type FieldKind* = enum
+  kBaseField
+  kScalarField
 
-macro getCurveOrder*(C: static Curve): untyped =
-  ## Get the curve order `r`
-  ## i.e. the number of points on the elliptic curve
-  result = bindSym($C & "_Order")
+template getBigInt*(Name: static Algebra, kind: static FieldKind): untyped =
+  # Workaround:
+  # in `ptr UncheckedArray[BigInt[EC.getScalarField().bits()]]
+  # EC.getScalarField is not accepted by the compiler
+  #
+  # and `ptr UncheckedArray[BigInt[Fr[EC.F.Name].bits]]` gets undeclared field: 'Name'
+  when kind == kBaseField:
+    BigInt[Fp[Name].bits()]
+  else:
+    BigInt[Fr[Name].bits()]
 
-macro getCurveOrderBitwidth*(C: static Curve): untyped =
-  ## Get the curve order `r`
-  ## i.e. the number of points on the elliptic curve
-  result = nnkDotExpr.newTree(
-    getAST(getCurveOrder(C)),
-    ident"bits"
-  )
+template getField*(Name: static Algebra, kind: static FieldKind): untyped =
+  when kind == kBaseField:
+    Fp[Name]
+  else:
+    Fr[Name]
 
-template family*(C: Curve): CurveFamily =
-  CurveFamilies[C]
+template family*(Name: Algebra): CurveFamily =
+  CurveFamilies[Name]
 
-macro getEquationForm*(C: static Curve): untyped =
+macro getEquationForm*(Name: static Algebra): untyped =
   ## Returns the equation form
   ## (ShortWeierstrass, Montgomery, Twisted Edwards, Weierstrass, ...)
-  result = bindSym($C & "_equation_form")
+  result = bindSym($Name & "_equation_form")
 
-macro getCoefA*(C: static Curve): untyped =
+macro getCoefA*(Name: static Algebra): untyped =
   ## Returns the A coefficient of the curve
   ## The return type is polymorphic, it can be an int
   ## or a bigInt depending on the curve
-  result = bindSym($C & "_coef_A")
+  result = bindSym($Name & "_coef_A")
 
-macro getCoefB*(C: static Curve): untyped =
+macro getCoefB*(Name: static Algebra): untyped =
   ## Returns the B coefficient of the curve
   ## The return type is polymorphic, it can be an int
   ## or a bigInt depending on the curve
-  result = bindSym($C & "_coef_B")
+  result = bindSym($Name & "_coef_B")
 
-macro getCoefD*(C: static Curve): untyped =
+macro getCoefD*(Name: static Algebra): untyped =
   ## Returns the D coefficient of the curve
   ## The return type is polymorphic, it can be an int
   ## or a bigInt depending on the curve
-  result = bindSym($C & "_coef_D")
+  result = bindSym($Name & "_coef_D")
 
-macro getNonResidueFp*(C: static Curve): untyped =
+macro getNonResidueFp*(Name: static Algebra): untyped =
   ## Returns the tower extension (and twist) non-residue for 𝔽p
   ## Depending on the curve it might be:
   ## - not a square (quadratic non-residue to construct Fp2)
   ## - not a cube (cubic non-residue to construct Fp3)
   ## - neither a square or cube (sextic non-residue to construct Fp2, Fp3 or Fp6)
-  result = bindSym($C & "_nonresidue_fp")
+  result = bindSym($Name & "_nonresidue_fp")
 
-macro getNonResidueFp2*(C: static Curve): untyped =
+macro getNonResidueFp2*(Name: static Algebra): untyped =
   ## Returns the tower extension (and twist) non-residue for 𝔽p²
   ## Depending on the curve it might be:
   ## - not a square (quadratic non-residue to construct Fp4)
@@ -85,24 +89,24 @@ macro getNonResidueFp2*(C: static Curve): untyped =
   ## with 𝑗 choosen for 𝑗² - QNR_Fp == 0
   ## i.e. if -1 is chosen as a quadratic non-residue 𝑗 = √-1
   ##      if -2 is chosen as a quadratic non-residue 𝑗 = √-2
-  result = bindSym($C & "_nonresidue_fp2")
+  result = bindSym($Name & "_nonresidue_fp2")
 
-macro getEmbeddingDegree*(C: static Curve): untyped =
+macro getEmbeddingDegree*(Name: static Algebra): untyped =
   ## Returns the prime embedding degree,
   ## i.e. the smallest k such that r|𝑝^𝑘−1
   ## equivalently 𝑝^𝑘 ≡ 1 (mod r)
   ## with r the curve order and p its field modulus
-  result = bindSym($C & "_embedding_degree")
+  result = bindSym($Name & "_embedding_degree")
 
-macro getSexticTwist*(C: static Curve): untyped =
+macro getSexticTwist*(Name: static Algebra): untyped =
   ## Returns if D-Twist or M-Twist
-  result = bindSym($C & "_sexticTwist")
+  result = bindSym($Name & "_sexticTwist")
 
-macro getGT*(C: static Curve): untyped =
+macro getGT*(Name: static Algebra): untyped =
   ## Returns the GT extension field
 
   template gt(embdegree: static int): untyped =
     `Fp embdegree`
 
   result = quote do:
-    `gt`(getEmbeddingDegree(Curve(`C`)))[Curve(`C`)]
+    `gt`(getEmbeddingDegree(Algebra(`Name`)))[Algebra(`Name`)]

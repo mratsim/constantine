@@ -100,7 +100,7 @@ proc testDeserialize(hexString: string, status: CttCodecEccStatus) : bool =
   if check:
 
     # deserialization from bits
-    var point{.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+    var point{.noInit.}: EC_TwEdw_Aff[Fp[Banderwagon]]
     let stat = point.deserialize_vartime(arr)
     return stat == status
 
@@ -120,8 +120,8 @@ suite "Banderwagon Serialization Tests":
   #   proc testSerialize(len: int) =
   #     # First the point is set to generator P
   #     # then with each iteration 2P, 4P, . . . doubling
-  #     var points: seq[ECP_TwEdwards_Aff[Fp[Banderwagon]]]
-  #     var point {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+  #     var points: seq[EC_TwEdw_Aff[Fp[Banderwagon]]]
+  #     var point {.noInit.}: EC_TwEdw_Aff[Fp[Banderwagon]]
   #     point.setGenerator()
 
   #     for i in 0 ..< len:
@@ -149,7 +149,7 @@ suite "Banderwagon Serialization Tests":
   #       discard arr.parseHex(bit_string)
 
   #       # deserialization from expected bits
-  #       var point{.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+  #       var point{.noInit.}: EC_TwEdw_Aff[Fp[Banderwagon]]
   #       let stat = point.deserialize(arr)
 
   #       # Assertion check for the Deserialization Success & correctness
@@ -170,7 +170,7 @@ suite "Banderwagon Serialization Tests":
   #       discard arr.parseHex(bit_string)
 
   #       # deserialization from expected bits
-  #       var point{.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+  #       var point{.noInit.}: EC_TwEdw_Prj[Fp[Banderwagon]]
   #       let stat = point.deserialize_vartime(arr)
 
   #       # Assertion check for the Deserialization Success & correctness
@@ -198,7 +198,7 @@ suite "Banderwagon Serialization Tests":
   test "Serialize a valid point with Y lexicographically highest":
     proc testSerializeWithYLargest() =
       const expected_serialized_point = "0x0e7e3748db7c5c999a7bcd93d71d671f1f40090423792266f94cb27ca43fce5c"
-      var point {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      var point {.noInit.}: EC_TwEdw_Prj[Fp[Banderwagon]]
 
       point.x.fromHex("0x0e7e3748db7c5c999a7bcd93d71d671f1f40090423792266f94cb27ca43fce5c")
       point.y.fromHex("0x563a625521456130dc66f9fd6bda67330c7bb183b7f2223216c1c9536e1c622f")
@@ -261,7 +261,7 @@ suite "Banderwagon Serialization Tests":
   ## Tests for Uncompressed point serialization
   test "Uncompressed Point Serialization":
     proc testUncompressedSerialization() =
-      var point, point_regen {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+      var point, point_regen {.noInit.}: EC_TwEdw_Aff[Fp[Banderwagon]]
       point.setGenerator()
 
       var arr: array[64, byte]
@@ -288,7 +288,7 @@ suite "Banderwagon Points Tests":
   ## and correctness of the subtraction
   test "Test for Addition, Subtraction, Doubling":
     proc testAddSubDouble() =
-      var a, b, gen_point, identity {.noInit.} : ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      var a, b, gen_point, identity {.noInit.} : EC_TwEdw_Prj[Fp[Banderwagon]]
       gen_point.setGenerator()
 
       # Setting the identity Element
@@ -311,18 +311,18 @@ suite "Banderwagon Points Tests":
   ## are equal, where the two torsion point is not the point at infinity
   test "Test Two Torsion Equality":
     proc testTwoTorsion() =
-      var two_torsion: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      var two_torsion: EC_TwEdw_Prj[Fp[Banderwagon]]
 
       # Setting the two torsion point
       two_torsion.x.setZero()
       two_torsion.y.setMinusOne()
       two_torsion.z.setOne()
 
-      var point{.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      var point{.noInit.}: EC_TwEdw_Prj[Fp[Banderwagon]]
       point.setGenerator()
 
       for i in 0 ..< 1000:
-        var point_plus_torsion: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+        var point_plus_torsion: EC_TwEdw_Prj[Fp[Banderwagon]]
         point_plus_torsion.sum(point, two_torsion) # adding generator with two torsion point
 
         doAssert (point == point_plus_torsion).bool(), "points that differ by an order-2 point should be equal"
@@ -351,7 +351,7 @@ suite "Banderwagon Elements Mapping":
   ## is working as expected or not
   test "Testing Map To Base Field":
     proc testMultiMapToBaseField() =
-      var A, B, genPoint {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      var A, B, genPoint {.noInit.}: EC_TwEdw_Prj[Fp[Banderwagon]]
       genPoint.setGenerator()
 
       A.sum(genPoint, genPoint) # A = g+g = 2g
@@ -377,7 +377,7 @@ suite "Banderwagon Elements Mapping":
     proc testMapToField() =
       const expected_field_element = "0x038ae85a1376b72642f6694eb4238e3f1348253498e2bf4daec9e77024ae8b07"
 
-      var point {.noInit.} : ECP_TwEdwards_Aff[Fp[Banderwagon]]
+      var point {.noInit.} : EC_TwEdw_Aff[Fp[Banderwagon]]
       var element: Fr[Banderwagon]
       var arr: array[32, byte]
       discard arr.parseHex("0x524996a95838712c4580220bb3de453d76cffd7f732f89914d4417bc8e99b513")
@@ -403,14 +403,14 @@ suite "Batch Operations on Banderwagon":
   ## we try to achive this
   test "BatchAffine and fromAffine Consistency":
     proc testbatch(n: static int) =
-      var g, temp {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      var g, temp {.noInit.}: EC_TwEdw_Prj[Fp[Banderwagon]]
       g.setGenerator()     # setting the generator point
 
-      var aff{.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+      var aff{.noInit.}: EC_TwEdw_Aff[Fp[Banderwagon]]
       aff.setGenerator()
 
-      var points_prj: array[n, ECP_TwEdwards_Prj[Fp[Banderwagon]]]
-      var points_aff: array[n, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+      var points_prj: array[n, EC_TwEdw_Prj[Fp[Banderwagon]]]
+      var points_aff: array[n, EC_TwEdw_Aff[Fp[Banderwagon]]]
 
       for i in 0 ..< n:
         points_prj[i] = g
@@ -434,7 +434,7 @@ suite "Batch Operations on Banderwagon":
   ## we try to achive this
   test "Testing Batch Map to Base Field":
     proc testBatchMapToBaseField() =
-      var A, B, g: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      var A, B, g: EC_TwEdw_Prj[Fp[Banderwagon]]
       g.setGenerator()
 
       A.sum(g, g)
@@ -447,7 +447,7 @@ suite "Batch Operations on Banderwagon":
 
       var ARes, BRes: Fr[Banderwagon]
       var scalars: array[2, Fr[Banderwagon]] = [ARes, BRes]
-      var fps: array[2, ECP_TwEdwards_Prj[Fp[Banderwagon]]] = [A, B]
+      var fps: array[2, EC_TwEdw_Prj[Fp[Banderwagon]]] = [A, B]
 
       doAssert scalars.batchMapToScalarField(fps), "Batch Map to Scalar Failed"
       doAssert (expected_a == scalars[0]).bool(), "expected scalar for point `A` is incorrect"
@@ -460,8 +460,8 @@ suite "Batch Operations on Banderwagon":
     proc testBatchSerialize(len: static int) =
       # First the point is set to generator P
       # then with each iteration 2P, 4P, . . . doubling
-      var points: array[len, ECP_TwEdwards_Prj[Fp[Banderwagon]]]
-      var point {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      var points: array[len, EC_TwEdw_Prj[Fp[Banderwagon]]]
+      var point {.noInit.}: EC_TwEdw_Prj[Fp[Banderwagon]]
       point.setGenerator()
 
       for i in 0 ..< len:
@@ -482,8 +482,8 @@ suite "Batch Operations on Banderwagon":
   ## Check batch Uncompressed encoding
   test "Batch Uncompressed Point Serialization":
     proc testBatchUncompressedSerialization() =
-      var points: array[10, ECP_TwEdwards_Prj[Fp[Banderwagon]]]
-      var point, point_regen {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      var points: array[10, EC_TwEdw_Prj[Fp[Banderwagon]]]
+      var point, point_regen {.noInit.}: EC_TwEdw_Prj[Fp[Banderwagon]]
       point.setGenerator()
 
       for i in 0 ..< 10:
@@ -495,7 +495,7 @@ suite "Batch Operations on Banderwagon":
       doAssert status == cttCodecEcc_Success, "Uncompressed Serialization Failed"
 
       for i in 0 ..< 10:
-        var p_regen: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+        var p_regen: EC_TwEdw_Aff[Fp[Banderwagon]]
         let status2 = p_regen.deserializeUncompressed(arr[i])
         point_regen.fromAffine(p_regen)
         doAssert status2 == cttCodecEcc_Success, "Uncompressed Deserialization Failed"

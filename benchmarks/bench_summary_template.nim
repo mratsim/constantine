@@ -58,7 +58,7 @@ macro fixEllipticDisplay(T: typedesc): untyped =
   let instantiated = T.getTypeInst()
   var name = $instantiated[1][0] # EllipticEquationFormCoordinates
   let fieldName = $instantiated[1][1][0]
-  let curveName = $Curve(instantiated[1][1][1].intVal)
+  let curveName = $Algebra(instantiated[1][1][1].intVal)
   name.add "[" & fieldName & "[" & curveName & "]]"
   result = newLit name
 
@@ -67,18 +67,18 @@ macro fixFieldDisplay(T: typedesc): untyped =
   # we get the Curve ID instead of the curve name.
   let instantiated = T.getTypeInst()
   var name = $instantiated[1][0] # Fp
-  name.add "[" & $Curve(instantiated[1][1].intVal) & "]"
+  name.add "[" & $Algebra(instantiated[1][1].intVal) & "]"
   result = newLit name
 
 func fixDisplay(T: typedesc): string =
-  when T is (ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff):
+  when T is (EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_Aff):
     fixEllipticDisplay(T)
   elif T is (Fp or Fp2 or Fp4 or Fp6 or Fp12):
     fixFieldDisplay(T)
   else:
     $T
 
-func fixDisplay(T: Curve): string =
+func fixDisplay(T: Algebra): string =
   $T
 
 template bench(op: string, T: typed, iters: int, body: untyped): untyped =
@@ -86,9 +86,9 @@ template bench(op: string, T: typed, iters: int, body: untyped): untyped =
   report(op, fixDisplay(T), startTime, stopTime, startClk, stopClk, iters)
 
 func clearCofactorReference[F; G: static Subgroup](
-       ec: var ECP_ShortW_Aff[F, G]) =
+       ec: var EC_ShortW_Aff[F, G]) =
   # For now we don't have any affine operation defined
-  var t {.noInit.}: ECP_ShortW_Prj[F, G]
+  var t {.noInit.}: EC_ShortW_Prj[F, G]
   t.fromAffine(ec)
   t.clearCofactorReference()
   ec.affine(t)
@@ -142,14 +142,14 @@ proc mixedAddBench*(T: typedesc, iters: int) =
   var r {.noInit.}: T
   let P = rng.random_unsafe(T)
   let Q = rng.random_unsafe(T)
-  var Qaff: ECP_ShortW_Aff[T.F, T.G]
+  var Qaff: EC_ShortW_Aff[T.F, T.G]
   Qaff.affine(Q)
   block:
     bench("EC Mixed Addition " & G1_or_G2, T, iters):
-      r.madd(P, Qaff)
+      r.mixedSum(P, Qaff)
   block:
     bench("EC Mixed Addition vartime " & G1_or_G2, T, iters):
-      r.madd_vartime(P, Qaff)
+      r.mixedSum_vartime(P, Qaff)
 
 proc doublingBench*(T: typedesc, iters: int) =
   const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
@@ -159,7 +159,7 @@ proc doublingBench*(T: typedesc, iters: int) =
     r.double(P)
 
 proc scalarMulBench*(T: typedesc, iters: int) =
-  const bits = T.F.C.getCurveOrderBitwidth()
+  const bits = T.getScalarField().bits()
   const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
 
   var r {.noInit.}: T
@@ -175,52 +175,52 @@ proc scalarMulBench*(T: typedesc, iters: int) =
       r = P
       r.scalarMul_vartime(exponent)
 
-proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
+proc millerLoopBLS12Bench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
+    P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(EC_ShortW_Aff[Fp2[Name], G2])
 
-  var f: Fp12[C]
-  bench("Miller Loop BLS12", C, iters):
+  var f: Fp12[Name]
+  bench("Miller Loop BLS12", Name, iters):
     f.millerLoopGenericBLS12(Q, P)
 
-proc millerLoopBNBench*(C: static Curve, iters: int) =
+proc millerLoopBNBench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
+    P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(EC_ShortW_Aff[Fp2[Name], G2])
 
-  var f: Fp12[C]
-  bench("Miller Loop BN", C, iters):
+  var f: Fp12[Name]
+  bench("Miller Loop BN", Name, iters):
     f.millerLoopGenericBN(Q, P)
 
-proc finalExpBLS12Bench*(C: static Curve, iters: int) =
-  var r = rng.random_unsafe(Fp12[C])
-  bench("Final Exponentiation BLS12", C, iters):
+proc finalExpBLS12Bench*(Name: static Algebra, iters: int) =
+  var r = rng.random_unsafe(Fp12[Name])
+  bench("Final Exponentiation BLS12", Name, iters):
     r.finalExpEasy()
     r.finalExpHard_BLS12()
 
-proc finalExpBNBench*(C: static Curve, iters: int) =
-  var r = rng.random_unsafe(Fp12[C])
-  bench("Final Exponentiation BN", C, iters):
+proc finalExpBNBench*(Name: static Algebra, iters: int) =
+  var r = rng.random_unsafe(Fp12[Name])
+  bench("Final Exponentiation BN", Name, iters):
     r.finalExpEasy()
     r.finalExpHard_BN()
 
-proc pairingBLS12Bench*(C: static Curve, iters: int) =
+proc pairingBLS12Bench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
+    P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(EC_ShortW_Aff[Fp2[Name], G2])
 
-  var f: Fp12[C]
-  bench("Pairing BLS12", C, iters):
+  var f: Fp12[Name]
+  bench("Pairing BLS12", Name, iters):
     f.pairing_bls12(P, Q)
 
-proc pairingBNBench*(C: static Curve, iters: int) =
+proc pairingBNBench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
+    P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(EC_ShortW_Aff[Fp2[Name], G2])
 
-  var f: Fp12[C]
-  bench("Pairing BN", C, iters):
+  var f: Fp12[Name]
+  bench("Pairing BN", Name, iters):
     f.pairing_bn(P, Q)
 
 proc hashToCurveBLS12381G1Bench*(iters: int) =
@@ -229,7 +229,7 @@ proc hashToCurveBLS12381G1Bench*(iters: int) =
   # 'CryptoHash' resolution issue
   const dst = "BLS_SIG_BLS12381G1-SHA256-SSWU-RO_POP_"
   let msg = "Mr F was here"
-  var P: ECP_ShortW_Prj[Fp[BLS12_381], G1]
+  var P: EC_ShortW_Prj[Fp[BLS12_381], G1]
 
   bench("Hash to G1 (SSWU - Draft #14)", BLS12_381, iters):
     sha256.hashToCurve(
@@ -246,7 +246,7 @@ proc hashToCurveBLS12381G2Bench*(iters: int) =
   # 'CryptoHash' resolution issue
   const dst = "BLS_SIG_BLS12381G2-SHA256-SSWU-RO_POP_"
   let msg = "Mr F was here"
-  var P: ECP_ShortW_Prj[Fp2[BLS12_381], G2]
+  var P: EC_ShortW_Prj[Fp2[BLS12_381], G2]
 
   bench("Hash to G2 (SSWU - Draft #14)", BLS12_381, iters):
     sha256.hashToCurve(
@@ -263,7 +263,7 @@ proc hashToCurveBN254SnarksG1Bench*(iters: int) =
   # 'CryptoHash' resolution issue
   const dst = "BLS_SIG_BN254SNARKSG1-SHA256-SVDW-RO_POP_"
   let msg = "Mr F was here"
-  var P: ECP_ShortW_Prj[Fp[BN254_Snarks], G1]
+  var P: EC_ShortW_Prj[Fp[BN254_Snarks], G1]
 
   bench("Hash to G1 (SVDW - Draft #14)", BN254_Snarks, iters):
     sha256.hashToCurve(
@@ -280,7 +280,7 @@ proc hashToCurveBN254SnarksG2Bench*(iters: int) =
   # 'CryptoHash' resolution issue
   const dst = "BLS_SIG_BN254SNARKSG2-SHA256-SVDW-RO_POP_"
   let msg = "Mr F was here"
-  var P: ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]
+  var P: EC_ShortW_Prj[Fp2[BN254_Snarks], G2]
 
   bench("Hash to G2 (SVDW - Draft #14)", BN254_Snarks, iters):
     sha256.hashToCurve(

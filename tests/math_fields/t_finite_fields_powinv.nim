@@ -158,10 +158,10 @@ proc main() =
           computed == expected
 
   suite "Modular division by 2":
-    proc testRandomDiv2(curve: static Curve) =
-      test "Random modular div2 testing on " & $Curve(curve):
+    proc testRandomDiv2(name: static Algebra) =
+      test "Random modular div2 testing on " & $Algebra(name):
         for _ in 0 ..< Iters:
-          let a = rng.random_unsafe(Fp[curve])
+          let a = rng.random_unsafe(Fp[name])
           var a2 = a
           a2.double()
           a2.div2()
@@ -171,7 +171,7 @@ proc main() =
           check: bool(a == a2)
 
         for _ in 0 ..< Iters:
-          let a = rng.randomHighHammingWeight(Fp[curve])
+          let a = rng.randomHighHammingWeight(Fp[name])
           var a2 = a
           a2.double()
           a2.div2()
@@ -181,7 +181,7 @@ proc main() =
           check: bool(a == a2)
 
         for _ in 0 ..< Iters:
-          let a = rng.random_long01Seq(Fp[curve])
+          let a = rng.random_long01Seq(Fp[name])
           var a2 = a
           a2.double()
           a2.div2()
@@ -272,12 +272,12 @@ proc main() =
         r2.inv_vartime(x)
         check: bool(r2 == expected)
 
-    proc testRandomInv(curve: static Curve) =
-      test "Random inversion testing on " & $Curve(curve):
-        var aInv, r: Fp[curve]
+    proc testRandomInv(name: static Algebra) =
+      test "Random inversion testing on " & $Algebra(name):
+        var aInv, r: Fp[name]
 
         for _ in 0 ..< Iters:
-          let a = rng.random_unsafe(Fp[curve])
+          let a = rng.random_unsafe(Fp[name])
           aInv.inv(a)
           r.prod(a, aInv)
           check: bool r.isOne() or (a.isZero() and r.isZero())
@@ -291,7 +291,7 @@ proc main() =
           check: bool r.isOne() or (a.isZero() and r.isZero())
 
         for _ in 0 ..< Iters:
-          let a = rng.randomHighHammingWeight(Fp[curve])
+          let a = rng.randomHighHammingWeight(Fp[name])
           aInv.inv(a)
           r.prod(a, aInv)
           check: bool r.isOne() or (a.isZero() and r.isZero())
@@ -304,7 +304,7 @@ proc main() =
           r.prod(aInv, a)
           check: bool r.isOne() or (a.isZero() and r.isZero())
         for _ in 0 ..< Iters:
-          let a = rng.random_long01Seq(Fp[curve])
+          let a = rng.random_long01Seq(Fp[name])
           aInv.inv(a)
           r.prod(a, aInv)
           check: bool r.isOne() or (a.isZero() and r.isZero())
@@ -331,14 +331,14 @@ proc main() =
 
   suite "Batch inversion over prime fields" & " [" & $WordBitWidth & "-bit words]":
 
-    proc testRandomBatchInv(curve: static Curve) =
+    proc testRandomBatchInv(name: static Algebra) =
       const N = 10
 
-      var a: array[N, Fp[curve]]
+      var a: array[N, Fp[name]]
       rng.random_unsafe(a)
 
-      test "Batch inversion: " & alignLeft("random testing", 22) & $Curve(curve):
-        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[curve]]
+      test "Batch inversion: " & alignLeft("random testing", 22) & $Algebra(name):
+        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[name]]
         r1.batchInv(a)
         r2.batchInv_vartime(a)
         for i in 0 ..< N:
@@ -346,8 +346,8 @@ proc main() =
           doAssert bool(r[i] == r1[i])
           doAssert bool(r[i] == r2[i])
 
-      test "Batch inversion: " & alignLeft("zero value in middle", 22) & $Curve(curve):
-        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[curve]]
+      test "Batch inversion: " & alignLeft("zero value in middle", 22) & $Algebra(name):
+        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[name]]
         var b = a
         b[N div 2].setZero()
         r1.batchInv(b)
@@ -357,8 +357,8 @@ proc main() =
           doAssert bool(r[i] == r1[i])
           doAssert bool(r[i] == r2[i])
 
-      test "Batch inversion: " & alignLeft("zero value at start", 22) & $Curve(curve):
-        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[curve]]
+      test "Batch inversion: " & alignLeft("zero value at start", 22) & $Algebra(name):
+        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[name]]
         var b = a
         b[0].setZero()
         r1.batchInv(b)
@@ -368,8 +368,8 @@ proc main() =
           doAssert bool(r[i] == r1[i])
           doAssert bool(r[i] == r2[i])
 
-      test "Batch inversion: " & alignLeft("zero value at end", 22) & $Curve(curve):
-        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[curve]]
+      test "Batch inversion: " & alignLeft("zero value at end", 22) & $Algebra(name):
+        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[name]]
         var b = a
         b[N-1].setZero()
         r1.batchInv(b)
@@ -379,8 +379,8 @@ proc main() =
           doAssert bool(r[i] == r1[i])
           doAssert bool(r[i] == r2[i])
 
-      test "Batch inversion: " & alignLeft("multiple zero values", 22) & $Curve(curve):
-        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[curve]]
+      test "Batch inversion: " & alignLeft("multiple zero values", 22) & $Algebra(name):
+        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[name]]
         var b = a
         block:
           static: doAssert N < sizeof(rng.next()) * 8, "There are only " & $sizeof(rng.next() * 8) & " bits produced."
@@ -431,7 +431,7 @@ proc main_anti_regression =
       a.fromHex"0x184d02ce4f24d5e59b4150a57a31b202fd40a4b41d7518c22b84bee475fbcb7763100448ef6b17a6ea603cf062e5db51"
 
 
-      var pm3div4 = BLS12_381.Mod
+      var pm3div4 = Fp[BLS12_381].getModulus()
       discard pm3div4.sub SecretWord(3)
       pm3div4.shiftRight(2)
 
@@ -454,7 +454,7 @@ proc main_anti_regression =
       a.fromHex"0x0f16d7854229d8804bcadd889f70411d6a482bde840d238033bf868e89558d39d52f9df60b2d745e02584375f16c34a3"
 
 
-      var pm3div4 = BLS12_381.Mod
+      var pm3div4 = Fp[BLS12_381].getModulus()
       discard pm3div4.sub SecretWord(3)
       pm3div4.shiftRight(2)
 

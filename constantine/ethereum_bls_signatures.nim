@@ -73,7 +73,6 @@ import
 
 export
   abstractions, # generic sandwich on SecretBool and SecretBool in Jacobian sumImpl
-  algebras, # generic sandwich on matchingBigInt
   extension_fields, # generic sandwich on extension field access
   ec_shortweierstrass, # generic sandwich on affine
 
@@ -90,15 +89,15 @@ const DomainSeparationTag = asBytes"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_"
 type
   SecretKey* {.byref, exportc: prefix_ffi & "seckey".} = object
     ## A BLS12_381 secret key
-    raw: matchingOrderBigInt(BLS12_381)
+    raw: Fr[BLS12_381].getBigInt()
 
   PublicKey* {.byref, exportc: prefix_ffi & "pubkey".} = object
     ## A BLS12_381 public key for BLS signature schemes with public keys on G1 and signatures on G2
-    raw: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+    raw: EC_ShortW_Aff[Fp[BLS12_381], G1]
 
   Signature* {.byref, exportc: prefix_ffi & "signature".} = object
     ## A BLS12_381 signature for BLS signature schemes with public keys on G1 and signatures on G2
-    raw: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+    raw: EC_ShortW_Aff[Fp2[BLS12_381], G2]
 
   cttEthBlsStatus* = enum
     cttEthBls_Success
@@ -108,7 +107,7 @@ type
     cttEthBls_PointAtInfinity
 
   BatchSigAccumulator* {.byref, exportc: prefix_ffi & "batch_sig_accumulator".} = object
-    raw: BLSBatchSigAccumulator[Sha256Context, Fp[BLS12_381], Fp2[BLS12_381], Fp12[BLS12_381], ECP_ShortW_Jac[Fp2[BLS12_381], G2], 128]
+    raw: BLSBatchSigAccumulator[Sha256Context, Fp[BLS12_381], Fp2[BLS12_381], Fp12[BLS12_381], EC_ShortW_Jac[Fp2[BLS12_381], G2], 128]
 
 # Comparisons
 # ------------------------------------------------------------------------------------------------

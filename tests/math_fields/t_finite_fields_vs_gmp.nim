@@ -47,24 +47,24 @@ const # https://gmplib.org/manual/Integer-Import-and-Export.html
 #
 # Factor common things in proc to avoid generating 100k+ lines of C code
 
-proc binary_prologue[C: static Curve, N: static int](
+proc binary_prologue[Name: static Algebra, N: static int](
         rng: var RngState,
         a, b, p: var mpz_t,
-        aTest, bTest: var Fp[C],
+        aTest, bTest: var Fp[Name],
         aBuf, bBuf: var array[N, byte]) =
 
   # Build the field elements
-  aTest = rng.random_unsafe(Fp[C])
-  bTest = rng.random_unsafe(Fp[C])
+  aTest = rng.random_unsafe(Fp[Name])
+  bTest = rng.random_unsafe(Fp[Name])
 
   # Set modulus to curve modulus
-  let err = mpz_set_str(p, Curve(C).Mod.toHex(), 0)
-  doAssert err == 0, "Error on prime for curve " & $Curve(C)
+  let err = mpz_set_str(p, Algebra(C).Mod.toHex(), 0)
+  doAssert err == 0, "Error on prime for curve " & $Algebra(C)
 
   #########################################################
   # Conversion to GMP
-  const aLen = C.getCurveBitwidth().ceilDiv_vartime(8)
-  const bLen = C.getCurveBitwidth().ceilDiv_vartime(8)
+  const aLen = Name.getCurveBitwidth().ceilDiv_vartime(8)
+  const bLen = Name.getCurveBitwidth().ceilDiv_vartime(8)
 
   var aBuf: array[aLen, byte]
   var bBuf: array[bLen, byte]
@@ -75,9 +75,9 @@ proc binary_prologue[C: static Curve, N: static int](
   mpz_import(a, aLen, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, aBuf[0].addr)
   mpz_import(b, bLen, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, bBuf[0].addr)
 
-proc binary_epilogue[C: static Curve, N: static int](
+proc binary_epilogue[Name: static Algebra, N: static int](
         r, a, b: mpz_t,
-        rTest: Fp[C],
+        rTest: Fp[Name],
         aBuf, bBuf: array[N, byte],
         operation: string
       ) =
@@ -100,7 +100,7 @@ proc binary_epilogue[C: static Curve, N: static int](
     # Reexport as bigEndian for debugging
     discard mpz_export(aBuf[0].unsafeAddr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
     discard mpz_export(bBuf[0].unsafeAddr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
-    "\nModular " & operation & " on curve " & $C & " with operands\n" &
+    "\nModular " & operation & " on curve " & $Name & " with operands\n" &
     "  a:   " & aBuf.toHex & "\n" &
     "  b:   " & bBuf.toHex & "\n" &
     "failed:" & "\n" &
@@ -114,21 +114,21 @@ proc binary_epilogue[C: static Curve, N: static int](
 #
 # ############################################################
 
-proc addTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
-  # echo "Testing: random modular addition on ", $C
+proc addTests(rng: var RngState, a, b, p, r: var mpz_t, Name: static Algebra) =
+  # echo "Testing: random modular addition on ", $Name
 
   const
-    bits = C.getCurveBitwidth()
+    bits = Name.getCurveBitwidth()
     bufLen = bits.ceilDiv_vartime(8)
   var
-    aTest, bTest{.noInit.}: Fp[C]
+    aTest, bTest{.noInit.}: Fp[Name]
     aBuf, bBuf: array[bufLen, byte]
   binary_prologue(rng, a, b, p, aTest, bTest, aBuf, bBuf)
 
   mpz_add(r, a, b)
   mpz_mod(r, r, p)
 
-  var rTest {.noInit.}: Fp[C]
+  var rTest {.noInit.}: Fp[Name]
   rTest.sum(aTest, bTest)
 
   var r2Test = aTest
@@ -137,21 +137,21 @@ proc addTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
   binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Addition (with result)")
   binary_epilogue(r, a, b, r2Test, aBuf, bBuf, "Addition (in-place)")
 
-proc subTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
-  # echo "Testing: random modular substraction on ", $C
+proc subTests(rng: var RngState, a, b, p, r: var mpz_t, Name: static Algebra) =
+  # echo "Testing: random modular substraction on ", $Name
 
   const
-    bits = C.getCurveBitwidth()
+    bits = Name.getCurveBitwidth()
     bufLen = bits.ceilDiv_vartime(8)
   var
-    aTest, bTest{.noInit.}: Fp[C]
+    aTest, bTest{.noInit.}: Fp[Name]
     aBuf, bBuf: array[bufLen, byte]
   binary_prologue(rng, a, b, p, aTest, bTest, aBuf, bBuf)
 
   mpz_sub(r, a, b)
   mpz_mod(r, r, p)
 
-  var rTest {.noInit.}: Fp[C]
+  var rTest {.noInit.}: Fp[Name]
   rTest.diff(aTest, bTest)
 
   var r2Test = aTest
@@ -165,21 +165,21 @@ proc subTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
   binary_epilogue(r, a, b, r2Test, aBuf, bBuf, "Substraction (in-place)")
   binary_epilogue(r, a, b, r3Test, aBuf, bBuf, "Substraction (result aliasing)")
 
-proc mulTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
-  # echo "Testing: random modular multiplication on ", $C
+proc mulTests(rng: var RngState, a, b, p, r: var mpz_t, Name: static Algebra) =
+  # echo "Testing: random modular multiplication on ", $Name
 
   const
-    bits = C.getCurveBitwidth()
+    bits = Name.getCurveBitwidth()
     bufLen = bits.ceilDiv_vartime(8)
   var
-    aTest, bTest{.noInit.}: Fp[C]
+    aTest, bTest{.noInit.}: Fp[Name]
     aBuf, bBuf: array[bufLen, byte]
   binary_prologue(rng, a, b, p, aTest, bTest, aBuf, bBuf)
 
   mpz_mul(r, a, b)
   mpz_mod(r, r, p)
 
-  var rTest {.noInit.}: Fp[C]
+  var rTest {.noInit.}: Fp[Name]
   rTest.prod(aTest, bTest)
 
   var r2Test = aTest
@@ -188,22 +188,22 @@ proc mulTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
   binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Multiplication (with result)")
   binary_epilogue(r, a, b, r2Test, aBuf, bBuf, "Multiplication (in-place)")
 
-proc invTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
+proc invTests(rng: var RngState, a, b, p, r: var mpz_t, Name: static Algebra) =
   # We use the binary prologue epilogue but the "b" parameter is actual unused
-  # echo "Testing: random modular inversion on ", $C
+  # echo "Testing: random modular inversion on ", $Name
 
   const
-    bits = C.getCurveBitwidth()
+    bits = Name.getCurveBitwidth()
     bufLen = bits.ceilDiv_vartime(8)
   var
-    aTest, bTest{.noInit.}: Fp[C]
+    aTest, bTest{.noInit.}: Fp[Name]
     aBuf, bBuf: array[bufLen, byte]
   binary_prologue(rng, a, b, p, aTest, bTest, aBuf, bBuf)
 
   let exist = mpz_invert(r, a, p)
   doAssert exist != 0
 
-  var rTest {.noInit.}: Fp[C]
+  var rTest {.noInit.}: Fp[Name]
   rTest.inv(aTest)
 
   binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Inversion (b is unused)")
@@ -224,7 +224,7 @@ macro randomTests(numTests: static int, curveSym, body: untyped): untyped =
 
     result.add quote do:
       block:
-        const `curveSym` = Curve(`curve`)
+        const `curveSym` = Algebra(`curve`)
         block:
           `body`
 

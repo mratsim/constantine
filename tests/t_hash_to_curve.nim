@@ -31,7 +31,7 @@ type
   MapDesc = object
     name: string
 
-  HashToCurveTest[EC: ECP_ShortW_Aff] = object
+  HashToCurveTest[EC: EC_ShortW_Aff] = object
     L: string
     Z: string
     ciphersuite: string
@@ -45,7 +45,7 @@ type
     randomOracle: bool
     vectors: seq[TestVector[EC]]
 
-  TestVector*[EC: ECP_ShortW_Aff] = object
+  TestVector*[EC: EC_ShortW_Aff] = object
     P: EC
     Q0, Q1: EC
     msg: string
@@ -65,21 +65,21 @@ const
   TestVectorsDir* =
     currentSourcePath.rsplit(DirSep, 1)[0] / "protocol_hash_to_curve"
 
-proc parseHook*(src: string, pos: var int, value: var ECP_ShortW_Aff) =
+proc parseHook*(src: string, pos: var int, value: var EC_ShortW_Aff) =
   # Note when nim-serialization was used:
-  #   When ECP_ShortW_Aff[Fp[Foo], G1]
-  #   and ECP_ShortW_Aff[Fp[Foo], G2]
+  #   When EC_ShortW_Aff[Fp[Foo], G1]
+  #   and EC_ShortW_Aff[Fp[Foo], G2]
   #   are generated in the same file (i.e. twists and base curve are both on Fp)
   #   this creates bad codegen, in the C code, the `value`parameter gets the wrong type
   #   TODO: upstream
-  when ECP_ShortW_Aff.F is Fp:
+  when EC_ShortW_Aff.F is Fp:
     var P: EC_G1_hex
     parseHook(src, pos, P)
     let ok = value.fromHex(P.x, P.y)
     doAssert ok, "\nDeserialization error on G1 for\n" &
       "  P.x: " & P.x & "\n" &
       "  P.y: " & P.x & "\n"
-  elif ECP_ShortW_Aff.F is Fp2:
+  elif EC_ShortW_Aff.F is Fp2:
     var P: EC_G2_hex
     parseHook(src, pos, P)
     let Px = P.x.split(',')
@@ -111,9 +111,9 @@ proc run_hash_to_curve_test(
     const G1_or_G2 = "G1"
   else:
     const G1_or_G2 = "G2"
-  let vec = loadVectors(HashToCurveTest[ECP_ShortW_Aff[EC.F, EC.G]], filename)
+  let vec = loadVectors(HashToCurveTest[EC_ShortW_Aff[EC.F, EC.G]], filename)
 
-  let testSuiteDesc = "Hash to Curve " & $EC.F.C & " " & G1_or_G2 & " - official specs " & spec_version & " test vectors"
+  let testSuiteDesc = "Hash to Curve " & $EC.F.Name & " " & G1_or_G2 & " - official specs " & spec_version & " test vectors"
 
   suite testSuiteDesc & " [" & $WordBitWidth & "-bit words]":
 
@@ -146,9 +146,9 @@ proc run_hash_to_curve_svdw_test(
     const G1_or_G2 = "G1"
   else:
     const G1_or_G2 = "G2"
-  let vec = loadVectors(HashToCurveTest[ECP_ShortW_Aff[EC.F, EC.G]], filename)
+  let vec = loadVectors(HashToCurveTest[EC_ShortW_Aff[EC.F, EC.G]], filename)
 
-  let testSuiteDesc = "Hash to Curve " & $EC.F.C & " " & G1_or_G2 & " - official specs " & spec_version & " test vectors"
+  let testSuiteDesc = "Hash to Curve " & $EC.F.Name & " " & G1_or_G2 & " - official specs " & spec_version & " test vectors"
 
   suite testSuiteDesc & " [" & $WordBitWidth & "-bit words]":
 
@@ -177,13 +177,13 @@ echo "Hash-to-curve" & '\n'
 # Hash-to-curve v8 to latest
 # https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/draft-irtf-cfrg-hash-to-curve-10/poc/vectors/BLS12381G2_XMD:SHA-256_SSWU_RO_.json
 run_hash_to_curve_test(
-  ECP_ShortW_Prj[Fp[BLS12_381], G1],
+  EC_ShortW_Prj[Fp[BLS12_381], G1],
   "v8",
   "tv_h2c_v8_BLS12_381_hash_to_G1_SHA256_SSWU_RO.json"
 )
 
 run_hash_to_curve_test(
-  ECP_ShortW_Prj[Fp2[BLS12_381], G2],
+  EC_ShortW_Prj[Fp2[BLS12_381], G2],
   "v8",
   "tv_h2c_v8_BLS12_381_hash_to_G2_SHA256_SSWU_RO.json"
 )
@@ -191,26 +191,26 @@ run_hash_to_curve_test(
 # Hash-to-curve v7 (different domain separation tag)
 # https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/draft-irtf-cfrg-hash-to-curve-07/poc/vectors/BLS12381G2_XMD:SHA-256_SSWU_RO_.json
 run_hash_to_curve_test(
-  ECP_ShortW_Prj[Fp[BLS12_381], G1],
+  EC_ShortW_Prj[Fp[BLS12_381], G1],
   "v7",
   "tv_h2c_v7_BLS12_381_hash_to_G1_SHA256_SSWU_RO.json"
 )
 
 run_hash_to_curve_test(
-  ECP_ShortW_Prj[Fp2[BLS12_381], G2],
+  EC_ShortW_Prj[Fp2[BLS12_381], G2],
   "v7",
   "tv_h2c_v7_BLS12_381_hash_to_G2_SHA256_SSWU_RO.json"
 )
 
 # With the slower universal SVDW mapping instead of SSWU
 run_hash_to_curve_svdw_test(
-  ECP_ShortW_Jac[Fp[BLS12_381], G1],
+  EC_ShortW_Jac[Fp[BLS12_381], G1],
   "v7 (SVDW)",
   "tv_h2c_v7_BLS12_381_hash_to_G1_SHA256_SVDW_RO.json"
 )
 
 run_hash_to_curve_svdw_test(
-  ECP_ShortW_Jac[Fp2[BLS12_381], G2],
+  EC_ShortW_Jac[Fp2[BLS12_381], G2],
   "v7 (SVDW)",
   "tv_h2c_v7_BLS12_381_hash_to_G2_SHA256_SVDW_RO.json"
 )

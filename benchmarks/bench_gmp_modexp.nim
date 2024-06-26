@@ -18,7 +18,6 @@ const # https://gmplib.org/manual/Integer-Import-and-Export.html
   GMP_MostSignificantWordFirst = 1'i32
   GMP_LeastSignificantWordFirst = -1'i32
 
-# let M = Mod(BN254_Snarks)
 const bits = 256
 const expBits = bits # Stint only supports same size args
 

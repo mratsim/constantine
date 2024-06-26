@@ -13,7 +13,7 @@ import
 
 runPairingTests(
   4, BW6_761,
-  G1 = ECP_ShortW_Prj[Fp[BW6_761], G1],
-  G2 = ECP_ShortW_Prj[Fp[BW6_761], G2],
+  G1 = EC_ShortW_Prj[Fp[BW6_761], G1],
+  G2 = EC_ShortW_Prj[Fp[BW6_761], G2],
   GT = Fp6[BW6_761],
   pairing_bw6_761_reference)

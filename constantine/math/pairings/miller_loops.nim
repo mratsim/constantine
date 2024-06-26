@@ -41,9 +41,9 @@ func recodeNafForPairing(ate: BigInt): seq[int8] {.compileTime.} =
 
 func basicMillerLoop*[FT, F1, F2](
        f: var FT,
-       T: var ECP_ShortW_Prj[F2, G2],
-       P: ECP_ShortW_Aff[F1, G1],
-       Q: ECP_ShortW_Aff[F2, G2],
+       T: var EC_ShortW_Prj[F2, G2],
+       P: EC_ShortW_Aff[F1, G1],
+       Q: EC_ShortW_Aff[F2, G2],
        ate_param: static BigInt) {.meter.} =
   ## Basic Miller loop iterations
   ##
@@ -54,12 +54,12 @@ func basicMillerLoop*[FT, F1, F2](
   ## in the general case.
   ## If further processing is required, `ate_param_isNeg` must be taken into account by the caller.
   static:
-    doAssert FT.C == F1.C
-    doAssert FT.C == F2.C
+    doAssert FT.Name == F1.Name
+    doAssert FT.Name == F2.Name
 
   const naf = ate_param.recodeNafForPairing()
   var line0 {.noInit.}, line1 {.noInit.}: Line[F2]
-  var nQ {.noInit.}: ECP_ShortW_Aff[F2, G2]
+  var nQ {.noInit.}: EC_ShortW_Aff[F2, G2]
   f.setOne()
   nQ.neg(Q)
 
@@ -91,16 +91,16 @@ func basicMillerLoop*[FT, F1, F2](
 
 func millerCorrectionBN*[FT, F1, F2](
        f: var FT,
-       T: var ECP_ShortW_Prj[F2, G2],
-       Q: ECP_ShortW_Aff[F2, G2],
-       P: ECP_ShortW_Aff[F1, G1]) {.meter.} =
+       T: var EC_ShortW_Prj[F2, G2],
+       Q: EC_ShortW_Aff[F2, G2],
+       P: EC_ShortW_Aff[F1, G1]) {.meter.} =
   ## Ate pairing for BN curves need adjustment after basic Miller loop
   ## If `ate_param_isNeg` f must be cyclotomic inverted/conjugated
   ## and T must be negated by the caller.
   static:
-    doAssert FT.C == F1.C
-    doAssert FT.C == F2.C
-    doAssert FT.C.family() == BarretoNaehrig
+    doAssert FT.Name == F1.Name
+    doAssert FT.Name == F2.Name
+    doAssert FT.Name.family() == BarretoNaehrig
 
   var V {.noInit.}: typeof(Q)
   var line1 {.noInit.}, line2 {.noInit.}: Line[F2]
@@ -121,7 +121,7 @@ func millerCorrectionBN*[FT, F1, F2](
 # ############################################################
 #
 # - Software Implementation, Algorithm 11.2 & 11.3
-#   Aranha, Dominguez Perez, A. Mrabet, Schwabe,
+#   Aranha, Dominguez Perez, Mrabet, Schwabe,
 #   Guide to Pairing-Based Cryptography, 2015
 #
 # - Physical Attacks,
@@ -144,9 +144,9 @@ func millerCorrectionBN*[FT, F1, F2](
 
 func miller_init_double_then_add*[FT, F1, F2](
        f: var FT,
-       T: var ECP_ShortW_Prj[F2, G2],
-       Q: ECP_ShortW_Aff[F2, G2],
-       P: ECP_ShortW_Aff[F1, G1],
+       T: var EC_ShortW_Prj[F2, G2],
+       Q: EC_ShortW_Aff[F2, G2],
+       P: EC_ShortW_Aff[F1, G1],
        numDoublings: static int) {.meter.} =
   ## Start a Miller Loop with
   ## - `numDoubling` doublings
@@ -183,9 +183,9 @@ func miller_init_double_then_add*[FT, F1, F2](
 
 func miller_accum_double_then_add*[FT, F1, F2](
        f: var FT,
-       T: var ECP_ShortW_Prj[F2, G2],
-       Q: ECP_ShortW_Aff[F2, G2],
-       P: ECP_ShortW_Aff[F1, G1],
+       T: var EC_ShortW_Prj[F2, G2],
+       Q: EC_ShortW_Aff[F2, G2],
+       P: EC_ShortW_Aff[F1, G1],
        numDoublings: int, add = true) {.meter.} =
   ## Continue a Miller Loop with
   ## - `numDoubling` doublings
@@ -223,8 +223,8 @@ func double_jToN[FT, F1, F2](
        f: var FT,
        j: static int,
        lineOddRemainder: var Line[F2],
-       Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
-       Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
+       Ts: ptr UncheckedArray[EC_ShortW_Prj[F2, G2]],
+       Ps: ptr UncheckedArray[EC_ShortW_Aff[F1, G1]],
        N: int) =
   ## Doubling steps for pairings j to N
   ## if N is odd, lineOddRemainder must be applied to `f`
@@ -243,9 +243,9 @@ func add_jToN[FT, F1, F2](
        f: var FT,
        j: static int,
        lineOddRemainder: var Line[F2],
-       Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
-       Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
-       Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
+       Ts: ptr UncheckedArray[EC_ShortW_Prj[F2, G2]],
+       Qs: ptr UncheckedArray[EC_ShortW_Aff[F2, G2]],
+       Ps: ptr UncheckedArray[EC_ShortW_Aff[F1, G1]],
        N: int)=
   ## Addition steps for pairings 0 to N
 
@@ -263,13 +263,13 @@ func add_jToN_negateQ[FT, F1, F2](
        f: var FT,
        j: static int,
        lineOddRemainder: var Line[F2],
-       Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
-       Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
-       Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
+       Ts: ptr UncheckedArray[EC_ShortW_Prj[F2, G2]],
+       Qs: ptr UncheckedArray[EC_ShortW_Aff[F2, G2]],
+       Ps: ptr UncheckedArray[EC_ShortW_Aff[F1, G1]],
        N: int)=
   ## Addition steps for pairings 0 to N
 
-  var nQ{.noInit.}: ECP_ShortW_Aff[F2, G2]
+  var nQ{.noInit.}: EC_ShortW_Aff[F2, G2]
   var line0{.noInit.}, line1{.noInit.}: Line[F2]
   # Sparse merge 2 by 2, starting from 0
   for i in countup(j, N-2, 2):
@@ -285,9 +285,9 @@ func add_jToN_negateQ[FT, F1, F2](
 
 func basicMillerLoop*[FT, F1, F2](
        f: var FT,
-       Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
-       Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
-       Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
+       Ts: ptr UncheckedArray[EC_ShortW_Prj[F2, G2]],
+       Ps: ptr UncheckedArray[EC_ShortW_Aff[F1, G1]],
+       Qs: ptr UncheckedArray[EC_ShortW_Aff[F2, G2]],
        N: int,
        ate_param: static Bigint) {.meter.} =
   ## Basic Miller loop iterations
@@ -322,9 +322,9 @@ func basicMillerLoop*[FT, F1, F2](
 
 func miller_init_double_then_add*[FT, F1, F2](
        f: var FT,
-       Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
-       Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
-       Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
+       Ts: ptr UncheckedArray[EC_ShortW_Prj[F2, G2]],
+       Qs: ptr UncheckedArray[EC_ShortW_Aff[F2, G2]],
+       Ps: ptr UncheckedArray[EC_ShortW_Aff[F1, G1]],
        N: int,
        numDoublings: static int) =
   ## Start a Miller Loop
@@ -363,9 +363,9 @@ func miller_init_double_then_add*[FT, F1, F2](
 
 func miller_accum_double_then_add*[FT, F1, F2](
        f: var FT,
-       Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
-       Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
-       Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
+       Ts: ptr UncheckedArray[EC_ShortW_Prj[F2, G2]],
+       Qs: ptr UncheckedArray[EC_ShortW_Aff[F2, G2]],
+       Ps: ptr UncheckedArray[EC_ShortW_Aff[F1, G1]],
        N: int,
        numDoublings: int, add = true) {.meter.} =
   ## Continue a Miller Loop with

@@ -51,9 +51,9 @@ func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, no
 
 suite "Pairing - Cyclotomic subgroup - GΦ₁₂(p) = {α ∈ Fp¹² : α^Φ₁₂(p) ≡ 1 (mod p¹²)}" & " [" & $WordBitWidth & "-bit words]":
   test "Easy part of the final exponentiation maps to the cyclotomic subgroup":
-    proc test_final_exp_easy_cycl(C: static Curve, gen: static RandomGen) =
+    proc test_final_exp_easy_cycl(Name: static Algebra, gen: static RandomGen) =
       for _ in 0 ..< Iters:
-        var f = rng.random_elem(Fp12[C], gen)
+        var f = rng.random_elem(Fp12[Name], gen)
 
         f.finalExpEasy()
 
@@ -73,9 +73,9 @@ suite "Pairing - Cyclotomic subgroup - GΦ₁₂(p) = {α ∈ Fp¹² : α^Φ₁�
       test_final_exp_easy_cycl(curve, gen = Long01Sequence)
 
   test "Cyclotomic inverse":
-    proc test_cycl_inverse(C: static Curve, gen: static RandomGen) =
+    proc test_cycl_inverse(Name: static Algebra, gen: static RandomGen) =
       for _ in 0 ..< Iters:
-        var f = rng.random_elem(Fp12[C], gen)
+        var f = rng.random_elem(Fp12[Name], gen)
 
         f.finalExpEasy()
         var g = f
@@ -91,9 +91,9 @@ suite "Pairing - Cyclotomic subgroup - GΦ₁₂(p) = {α ∈ Fp¹² : α^Φ₁�
       test_cycl_inverse(curve, gen = Long01Sequence)
 
   test "Cyclotomic squaring":
-    proc test_cycl_squaring_in_place(C: static Curve, gen: static RandomGen) =
+    proc test_cycl_squaring_in_place(Name: static Algebra, gen: static RandomGen) =
       for _ in 0 ..< Iters:
-        var f = rng.random_elem(Fp12[C], gen)
+        var f = rng.random_elem(Fp12[Name], gen)
 
         f.finalExpEasy()
         var g = f
@@ -108,9 +108,9 @@ suite "Pairing - Cyclotomic subgroup - GΦ₁₂(p) = {α ∈ Fp¹² : α^Φ₁�
       test_cycl_squaring_in_place(curve, gen = HighHammingWeight)
       test_cycl_squaring_in_place(curve, gen = Long01Sequence)
 
-    proc test_cycl_squaring_out_place(C: static Curve, gen: static RandomGen) =
+    proc test_cycl_squaring_out_place(Name: static Algebra, gen: static RandomGen) =
       for _ in 0 ..< Iters:
-        var f = rng.random_elem(Fp12[C], gen)
+        var f = rng.random_elem(Fp12[Name], gen)
 
         f.finalExpEasy()
         var g = f
@@ -127,9 +127,9 @@ suite "Pairing - Cyclotomic subgroup - GΦ₁₂(p) = {α ∈ Fp¹² : α^Φ₁�
       test_cycl_squaring_out_place(curve, gen = Long01Sequence)
 
   test "Compressed cyclotomic squarings":
-    proc test_compressed_cycl_squarings(C: static Curve, gen: static RandomGen) =
+    proc test_compressed_cycl_squarings(Name: static Algebra, gen: static RandomGen) =
       for _ in 0 ..< Iters:
-        var f = rng.random_elem(Fp12[C], gen)
+        var f = rng.random_elem(Fp12[Name], gen)
 
         f.finalExpEasy()
         var g = f
@@ -145,9 +145,9 @@ suite "Pairing - Cyclotomic subgroup - GΦ₁₂(p) = {α ∈ Fp¹² : α^Φ₁�
       test_compressed_cycl_squarings(curve, gen = Long01Sequence)
 
   test "Compressed cyclotomic exponentiation":
-    proc test_compressed_cycl_exp(C: static Curve, gen: static RandomGen) =
+    proc test_compressed_cycl_exp(Name: static Algebra, gen: static RandomGen) =
       for _ in 0 ..< Iters:
-        var f = rng.random_elem(Fp12[C], gen)
+        var f = rng.random_elem(Fp12[Name], gen)
 
         f.finalExpEasy()
         var g = f

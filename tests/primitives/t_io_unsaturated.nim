@@ -27,21 +27,21 @@ type
     HighHammingWeight
     Long01Sequence
 
-func random_bigint*(rng: var RngState, curve: static Curve, gen: static RandomGen): auto =
+func random_bigint*(rng: var RngState, name: static Algebra, gen: static RandomGen): auto =
   when gen == Uniform:
-    rng.random_unsafe(matchingBigInt(curve))
+    rng.random_unsafe(Fp[name].getBigInt())
   elif gen == HighHammingWeight:
-    rng.random_highHammingWeight(matchingBigInt(curve))
+    rng.random_highHammingWeight(Fp[name].getBigInt())
   else:
-    rng.random_long01Seq(matchingBigInt(curve))
+    rng.random_long01Seq(Fp[name].getBigInt())
 
-proc testRoundtrip(curve: static Curve, gen: static RandomGen) =
-  const bits = curve.getCurveBitwidth()
+proc testRoundtrip(name: static Algebra, gen: static RandomGen) =
+  const bits = Fp[name].bits()
   const Excess = 2
   const UnsatBitwidth = WordBitWidth - Excess
   const N = bits.ceilDiv_vartime(UnsatBitwidth)
 
-  let a = rng.random_bigint(curve, gen)
+  let a = rng.random_bigint(name, gen)
   var u: LimbsUnsaturated[N, Excess]
   var b: typeof(a)
 

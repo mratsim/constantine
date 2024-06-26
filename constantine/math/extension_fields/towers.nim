@@ -47,18 +47,18 @@ type
 
   ExtensionField*[F] = QuadraticExt[F] or CubicExt[F]
 
-  Fp2*[C: static Curve] =
-    QuadraticExt[Fp[C]]
+  Fp2*[Name: static Algebra] =
+    QuadraticExt[Fp[Name]]
 
-  Fp4*[C: static Curve] =
-    QuadraticExt[Fp2[C]]
+  Fp4*[Name: static Algebra] =
+    QuadraticExt[Fp2[Name]]
 
-  Fp6*[C: static Curve] =
-    CubicExt[Fp2[C]]
+  Fp6*[Name: static Algebra] =
+    CubicExt[Fp2[Name]]
 
-  Fp12*[C: static Curve] =
-    CubicExt[Fp4[C]]
-    # QuadraticExt[Fp6[C]]
+  Fp12*[Name: static Algebra] =
+    CubicExt[Fp4[Name]]
+    # QuadraticExt[Fp6[Name]]
 
 template c0*(a: ExtensionField): auto =
   a.coords[0]
@@ -74,11 +74,11 @@ template `c1=`*(a: var ExtensionField, v: auto) =
 template `c2=`*(a: var CubicExt, v: auto) =
   a.coords[2] = v
 
-template C*(E: type ExtensionField): Curve =
-  E.F.C
+template Name*(E: type ExtensionField): Algebra =
+  E.F.Name
 
-template fieldMod*(E: type ExtensionField): auto =
-  Mod(E.F.C)
+template getModulus*(E: type ExtensionField): auto =
+  E.F.getModulus()
 
 # Initialization
 # -------------------------------------------------------------------
@@ -323,14 +323,14 @@ func has2extraBits*(F: type Fp): bool =
 
 func has1extraBit*(E: type ExtensionField): bool =
   ## We construct extensions only on Fp (and not Fr)
-  getSpareBits(Fp[E.F.C]) >= 1
+  getSpareBits(Fp[E.F.Name]) >= 1
 
 func has2extraBits*(E: type ExtensionField): bool =
   ## We construct extensions only on Fp (and not Fr)
-  getSpareBits(Fp[E.F.C]) >= 2
+  getSpareBits(Fp[E.F.Name]) >= 2
 
-template C(E: type ExtensionField2x): Curve =
-  E.F.C
+template A(E: type ExtensionField2x): Algebra =
+  E.F.Name
 
 template c0*(a: ExtensionField2x): auto =
   a.coords[0]
@@ -418,20 +418,20 @@ func prod2x*(r: var ExtensionField2x, a: ExtensionField2x, b: static int) =
 func `*=`*(a: var Fp, _: type NonResidue) =
   ## Multiply an element of 𝔽p by the quadratic non-residue
   ## chosen to construct 𝔽p2
-  static: doAssert Fp.C.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
-  a *= Fp.C.getNonResidueFp()
+  static: doAssert Fp.Name.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
+  a *= Fp.Name.getNonResidueFp()
 
 func prod*(r: var Fp, a: Fp, _: type NonResidue) =
   ## Multiply an element of 𝔽p by the quadratic non-residue
   ## chosen to construct 𝔽p2
-  static: doAssert Fp.C.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
-  r.prod(a, Fp.C.getNonResidueFp())
+  static: doAssert Fp.Name.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
+  r.prod(a, Fp.Name.getNonResidueFp())
 
 func prod2x(r: var FpDbl, a: FpDbl, _: type NonResidue) =
   ## Multiply an element of 𝔽p by the quadratic non-residue
   ## chosen to construct 𝔽p2
-  static: doAssert FpDbl.C.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
-  r.prod2x(a, FpDbl.C.getNonResidueFp())
+  static: doAssert FpDbl.Name.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
+  r.prod2x(a, FpDbl.Name.getNonResidueFp())
 
 # 𝔽p2
 # ----------------------------------------------------------------
@@ -441,14 +441,14 @@ template fromComplexExtension*[F](elem: QuadraticExt[F]): static bool =
   ## i.e. the irreducible polynomial chosen is
   ##   x² - µ with µ = -1
   ## and so 𝔽p2 = 𝔽p[x] / x² - µ = 𝔽p[𝑖]
-  when F is Fp and F.C.getNonResidueFp() == -1:
+  when F is Fp and F.Name.getNonResidueFp() == -1:
     true
   else:
     false
 
-func prod*[C: static Curve](
-       r: var Fp2[C],
-       a: Fp2[C],
+func prod*[Name: static Algebra](
+       r: var Fp2[Name],
+       a: Fp2[Name],
        _: type NonResidue) =
   ## Multiply an element of 𝔽p2 by the non-residue
   ## chosen to construct the next extension or the twist:
@@ -456,9 +456,9 @@ func prod*[C: static Curve](
   ## - if cubic non-residue: 𝔽p6
   ## - if sextic non-residue: 𝔽p4, 𝔽p6 or 𝔽p12
   # Yet another const tuple unpacking bug
-  const u = C.getNonResidueFp2()[0]
-  const v = C.getNonResidueFp2()[1]
-  const Beta {.used.} = C.getNonResidueFp()
+  const u = Name.getNonResidueFp2()[0]
+  const v = Name.getNonResidueFp2()[1]
+  const Beta {.used.} = Name.getNonResidueFp()
   # ξ = u + v x
   # and x² = β
   #
@@ -496,7 +496,7 @@ func prod*[C: static Curve](
       else:
         {.error: "Unimplemented".}
 
-func `*=`*[C: static Curve](a: var Fp2[C], _: type NonResidue) =
+func `*=`*[Name: static Algebra](a: var Fp2[Name], _: type NonResidue) =
   ## Multiply an element of 𝔽p2 by the non-residue
   ## chosen to construct the next extension or the twist:
   ## - if quadratic non-residue: 𝔽p4
@@ -504,15 +504,15 @@ func `*=`*[C: static Curve](a: var Fp2[C], _: type NonResidue) =
   ## - if sextic non-residue: 𝔽p4, 𝔽p6 or 𝔽p12
   a.prod(a, NonResidue)
 
-func prod2x*[C: static Curve](
-       r: var QuadraticExt2x[FpDbl[C]],
-       a: QuadraticExt2x[FpDbl[C]],
+func prod2x*[Name: static Algebra](
+       r: var QuadraticExt2x[FpDbl[Name]],
+       a: QuadraticExt2x[FpDbl[Name]],
        _: type NonResidue) =
   ## Multiplication by non-residue
-  const complex = C.getNonResidueFp() == -1
-  const U = C.getNonResidueFp2()[0]
-  const V = C.getNonResidueFp2()[1]
-  const Beta {.used.} = C.getNonResidueFp()
+  const complex = Name.getNonResidueFp() == -1
+  const U = Name.getNonResidueFp2()[0]
+  const V = Name.getNonResidueFp2()[1]
+  const Beta {.used.} = Name.getNonResidueFp()
 
   when complex and U == 1 and V == 1:
     let a1 {.noInit.} = a.c1
@@ -527,7 +527,7 @@ func prod2x*[C: static Curve](
       # mul_sparse_by_0v
       # r0 = β a1 v
       # r1 = a0 v
-      var t {.noInit.}: FpDbl[C]
+      var t {.noInit.}: FpDbl[Name]
       t.prod2x(a.c1, V)
       r.c1.prod2x(a.c0, V)
       r.c0.prod2x(t, NonResidue)
@@ -537,7 +537,7 @@ func prod2x*[C: static Curve](
       #
       # (c0 + c1 x) (u + v x) => u c0 + (u c0 + u c1)x + v c1 x²
       #                       => u c0 + β v c1 + (v c0 + u c1) x
-      var t {.noInit.}: FpDbl[C]
+      var t {.noInit.}: FpDbl[Name]
 
       t.prod2x(a.c0, U)
       when V == 1 and Beta == -1:  # Case BN254_Snarks
@@ -554,7 +554,7 @@ func prod2x*[C: static Curve](
       else:
         {.error: "Unimplemented".}
 
-func `/=`*[C: static Curve](a: var Fp2[C], _: type NonResidue) =
+func `/=`*[Name: static Algebra](a: var Fp2[Name], _: type NonResidue) =
   ## Divide an element of 𝔽p by the non-residue
   ## chosen to construct the next extension or the twist:
   ## - if quadratic non-residue: 𝔽p4
@@ -562,9 +562,9 @@ func `/=`*[C: static Curve](a: var Fp2[C], _: type NonResidue) =
   ## - if sextic non-residue: 𝔽p4, 𝔽p6 or 𝔽p12
 
   # Yet another const tuple unpacking bug
-  const u = C.getNonresidueFp2()[0] # Sextic non-residue to construct 𝔽p12
-  const v = C.getNonresidueFp2()[1]
-  const Beta = C.getNonResidueFp()  # Quadratic non-residue to construct 𝔽p2
+  const u = Name.getNonresidueFp2()[0] # Sextic non-residue to construct 𝔽p12
+  const v = Name.getNonresidueFp2()[1]
+  const Beta = Name.getNonResidueFp()  # Quadratic non-residue to construct 𝔽p2
   # ξ = u + v x
   # and x² = β
   #
@@ -716,13 +716,13 @@ func prefer_3sqr_over_2mul(F: type ExtensionField): bool {.compileTime.} =
     else: return false
   else: return false
 
-func has_large_NR_norm(C: static Curve): bool =
+func has_large_NR_norm(Name: static Algebra): bool =
   ## Returns true if the non-residue of the extension fields
   ## has a large norm
 
-  const j = C.getNonResidueFp()
-  const u = C.getNonResidueFp2()[0]
-  const v = C.getNonResidueFp2()[1]
+  const j = Name.getNonResidueFp()
+  const u = Name.getNonResidueFp2()[0]
+  const v = Name.getNonResidueFp2()[1]
 
   const norm2 = u*u + (j*v)*(j*v)
 
@@ -733,10 +733,10 @@ func has_large_NR_norm(C: static Curve): bool =
 
   return norm > 5
 
-func has_large_field_elem*(C: static Curve): bool =
+func has_large_field_elem*(Name: static Algebra): bool =
   ## Returns true if field element are large
   ## and necessitate custom routine for assembly in particular
-  let a = default(Fp[C])
+  let a = default(Fp[Name])
   return a.mres.limbs.len > 6
 
 # ############################################################
@@ -913,7 +913,7 @@ func square_generic(r: var QuadraticExt, a: QuadraticExt) =
 
   when QuadraticExt.prefer_3sqr_over_2mul() or
        # Other path multiplies twice by non-residue
-       QuadraticExt.C.has_large_NR_norm():
+       QuadraticExt.Name.has_large_NR_norm():
     var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
     v0.square(a.c0)
     v1.square(a.c1)
@@ -981,7 +981,7 @@ func square2x_disjoint*[Fdbl, F](
 # Multiplications (specializations)
 # -------------------------------------------------------------------
 
-func prodImpl_fp4o2_complex_snr_1pi[C: static Curve](r: var Fp4[C], a, b: Fp4[C]) =
+func prodImpl_fp4o2_complex_snr_1pi[Name: static Algebra](r: var Fp4[Name], a, b: Fp4[Name]) =
   ## Returns r = a * b
   ## For 𝔽p4/𝔽p2 with the following non-residue (NR) constraints:
   ##   * -1 is a quadratic non-residue in 𝔽p hence 𝔽p2 has coordinates a+𝑖b with i = √-1. This implies p ≡ 3 (mod 4)
@@ -990,13 +990,13 @@ func prodImpl_fp4o2_complex_snr_1pi[C: static Curve](r: var Fp4[C], a, b: Fp4[C]
   ## According to Benger-Scott 2009(https://eprint.iacr.org/2009/556.pdf)
   ## About 2/3 of the p ≡ 3 (mod 8) primes are in this case
   static:
-    doAssert C.getNonResidueFp() == -1
-    doAssert C.getNonresidueFp2() == (1, 1)
+    doAssert Name.getNonResidueFp() == -1
+    doAssert Name.getNonresidueFp2() == (1, 1)
   var
-    b10_m_b11{.noInit.}, b10_p_b11{.noInit.}: Fp[C]
-    n_a01{.noInit.}, n_a11{.noInit.}: Fp[C]
+    b10_m_b11{.noInit.}, b10_p_b11{.noInit.}: Fp[Name]
+    n_a01{.noInit.}, n_a11{.noInit.}: Fp[Name]
 
-    t{.noInit.}: Fp4[C]
+    t{.noInit.}: Fp4[Name]
 
   b10_m_b11.diff(b.c1.c0, b.c1.c1)
   b10_p_b11.sum(b.c1.c0, b.c1.c1)
@@ -1314,7 +1314,7 @@ func inv2xImpl(r: var QuadraticExt, a: QuadraticExt, useVartime: static bool = f
 
 func square2x*(r: var QuadraticExt2x, a: QuadraticExt) =
   when a.fromComplexExtension():
-    when UseASM_X86_64 and not QuadraticExt.C.has_large_field_elem():
+    when UseASM_X86_64 and not QuadraticExt.Name.has_large_field_elem():
       if ({.noSideEffect.}: hasAdx()):
         r.coords.sqrx2x_complex_asm_adx(a.coords)
       else:
@@ -1339,7 +1339,7 @@ func square_disjoint*[F](r: var QuadraticExt[F], a0, a1: F) =
 
 func square*(r: var QuadraticExt, a: QuadraticExt) =
   when r.fromComplexExtension():
-    when UseASM_X86_64 and not QuadraticExt.C.has_large_field_elem() and r.typeof.has1extraBit():
+    when UseASM_X86_64 and not QuadraticExt.Name.has_large_field_elem() and r.typeof.has1extraBit():
       if ({.noSideEffect.}: hasAdx()):
         r.coords.sqrx_complex_sparebit_asm_adx(a.coords)
       else:
@@ -1347,7 +1347,7 @@ func square*(r: var QuadraticExt, a: QuadraticExt) =
     else:
       r.square_complex(a)
   else:
-    when QuadraticExt.C.has_large_field_elem():
+    when QuadraticExt.Name.has_large_field_elem():
       # BW6-761 requires too many registers for Dbl width path
       r.square_generic(a)
     elif QuadraticExt is Fp4[BLS12_377]:
@@ -1364,7 +1364,7 @@ func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
   ## Multiplication r <- a*b
 
   when r.fromComplexExtension():
-    when UseASM_X86_64 and not QuadraticExt.C.has_large_field_elem():
+    when UseASM_X86_64 and not QuadraticExt.Name.has_large_field_elem():
       if ({.noSideEffect.}: hasAdx()):
         r.coords.mul_fp2_complex_asm_adx(a.coords, b.coords)
       else:
@@ -1378,10 +1378,10 @@ func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
       r.c0.redc2x(d.c0)
       r.c1.redc2x(d.c1)
   else:
-    when QuadraticExt is Fp12 or r.typeof.F.C.has_large_field_elem():
+    when QuadraticExt is Fp12 or r.typeof.F.Name.has_large_field_elem():
       # BW6-761 requires too many registers for Dbl width path
       r.prod_generic(a, b)
-    elif QuadraticExt is Fp4 and QuadraticExt.C.getNonResidueFp() == -1 and QuadraticExt.C.getNonResidueFp2() == (1, 1):
+    elif QuadraticExt is Fp4 and QuadraticExt.Name.getNonResidueFp() == -1 and QuadraticExt.Name.getNonResidueFp2() == (1, 1):
       r.prodImpl_fp4o2_complex_snr_1pi(a, b)
     else:
       var d {.noInit.}: doublePrec(typeof(r))
@@ -1403,7 +1403,7 @@ func prod2x_disjoint*[Fdbl, F](
 func prod2x*(r: var QuadraticExt2x, a, b: QuadraticExt) =
   ## Double-precision multiplication r <- a*b
   when a.fromComplexExtension():
-    when UseASM_X86_64 and not QuadraticExt.C.has_large_field_elem():
+    when UseASM_X86_64 and not QuadraticExt.Name.has_large_field_elem():
       if ({.noSideEffect.}: hasAdx()):
         r.coords.mul2x_fp2_complex_asm_adx(a.coords, b.coords)
       else:
@@ -1639,7 +1639,7 @@ func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
 # Multiplications (specializations)
 # -------------------------------------------------------------------
 
-func prodImpl_fp6o2_complex_snr_1pi[C: static Curve](r: var Fp6[C], a, b: Fp6[C]) =
+func prodImpl_fp6o2_complex_snr_1pi[Name: static Algebra](r: var Fp6[Name], a, b: Fp6[Name]) =
   ## Returns r = a * b
   ## For 𝔽p4/𝔽p2 with the following non-residue (NR) constraints:
   ##   * -1 is a quadratic non-residue in 𝔽p hence 𝔽p2 has coordinates a+𝑖b with i = √-1. This implies p ≡ 3 (mod 4)
@@ -1649,15 +1649,15 @@ func prodImpl_fp6o2_complex_snr_1pi[C: static Curve](r: var Fp6[C], a, b: Fp6[C]
   ## About 2/3 of the p ≡ 3 (mod 8) primes are in this case
   # https://eprint.iacr.org/2022/367 - Equation 8
   static:
-    doAssert C.getNonResidueFp() == -1
-    doAssert C.getNonresidueFp2() == (1, 1)
+    doAssert Name.getNonResidueFp() == -1
+    doAssert Name.getNonresidueFp2() == (1, 1)
   var
-    b10_p_b11{.noInit.}, b10_m_b11{.noInit.}: Fp[C]
-    b20_p_b21{.noInit.}, b20_m_b21{.noInit.}: Fp[C]
+    b10_p_b11{.noInit.}, b10_m_b11{.noInit.}: Fp[Name]
+    b20_p_b21{.noInit.}, b20_m_b21{.noInit.}: Fp[Name]
 
-    n_a01{.noInit.}, n_a11{.noInit.}, n_a21{.noInit.}: Fp[C]
+    n_a01{.noInit.}, n_a11{.noInit.}, n_a21{.noInit.}: Fp[Name]
 
-    t{.noInit.}: Fp6[C]
+    t{.noInit.}: Fp6[Name]
 
   b10_p_b11.sum(b.c1.c0, b.c1.c1)
   b10_m_b11.diff(b.c1.c0, b.c1.c1)
@@ -2128,7 +2128,7 @@ func inv2xImpl(r: var CubicExt, a: CubicExt, useVartime: static bool = false) =
 
 func square*(r: var CubicExt, a: CubicExt) =
   ## Returns r = a²
-  when CubicExt.C.has_large_NR_norm() or CubicExt.C.has_large_field_elem():
+  when CubicExt.Name.has_large_NR_norm() or CubicExt.Name.has_large_field_elem():
     square_Chung_Hasan_SQR3(r, a)
   else:
     var d {.noInit.}: doublePrec(typeof(a))
@@ -2147,9 +2147,9 @@ func square2x*(r: var CubicExt2x, a: CubicExt) =
 
 func prod*(r: var CubicExt, a, b: CubicExt) =
   ## Out-of-place multiplication
-  when CubicExt.C.has_large_field_elem():
+  when CubicExt.Name.has_large_field_elem():
     r.prodImpl(a, b)
-  elif r is Fp6 and CubicExt.C.getNonResidueFp() == -1 and CubicExt.C.getNonResidueFp2() == (1, 1):
+  elif r is Fp6 and CubicExt.Name.getNonResidueFp() == -1 and CubicExt.Name.getNonResidueFp2() == (1, 1):
     r.prodImpl_fp6o2_complex_snr_1pi(a, b)
   else:
     var d {.noInit.}: doublePrec(typeof(r))
@@ -2173,7 +2173,7 @@ func inv*(r: var CubicExt, a: CubicExt) =
   ## Incidentally this avoids extra check
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
-  when CubicExt.C.has_large_field_elem() or r is Fp12:
+  when CubicExt.Name.has_large_field_elem() or r is Fp12:
     r.invImpl(a)
   else:
     r.inv2xImpl(a)
@@ -2236,7 +2236,7 @@ func inv_vartime*(r: var CubicExt, a: CubicExt) {.tags:[VarTime].} =
   ## Incidentally this avoids extra check
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
-  when CubicExt.C.has_large_field_elem() or r is Fp12:
+  when CubicExt.Name.has_large_field_elem() or r is Fp12:
     r.invImpl(a, useVartime = true)
   else:
     r.inv2xImpl(a, useVartime = true)
