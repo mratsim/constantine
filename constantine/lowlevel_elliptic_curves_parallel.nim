@@ -15,9 +15,14 @@ import
 
 # ############################################################
 #
-#            Generator for low-level parallel primitives API
+#         Low-level named Elliptic Curve Parallel API
 #
 # ############################################################
+
+# Warning ⚠️:
+#     The low-level APIs have no stability guarantee.
+#     Use high-level protocols which are designed according to a stable specs
+#     and with misuse resistance in mind.
 
 # Threadpool
 # ------------------------------------------------------------

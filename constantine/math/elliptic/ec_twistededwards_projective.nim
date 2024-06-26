@@ -267,7 +267,7 @@ func sum*[F](
   # Z3 = F*G
   r.z.prod(F, G)
 
-func madd*[F](
+func mixedSum*[F](
        r: var EC_TwEdw_Prj[F],
        P: EC_TwEdw_Prj[F],
        Q: EC_TwEdw_Aff[F]) =
@@ -288,7 +288,7 @@ func madd*[F](
   ## to simple side-channel attacks (SCA)
   ## This is done by using a "complete" or "exception-free" addition law.
   #
-  # https://www.hyperelliptic.org/EFD/g1p/auto-twisted-projective.html#addition-madd-2008-bbjlp
+  # https://www.hyperelliptic.org/EFD/g1p/auto-twisted-projective.html#addition-mixedSum-2008-bbjlp
   # Cost: 9M + 1S + 1*a + 1*d + 7add.
   #   B = Z1²
   #   C = X1*X2
@@ -406,7 +406,7 @@ func `+=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Prj) {.inline.} =
 
 func `+=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Aff) {.inline.} =
   ## In-place point mixed addition
-  P.madd(P, Q)
+  P.mixedSum(P, Q)
 
 func double*(P: var EC_TwEdw_Prj) {.inline.} =
   ## In-place EC doubling
@@ -419,12 +419,12 @@ func diff*(r: var EC_TwEdw_Prj, P, Q: EC_TwEdw_Prj) {.inline.} =
   nQ.neg(Q)
   r.sum(P, nQ)
 
-func msub*(r: var EC_TwEdw_Prj, P: EC_TwEdw_Prj, Q: EC_TwEdw_Aff) {.inline.} =
+func mixedDiff*(r: var EC_TwEdw_Prj, P: EC_TwEdw_Prj, Q: EC_TwEdw_Aff) {.inline.} =
   ## r = P - Q
   ## Can handle r and Q aliasing
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
-  r.madd(P, nQ)
+  r.mixedSum(P, nQ)
 
 func `-=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Prj) {.inline.} =
   ## In-place point substraction
@@ -432,7 +432,7 @@ func `-=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Prj) {.inline.} =
 
 func `-=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Aff) {.inline.} =
   ## In-place point substraction
-  P.msub(P, Q)
+  P.mixedDiff(P, Q)
 
 template affine*[F](_: type EC_TwEdw_Prj[F]): untyped =
   ## Returns the affine type that corresponds to the Jacobian type input
@@ -467,22 +467,22 @@ func sum_vartime*[F](
        P, Q: EC_TwEdw_Prj[F]) {.inline.} =
   r.sum(P, Q)
 
-func madd_vartime*[F](
+func mixedSum_vartime*[F](
        r: var EC_TwEdw_Prj[F],
        P: EC_TwEdw_Prj[F],
        Q: EC_TwEdw_Aff[F]) {.inline.} =
-  r.madd(P, Q)
+  r.mixedSum(P, Q)
 
 func diff_vartime*[F](
        r: var EC_TwEdw_Prj[F],
        P, Q: EC_TwEdw_Prj[F]) {.inline.} =
   r.diff(P, Q)
 
-func msub_vartime*[F](
+func mixedDiff_vartime*[F](
        r: var EC_TwEdw_Prj[F],
        P: EC_TwEdw_Prj[F],
        Q: EC_TwEdw_Aff[F]) {.inline.} =
-  r.msub(P, Q)
+  r.mixedDiff(P, Q)
 
 template `~+=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Prj) =
   ## Variable-time in-place point addition
@@ -490,13 +490,13 @@ template `~+=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Prj) =
 
 template `~+=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Aff) =
   ## Variable-time in-place point mixed addition
-  P.madd_vartime(P, Q)
+  P.mixedSum_vartime(P, Q)
 
 template `~-=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Prj) =
   P.diff_vartime(P, Q)
 
 template `~-=`*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Aff) =
-  P.msub_vartime(P, Q)
+  P.mixedDiff_vartime(P, Q)
 
 # ############################################################
 #

@@ -47,10 +47,10 @@ func sum[F; G: static Subgroup](r: var EC_ShortW_JacExt[F, G], P, Q: EC_ShortW_J
   r.sum_vartime(P, Q)
 func `+=`[F; G: static Subgroup](P: var EC_ShortW_JacExt[F, G], Q: EC_ShortW_JacExt[F, G]) =
   P.sum_vartime(P, Q)
-func madd[F; G: static Subgroup](r: var EC_ShortW_JacExt[F, G], P: EC_ShortW_JacExt[F, G], Q: EC_ShortW_Aff[F, G]) =
-  r.madd_vartime(P, Q)
+func mixedSum[F; G: static Subgroup](r: var EC_ShortW_JacExt[F, G], P: EC_ShortW_JacExt[F, G], Q: EC_ShortW_Aff[F, G]) =
+  r.mixedSum_vartime(P, Q)
 func `+=`[F; G: static Subgroup](P: var EC_ShortW_JacExt[F, G], Q: EC_ShortW_Aff[F, G]) =
-  P.madd_vartime(P, Q)
+  P.mixedSum_vartime(P, Q)
 
 # Twisted Edwards bindings
 # ----------------------------------
@@ -741,10 +741,10 @@ proc run_EC_mixed_add_impl*(
           var r_generic, r_mixed, r_vartime, r_vartime2, r_vartime3: EC
 
           r_generic.sum(a, b)
-          r_mixed.madd(a, bAff)
+          r_mixed.mixedSum(a, bAff)
           r_vartime.sum_vartime(a, bz1)
           r_vartime2.sum_vartime(a, b)
-          r_vartime3.madd_vartime(a, bAff)
+          r_vartime3.mixedSum_vartime(a, bAff)
 
           check:
             bool(r_generic == r_mixed)
@@ -771,10 +771,10 @@ proc run_EC_mixed_add_impl*(
           var r_generic, r_mixed, r_vartime, r_vartime2, r_vartime3: EC
 
           r_generic.double(a)
-          r_mixed.madd(a, aAff)
+          r_mixed.mixedSum(a, aAff)
           r_vartime.sum_vartime(a, a)
           r_vartime2.sum_vartime(a, az1)
-          r_vartime3.madd_vartime(a, aAff)
+          r_vartime3.mixedSum_vartime(a, aAff)
           check:
             bool(r_generic == r_mixed)
             bool(r_generic == r_vartime)
@@ -789,7 +789,7 @@ proc run_EC_mixed_add_impl*(
           r_vartime2 = az1
           r_vartime2.sum_vartime(r_vartime2, az1)
           r_vartime3 = a
-          r_vartime3.madd_vartime(r_vartime3, aAff)
+          r_vartime3.mixedSum_vartime(r_vartime3, aAff)
           check:
             bool(r_generic == r_mixed)
             bool(r_generic == r_vartime)
@@ -811,7 +811,7 @@ proc run_EC_mixed_add_impl*(
           let bAff = rng.random_point(EC_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
 
           var r_mixed{.noInit.}: EC
-          r_mixed.madd(a, bAff)
+          r_mixed.mixedSum(a, bAff)
 
           var r{.noInit.}: EC_ShortW_Aff[EC.F, EC.G]
           r.affine(r_mixed)
@@ -830,7 +830,7 @@ proc run_EC_mixed_add_impl*(
 
           a.setNeutral()
           r_vartime.sum_vartime(a, b)
-          r_vartime2.madd_vartime(a, bAff)
+          r_vartime2.mixedSum_vartime(a, bAff)
 
           check:
             bool(r_vartime == r_mixed)
@@ -858,7 +858,7 @@ proc run_EC_mixed_add_impl*(
           bAff.setNeutral()
 
           var r{.noInit.}: EC
-          r.madd(a, bAff)
+          r.mixedSum(a, bAff)
 
           check: bool(r == a)
 
@@ -872,7 +872,7 @@ proc run_EC_mixed_add_impl*(
           b.fromAffine(bAff)
 
           r_vartime.sum_vartime(a, b)
-          r_vartime2.madd_vartime(a, bAff)
+          r_vartime2.mixedSum_vartime(a, bAff)
 
           check:
             bool(r_vartime == r)
@@ -904,7 +904,7 @@ proc run_EC_mixed_add_impl*(
           naAff.neg()
 
           var r{.noInit.}: EC
-          r.madd(a, naAff)
+          r.mixedSum(a, naAff)
 
           check: r.isNeutral().bool
 
@@ -919,7 +919,7 @@ proc run_EC_mixed_add_impl*(
           na.fromAffine(naAff)
 
           r_vartime.sum_vartime(a, na)
-          r_vartime2.madd_vartime(a, naAff)
+          r_vartime2.mixedSum_vartime(a, naAff)
 
           check:
             bool(r_vartime == r)
@@ -929,7 +929,7 @@ proc run_EC_mixed_add_impl*(
           r_vartime = a
           r_vartime.sum_vartime(r_vartime, na)
           r_vartime2 = a
-          r_vartime2.madd_vartime(r_vartime2, naAff)
+          r_vartime2.mixedSum_vartime(r_vartime2, naAff)
 
           check:
             bool(r_vartime == r)

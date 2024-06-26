@@ -355,7 +355,7 @@ when isMainModule:
     var data = newSeq[EC_G1](fftDesc.order)
     data[0].setGenerator()
     for i in 1 ..< fftDesc.order:
-      data[i].madd(data[i-1], BLS12_381.getGenerator("G1"))
+      data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
 
     var coefs = newSeq[EC_G1](data.len)
     let fftOk = fft_vartime(fftDesc, coefs, data)
@@ -406,7 +406,7 @@ when isMainModule:
       var data = newSeq[EC_G1](fftDesc.order)
       data[0].setGenerator()
       for i in 1 ..< fftDesc.order:
-        data[i].madd(data[i-1], BLS12_381.getGenerator("G1"))
+        data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
 
       var coefsOut = newSeq[EC_G1](data.len)
 

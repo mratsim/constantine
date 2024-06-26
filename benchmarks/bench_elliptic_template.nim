@@ -70,7 +70,7 @@ template bench*(op: string, EC: typedesc, iters: int, body: untyped): untyped =
 func `+=`[F; G: static Subgroup](P: var EC_ShortW_JacExt[F, G], Q: EC_ShortW_JacExt[F, G]) {.inline.}=
   P.sum_vartime(P, Q)
 func `+=`[F; G: static Subgroup](P: var EC_ShortW_JacExt[F, G], Q: EC_ShortW_Aff[F, G]) {.inline.}=
-  P.madd_vartime(P, Q)
+  P.mixedSum_vartime(P, Q)
 
 proc addBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC
@@ -97,14 +97,14 @@ proc mixedAddBench*(EC: typedesc, iters: int) =
 
   when EC is EC_ShortW_JacExt:
     bench("EC Mixed Addition vartime " & $EC.G, EC, iters):
-      r.madd_vartime(P, Qaff)
+      r.mixedSum_vartime(P, Qaff)
   else:
     block:
       bench("EC Mixed Addition " & $EC.G, EC, iters):
-        r.madd(P, Qaff)
+        r.mixedSum(P, Qaff)
     block:
       bench("EC Mixed Addition vartime " & $EC.G, EC, iters):
-        r.madd_vartime(P, Qaff)
+        r.mixedSum_vartime(P, Qaff)
 
 proc doublingBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC

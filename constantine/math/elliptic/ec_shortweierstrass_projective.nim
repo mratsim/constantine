@@ -253,7 +253,7 @@ func sum*[F; G: static Subgroup](
   else:
     {.error: "Not implemented.".}
 
-func madd*[F; G: static Subgroup](
+func mixedSum*[F; G: static Subgroup](
        r: var EC_ShortW_Prj[F, G],
        P: EC_ShortW_Prj[F, G],
        Q: EC_ShortW_Aff[F, G]
@@ -415,7 +415,7 @@ func `+=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Prj) {.inline.} =
 
 func `+=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Aff) {.inline.} =
   ## In-place mixed point addition
-  P.madd(P, Q)
+  P.mixedSum(P, Q)
 
 func double*(P: var EC_ShortW_Prj) {.inline.} =
   ## In-place EC doubling
@@ -432,7 +432,7 @@ func diff*(r: var EC_ShortW_Prj, P: EC_ShortW_Prj, Q: EC_ShortW_Aff) {.inline.} 
   ## r = P - Q
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
-  r.madd(P, nQ)
+  r.mixedSum(P, nQ)
 
 func `-=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Prj or EC_ShortW_Aff) {.inline.} =
   ## In-place point substraction
@@ -576,7 +576,7 @@ func sum_vartime*[F; G: static Subgroup](
   r.y *= R
   r.y -= Y1Z2
 
-func madd_vartime*[F; G: static Subgroup](
+func mixedSum_vartime*[F; G: static Subgroup](
        r: var EC_ShortW_Prj[F, G],
        p: EC_ShortW_Prj[F, G],
        q: EC_ShortW_Aff[F, G])
@@ -675,7 +675,7 @@ func diff_vartime*(r: var EC_ShortW_Prj, P, Q: EC_ShortW_Prj) {.inline.} =
   nQ.neg(Q)
   r.sum_vartime(P, nQ)
 
-func msub_vartime*(r: var EC_ShortW_Prj, P: EC_ShortW_Prj, Q: EC_ShortW_Aff) {.inline.} =
+func mixedDiff_vartime*(r: var EC_ShortW_Prj, P: EC_ShortW_Prj, Q: EC_ShortW_Aff) {.inline.} =
   ## r = P - Q
   ##
   ## This MUST NOT be used with secret data.
@@ -683,7 +683,7 @@ func msub_vartime*(r: var EC_ShortW_Prj, P: EC_ShortW_Prj, Q: EC_ShortW_Aff) {.i
   ## This is highly VULNERABLE to timing attacks and power analysis attacks.
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
-  r.madd_vartime(P, nQ)
+  r.mixedSum_vartime(P, nQ)
 
 template `~+=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Prj) =
   ## Variable-time in-place point addition
@@ -691,10 +691,10 @@ template `~+=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Prj) =
 
 template `~+=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Aff) =
   ## Variable-time in-place point mixed addition
-  P.madd_vartime(P, Q)
+  P.mixedSum_vartime(P, Q)
 
 template `~-=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Prj) =
   P.diff_vartime(P, Q)
 
 template `~-=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Aff) =
-  P.msub_vartime(P, Q)
+  P.mixedDiff_vartime(P, Q)

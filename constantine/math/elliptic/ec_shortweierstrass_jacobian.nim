@@ -168,8 +168,7 @@ func cneg*(P: var EC_ShortW_Jac, ctl: CTBool)  {.inline.} =
 template sumImpl[F; G: static Subgroup](
        r: var EC_ShortW_Jac[F, G],
        P, Q: EC_ShortW_Jac[F, G],
-       CoefA: typed
-     ) {.dirty.} =
+       CoefA: typed) {.dirty.} =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
   ## with the curve ``a`` being a parameter for summing on isogenous curves.
   ##
@@ -341,8 +340,7 @@ template sumImpl[F; G: static Subgroup](
 func sum*[F; G: static Subgroup](
        r: var EC_ShortW_Jac[F, G],
        P, Q: EC_ShortW_Jac[F, G],
-       CoefA: static F
-     ) {.meter.} =
+       CoefA: static F) {.meter.} =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
   ## with the curve ``a`` being a parameter for summing on isogenous curves.
   ##
@@ -365,8 +363,7 @@ func sum*[F; G: static Subgroup](
 
 func sum*[F; G: static Subgroup](
        r: var EC_ShortW_Jac[F, G],
-       P, Q: EC_ShortW_Jac[F, G]
-     ) {.meter.} =
+       P, Q: EC_ShortW_Jac[F, G]) {.meter.} =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
   ##
   ##   R = P + Q
@@ -384,11 +381,10 @@ func sum*[F; G: static Subgroup](
   ## This is done by using a "complete" or "exception-free" addition law.
   r.sumImpl(P, Q, F.Name.getCoefA())
 
-func madd*[F; G: static Subgroup](
+func mixedSum*[F; G: static Subgroup](
        r: var EC_ShortW_Jac[F, G],
        P: EC_ShortW_Jac[F, G],
-       Q: EC_ShortW_Aff[F, G]
-     ) {.meter.} =
+       Q: EC_ShortW_Aff[F, G]) {.meter.} =
   ## Elliptic curve mixed addition for Short Weierstrass curves in Jacobian coordinates
   ## with the curve ``a`` being a parameter for summing on isogenous curves.
   ##
@@ -626,7 +622,7 @@ func `+=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Jac) {.inline.} =
 
 func `+=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Aff) {.inline.} =
   ## In-place mixed point addition
-  P.madd(P, Q)
+  P.mixedSum(P, Q)
 
 func double*(P: var EC_ShortW_Jac) {.inline.} =
   ## In-place point doubling
@@ -638,15 +634,19 @@ func diff*(r: var EC_ShortW_Jac, P, Q: EC_ShortW_Jac) {.inline.} =
   nQ.neg(Q)
   r.sum(P, nQ)
 
-func diff*(r: var EC_ShortW_Jac, P: EC_ShortW_Jac, Q: EC_ShortW_Aff) {.inline.} =
+func `-=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Jac) {.inline.} =
+  ## In-place point substraction
+  P.diff(P, Q)
+
+func mixedDiff*(r: var EC_ShortW_Jac, P: EC_ShortW_Jac, Q: EC_ShortW_Aff) {.inline.} =
   ## r = P - Q
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
-  r.madd(P, nQ)
+  r.mixedSum(P, nQ)
 
-func `-=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Jac or EC_ShortW_Aff) {.inline.} =
+func `-=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Aff) {.inline.} =
   ## In-place point substraction
-  P.diff(P, Q)
+  P.mixedDiff(P, Q)
 
 # Conversions
 # -----------
@@ -802,7 +802,7 @@ func sum_vartime*[F; G: static Subgroup](
       r.z.prod(p.z, q.z, skipFinalSub = true)
       r.z *= H
 
-func madd_vartime*[F; G: static Subgroup](
+func mixedSum_vartime*[F; G: static Subgroup](
        r: var EC_ShortW_Jac[F, G],
        p: EC_ShortW_Jac[F, G],
        q: EC_ShortW_Aff[F, G])
@@ -912,7 +912,7 @@ func diff_vartime*(r: var EC_ShortW_Jac, P, Q: EC_ShortW_Jac) {.inline.} =
   nQ.neg(Q)
   r.sum_vartime(P, nQ)
 
-func msub_vartime*(r: var EC_ShortW_Jac, P: EC_ShortW_Jac, Q: EC_ShortW_Aff) {.inline.} =
+func mixedDiff_vartime*(r: var EC_ShortW_Jac, P: EC_ShortW_Jac, Q: EC_ShortW_Aff) {.inline.} =
   ## r = P - Q
   ##
   ## This MUST NOT be used with secret data.
@@ -920,7 +920,7 @@ func msub_vartime*(r: var EC_ShortW_Jac, P: EC_ShortW_Jac, Q: EC_ShortW_Aff) {.i
   ## This is highly VULNERABLE to timing attacks and power analysis attacks.
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
-  r.madd_vartime(P, nQ)
+  r.mixedSum_vartime(P, nQ)
 
 template `~+=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Jac) =
   ## Variable-time in-place point addition
@@ -928,10 +928,10 @@ template `~+=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Jac) =
 
 template `~+=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Aff) =
   ## Variable-time in-place point mixed addition
-  P.madd_vartime(P, Q)
+  P.mixedSum_vartime(P, Q)
 
 template `~-=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Jac) =
   P.diff_vartime(P, Q)
 
 template `~-=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Aff) =
-  P.msub_vartime(P, Q)
+  P.mixedDiff_vartime(P, Q)

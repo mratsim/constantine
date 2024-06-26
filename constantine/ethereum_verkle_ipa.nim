@@ -213,7 +213,7 @@ func deserialize*(dst: var EthVerkleIpaMultiProof,
 # ------------------------------------------------------------------------------------
 
 # TODO: refactor, this shouldn't use curves_primitives but internal functions
-import ./curves_primitives
+import ./lowlevel_fields
 
 func mapToBaseField*(dst: var Fp[Banderwagon],p: EC_TwEdw[Fp[Banderwagon]]) =
   ## The mapping chosen for the Banderwagon Curve is x/y

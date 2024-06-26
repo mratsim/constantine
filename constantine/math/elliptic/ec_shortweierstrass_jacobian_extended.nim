@@ -252,7 +252,7 @@ func mdouble*[F; G: static Subgroup](r: var EC_ShortW_JacExt[F, G], P: EC_ShortW
   r.zz = V
   r.zzz = W
 
-func madd_vartime*[F; G: static Subgroup](
+func mixedSum_vartime*[F; G: static Subgroup](
        r: var EC_ShortW_JacExt[F, G],
        p: EC_ShortW_JacExt[F, G],
        q: EC_ShortW_Aff[F, G])
@@ -306,13 +306,13 @@ func madd_vartime*[F; G: static Subgroup](
   r.zz.prod(p.zz, PP)
   r.zzz.prod(p.zzz, PPP)
 
-func msub_vartime*[F; G: static Subgroup](
+func mixedDiff_vartime*[F; G: static Subgroup](
        r: var EC_ShortW_JacExt[F, G],
        p: EC_ShortW_JacExt[F, G],
        q: EC_ShortW_Aff[F, G]) {.tags:[VarTime], inline.} =
   var nQ {.noInit.}: EC_ShortW_Aff[F, G]
   nQ.neg(q)
-  r.madd_vartime(p, nQ)
+  r.mixedSum_vartime(p, nQ)
 
 # Conversions
 # -----------

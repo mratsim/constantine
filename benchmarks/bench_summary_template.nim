@@ -146,10 +146,10 @@ proc mixedAddBench*(T: typedesc, iters: int) =
   Qaff.affine(Q)
   block:
     bench("EC Mixed Addition " & G1_or_G2, T, iters):
-      r.madd(P, Qaff)
+      r.mixedSum(P, Qaff)
   block:
     bench("EC Mixed Addition vartime " & G1_or_G2, T, iters):
-      r.madd_vartime(P, Qaff)
+      r.mixedSum_vartime(P, Qaff)
 
 proc doublingBench*(T: typedesc, iters: int) =
   const G1_or_G2 = when T.F is Fp: "G1" else: "G2"

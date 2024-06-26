@@ -7,12 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  constantine/named/algebras,
-  constantine/curves_primitives_parallel,
-  constantine/platforms/allocs,
+  constantine/lowlevel_elliptic_curves_parallel,
   constantine/threadpool
 
-export curves_primitives_parallel
+export lowlevel_elliptic_curves_parallel
 
 template genParallelBindings_EC_ShortW_NonAffine*(EC, EcAff, ScalarField: untyped) =
   # TODO: remove the need of explicit ScalarField

@@ -8,11 +8,17 @@
 
 import
   constantine/named/algebras,
-  constantine/curves_primitives,
+  constantine/[
+    lowlevel_bigints,
+    lowlevel_fields,
+    lowlevel_extension_fields,
+    lowlevel_elliptic_curves
+  ]
 
-  constantine/math/extension_fields # generic sandwich
+export algebras, lowlevel_bigints, lowlevel_fields, lowlevel_extension_fields, lowlevel_elliptic_curves
 
-export algebras, curves_primitives, extension_fields
+import constantine/math/extension_fields # generic sandwich
+export extension_fields
 
 # Overview
 # ------------------------------------------------------------

@@ -281,7 +281,7 @@ proc bucketAccumReduce_parallel[bits: static int, EC, ECaff](
 
     if kAffine in buckets.status[numBuckets-1]:
       if kNonAffine in buckets.status[numBuckets-1]:
-        accumBuckets.madd_vartime(buckets.pt[numBuckets-1], buckets.ptAff[numBuckets-1])
+        accumBuckets.mixedSum_vartime(buckets.pt[numBuckets-1], buckets.ptAff[numBuckets-1])
       else:
         accumBuckets.fromAffine(buckets.ptAff[numBuckets-1])
     elif kNonAffine in buckets.status[numBuckets-1]:
@@ -303,7 +303,7 @@ proc bucketAccumReduce_parallel[bits: static int, EC, ECaff](
       if kAffine in buckets.status[k]:
         if kNonAffine in buckets.status[k]:
           var t{.noInit.}: EC
-          t.madd_vartime(buckets.pt[k], buckets.ptAff[k])
+          t.mixedSum_vartime(buckets.pt[k], buckets.ptAff[k])
           accumBuckets ~+= t
         else:
           accumBuckets ~+= buckets.ptAff[k]

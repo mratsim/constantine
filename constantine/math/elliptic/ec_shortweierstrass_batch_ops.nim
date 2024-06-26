@@ -391,7 +391,7 @@ func accumSum_chunk_vartime*[F; G: static Subgroup](
   while n >= minNumPointsSerial:
     if (n and 1) == 1: # odd number of points
       ## Accumulate the last
-      r.madd_vartime(r, points[n-1])
+      r.mixedSum_vartime(r, points[n-1])
       n -= 1
 
     # Compute [0, n/2) += [n/2, n)
@@ -402,7 +402,7 @@ func accumSum_chunk_vartime*[F; G: static Subgroup](
 
   # Tail
   for i in 0 ..< n:
-    r.madd_vartime(r, points[i])
+    r.mixedSum_vartime(r, points[i])
 
 func accum_batch_vartime[F; G: static Subgroup](
        r: var (EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G] or EC_ShortW_JacExt[F, G]),

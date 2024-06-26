@@ -220,7 +220,7 @@ when isMainModule:
     var data = newSeq[EC_G1](fftDesc.maxWidth)
     data[0].fromAffine(Generator1)
     for i in 1 ..< fftDesc.maxWidth:
-      data[i].madd(data[i-1], Generator1)
+      data[i].mixedSum(data[i-1], Generator1)
 
     var coefs = newSeq[EC_G1](data.len)
     let fftOk = fft_vartime(fftDesc, coefs, data)
@@ -271,7 +271,7 @@ when isMainModule:
       var data = newSeq[EC_G1](desc.maxWidth)
       data[0].fromAffine(Generator1)
       for i in 1 ..< desc.maxWidth:
-        data[i].madd(data[i-1], Generator1)
+        data[i].mixedSum(data[i-1], Generator1)
 
       var coefsOut = newSeq[EC_G1](data.len)
 
