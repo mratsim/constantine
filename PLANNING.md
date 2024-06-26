@@ -36,18 +36,6 @@ Other tracks are stretch goals, contributions towards them are accepted.
 - Endomorphism splitting bounds guarantee: i.e. division-based vs lattice-based splitting
 - Fix optimized MSM
 
-Internal API breakage, which might leak to others using internal APIs.
-
-- Expand the library to support named fields and not just curves
-    - move and rename the config & constant folder
-    - use field instead of curve
-    - "named_math/fields_and_curves"
-    - matchingOrderBigInt -> BigInt[foo.getOrder()]
-    - Delete Mod*(), replace by fieldMod
-- In the future there will likely be named ciphersuites or other high-level protocols
-
-
-
 ### Ethereum Consensus Track
 
 - Implement cryptography and erasure codes EIP-7594 PeerDAS
@@ -129,10 +117,6 @@ Internal API breakage, which might leak to others using internal APIs.
     - Mention Rust GCE and NRVO / RVO
     - https://github.com/rust-lang/rust/pull/76986
     - https://github.com/rust-lang/rfcs/pull/2884
-
-- Shorter names:
-    - Rename to EC_ShortW
-    - Rename to EC_TwEdw
 
 ### Technical marketing track
 
