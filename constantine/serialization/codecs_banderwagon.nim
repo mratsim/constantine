@@ -101,7 +101,7 @@ func deserialize_fr*(
 ## ############################################################
 
 
-func serialize*(dst: var array[32, byte], P: ECP_TwEdwards_Aff[Fp[Banderwagon]]): CttCodecEccStatus {.discardable.} =
+func serialize*(dst: var array[32, byte], P: EC_TwEdw_Aff[Fp[Banderwagon]]): CttCodecEccStatus {.discardable.} =
   ## Serialize a Banderwagon point(x, y) in the format
   ##
   ## serialize = bigEndian( sign(y) * x )
@@ -124,7 +124,7 @@ func serialize*(dst: var array[32, byte], P: ECP_TwEdwards_Aff[Fp[Banderwagon]])
   dst.marshal(X, bigEndian)
   return cttCodecEcc_Success
 
-func serialize*(dst: var array[32, byte], P: ECP_TwEdwards_Prj[Fp[Banderwagon]]): CttCodecEccStatus {.discardable.} =
+func serialize*(dst: var array[32, byte], P: EC_TwEdw_Prj[Fp[Banderwagon]]): CttCodecEccStatus {.discardable.} =
   ## Serialize a Banderwagon point(x, y) in the format
   ##
   ## serialize = bigEndian( sign(y) * x )
@@ -136,12 +136,12 @@ func serialize*(dst: var array[32, byte], P: ECP_TwEdwards_Prj[Fp[Banderwagon]])
   ## Spec: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Serialisation
 
   # Convert the projective points into affine format before encoding
-  var aff {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+  var aff {.noInit.}: EC_TwEdw_Aff[Fp[Banderwagon]]
   aff.affine(P)
 
   return dst.serialize(aff)
 
-func deserialize_unchecked_vartime*(dst: var ECP_TwEdwards_Aff[Fp[Banderwagon]], src: array[32, byte]): CttCodecEccStatus =
+func deserialize_unchecked_vartime*(dst: var EC_TwEdw_Aff[Fp[Banderwagon]], src: array[32, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ##
   ## if y is not lexicographically largest
@@ -182,7 +182,7 @@ func deserialize_unchecked_vartime*(dst: var ECP_TwEdwards_Aff[Fp[Banderwagon]],
 
   return cttCodecEcc_Success
 
-func deserialize_vartime*(dst: var ECP_TwEdwards_Aff[Fp[Banderwagon]], src: array[32, byte]): CttCodecEccStatus =
+func deserialize_vartime*(dst: var EC_TwEdw_Aff[Fp[Banderwagon]], src: array[32, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ##
   ## Also checks if the point lies in the banderwagon scheme subgroup
@@ -203,7 +203,7 @@ func deserialize_vartime*(dst: var ECP_TwEdwards_Aff[Fp[Banderwagon]], src: arra
 # Debugging
 # ------------------------------------------------------------------------------------------------
 
-func toHex*(P: ECP_TwEdwards_Aff[Fp[Banderwagon]], canonicalize: static bool = true, indent: static int = 0): string =
+func toHex*(P: EC_TwEdw_Aff[Fp[Banderwagon]], canonicalize: static bool = true, indent: static int = 0): string =
   ## Stringify an elliptic curve point to Hex for Banderwagon
   ## (x, y) and (-x, -y) are in the same equivalence class for Banderwagon.
   ## By default, we negate the hex encoding if y is not the lexicographically largest.
@@ -211,7 +211,7 @@ func toHex*(P: ECP_TwEdwards_Aff[Fp[Banderwagon]], canonicalize: static bool = t
   ##
   ## This is intended for debugging
 
-  var aff {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+  var aff {.noInit.}: EC_TwEdw_Aff[Fp[Banderwagon]]
   aff = P
 
   const sp = spaces(indent)
@@ -220,20 +220,20 @@ func toHex*(P: ECP_TwEdwards_Aff[Fp[Banderwagon]], canonicalize: static bool = t
   aff.x.cneg(not lexicographicallyLargest)
   aff.y.cneg(not lexicographicallyLargest)
 
-  result = sp & $ECP_TwEdwards_Aff[Fp[Banderwagon]] & "(\n" & sp & "  x: "
+  result = sp & $EC_TwEdw_Aff[Fp[Banderwagon]] & "(\n" & sp & "  x: "
   result.appendHex(aff.x)
   result &= ",\n" & sp & "  y: "
   result.appendHex(aff.y)
   result &= "\n" & sp & ")"
 
-func toHex*(P: ECP_TwEdwards_Prj[Fp[Banderwagon]], canonicalize: static bool = true, indent: static int = 0): string =
+func toHex*(P: EC_TwEdw_Prj[Fp[Banderwagon]], canonicalize: static bool = true, indent: static int = 0): string =
   ## Stringify an elliptic curve point to Hex for Banderwagon
   ## (x, y) and (-x, -y) are in the same equivalence class for Banderwagon.
   ## By default, we negate the hex encoding if y is not the lexicographically largest.
   ## Pass `canonicalize` = false to get usual Twisted Edwards hex encoding.
   ##
   ## This is intended for debugging
-  var aff {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+  var aff {.noInit.}: EC_TwEdw_Aff[Fp[Banderwagon]]
   aff.affine(P)
   return aff.toHex(canonicalize, indent)
 
@@ -245,7 +245,7 @@ func toHex*(P: ECP_TwEdwards_Prj[Fp[Banderwagon]], canonicalize: static bool = t
 
 func serializeBatch_vartime*(
     dst: ptr UncheckedArray[array[32, byte]],
-    points: ptr UncheckedArray[ECP_TwEdwards_Prj[Fp[Banderwagon]]],
+    points: ptr UncheckedArray[EC_TwEdw_Prj[Fp[Banderwagon]]],
     N: int,
   ) : CttCodecEccStatus {.noInline.} =
 
@@ -274,7 +274,7 @@ func serializeBatch_vartime*(
 
 func serializeBatchUncompressed_vartime*(
     dst: ptr UncheckedArray[array[64, byte]],
-    points: ptr UncheckedArray[ECP_TwEdwards_Prj[Fp[Banderwagon]]],
+    points: ptr UncheckedArray[EC_TwEdw_Prj[Fp[Banderwagon]]],
     N: int) : CttCodecEccStatus {.noInline.} =
   ## Batch Serialization of Banderwagon Points
   ## In uncompressed format
@@ -309,12 +309,12 @@ func serializeBatchUncompressed_vartime*(
 
 func serializeBatchUncompressed_vartime*[N: static int](
         dst: var array[N, array[64, byte]],
-        points: array[N, ECP_TwEdwards_Prj[Fp[Banderwagon]]]): CttCodecEccStatus {.inline.} =
+        points: array[N, EC_TwEdw_Prj[Fp[Banderwagon]]]): CttCodecEccStatus {.inline.} =
   return serializeBatchUncompressed_vartime(dst.asUnchecked(), points.asUnchecked(), N)
 
 func serializeBatch_vartime*[N: static int](
         dst: var array[N, array[32, byte]],
-        points: array[N, ECP_TwEdwards_Prj[Fp[Banderwagon]]]): CttCodecEccStatus {.inline.} =
+        points: array[N, EC_TwEdw_Prj[Fp[Banderwagon]]]): CttCodecEccStatus {.inline.} =
   return serializeBatch_vartime(dst.asUnchecked(), points.asUnchecked(), N)
 
 ## ############################################################
@@ -323,7 +323,7 @@ func serializeBatch_vartime*[N: static int](
 ##
 ## ############################################################
 
-func serializeUncompressed*(dst: var array[64, byte], P: ECP_TwEdwards_Aff[Fp[Banderwagon]]): CttCodecEccStatus =
+func serializeUncompressed*(dst: var array[64, byte], P: EC_TwEdw_Aff[Fp[Banderwagon]]): CttCodecEccStatus =
   ## Serialize a Banderwagon point(x, y) in the format
   ##
   ## serialize = [ bigEndian( x ) , bigEndian( y ) ]
@@ -340,7 +340,7 @@ func serializeUncompressed*(dst: var array[64, byte], P: ECP_TwEdwards_Aff[Fp[Ba
 
   return cttCodecEcc_Success
 
-func deserializeUncompressed_unchecked*(dst: var ECP_TwEdwards_Aff[Fp[Banderwagon]], src: array[64, byte]): CttCodecEccStatus =
+func deserializeUncompressed_unchecked*(dst: var EC_TwEdw_Aff[Fp[Banderwagon]], src: array[64, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ## Doesn't check if the point is in the banderwagon scheme subgroup
   ## Returns cttCodecEcc_Success if successful
@@ -366,7 +366,7 @@ func deserializeUncompressed_unchecked*(dst: var ECP_TwEdwards_Aff[Fp[Banderwago
   dst.y.fromBig(t)
   return cttCodecEcc_Success
 
-func deserializeUncompressed*(dst: var ECP_TwEdwards_Aff[Fp[Banderwagon]], src: array[64, byte]): CttCodecEccStatus =
+func deserializeUncompressed*(dst: var EC_TwEdw_Aff[Fp[Banderwagon]], src: array[64, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ##
   ## Also checks if the point lies in the banderwagon scheme subgroup

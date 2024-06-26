@@ -17,20 +17,26 @@ const
   Iters = 12
   ItersMul = Iters div 4
 
-run_EC_mul_vs_ref_impl(
-    ec = ECP_TwEdwards_Prj[Fp[Edwards25519]],
+run_EC_mul_distributive_tests(
+    ec = EC_TwEdw_Prj[Fp[Edwards25519]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_twistededwards_projective_mul_vs_ref_" & $Edwards25519
+    moduleName = "test_ec_twistededwards_projective_mul_distributive_" & $Edwards25519
   )
 
-run_EC_mul_vs_ref_impl(
-    ec = ECP_TwEdwards_Prj[Fp[Jubjub]],
+run_EC_mul_distributive_tests(
+    ec = EC_TwEdw_Prj[Fp[Jubjub]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_twistededwards_projective_mul_vs_ref_" & $Jubjub
+    moduleName = "test_ec_twistededwards_projective_mul_distributive_" & $Jubjub
   )
 
-run_EC_mul_vs_ref_impl(
-    ec = ECP_TwEdwards_Prj[Fp[Bandersnatch]],
+run_EC_mul_distributive_tests(
+    ec = EC_TwEdw_Prj[Fp[Bandersnatch]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_twistededwards_projective_mul_vs_ref_" & $Bandersnatch
+    moduleName = "test_ec_twistededwards_projective_mul_distributive_" & $Bandersnatch
+  )
+
+run_EC_mul_distributive_tests(
+    ec = EC_TwEdw_Prj[Fp[Banderwagon]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_twistededwards_projective_mul_distributive_" & $Banderwagon
   )

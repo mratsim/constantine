@@ -65,7 +65,7 @@ suite "Barycentric Form Tests":
 
       poly.interpolate(points,2)
 
-      var genfp: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      var genfp: EC_TwEdw_Prj[Fp[Banderwagon]]
       genfp.setGenerator()
       var genfr: Fr[Banderwagon]
       genfr.mapToScalarField(genfp)
@@ -175,7 +175,7 @@ suite "Barycentric Form Tests":
 #       var ipaConfig {.noInit.}: IPASettings
 #       ipaConfig.genIPAConfig()
 
-#       var basisPoints {.noInit.}: array[256, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+#       var basisPoints {.noInit.}: array[256, EC_TwEdw_Aff[Fp[Banderwagon]]]
 #       basisPoints.generate_random_points()
 
 #       var p0 {.noInit.}, p255 {.noInit.}: array[32, byte]
@@ -203,14 +203,14 @@ suite "Barycentric Form Tests":
 #       var ipaConfig: IPASettings
 #       ipaConfig.genIPAConfig()
 
-#       var basisPoints: PolynomialEval[256, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+#       var basisPoints: PolynomialEval[256, EC_TwEdw_Aff[Fp[Banderwagon]]]
 #       basisPoints.evals.generate_random_points()
 
 #       var test_scalars {.noInit.}: PolynomialEval[256, Fr[Banderwagon]]
 #       for i in 0 ..< 256:
 #         test_scalars.evals[i].fromHex(testScalarsHex[i])
 
-#       var commitment {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+#       var commitment {.noInit.}: EC_TwEdw_Prj[Fp[Banderwagon]]
 #       basisPoints.pedersen_commit(commitment, test_scalars)
 
 #       var arr22 {.noInit.}: Bytes
@@ -421,7 +421,7 @@ suite "IPA proof tests":
   #     var commitmentBytes {.noInit.} : array[32, byte]
   #     commitmentBytes.fromHex(IPAPedersenCommitment)
 
-  #     var commitment: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+  #     var commitment: EC_TwEdw_Aff[Fp[Banderwagon]]
   #     discard commitment.deserialize(commitmentBytes)
 
   #     var evalPoint: Fr[Banderwagon]
@@ -432,11 +432,11 @@ suite "IPA proof tests":
 
   #     var proof_bytes: EthVerkleIpaProofBytes
   #     proof_bytes.fromHex(IPASerializedProofVec)
-  #     var proof {.noInit.}: IpaProof[8, ECP_TwEdwards_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+  #     var proof {.noInit.}: IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
   #     let status = proof.deserialize(proof_bytes)
   #     doAssert status == cttEthVerkleIpa_Success
 
-  #     var CRS: PolynomialEval[EthVerkleDomain, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+  #     var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
   #     CRS.evals.generate_random_points()
 
   #     var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
@@ -462,7 +462,7 @@ suite "IPA proof tests":
       var opening_challenge: Fr[Banderwagon]
       opening_challenge.fromInt(2101)
 
-      var CRS: PolynomialEval[EthVerkleDomain, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
       CRS.evals.generate_random_points()
 
       var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
@@ -482,9 +482,9 @@ suite "IPA proof tests":
       var poly: PolynomialEval[256, Fr[Banderwagon]]
       poly.evals.testPoly256(testVals)
 
-      var comm: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      var comm: EC_TwEdw_Prj[Fp[Banderwagon]]
       CRS.pedersen_commit(comm, poly)
-      var commitment: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+      var commitment: EC_TwEdw_Aff[Fp[Banderwagon]]
       commitment.affine(comm)
 
       var C {.noInit.}: array[32, byte]
@@ -495,7 +495,7 @@ suite "IPA proof tests":
       var prover_transcript {.noInit.}: sha256
       prover_transcript.initTranscript("test")
 
-      var proof {.noInit.}: IpaProof[8, ECP_TwEdwards_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+      var proof {.noInit.}: IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
       var eval_at_challenge {.noInit.}: Fr[Banderwagon]
       CRS.ipa_prove(
         domain, prover_transcript,
@@ -513,7 +513,7 @@ suite "IPA proof tests":
   #     var opening_challenge: Fr[Banderwagon]
   #     opening_challenge.fromInt(2101)
 
-  #     var CRS: PolynomialEval[EthVerkleDomain, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+  #     var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
   #     CRS.evals.generate_random_points()
 
   #     var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
@@ -524,16 +524,16 @@ suite "IPA proof tests":
   #     var poly: PolynomialEval[256, Fr[Banderwagon]]
   #     poly.evals.testPoly256(testVals)
 
-  #     var comm: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+  #     var comm: EC_TwEdw_Prj[Fp[Banderwagon]]
   #     CRS.pedersen_commit(comm, poly)
-  #     var commitment: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+  #     var commitment: EC_TwEdw_Aff[Fp[Banderwagon]]
   #     commitment.affine(comm)
 
   #     # Prover's side
   #     var prover_transcript {.noInit.}: sha256
   #     prover_transcript.initTranscript("ipa")
 
-  #     var proof {.noInit.}: IpaProof[8, ECP_TwEdwards_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+  #     var proof {.noInit.}: IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
   #     var eval_at_challenge {.noInit.}: Fr[Banderwagon]
   #     CRS.ipa_prove(
   #       domain, prover_transcript,
@@ -634,7 +634,7 @@ suite "Multiproof Tests":
   # test "Multiproof Creation and Verification (new)":
   #   proc testMultiproofCreationAndVerification()=
 
-  #     var CRS: PolynomialEval[EthVerkleDomain, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+  #     var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
   #     CRS.evals.generate_random_points()
 
   #     var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
@@ -644,16 +644,16 @@ suite "Multiproof Tests":
   #     var poly: PolynomialEval[256, Fr[Banderwagon]]
   #     poly.evals.testPoly256(testVals)
 
-  #     var prover_comm: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+  #     var prover_comm: EC_TwEdw_Prj[Fp[Banderwagon]]
   #     CRS.pedersen_commit(prover_comm, poly)
-  #     var C: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+  #     var C: EC_TwEdw_Aff[Fp[Banderwagon]]
   #     C.affine(prover_comm)
 
   #     # Prover's view
   #     var prover_transcript {.noInit.}: sha256
   #     prover_transcript.initTranscript("multiproof")
 
-  #     var multiproof {.noInit.}: IpaMultiProof[8, ECP_TwEdwards_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+  #     var multiproof {.noInit.}: IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
   #     CRS.ipa_multi_prove(
   #       domain, prover_transcript,
   #       multiproof, [poly], [Name], [0'u32]
@@ -726,7 +726,7 @@ suite "Multiproof Tests":
       validMultiproof_bytes.fromHex(validMultiproof)
 
       ## Deserialize it into the Multiproof type
-      var multiproof {.noInit.}: IpaMultiProof[8, ECP_TwEdwards_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+      var multiproof {.noInit.}: IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
       let s1 = multiproof.deserialize(validMultiproof_bytes)
       doAssert s1 == cttEthVerkleIpa_Success, "Failed to deserialize Multiproof"
 

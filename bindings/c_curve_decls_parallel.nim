@@ -14,7 +14,7 @@ import
 
 export curves_primitives_parallel
 
-template genParallelBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarField: untyped) =
+template genParallelBindings_EC_ShortW_NonAffine*(EC, EcAff, ScalarField: untyped) =
   # TODO: remove the need of explicit ScalarField
 
   # For some unknown reason {.push noconv.}
@@ -30,18 +30,18 @@ template genParallelBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarField: unt
     {.pragma: libExport, exportc,  raises: [].} # No exceptions allowed
 
   # --------------------------------------------------------------------------------------
-  proc `ctt _ ECP _ multi_scalar_mul_big_coefs_vartime_parallel`(
+  proc `ctt _ EC _ multi_scalar_mul_big_coefs_vartime_parallel`(
           tp: Threadpool,
-          r: var ECP,
-          coefs: ptr UncheckedArray[BigInt[ECP.getScalarField().bits()]],
-          points: ptr UncheckedArray[ECP_Aff],
+          r: var EC,
+          coefs: ptr UncheckedArray[BigInt[ScalarField.bits()]],
+          points: ptr UncheckedArray[EcAff],
           len: csize_t) {.libExport.} =
     tp.multiScalarMul_vartime_parallel(r.addr, coefs, points, cast[int](len))
 
-  proc `ctt _ ECP _ multi_scalar_mul_fr_coefs_vartime_parallel`(
+  proc `ctt _ EC _ multi_scalar_mul_fr_coefs_vartime_parallel`(
           tp: Threadpool,
-          r: var ECP,
+          r: var EC,
           coefs: ptr UncheckedArray[ScalarField],
-          points: ptr UncheckedArray[ECP_Aff],
+          points: ptr UncheckedArray[EcAff],
           len: csize_t) {.libExport.} =
     tp.multiScalarMul_vartime_parallel(r.addr, coefs, points, cast[int](len))

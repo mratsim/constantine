@@ -42,7 +42,7 @@ type
     Long01Sequence
 
 func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen): EC {.noInit.} =
-  when EC is (EC_ShortW_Aff or ECP_TwEdwards_Aff):
+  when EC is (EC_ShortW_Aff or EC_TwEdw_Aff):
     if gen == Uniform:
       result = rng.random_unsafe(EC)
     elif gen == HighHammingWeight:

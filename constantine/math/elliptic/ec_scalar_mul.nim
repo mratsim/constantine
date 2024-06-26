@@ -13,7 +13,12 @@ import
   constantine/math/extension_fields,
   constantine/math/io/io_bigints,
   constantine/named/zoo_endomorphisms,
-  ./ec_endomorphism_accel
+  ./ec_endomorphism_accel,
+  ./ec_shortweierstrass_affine,
+  ./ec_shortweierstrass_projective,
+  ./ec_shortweierstrass_jacobian,
+  ./ec_twistededwards_affine,
+  ./ec_twistededwards_projective
 
 # ############################################################
 #                                                            #

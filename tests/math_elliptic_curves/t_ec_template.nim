@@ -54,11 +54,11 @@ func `+=`[F; G: static Subgroup](P: var EC_ShortW_JacExt[F, G], Q: EC_ShortW_Aff
 
 # Twisted Edwards bindings
 # ----------------------------------
-template G(EC: type ECP_TwEdwards_Prj): string =
+template G(EC: type EC_TwEdw_Prj): string =
   ## Twisted Edwards curve don't have a G parameter
   ""
 
-template sum_vartime(r: var ECP_TwEdwards_Prj, P, Q: ECP_TwEdwards_Prj) =
+template sum_vartime(r: var EC_TwEdw_Prj, P, Q: EC_TwEdw_Prj) =
   r.sum(P, Q)
 
 # ----------------------------------

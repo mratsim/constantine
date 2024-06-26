@@ -287,9 +287,9 @@ func random_long01Seq(rng: var RngState, a: var ExtensionField) =
 # ------------------------------------------------------------
 
 type ECP = EC_ShortW_Aff or EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_JacExt or
-           ECP_TwEdwards_Aff or ECP_TwEdwards_Prj
+           EC_TwEdw_Aff or EC_TwEdw_Prj
 type ECP_ext = EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_JacExt or
-               ECP_TwEdwards_Prj
+               EC_TwEdw_Prj
 
 template trySetFromCoord[F](a: ECP, fieldElem: F): SecretBool =
   when a is (EC_ShortW_Aff or EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_JacExt):

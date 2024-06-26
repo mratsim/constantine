@@ -17,7 +17,7 @@ import
 # -----------------------------------------------------------------
 # https://eprint.iacr.org/2021/1152.pdf
 
-const Bandersnatch_generator* = ECP_TwEdwards_Aff[Fp[Bandersnatch]](
+const Bandersnatch_generator* = EC_TwEdw_Aff[Fp[Bandersnatch]](
   x: Fp[Bandersnatch].fromHex"0x29c132cc2c0b34c5743711777bbe42f32b79c022ad998465e1e71866a252ae18",
   y: Fp[Bandersnatch].fromHex"0x2a6c669eda123e0f157d8b50badcd586358cad81eee464605e3167b6cc974166"
 )

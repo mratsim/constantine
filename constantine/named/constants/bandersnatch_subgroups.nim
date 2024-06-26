@@ -18,7 +18,7 @@ import
 #
 # ############################################################
 
-func clearCofactorReference*(P: var ECP_TwEdwards_Prj[Fp[Bandersnatch]]) {.inline.} =
+func clearCofactorReference*(P: var EC_TwEdw_Prj[Fp[Bandersnatch]]) {.inline.} =
   ## Clear the cofactor of Bandersnatch
   # https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Bandersnatch-Subgroup
   #

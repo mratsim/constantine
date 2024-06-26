@@ -22,11 +22,11 @@ import
 
 const EthVerkleSeed* = "eth_verkle_oct_2021"
 
-func generate_random_points*(r: var openArray[ECP_TwEdwards_Aff[Fp[Banderwagon]]]) =
+func generate_random_points*(r: var openArray[EC_TwEdw_Aff[Fp[Banderwagon]]]) =
   ## generate_random_points generates random points on the curve with the hardcoded EthVerkleSeed
-  let points = allocHeapArrayAligned(ECP_TwEdwards_Aff[Fp[Banderwagon]], r.len, alignment = 64)
+  let points = allocHeapArrayAligned(EC_TwEdw_Aff[Fp[Banderwagon]], r.len, alignment = 64)
 
-  var points_found: seq[ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+  var points_found: seq[EC_TwEdw_Aff[Fp[Banderwagon]]]
   var incrementer: uint64 = 0
   var idx: int = 0
   while true:
@@ -49,7 +49,7 @@ func generate_random_points*(r: var openArray[ECP_TwEdwards_Aff[Fp[Banderwagon]]
     var x_arr {.noInit.}: array[32, byte]
     x_arr.marshal(x, bigEndian)
 
-    var x_p {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+    var x_p {.noInit.}: EC_TwEdw_Aff[Fp[Banderwagon]]
     let stat2 = x_p.deserialize_vartime(x_arr)
     if stat2 == cttCodecEcc_Success:
       points_found.add(x_p)
@@ -139,8 +139,8 @@ template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.}
 type
   EthVerkleIpaProofBytes* = array[544, byte]
   EthVerkleIpaMultiProofBytes* = array[576, byte]
-  EthVerkleIpaProof* = IpaProof[8, ECP_TwEdwards[Fp[Banderwagon]], Fr[Banderwagon]]
-  EthVerkleIpaMultiProof* = IpaMultiProof[8, ECP_TwEdwards[Fp[Banderwagon]], Fr[Banderwagon]]
+  EthVerkleIpaProof* = IpaProof[8, EC_TwEdw[Fp[Banderwagon]], Fr[Banderwagon]]
+  EthVerkleIpaMultiProof* = IpaMultiProof[8, EC_TwEdw[Fp[Banderwagon]], Fr[Banderwagon]]
 
   # The aliases may throw strange errors like:
   # - Error: invalid type: 'EthVerkleIpaProof' for var
@@ -148,7 +148,7 @@ type
   # as of Nim v2.0.4
 
 func serialize*(dst: var EthVerkleIpaProofBytes,
-                src: IpaProof[8, ECP_TwEdwards[Fp[Banderwagon]], Fr[Banderwagon]]
+                src: IpaProof[8, EC_TwEdw[Fp[Banderwagon]], Fr[Banderwagon]]
                 ): cttEthVerkleIpaStatus {.discardable.} =
   # Note: We store 1 out of 2 coordinates of an EC point, so size(Fp[Banderwagon])
   const fpb = sizeof(Fp[Banderwagon])
@@ -187,7 +187,7 @@ func deserialize*(dst: var EthVerkleIpaProof,
   return cttEthVerkleIpa_Success
 
 func serialize*(dst: var EthVerkleIpaMultiProofBytes,
-                src: IpaMultiProof[8, ECP_TwEdwards[Fp[Banderwagon]], Fr[Banderwagon]]
+                src: IpaMultiProof[8, EC_TwEdw[Fp[Banderwagon]], Fr[Banderwagon]]
                 ): cttEthVerkleIpaStatus {.discardable.} =
 
   const frb = sizeof(Fr[Banderwagon])
@@ -215,7 +215,7 @@ func deserialize*(dst: var EthVerkleIpaMultiProof,
 # TODO: refactor, this shouldn't use curves_primitives but internal functions
 import ./curves_primitives
 
-func mapToBaseField*(dst: var Fp[Banderwagon],p: ECP_TwEdwards[Fp[Banderwagon]]) =
+func mapToBaseField*(dst: var Fp[Banderwagon],p: EC_TwEdw[Fp[Banderwagon]]) =
   ## The mapping chosen for the Banderwagon Curve is x/y
   ##
   ## This function takes a Banderwagon element & then
@@ -227,7 +227,7 @@ func mapToBaseField*(dst: var Fp[Banderwagon],p: ECP_TwEdwards[Fp[Banderwagon]])
   invY.inv(p.y)             # invY = 1/Y
   dst.prod(p.x, invY)       # dst = (X) * (1/Y)
 
-func mapToScalarField*(res: var Fr[Banderwagon], p: ECP_TwEdwards[Fp[Banderwagon]]): bool {.discardable.} =
+func mapToScalarField*(res: var Fr[Banderwagon], p: EC_TwEdw[Fp[Banderwagon]]): bool {.discardable.} =
   ## This function takes the x/y value from the above function as Fp element
   ## and convert that to bytes in Big Endian,
   ## and then load that to a Fr element
@@ -246,7 +246,7 @@ func mapToScalarField*(res: var Fr[Banderwagon], p: ECP_TwEdwards[Fp[Banderwagon
 
 func batchMapToScalarField*(
       res: var openArray[Fr[Banderwagon]],
-      points: openArray[ECP_TwEdwards[Fp[Banderwagon]]]): bool {.discardable, noinline.} =
+      points: openArray[EC_TwEdw[Fp[Banderwagon]]]): bool {.discardable, noinline.} =
   ## This function performs the `mapToScalarField` operation
   ## on a batch of points
   ##

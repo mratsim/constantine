@@ -71,7 +71,7 @@ func absorb*(ctx: var EthVerkleTranscript, label: openArray[char], v: uint64) =
   ctx.update(label)
   ctx.update(v.toBytes(bigEndian))
 
-func absorb*(ctx: var EthVerkleTranscript, label: openArray[char], point: ECP_TwEdwards[Fp[Banderwagon]]) =
+func absorb*(ctx: var EthVerkleTranscript, label: openArray[char], point: EC_TwEdw[Fp[Banderwagon]]) =
   var bytes {.noInit.}: array[32, byte]
   bytes.serialize(point)
   ctx.absorb(label, bytes)

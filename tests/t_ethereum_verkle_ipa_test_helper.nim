@@ -173,7 +173,7 @@ func testPoly256* [Fr] (res: var openArray[Fr], polynomialUint: openArray[int])=
   for i in polynomialUint.len ..< pad:
     res[i].setZero()
 
-func isPointEqHex*(point: ECP_TwEdwards_Prj[Fp[Banderwagon]], expected: string): bool {.discardable.} =
+func isPointEqHex*(point: EC_TwEdw_Prj[Fp[Banderwagon]], expected: string): bool {.discardable.} =
 
   var point_bytes {.noInit.}: array[32, byte]
   if point_bytes.serialize(point) == cttCodecEcc_Success:

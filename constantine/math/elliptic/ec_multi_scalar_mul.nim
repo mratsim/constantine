@@ -478,8 +478,8 @@ func multiScalarMul_dispatch_vartime[bits: static int, F, G](
     unreachable()
 
 func multiScalarMul_dispatch_vartime[bits: static int, F](
-       r: var ECP_TwEdwards_Prj[F], coefs: ptr UncheckedArray[BigInt[bits]],
-       points: ptr UncheckedArray[ECP_TwEdwards_Aff[F]], N: int) =
+       r: var EC_TwEdw_Prj[F], coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[EC_TwEdw_Aff[F]], N: int) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
 

@@ -20,7 +20,7 @@ import
 #
 # ############################################################
 
-type ECP_TwEdwards_Aff*[F] = object
+type EC_TwEdw_Aff*[F] = object
   ## Elliptic curve point for a curve in Twisted Edwards form
   ##   ax²+y²=1+dx²y²
   ## with a, d ≠ 0 and a ≠ d
@@ -28,10 +28,10 @@ type ECP_TwEdwards_Aff*[F] = object
   ## over a field F
   x*, y*: F
 
-template getScalarField*(EC: type ECP_TwEdwards_Aff): untyped =
+template getScalarField*(EC: type EC_TwEdw_Aff): untyped =
   Fr[EC.F.Name]
 
-func `==`*(P, Q: ECP_TwEdwards_Aff): SecretBool =
+func `==`*(P, Q: EC_TwEdw_Aff): SecretBool =
   ## Constant-time equality check
   # Isogeny-based constructions to create
   # prime order curves overload this generic equality check.
@@ -39,7 +39,7 @@ func `==`*(P, Q: ECP_TwEdwards_Aff): SecretBool =
   result = result and (P.y == Q.y)
 
 
-func isNeutral*(P: ECP_TwEdwards_Aff): SecretBool =
+func isNeutral*(P: EC_TwEdw_Aff): SecretBool =
   ## Returns true if P is the neutral element / identity element
   ## and false otherwise, i.e. ∀Q, P+Q == Q
   ## Contrary to Short Weierstrass curve, the neutral element is on the curve
@@ -47,7 +47,7 @@ func isNeutral*(P: ECP_TwEdwards_Aff): SecretBool =
   # prime order curves overload this generic identity check.
   result = P.x.isZero() and P.y.isOne()
 
-func setNeutral*(P: var ECP_TwEdwards_Aff) {.inline.} =
+func setNeutral*(P: var EC_TwEdw_Aff) {.inline.} =
   ## Set P to the neutral element / identity element
   ## i.e. ∀Q, P+Q == Q.
   ## Contrary to Short Weierstrass curve, the neutral element is on the curve
@@ -91,7 +91,7 @@ func isOnCurve*[F](x, y: F): SecretBool =
   t2 -= t0
   return t2.isOne()
 
-func trySetFromCoordX*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool =
+func trySetFromCoordX*[F](P: var EC_TwEdw_Aff[F], x: F): SecretBool =
   ## Try to create a point on the elliptic curve from X co-ordinate
   ##   ax²+y²=1+dx²y²    (affine coordinate)
   ##
@@ -135,7 +135,7 @@ func trySetFromCoordX*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool =
   P.y = t
   P.x = x
 
-func trySetFromCoordX_vartime*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool =
+func trySetFromCoordX_vartime*[F](P: var EC_TwEdw_Aff[F], x: F): SecretBool =
   ## This is not in constant time
   ## Try to create a point on the elliptic curve from X co-ordinate
   ##   ax²+y²=1+dx²y²    (affine coordinate)
@@ -180,7 +180,7 @@ func trySetFromCoordX_vartime*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool
   P.y = t
   P.x = x
 
-func trySetFromCoordY*[F](P: var ECP_TwEdwards_Aff[F], y: F): SecretBool =
+func trySetFromCoordY*[F](P: var EC_TwEdw_Aff[F], y: F): SecretBool =
   ## Try to create a point the elliptic curve
   ##   ax²+y²=1+dx²y²    (affine coordinate)
   ##
@@ -238,16 +238,16 @@ func trySetFromCoordY*[F](P: var ECP_TwEdwards_Aff[F], y: F): SecretBool =
   P.x = t
   P.y = y
 
-func neg*(P: var ECP_TwEdwards_Aff, Q: ECP_TwEdwards_Aff) =
+func neg*(P: var EC_TwEdw_Aff, Q: EC_TwEdw_Aff) =
   ## Negate ``P``
   P.x.neg(Q.x)
   P.y = Q.y
 
-func neg*(P: var ECP_TwEdwards_Aff) =
+func neg*(P: var EC_TwEdw_Aff) =
   ## Negate ``P``
   P.x.neg()
 
-func cneg*(P: var ECP_TwEdwards_Aff, ctl: CTBool) =
+func cneg*(P: var EC_TwEdw_Aff, ctl: CTBool) =
   ## Conditional negation.
   ## Negate if ``ctl`` is true
   P.x.cneg(ctl)
@@ -258,7 +258,7 @@ func cneg*(P: var ECP_TwEdwards_Aff, ctl: CTBool) =
 #
 # ############################################################
 
-func `==`*(P, Q: ECP_TwEdwards_Aff[Fp[Banderwagon]]): SecretBool =
+func `==`*(P, Q: EC_TwEdw_Aff[Fp[Banderwagon]]): SecretBool =
   ## Equality check for points in the Banderwagon Group
   ## The equality check is optimized for the quotient group
   ## This is a costly operation
@@ -275,7 +275,7 @@ func `==`*(P, Q: ECP_TwEdwards_Aff[Fp[Banderwagon]]): SecretBool =
   rhs.prod(Q.x, P.y)
   result = result and lhs == rhs
 
-func isNeutral*(P: ECP_TwEdwards_Aff[Fp[Banderwagon]]): SecretBool {.inline.} =
+func isNeutral*(P: EC_TwEdw_Aff[Fp[Banderwagon]]): SecretBool {.inline.} =
   ## Returns true if P is the neutral/identity element
   ## in the Banderwagon group
   ## and false otherwise
