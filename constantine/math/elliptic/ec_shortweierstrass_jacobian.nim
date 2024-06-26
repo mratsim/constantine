@@ -37,6 +37,9 @@ type ECP_ShortW_Jac*[F; G: static Subgroup] = object
   ## Note that jacobian coordinates are not unique
   x*, y*, z*: F
 
+template getScalarField*(EC: type ECP_ShortW_Jac): untyped =
+  Fr[EC.F.Name]
+
 func isNeutral*(P: ECP_ShortW_Jac): SecretBool {.inline.} =
   ## Returns true if P is the neutral element / identity element
   ## and false otherwise, i.e. ∀Q, P+Q == Q

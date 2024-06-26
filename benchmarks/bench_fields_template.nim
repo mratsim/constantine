@@ -140,7 +140,7 @@ proc sumprodBench*(T: typedesc, iters: int) =
     r.sumprod([a, b], [u, v])
 
 proc toBigBench*(T: typedesc, iters: int) =
-  var r: matchingBigInt(T.Name)
+  var r: T.getBigInt()
   let x = rng.random_unsafe(T)
   preventOptimAway(r)
   bench("BigInt <- field conversion", T, iters):
@@ -148,7 +148,7 @@ proc toBigBench*(T: typedesc, iters: int) =
 
 proc toFieldBench*(T: typedesc, iters: int) =
   var r: T
-  let x = rng.random_unsafe(matchingBigInt(T.Name))
+  let x = rng.random_unsafe(T.getBigInt())
   preventOptimAway(r)
   bench("BigInt -> field conversion", T, iters):
     r.fromBig(x)
@@ -228,14 +228,14 @@ proc sqrtRatioVartimeBench*(T: typedesc, iters: int) =
 
 proc powBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
-  let exponent = rng.random_unsafe(BigInt[T.Name.getCurveOrderBitwidth()])
+  let exponent = rng.random_unsafe(BigInt[Fr[T.Name].bits()])
   bench("Exp curve order (constant-time) - " & $exponent.bits & "-bit", T, iters):
     var r = x
     r.pow(exponent)
 
 proc powUnsafeBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
-  let exponent = rng.random_unsafe(BigInt[T.Name.getCurveOrderBitwidth()])
+  let exponent = rng.random_unsafe(BigInt[Fr[T.Name].bits()])
   bench("Exp curve order (Leak exponent bits) - " & $exponent.bits & "-bit", T, iters):
     var r = x
     r.pow_vartime(exponent)

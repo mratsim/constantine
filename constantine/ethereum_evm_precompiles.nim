@@ -205,10 +205,10 @@ func parseRawUint[Name: static Algebra](
   ##
   ## Return false if the integer is larger than the field modulus.
   ## Returns true on success.
-  var big {.noInit.}: matchingBigInt(Name)
+  var big {.noInit.}: Fp[Name].getBigInt()
   big.unmarshal(src, bigEndian)
 
-  if not bool(big < Mod(Name)):
+  if not bool(big < Fp[Name].getModulus()):
     return cttEVM_IntLargerThanModulus
 
   dst.fromBig(big)
@@ -426,7 +426,7 @@ func eth_evm_bn254_g1mul*(r: var openArray[byte], inputs: openarray[byte]): CttE
     # Due to mismatch between the BigInt[256] input and the rest being BigInt[254]
     # we use the low-level getMont instead of 'fromBig'
     getMont(smod.mres.limbs, s.limbs,
-                Fr[BN254_Snarks].fieldMod().limbs,
+                Fr[BN254_Snarks].getModulus().limbs,
                 Fr[BN254_Snarks].getR2modP().limbs,
                 Fr[BN254_Snarks].getNegInvModWord(),
                 Fr[BN254_Snarks].getSpareBits())
@@ -705,7 +705,7 @@ func eth_evm_bls12381_g1mul*(r: var openArray[byte], inputs: openarray[byte]): C
     # Due to mismatch between the BigInt[256] input and the rest being BigInt[255]
     # we use the low-level getMont instead of 'fromBig'
     getMont(smod.mres.limbs, s.limbs,
-                Fr[BLS12_381].fieldMod().limbs,
+                Fr[BLS12_381].getModulus().limbs,
                 Fr[BLS12_381].getR2modP().limbs,
                 Fr[BLS12_381].getNegInvModWord(),
                 Fr[BLS12_381].getSpareBits())
@@ -775,7 +775,7 @@ func eth_evm_bls12381_g2mul*(r: var openArray[byte], inputs: openarray[byte]): C
     # Due to mismatch between the BigInt[256] input and the rest being BigInt[255]
     # we use the low-level getMont instead of 'fromBig'
     getMont(smod.mres.limbs, s.limbs,
-                Fr[BLS12_381].fieldMod().limbs,
+                Fr[BLS12_381].getModulus().limbs,
                 Fr[BLS12_381].getR2modP().limbs,
                 Fr[BLS12_381].getNegInvModWord(),
                 Fr[BLS12_381].getSpareBits())
@@ -852,7 +852,7 @@ func eth_evm_bls12381_g1msm*(r: var openArray[byte], inputs: openarray[byte]): C
     # Due to mismatch between the BigInt[256] input and the rest being BigInt[255]
     # we use the low-level getMont instead of 'fromBig'
     getMont(smod.mres.limbs, s.limbs,
-                Fr[BLS12_381].fieldMod().limbs,
+                Fr[BLS12_381].getModulus().limbs,
                 Fr[BLS12_381].getR2modP().limbs,
                 Fr[BLS12_381].getNegInvModWord(),
                 Fr[BLS12_381].getSpareBits())
@@ -934,7 +934,7 @@ func eth_evm_bls12381_g2msm*(r: var openArray[byte], inputs: openarray[byte]): C
     # Due to mismatch between the BigInt[256] input and the rest being BigInt[255]
     # we use the low-level getMont instead of 'fromBig'
     getMont(smod.mres.limbs, s.limbs,
-                Fr[BLS12_381].fieldMod().limbs,
+                Fr[BLS12_381].getModulus().limbs,
                 Fr[BLS12_381].getR2modP().limbs,
                 Fr[BLS12_381].getNegInvModWord(),
                 Fr[BLS12_381].getSpareBits())
@@ -1067,7 +1067,7 @@ func eth_evm_bls12381_map_fp_to_g1*(r: var openArray[byte], inputs: openarray[by
     if inputs[i] != 0:
       return cttEVM_IntLargerThanModulus
   discard u_big.unmarshal(inputs.toOpenArray(16, 64-1), bigEndian)
-  if bool(u_big >= BLS12_381.Mod()):
+  if bool(u_big >= Fp[BLS12_381].getModulus()):
     return cttEVM_IntLargerThanModulus
 
   var u {.noInit.}: Fp[BLS12_381]
@@ -1118,7 +1118,7 @@ func eth_evm_bls12381_map_fp2_to_g2*(r: var openArray[byte], inputs: openarray[b
     if inputs[i] != 0:
       return cttEVM_IntLargerThanModulus
   discard t.unmarshal(inputs.toOpenArray(16, 64-1), bigEndian)
-  if bool(t >= BLS12_381.Mod()):
+  if bool(t >= Fp[BLS12_381].getModulus()):
     return cttEVM_IntLargerThanModulus
   u.c0.fromBig(t)
 
@@ -1126,7 +1126,7 @@ func eth_evm_bls12381_map_fp2_to_g2*(r: var openArray[byte], inputs: openarray[b
     if inputs[i] != 0:
       return cttEVM_IntLargerThanModulus
   discard t.unmarshal(inputs.toOpenArray(64+16, 64+64-1), bigEndian)
-  if bool(t >= BLS12_381.Mod()):
+  if bool(t >= Fp[BLS12_381].getModulus()):
     return cttEVM_IntLargerThanModulus
   u.c1.fromBig(t)
 

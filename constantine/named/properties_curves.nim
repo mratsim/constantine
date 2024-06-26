@@ -22,22 +22,20 @@ export Algebra, CurveFamily, SexticTwist
 
 {.experimental: "dynamicBindSym".}
 
-template getCurveBitwidth*(Name: static Algebra): int =
-  ## Returns the number of bits taken by the curve modulus
-  CurveBitWidth[Name]
+type FieldKind* = enum
+  kBaseField
+  kScalarField
 
-macro getCurveOrder*(Name: static Algebra): untyped =
-  ## Get the curve order `r`
-  ## i.e. the number of points on the elliptic curve
-  result = bindSym($Name & "_Order")
-
-macro getCurveOrderBitwidth*(Name: static Algebra): untyped =
-  ## Get the curve order `r`
-  ## i.e. the number of points on the elliptic curve
-  result = nnkDotExpr.newTree(
-    getAST(getCurveOrder(Name)),
-    ident"bits"
-  )
+template getBigInt*(Name: Algebra, kind: static FieldKind): untyped =
+  # Workaround:
+  # in `ptr UncheckedArray[BigInt[EC.getScalarField().bits()]]
+  # EC.getScalarField is not accepted by the compiler
+  #
+  # and `ptr UncheckedArray[BigInt[Fr[EC.F.Name].bits]]` gets undeclared field: 'Name'
+  when kind == kBaseField:
+    BigInt[Fp[Name].bits()]
+  else:
+    BigInt[Fr[Name].bits()]
 
 template family*(Name: Algebra): CurveFamily =
   CurveFamilies[Name]

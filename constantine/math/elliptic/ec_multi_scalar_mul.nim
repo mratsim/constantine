@@ -147,7 +147,7 @@ func multiScalarMul_reference_vartime*[F, EC, ECaff](
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
   let n = cast[int](len)
-  let coefs_big = allocHeapArrayAligned(matchingOrderBigInt(F.Name), n, alignment = 64)
+  let coefs_big = allocHeapArrayAligned(F.getBigInt(), n, alignment = 64)
   coefs_big.batchFromField(coefs, n)
   r.multiScalarMul_reference_vartime(coefs_big, points, n)
 
@@ -428,13 +428,13 @@ proc applyEndomorphism[bits: static int, ECaff](
 
   return (endoCoefs, endoPoints, M*N)
 
-template withEndo[bits: static int, EC, ECaff](
+template withEndo[coefsBits: static int, EC, ECaff](
            msmProc: untyped,
            r: var EC,
-           coefs: ptr UncheckedArray[BigInt[bits]],
+           coefs: ptr UncheckedArray[BigInt[coefsBits]],
            points: ptr UncheckedArray[ECaff],
            N: int, c: static int) =
-  when bits <= EC.F.Name.getCurveOrderBitwidth() and hasEndomorphismAcceleration(EC.F.Name):
+  when coefsBits <= EC.getScalarField().bits() and hasEndomorphismAcceleration(EC.F.Name):
     let (endoCoefs, endoPoints, endoN) = applyEndomorphism(coefs, points, N)
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance
@@ -539,7 +539,7 @@ func multiScalarMul_vartime*[F, EC, ECaff](
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
 
   let n = cast[int](len)
-  let coefs_big = allocHeapArrayAligned(matchingOrderBigInt(F.Name), n, alignment = 64)
+  let coefs_big = allocHeapArrayAligned(F.getBigInt(), n, alignment = 64)
   coefs_big.batchFromField(coefs, n)
   r.multiScalarMul_vartime(coefs_big, points, n)
 

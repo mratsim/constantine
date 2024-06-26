@@ -32,7 +32,7 @@ type
   ECFFT_Descriptor*[EC] = object
     ## Metadata for FFT on Elliptic Curve
     order*: int
-    rootsOfUnity*: ptr UncheckedArray[matchingOrderBigInt(EC.F.Name)]
+    rootsOfUnity*: ptr UncheckedArray[getBigInt(EC.F.Name, kScalarField)]
       ## domain, starting and ending with 1, length is cardinality+1
       ## This allows FFT and inverse FFT to use the same buffer for roots.
 
@@ -50,7 +50,7 @@ func computeRootsOfUnity[EC](ctx: var ECFFT_Descriptor[EC], generatorRootOfUnity
 
 func new*(T: type ECFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
   result.order = order
-  result.rootsOfUnity = allocHeapArrayAligned(matchingOrderBigInt(T.EC.F.Name), order+1, alignment = 64)
+  result.rootsOfUnity = allocHeapArrayAligned(T.EC.getScalarField().getBigInt(), order+1, alignment = 64)
 
   result.computeRootsOfUnity(generatorRootOfUnity)
 
@@ -137,9 +137,9 @@ func ifft_vartime*[EC](
   var voutput = output.toStridedView()
   fft_internal(voutput, vals.toStridedView(), rootz)
 
-  var invLen {.noInit.}: matchingOrderBigInt(EC.F.Name)
+  var invLen {.noInit.}: EC.F.getBigInt()
   invLen.fromUint(vals.len.uint64)
-  invLen.invmod_vartime(invLen, EC.F.Name.getCurveOrder())
+  invLen.invmod_vartime(invLen, EC.F.getModulus())
 
   for i in 0 ..< output.len:
     output[i].scalarMul_vartime(invLen)

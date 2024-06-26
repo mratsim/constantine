@@ -22,8 +22,8 @@ const BLS12_381_Fr_primitive_root = 7
 func buildRootLUT(F: type Fr): array[32, F] =
   ## [pow(PRIMITIVE_ROOT, (MODULUS - 1) // (2**i), MODULUS) for i in range(32)]
 
-  var exponent {.noInit.}: BigInt[F.Name.getCurveOrderBitwidth()]
-  exponent = F.Name.getCurveOrder()
+  var exponent {.noInit.}: BigInt[F.bits()]
+  exponent = F.getModulus()
   exponent -= One
 
   # Start by the end

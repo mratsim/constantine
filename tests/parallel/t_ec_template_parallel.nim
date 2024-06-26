@@ -161,19 +161,19 @@ proc run_EC_multi_scalar_mul_parallel_impl*[N: static int](
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
-      let bucketBits = bestBucketBitSize(n, ec.F.Name.getCurveOrderBitwidth(), useSignedBuckets = false, useManualTuning = false)
+      let bucketBits = bestBucketBitSize(n, ec.getScalarField().bits(), useSignedBuckets = false, useManualTuning = false)
       test $ec & " Parallel Multi-scalar-mul (N=" & $n & ", bucket bits (default): " & $bucketBits & ")":
         proc test(EC: typedesc, gen: RandomGen) =
           let tp = Threadpool.new()
           defer: tp.shutdown()
           var points = newSeq[affine(EC)](n)
-          var coefs = newSeq[BigInt[EC.F.Name.getCurveOrderBitwidth()]](n)
+          var coefs = newSeq[BigInt[EC.getScalarField().bits()]](n)
 
           for i in 0 ..< n:
             var tmp = rng.random_unsafe(EC)
             tmp.clearCofactor()
             points[i].affine(tmp)
-            coefs[i] = rng.random_unsafe(BigInt[EC.F.Name.getCurveOrderBitwidth()])
+            coefs[i] = rng.random_unsafe(BigInt[EC.getScalarField().bits()])
 
           var naive, naive_tmp: EC
           naive.setNeutral()

@@ -63,7 +63,7 @@ macro staticFor*(ident: untyped{nkIdent}, choices: typed, body: untyped): untype
                   choices
 
   result = newStmtList()
-  for choice in choices:
+  for i in 0 ..< choices.len:
     result.add nnkBlockStmt.newTree(
-      nnkAccQuoted.newTree(ident, ident("_"), choice),
-      body.replaceNodes(ident, choice))
+      nnkAccQuoted.newTree(ident, ident("_"), ident($i)),
+      body.replaceNodes(ident, choices[i]))

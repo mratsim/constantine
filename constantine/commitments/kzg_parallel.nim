@@ -121,7 +121,7 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; Name: static Algebra](
   ##
   ## Parallelism: This only returns when computation is fully done
 
-  static: doAssert BigInt[bits] is matchingOrderBigInt(Name)
+  static: doAssert BigInt[bits] is Fr[Name].getBigInt()
 
   var sums_jac {.noInit.}: array[2, ECP_ShortW_Jac[Fp[Name], G1]]
   template sum_rand_proofs: untyped = sums_jac[0]
@@ -130,7 +130,7 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; Name: static Algebra](
 
   # ∑ [rᵢ][proofᵢ]₁
   # ---------------
-  let coefs = allocHeapArrayAligned(matchingOrderBigInt(Name), n, alignment = 64)
+  let coefs = allocHeapArrayAligned(Fr[Name].getBigInt(), n, alignment = 64)
 
   syncScope:
     tp.parallelFor i in 0 ..< n:
@@ -188,7 +188,7 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; Name: static Algebra](
                                          proofs: ptr UncheckedArray[ECP_ShortW_Aff[Fp[Name], G1]],
                                          n: int) {.nimcall.} =
 
-    let rand_coefs = allocHeapArrayAligned(matchingOrderBigInt(Name), n, alignment = 64)
+    let rand_coefs = allocHeapArrayAligned(Fr[Name].getBigInt(), n, alignment = 64)
     let rand_coefs_fr = allocHeapArrayAligned(Fr[Name], n, alignment = 64)
 
     syncScope:

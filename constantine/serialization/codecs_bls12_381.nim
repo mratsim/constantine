@@ -49,7 +49,7 @@ import
     ./codecs_status_codes
 
 type
-  Scalar = matchingOrderBigInt(BLS12_381)
+  Scalar = Fr[BLS12_381].getBigInt()
   G1P = ECP_ShortW_Aff[Fp[BLS12_381], G1]
   G2P = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
 
@@ -66,7 +66,7 @@ func validate_scalar*(scalar: Scalar): CttCodecScalarStatus {.libPrefix: pre.} =
   ## if the scalar is 0 or larger than the curve order.
   if scalar.isZero().bool():
     return cttCodecScalar_Zero
-  if bool(scalar >= BLS12_381.getCurveOrder()):
+  if bool(scalar >= Fr[BLS12_381].getModulus()):
     return cttCodecScalar_ScalarLargerThanCurveOrder
   return cttCodecScalar_Success
 
@@ -165,11 +165,11 @@ func deserialize_g1_compressed_unchecked*(dst: var G1P, src: array[48, byte]): C
     return cttCodecEcc_PointAtInfinity
 
   # General case
-  var t{.noInit.}: matchingBigInt(BLS12_381)
+  var t{.noInit.}: Fp[BLS12_381].getBigInt()
   t.unmarshal(src, bigEndian)
   t.limbs[t.limbs.len-1] = t.limbs[t.limbs.len-1] and (MaxWord shr 3) # The first 3 bytes contain metadata to mask out
 
-  if bool(t >= BLS12_381.Mod()):
+  if bool(t >= Fp[BLS12_381].getModulus()):
     return cttCodecEcc_CoordinateGreaterThanOrEqualModulus
 
   var x{.noInit.}: Fp[BLS12_381]
@@ -247,18 +247,18 @@ func deserialize_g2_compressed_unchecked*(dst: var G2P, src: array[96, byte]): C
     return cttCodecEcc_PointAtInfinity
 
   # General case
-  var t{.noInit.}: matchingBigInt(BLS12_381)
+  var t{.noInit.}: Fp[BLS12_381].getBigInt()
   t.unmarshal(src.toOpenArray(0, 48-1), bigEndian)
   t.limbs[t.limbs.len-1] = t.limbs[t.limbs.len-1] and (MaxWord shr 3) # The first 3 bytes contain metadata to mask out
 
-  if bool(t >= BLS12_381.Mod()):
+  if bool(t >= Fp[BLS12_381].getModulus()):
     return cttCodecEcc_CoordinateGreaterThanOrEqualModulus
 
   var x{.noInit.}: Fp2[BLS12_381]
   x.c1.fromBig(t)
 
   t.unmarshal(src.toOpenArray(48, 96-1), bigEndian)
-  if bool(t >= BLS12_381.Mod()):
+  if bool(t >= Fp[BLS12_381].getModulus()):
     return cttCodecEcc_CoordinateGreaterThanOrEqualModulus
 
   x.c0.fromBig(t)

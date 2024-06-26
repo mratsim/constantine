@@ -179,7 +179,7 @@ func isPointEqHex*(point: ECP_TwEdwards_Prj[Fp[Banderwagon]], expected: string):
   if point_bytes.serialize(point) == cttCodecEcc_Success:
     doAssert (point_bytes.toHex() == expected).bool() == true, "Point does not equal to the expected hex value!"
 
-func isScalarEqHex*(scalar: matchingOrderBigInt(Banderwagon), expected: string) : bool {.discardable.} =
+func isScalarEqHex*(scalar: Fr[Banderwagon].getBigInt(), expected: string) : bool {.discardable.} =
 
   var scalar_bytes {.noInit.}: array[32, byte]
   if scalar_bytes.serialize_scalar(scalar) == cttCodecScalar_Success:

@@ -39,7 +39,7 @@ func generate_random_points*(r: var openArray[ECP_TwEdwards_Aff[Fp[Banderwagon]]
     ctx.clear()
 
     var x {.noInit.}:  Fp[Banderwagon]
-    var t {.noInit.}: matchingBigInt(Banderwagon)
+    var t {.noInit.}: Fp[Banderwagon].getBigInt()
 
     t.unmarshal(hash, bigEndian)
     x.fromBig(t)

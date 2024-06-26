@@ -208,8 +208,8 @@ func kzg_prove*[N: static int, Name: static Algebra](
 
 func kzg_verify*[F2; Name: static Algebra](
        commitment: ECP_ShortW_Aff[Fp[Name], G1],
-       opening_challenge: BigInt, # matchingOrderBigInt(C),
-       eval_at_challenge: BigInt, # matchingOrderBigInt(C),
+       opening_challenge: BigInt, # Fr[Name].getBigInt(),
+       eval_at_challenge: BigInt, # Fr[Name].getBigInt(),
        proof: ECP_ShortW_Aff[Fp[Name], G1],
        tauG2: ECP_ShortW_Aff[F2, G2]): bool {.tags:[Alloca, Vartime].} =
   ## Verify a short KZG proof that ``p(opening_challenge) = eval_at_challenge``
@@ -315,7 +315,7 @@ func kzg_verify_batch*[bits: static int, F2; Name: static Algebra](
   #   https://eprint.iacr.org/2023/033
   # - https://alinush.github.io/2021/06/17/Feist-Khovratovich-technique-for-computing-KZG-proofs-fast.html
 
-  static: doAssert BigInt[bits] is matchingOrderBigInt(Name)
+  static: doAssert BigInt[bits] is Fr[Name].getBigInt()
 
   var sums_jac {.noInit.}: array[2, ECP_ShortW_Jac[Fp[Name], G1]]
   template sum_rand_proofs: untyped = sums_jac[0]
@@ -324,7 +324,7 @@ func kzg_verify_batch*[bits: static int, F2; Name: static Algebra](
 
   # ∑ [rᵢ][proofᵢ]₁
   # ---------------
-  let coefs = allocHeapArrayAligned(matchingOrderBigInt(Name), n, alignment = 64)
+  let coefs = allocHeapArrayAligned(Fr[Name].getBigInt(), n, alignment = 64)
   coefs.batchFromField(linearIndepRandNumbers, n)
   sum_rand_proofs.multiScalarMul_vartime(coefs, proofs, n)
 

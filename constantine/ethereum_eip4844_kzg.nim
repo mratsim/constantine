@@ -105,21 +105,21 @@ func fromDigest(dst: var Fr[BLS12_381], src: array[32, byte]) =
   # and Fr[BLS12_381] being built on top of BigInt[255]
   # we use the low-level getMont instead of 'fromBig'
   getMont(dst.mres.limbs, scalar.limbs,
-          Fr[BLS12_381].fieldMod().limbs,
+          Fr[BLS12_381].getModulus().limbs,
           Fr[BLS12_381].getR2modP().limbs,
           Fr[BLS12_381].getNegInvModWord(),
           Fr[BLS12_381].getSpareBits())
 
-func fromDigest(dst: var matchingOrderBigInt(BLS12_381), src: array[32, byte]) =
+func fromDigest(dst: var Fr[BLS12_381].getBigInt(), src: array[32, byte]) =
   ## Convert a SHA256 digest to an element in the scalar field Fr[BLS12-381]
   ## hash_to_bls_field: https://github.com/ethereum/consensus-specs/blob/v1.4.0-beta.1/specs/deneb/polynomial-commitments.md#hash_to_bls_field
   var scalar {.noInit.}: BigInt[256]
   scalar.unmarshal(src, bigEndian)
 
-  discard dst.reduce_vartime(scalar, Fr[BLS12_381].fieldMod())
+  discard dst.reduce_vartime(scalar, Fr[BLS12_381].getModulus())
 
 func fiatShamirChallenge(
-      dst: ptr (Fr[BLS12_381] or matchingOrderBigInt(BLS12_381)),
+      dst: ptr (Fr[BLS12_381] or Fr[BLS12_381].getBigInt()),
       blob: Blob,
       commitmentBytes: array[BYTES_PER_COMMITMENT, byte]) =
   ## Compute a Fiat-Shamir challenge
@@ -143,7 +143,7 @@ func fiatShamirChallenge(
 # Conversion
 # ------------------------------------------------------------
 
-func bytes_to_bls_bigint(dst: var matchingOrderBigInt(BLS12_381), src: array[32, byte]): CttCodecScalarStatus =
+func bytes_to_bls_bigint(dst: var Fr[BLS12_381].getBigInt(), src: array[32, byte]): CttCodecScalarStatus =
   ## Convert untrusted bytes to a trusted and validated BLS scalar field element.
   ## This function does not accept inputs greater than the BLS modulus.
   let status = dst.deserialize_scalar(src)
@@ -154,7 +154,7 @@ func bytes_to_bls_bigint(dst: var matchingOrderBigInt(BLS12_381), src: array[32,
 func bytes_to_bls_field(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus =
   ## Convert untrusted bytes to a trusted and validated BLS scalar field element.
   ## This function does not accept inputs greater than the BLS modulus.
-  var scalar {.noInit.}: matchingOrderBigInt(BLS12_381)
+  var scalar {.noInit.}: Fr[BLS12_381].getBigInt()
   let status = scalar.deserialize_scalar(src)
   if status notin {cttCodecScalar_Success, cttCodecScalar_Zero}:
     return status
@@ -178,7 +178,7 @@ func bytes_to_kzg_proof(dst: var KZGProof, src: array[48, byte]): CttCodecEccSta
   return status
 
 func blob_to_bigint_polynomial(
-       dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, matchingOrderBigInt(BLS12_381)],
+       dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt()],
        blob: Blob): CttCodecScalarStatus =
   ## Convert a blob to a polynomial in evaluation form
 
@@ -288,7 +288,7 @@ func blob_to_kzg_commitment*(
   ##
   ##   with proof = [(p(τ) - p(z)) / (τ-z)]₁
 
-  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, matchingOrderBigInt(BLS12_381)], 64)
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt()], 64)
 
   block HappyPath:
     check HappyPath, poly.blob_to_bigint_polynomial(blob)
@@ -361,10 +361,10 @@ func verify_kzg_proof*(
   var commitment {.noInit.}: KZGCommitment
   checkReturn commitment.bytes_to_kzg_commitment(commitment_bytes)
 
-  var opening_challenge {.noInit.}: matchingOrderBigInt(BLS12_381)
+  var opening_challenge {.noInit.}: Fr[BLS12_381].getBigInt()
   checkReturn opening_challenge.bytes_to_bls_bigint(z_bytes)
 
-  var eval_at_challenge {.noInit.}: matchingOrderBigInt(BLS12_381)
+  var eval_at_challenge {.noInit.}: Fr[BLS12_381].getBigInt()
   checkReturn eval_at_challenge.bytes_to_bls_bigint(y_bytes)
 
   var proof {.noInit.}: KZGProof
@@ -484,7 +484,7 @@ func verify_blob_kzg_proof_batch*(
 
   let commitments = allocHeapArrayAligned(KZGCommitment, n, alignment = 64)
   let opening_challenges = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
-  let evals_at_challenges = allocHeapArrayAligned(matchingOrderBigInt(BLS12_381), n, alignment = 64)
+  let evals_at_challenges = allocHeapArrayAligned(Fr[BLS12_381].getBigInt(), n, alignment = 64)
   let proofs = allocHeapArrayAligned(KZGProof, n, alignment = 64)
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], alignment = 64)
 

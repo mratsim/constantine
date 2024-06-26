@@ -74,7 +74,7 @@ proc runFrobeniusTowerTests*[N](
           var a = rng.random_elem(Field, gen)
           var fa {.noInit.}: typeof(a)
           fa.frobenius_map(a, k = 1)
-          a.pow_vartime(Field.fieldMod(), window = 3)
+          a.pow_vartime(Field.getModulus(), window = 3)
           check: bool(a == fa)
 
       staticFor(curve, TestCurves):
@@ -90,8 +90,8 @@ proc runFrobeniusTowerTests*[N](
           var fa {.noInit.}: typeof(a)
           fa.frobenius_map(a, k = 2)
 
-          a.pow_vartime(Field.fieldMod(), window = 3)
-          a.pow_vartime(Field.fieldMod(), window = 3)
+          a.pow_vartime(Field.getModulus(), window = 3)
+          a.pow_vartime(Field.getModulus(), window = 3)
 
           check:
             bool(a == fa)
@@ -109,9 +109,9 @@ proc runFrobeniusTowerTests*[N](
           var fa {.noInit.}: typeof(a)
           fa.frobenius_map(a, k = 3)
 
-          a.pow_vartime(Field.fieldMod(), window = 3)
-          a.pow_vartime(Field.fieldMod(), window = 3)
-          a.pow_vartime(Field.fieldMod(), window = 3)
+          a.pow_vartime(Field.getModulus(), window = 3)
+          a.pow_vartime(Field.getModulus(), window = 3)
+          a.pow_vartime(Field.getModulus(), window = 3)
           check: bool(a == fa)
 
       staticFor(curve, TestCurves):

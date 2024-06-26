@@ -46,7 +46,7 @@ import ./zoo_exports
 
 proc blob_to_bigint_polynomial_parallel(
        tp: Threadpool,
-       dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, matchingOrderBigInt(BLS12_381)],
+       dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt()],
        blob: Blob): CttCodecScalarStatus =
   ## Convert a blob to a polynomial in evaluation form
   mixin globalStatus
@@ -144,7 +144,7 @@ proc blob_to_kzg_commitment_parallel*(
   ##
   ##   with proof = [(p(τ) - p(z)) / (τ-z)]₁
 
-  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, matchingOrderBigInt(BLS12_381)], 64)
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt()], 64)
 
   block HappyPath:
     check HappyPath, tp.blob_to_bigint_polynomial_parallel(poly, blob)
@@ -327,7 +327,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
 
   let commitments = allocHeapArrayAligned(KZGCommitment, n, alignment = 64)
   let opening_challenges = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
-  let evals_at_challenges = allocHeapArrayAligned(matchingOrderBigInt(BLS12_381), n, alignment = 64)
+  let evals_at_challenges = allocHeapArrayAligned(Fr[BLS12_381].getBigInt(), n, alignment = 64)
   let proofs = allocHeapArrayAligned(KZGProof, n, alignment = 64)
   let polys = allocHeapArrayAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], n, alignment = 64)
 

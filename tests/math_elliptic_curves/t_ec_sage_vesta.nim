@@ -15,7 +15,7 @@ import
   # Test utilities
   ./t_ec_sage_template
 
-staticFor(bits, [Vesta.getCurveOrderBitwidth()]):
+staticFor(bits, [Fr[Vesta].bits()]):
   run_scalar_mul_test_vs_sage(
     ECP_ShortW_Prj[Fp[Vesta], G1], bits,
     "t_ec_sage_vesta_g1_projective"

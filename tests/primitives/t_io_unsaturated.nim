@@ -29,14 +29,14 @@ type
 
 func random_bigint*(rng: var RngState, name: static Algebra, gen: static RandomGen): auto =
   when gen == Uniform:
-    rng.random_unsafe(matchingBigInt(name))
+    rng.random_unsafe(Fp[name].getBigInt())
   elif gen == HighHammingWeight:
-    rng.random_highHammingWeight(matchingBigInt(name))
+    rng.random_highHammingWeight(Fp[name].getBigInt())
   else:
-    rng.random_long01Seq(matchingBigInt(name))
+    rng.random_long01Seq(Fp[name].getBigInt())
 
 proc testRoundtrip(name: static Algebra, gen: static RandomGen) =
-  const bits = name.getCurveBitwidth()
+  const bits = Fp[name].bits()
   const Excess = 2
   const UnsatBitwidth = WordBitWidth - Excess
   const N = bits.ceilDiv_vartime(UnsatBitwidth)

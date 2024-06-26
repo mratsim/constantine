@@ -33,7 +33,7 @@ proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    const bits = curve.getCurveOrderBitwidth()
+    const bits = Fr[curve].bits()
 
     # G1
     separator()

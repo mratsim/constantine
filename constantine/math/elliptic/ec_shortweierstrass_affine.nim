@@ -38,6 +38,9 @@ type
 
   SexticNonResidue* = NonResidue
 
+template getScalarField*(EC: type ECP_ShortW_Aff): untyped =
+  Fr[EC.F.Name]
+
 func `==`*(P, Q: ECP_ShortW_Aff): SecretBool =
   ## Constant-time equality check
   result = P.x == Q.x

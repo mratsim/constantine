@@ -33,6 +33,9 @@ type ECP_TwEdwards_Prj*[F] = object
   ## hence (aX² + Y²)Z² = Z⁴ + dX²Y²
   x*, y*, z*: F
 
+template getScalarField*(EC: type ECP_TwEdwards_Prj): untyped =
+  Fr[EC.F.Name]
+
 func `==`*(P, Q: ECP_TwEdwards_Prj): SecretBool =
   ## Constant-time equality check
   ## This is a costly operation

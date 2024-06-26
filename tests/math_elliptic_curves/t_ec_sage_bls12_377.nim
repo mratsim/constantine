@@ -15,7 +15,7 @@ import
   # Test utilities
   ./t_ec_sage_template
 
-staticFor(bits, [32, 64, 128, BLS12_377.getCurveOrderBitwidth()]):
+staticFor(bits, [32, 64, 128, Fr[BLS12_377].bits()]):
   run_scalar_mul_test_vs_sage(
     ECP_ShortW_Prj[Fp[BLS12_377], G1], bits,
     "t_ec_sage_bls12_377_g1_projective"

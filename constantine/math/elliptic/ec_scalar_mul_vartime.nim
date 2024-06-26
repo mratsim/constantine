@@ -351,7 +351,7 @@ func scalarMul_vartime*[scalBits; EC](P: var EC, scalar: BigInt[scalBits]) {.met
 
   let usedBits = scalar.limbs.getBits_LE_vartime()
 
-  when scalBits == EC.F.Name.getCurveOrderBitwidth() and
+  when scalBits == EC.getScalarField().bits() and
        EC.F.Name.hasEndomorphismAcceleration():
     if usedBits >= L:
       when EC.F is Fp:

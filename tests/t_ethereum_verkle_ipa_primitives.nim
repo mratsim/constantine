@@ -231,7 +231,7 @@ suite "Deserialize a proof which contains an invalid final scalar by @Ignacio":
   test "Deserialize a proof which contains a final scalar bigger than the field size (MUST fail)":
 
     proc testBiggerThanFieldSizeDeserialize() =
-      var test_big {.noInit.}: matchingOrderBigInt(Banderwagon)
+      var test_big {.noInit.}: Fr[Banderwagon].getBigInt()
 
       var proof1_bytes = newSeq[byte](serializedProof1.len)
       proof1_bytes.fromHex(serializedProof1)
@@ -259,7 +259,7 @@ suite "Deserialize a proof which wrong lengths by @Ignacio":
 
     proc testInvalidFieldSizeDeserialize() =
 
-      var test_big {.noInit.}: array[3, matchingOrderBigInt(Banderwagon)]
+      var test_big {.noInit.}: array[3, Fr[Banderwagon].getBigInt()]
 
       var i: int = 0
 
@@ -377,7 +377,7 @@ suite "Transcript Tests":
         tr.domainSeparator("separate me again")
         tr.absorb("now 1", one)
 
-        var challenge {.noInit.}: matchingOrderBigInt(Banderwagon)
+        var challenge {.noInit.}: Fr[Banderwagon].getBigInt()
         tr.squeezeChallenge("simple_challenge", challenge)
 
         var bytes {.noInit.}: array[32, byte]

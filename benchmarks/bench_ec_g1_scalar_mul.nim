@@ -44,7 +44,7 @@ proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    const bits = curve.getCurveOrderBitwidth()
+    const bits = Fr[curve].bits()
     scalarMulVartimeDoubleAddBench(ECP_ShortW_Prj[Fp[curve], G1], bits, MulIters)
     scalarMulVartimeDoubleAddBench(ECP_ShortW_Jac[Fp[curve], G1], bits, MulIters)
     separator()

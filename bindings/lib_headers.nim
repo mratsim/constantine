@@ -70,8 +70,8 @@ proc writeHeader_pairingFriendly(filepath: string, curve: string, modBits, order
   writeFile(filepath, header)
 
 proc writeHeader(dirPath: string, Name: static Algebra, curve_decls: string) =
-  const modBits = Name.getCurveBitWidth()
-  const orderBits = Name.getCurveOrderBitWidth()
+  const modBits = Fp[Name].bits()
+  const orderBits = Fr[Name].bits()
   let curve = ($Name).toLowerASCII()
   let relPath = dirPath/"constantine"/"curves"/curve & ".h"
 
@@ -84,8 +84,8 @@ proc writeHeader(dirPath: string, Name: static Algebra, curve_decls: string) =
   echo "Generated header: ", relPath
 
 proc writeParallelHeader(dirPath: string, Name: static Algebra, curve_decls: string) =
-  const modBits = Name.getCurveBitWidth()
-  const orderBits = Name.getCurveOrderBitWidth()
+  const modBits = Fp[Name].bits()
+  const orderBits = Fr[Name].bits()
   let curve = ($Name).toLowerASCII()
   let relPath = dirPath/"constantine"/"curves"/curve & "_parallel.h"
 
@@ -154,8 +154,8 @@ proc writeCurveParallelHeaders(dir: string) =
 
   staticFor i, 0, curveMappings.len:
     writeParallelHeader(dir, curveMappings[i][0], curveMappings[i][1])
-    bigSizes.incl(curveMappings[i][0].getCurveBitWidth())
-    bigSizes.incl(curveMappings[i][0].getCurveOrderBitWidth())
+    bigSizes.incl(Fp[curveMappings[i][0]].bits())
+    bigSizes.incl(Fr[curveMappings[i][0]].bits())
 
   dir.writeBigIntHeader(bigSizes, cBindings_big)
 

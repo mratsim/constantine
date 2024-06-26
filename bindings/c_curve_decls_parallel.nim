@@ -33,7 +33,7 @@ template genParallelBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarField: unt
   proc `ctt _ ECP _ multi_scalar_mul_big_coefs_vartime_parallel`(
           tp: Threadpool,
           r: var ECP,
-          coefs: ptr UncheckedArray[BigInt[ECP.F.Name.getCurveOrderBitwidth()]],
+          coefs: ptr UncheckedArray[BigInt[ECP.getScalarField().bits()]],
           points: ptr UncheckedArray[ECP_Aff],
           len: csize_t) {.libExport.} =
     tp.multiScalarMul_vartime_parallel(r.addr, coefs, points, cast[int](len))

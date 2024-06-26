@@ -22,14 +22,18 @@ export Algebra
 #
 # ############################################################
 
-template matchingBigInt(Name: static Algebra): untyped =
+template matchingBigInt*(Name: static Algebra): untyped =
   ## BigInt type necessary to store the prime field Fp
   # Workaround: https://github.com/nim-lang/Nim/issues/16774
+  # as we cannot do array accesses in type section.
+  # Due to generic sandwiches, it must be exported.
   BigInt[CurveBitWidth[Name]]
 
-template matchingOrderBigInt(Name: static Algebra): untyped =
+template matchingOrderBigInt*(Name: static Algebra): untyped =
   ## BigInt type necessary to store the scalar field Fr
   # Workaround: https://github.com/nim-lang/Nim/issues/16774
+  # as we cannot do array accesses in type section.
+  # Due to generic sandwiches, it must be exported.
   BigInt[CurveOrderBitWidth[Name]]
 
 type
@@ -74,32 +78,47 @@ debug:
 
 {.experimental: "dynamicBindSym".}
 
-export matchingBigInt
-export matchingOrderBigInt
-
-macro Mod*(Name: static Algebra): untyped =
-  ## Get the Modulus associated to a curve
+macro baseFieldModulus(Name: static Algebra): untyped =
   result = bindSym($Name & "_Modulus")
 
-template matchingLimbs2x*(Name: static Algebra): untyped =
+macro scalarFieldModulus(Name: static Algebra): untyped =
+  result = bindSym($Name & "_Order")
+
+template getModulus*[Name](F: type FF[Name]): untyped =
+  # We use a template to ensure the caller directly reads
+  # the data from ROM, and reduce chances of Nim duplicating the constant.
+  # Also `F is Fp` has issues in macros
+  when F is Fp:
+    baseFieldModulus(Name)
+  else:
+    scalarFieldModulus(Name)
+
+template getBigInt*(T: type FF): type =
+  ## Get the underlying BigInt type.
+  typeof(default(T).mres)
+
+func bits*(T: type FF): static int =
+  T.getBigInt().bits
+
+template getLimbs2x*(Name: static Algebra): typedesc =
   const N2 = wordsRequired(CurveBitWidth[Name]) * 2 # TODO upstream, not precomputing N2 breaks semcheck
   array[N2, SecretWord] # TODO upstream, using Limbs[N2] breaks semcheck
 
 func has_P_3mod4_primeModulus*(Name: static Algebra): static bool =
   ## Returns true iff p ≡ 3 (mod 4)
-  (BaseType(Name.Mod.limbs[0]) and 3) == 3
+  (BaseType(Name.baseFieldModulus().limbs[0]) and 3) == 3
 
 func has_P_5mod8_primeModulus*(Name: static Algebra): static bool =
   ## Returns true iff p ≡ 5 (mod 8)
-  (BaseType(Name.Mod.limbs[0]) and 7) == 5
+  (BaseType(Name.baseFieldModulus().limbs[0]) and 7) == 5
 
 func has_P_9mod16_primeModulus*(Name: static Algebra): static bool =
   ## Returns true iff p ≡ 9 (mod 16)
-  (BaseType(Name.Mod.limbs[0]) and 15) == 9
+  (BaseType(Name.baseFieldModulus().limbs[0]) and 15) == 9
 
 func has_Psquare_9mod16_primePower*(Name: static Algebra): static bool =
   ## Returns true iff p² ≡ 9 (mod 16)
-  ((BaseType(Name.Mod.limbs[0]) * BaseType(Name.Mod.limbs[0])) and 15) == 9
+  ((BaseType(Name.baseFieldModulus().limbs[0]) * BaseType(Name.baseFieldModulus().limbs[0])) and 15) == 9
 
 # ############################################################
 #
@@ -146,12 +165,6 @@ proc bindConstant(ff: NimNode, property: string): NimNode =
       `curve_fr`
     else:
       {.error: "Unreachable, received type: " & $`ff`.}
-
-template fieldMod*(Field: type FF): auto =
-  when Field is Fp:
-    Mod(Field.Name)
-  else:
-    getCurveOrder(Field.Name)
 
 macro getSpareBits*(ff: type FF): untyped =
   ## Returns the number of extra bits

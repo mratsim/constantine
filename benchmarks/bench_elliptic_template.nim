@@ -272,7 +272,7 @@ proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int)
 
 
 proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
-  const bits = EC.F.Name.getCurveOrderBitwidth()
+  const bits = EC.getScalarField().bits()
   var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
   var scalars = newSeq[BigInt[bits]](numPoints)
 

@@ -62,9 +62,9 @@ type
   FFTDescriptor*[EC] = object
     ## Metadata for FFT on Elliptic Curve
     maxWidth: int
-    rootOfUnity: matchingOrderBigInt(EC.F.Name)
+    rootOfUnity: EC.F.getBigInt()
       ## The root of unity that generates all roots
-    expandedRootsOfUnity: seq[matchingOrderBigInt(EC.F.Name)]
+    expandedRootsOfUnity: seq[EC.F.getBigInt()]
       ## domain, starting and ending with 1
 
 func expandRootOfUnity[F](rootOfUnity: F): auto {.noInit.} =
@@ -77,7 +77,7 @@ func expandRootOfUnity[F](rootOfUnity: F): auto {.noInit.} =
   # so embrace heap (re-)allocations.
   # Figuring out how to do to right size the buffers
   # in production will be fun.
-  var r: seq[matchingOrderBigInt(F.Name)]
+  var r: seq[F.getBigInt()]
   r.setLen(2)
   r[0].setOne()
   r[1] = rootOfUnity.toBig()

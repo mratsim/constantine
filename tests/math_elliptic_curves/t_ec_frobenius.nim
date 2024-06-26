@@ -291,7 +291,7 @@ suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitWidth & "-bit words]":
       if trace[1]: # negative trace
         tpsi.neg()
       pP = P
-      pP.scalarMulGeneric(EC.F.Name.Mod) # Multiply beyond curve order, invalid for GLS
+      pP.scalarMulGeneric(EC.F.getModulus()) # Multiply beyond curve order, invalid for GLS
 
       # ψ²(P) - [t]ψ(P) + [p]P = InfinityPoint
       r.diff(psi2, tpsi)

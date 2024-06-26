@@ -28,7 +28,10 @@ type FpDbl*[Name: static Algebra] = object
   ## and so FpDbl would 768 bits.
   # We directly work with double the number of limbs,
   # instead of BigInt indirection.
-  limbs2x*: matchingLimbs2x(Name)
+  limbs2x*: getLimbs2x(Name)
+
+template getModulus(Field: type FpDbl): untyped =
+  Fp[Field.Name].getModulus()
 
 template doublePrec*(T: type Fp): type =
   ## Return the double-precision type matching with Fp
@@ -75,7 +78,7 @@ func redc2x*(r: var Fp, a: FpDbl) =
   redc2xMont(
     r.mres.limbs,
     a.limbs2x,
-    Fp.Name.Mod.limbs,
+    Fp.getModulus().limbs,
     Fp.getNegInvModWord(),
     Fp.getSpareBits()
   )
@@ -92,18 +95,17 @@ func diff2xMod*(r: var FpDbl, a, b: FpDbl) =
   ## Output is conditionally reduced by 2ⁿp
   ## to stay in the [0, 2ⁿp) range
   when UseASM_X86_64:
-    submod2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.Name.Mod.limbs)
+    submod2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.getModulus().limbs)
   else:
     # Substraction step
     var underflowed = SecretBool r.limbs2x.diff(a.limbs2x, b.limbs2x)
 
     # Conditional reduction by 2ⁿp
     const N = r.limbs2x.len div 2
-    const M = FpDbl.Name.Mod
     var carry = Carry(0)
     var sum: SecretWord
     staticFor i, 0, N:
-      addC(carry, sum, r.limbs2x[i+N], M.limbs[i], carry)
+      addC(carry, sum, r.limbs2x[i+N], FpDbl.getModulus().limbs[i], carry)
       underflowed.ccopy(r.limbs2x[i+N], sum)
 
 func sum2xUnr*(r: var FpDbl, a, b: FpDbl) =
@@ -118,13 +120,13 @@ func sum2xMod*(r: var FpDbl, a, b: FpDbl) =
   ## Output is conditionally reduced by 2ⁿp
   ## to stay in the [0, 2ⁿp) range
   when UseASM_X86_64:
-    addmod2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.Name.Mod.limbs, Fp[FpDbl.Name].getSpareBits())
+    addmod2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.getModulus().limbs, Fp[FpDbl.Name].getSpareBits())
   else:
     # Addition step
     var overflowed = SecretBool r.limbs2x.sum(a.limbs2x, b.limbs2x)
 
     const N = r.limbs2x.len div 2
-    const M = FpDbl.Name.Mod
+    const M = FpDbl.getModulus()
     # Test >= 2ⁿp
     var borrow = Borrow(0)
     var t{.noInit.}: Limbs[N]
@@ -142,7 +144,7 @@ func neg2xMod*(r: var FpDbl, a: FpDbl) =
   ## Double-precision modular substraction
   ## Negate modulo 2ⁿp
   when UseASM_X86_64:
-    negmod2x_asm(r.limbs2x, a.limbs2x, FpDbl.Name.Mod.limbs)
+    negmod2x_asm(r.limbs2x, a.limbs2x, FpDbl.getModulus().limbs)
   else:
     # If a = 0 we need r = 0 and not r = M
     # as comparison operator assume unicity
@@ -151,7 +153,7 @@ func neg2xMod*(r: var FpDbl, a: FpDbl) =
     var t {.noInit.}: FpDbl
     let isZero = a.isZero()
     const N = r.limbs2x.len div 2
-    const M = FpDbl.Name.Mod
+    const M = FpDbl.getModulus()
     var borrow = Borrow(0)
     # 2ⁿp is filled with 0 in the first half
     staticFor i, 0, N:

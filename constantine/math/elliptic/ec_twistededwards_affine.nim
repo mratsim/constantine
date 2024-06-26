@@ -28,6 +28,9 @@ type ECP_TwEdwards_Aff*[F] = object
   ## over a field F
   x*, y*: F
 
+template getScalarField*(EC: type ECP_TwEdwards_Aff): untyped =
+  Fr[EC.F.Name]
+
 func `==`*(P, Q: ECP_TwEdwards_Aff): SecretBool =
   ## Constant-time equality check
   # Isogeny-based constructions to create

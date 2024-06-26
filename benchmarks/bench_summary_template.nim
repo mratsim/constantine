@@ -159,7 +159,7 @@ proc doublingBench*(T: typedesc, iters: int) =
     r.double(P)
 
 proc scalarMulBench*(T: typedesc, iters: int) =
-  const bits = T.F.Name.getCurveOrderBitwidth()
+  const bits = T.getScalarField().bits()
   const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
 
   var r {.noInit.}: T

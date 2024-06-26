@@ -77,8 +77,8 @@ template `c2=`*(a: var CubicExt, v: auto) =
 template Name*(E: type ExtensionField): Algebra =
   E.F.Name
 
-template fieldMod*(E: type ExtensionField): auto =
-  Mod(E.F.Name)
+template getModulus*(E: type ExtensionField): auto =
+  E.F.getModulus()
 
 # Initialization
 # -------------------------------------------------------------------

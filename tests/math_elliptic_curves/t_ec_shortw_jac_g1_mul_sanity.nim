@@ -43,7 +43,7 @@ suite "Order checks on BN254_Snarks":
         else:
           let a = rng.random_unsafe(EC)
 
-        let exponent = EC.F.Name.getCurveOrder()
+        let exponent = Fr[EC.F].getModulus()
 
         var
           impl = a
@@ -56,8 +56,8 @@ suite "Order checks on BN254_Snarks":
           bool(impl.isNeutral())
           bool(reference.isNeutral())
 
-    test(ECP_ShortW_Jac[Fp[BN254_Snarks], G1], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = false)
-    test(ECP_ShortW_Jac[Fp[BN254_Snarks], G1], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = true)
+    test(ECP_ShortW_Jac[Fp[BN254_Snarks], G1], bits = BN254_Snarks.bits(), randZ = false)
+    test(ECP_ShortW_Jac[Fp[BN254_Snarks], G1], bits = BN254_Snarks.bits(), randZ = true)
 
   test "Not a point on the curve / not a square - #67":
     var ax, ay: Fp[BN254_Snarks]

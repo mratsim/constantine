@@ -20,7 +20,7 @@ import
 # this creates bad codegen, in the C code, the `value`parameter gets the wrong type
 # TODO: upstream
 
-staticFor(bits, [BW6_761.getCurveOrderBitwidth()]):
+staticFor(bits, [Fr[BW6_761].bits()]):
   run_scalar_mul_test_vs_sage(
     ECP_ShortW_Prj[Fp[BW6_761], G1], bits,
     "t_ec_sage_bw6_761_g1_projective"

@@ -24,11 +24,12 @@ import
   # Standard library
   std/atomics,
   # Constantine
-  ../threadpool/[threadpool, partitioners],
-  ../platforms/[abstractions, allocs, views],
-  ../serialization/endians,
-  ../hashes,
-  ../math/ec_shortweierstrass
+  constantine/threadpool/threadpool,
+  constantine/platforms/[abstractions, allocs, views],
+  constantine/serialization/endians,
+  constantine/hashes,
+  constantine/math/ec_shortweierstrass,
+  constantine/named/algebras
 
 # No exceptions allowed in core cryptographic operations
 {.push raises: [].}

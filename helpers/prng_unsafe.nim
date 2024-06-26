@@ -147,7 +147,7 @@ func sample_unsafe*[T](rng: var RngState, src: openarray[T]): T =
 #   a deviation of an estimate from the quantity under observation
 
 func reduceViaMont[N: static int, F](reduced: var array[N, SecretWord], unreduced: array[2*N, SecretWord], _: typedesc[F]) =
-  #  reduced.reduce(unreduced, FF.fieldMod())
+  #  reduced.reduce(unreduced, FF.getModulus())
   #  ----------------------------------------
   #  With R ≡ (2^WordBitWidth)^numWords (mod p)
   #  redc2xMont(a) computes a/R (mod p)
@@ -157,10 +157,10 @@ func reduceViaMont[N: static int, F](reduced: var array[N, SecretWord], unreduce
   #  so for 384-bit prime (6-words on 64-bit CPUs), so 6*6 = 36, twice for multiplication and reduction
   #  significantly faster than division which works bit-by-bit due to constant-time requirement
   reduced.redc2xMont(unreduced,                          # a/R
-                     F.fieldMod().limbs, F.getNegInvModWord(),
+                     F.getModulus().limbs, F.getNegInvModWord(),
                      F.getSpareBits())
   reduced.mulMont(reduced, F.getR2modP().limbs,          # (a/R) * R² * R⁻¹ ≡ a (mod p)
-                  F.fieldMod().limbs, F.getNegInvModWord(),
+                  F.getModulus().limbs, F.getNegInvModWord(),
                   F.getSpareBits())
 
 func random_unsafe(rng: var RngState, a: var Limbs) =

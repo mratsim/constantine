@@ -365,9 +365,9 @@ func isSquare*(a: Fp): SecretBool =
   ## Returns true if ``a`` is a square (quadratic residue) in 𝔽p
   ##
   ## Assumes that the prime modulus ``p`` is public.
-  var aa {.noInit.}: matchingBigInt(Fp.Name)
+  var aa {.noInit.}: Fp.getBigInt()
   aa.fromField(a)
-  let symbol = legendre(aa.limbs, Fp.fieldMod().limbs, aa.bits)
+  let symbol = legendre(aa.limbs, Fp.getModulus().limbs, aa.bits)
   return not(symbol == MaxWord)
 
 {.pop.} # inline

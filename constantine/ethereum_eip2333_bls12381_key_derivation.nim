@@ -22,7 +22,7 @@ import
 
 {.push raises: [], checks: off.} # No exceptions
 
-type SecretKey = matchingOrderBigInt(BLS12_381)
+type SecretKey = Fr[BLS12_381].getBigInt()
 
 func hkdf_mod_r(secretKey: var SecretKey, ikm: openArray[byte], key_info: openArray[byte]) =
   ## Ethereum 2 EIP-2333, extracts this from the BLS signature schemes
@@ -61,14 +61,14 @@ func hkdf_mod_r(secretKey: var SecretKey, ikm: openArray[byte], key_info: openAr
     #  With R ≡ (2^WordBitWidth)^numWords (mod M)
     #  redc2xMont(a) computes a/R
     #  mulMont(a, b) computes a.b.R⁻¹
-    var seckeyDbl{.noInit.}: BigInt[2 * BLS12_381.getCurveOrderBitWidth()]
+    var seckeyDbl{.noInit.}: BigInt[2 * Fr[BLS12_381].bits()]
     seckeyDbl.unmarshal(okm, bigEndian)
-    # secretKey.reduce(seckeyDbl, BLS12_381.getCurveOrder())
+    # secretKey.reduce(seckeyDbl, Fr[BLS12_381].getModulus())
     secretKey.limbs.redc2xMont(seckeyDbl.limbs,                                      # seckey/R
-                               BLS12_381.getCurveOrder().limbs, Fr[BLS12_381].getNegInvModWord(),
+                               Fr[BLS12_381].getModulus().limbs, Fr[BLS12_381].getNegInvModWord(),
                                Fr[BLS12_381].getSpareBits())
     secretKey.limbs.mulMont(secretKey.limbs, Fr[BLS12_381].getR2modP().limbs,        # (seckey/R) * R² * R⁻¹ = seckey
-                            BLS12_381.getCurveOrder().limbs, Fr[BLS12_381].getNegInvModWord(),
+                            Fr[BLS12_381].getModulus().limbs, Fr[BLS12_381].getNegInvModWord(),
                             Fr[BLS12_381].getSpareBits())
 
     if bool secretKey.isZero():

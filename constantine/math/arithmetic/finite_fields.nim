@@ -55,9 +55,9 @@ export Fp, Fr, FF
 func fromBig*(dst: var FF, src: BigInt) =
   ## Convert a BigInt to its Montgomery form
   when nimvm:
-    dst.mres.montyResidue_precompute(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord())
+    dst.mres.montyResidue_precompute(src, FF.getModulus(), FF.getR2modP(), FF.getNegInvModWord())
   else:
-    dst.mres.getMont(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
+    dst.mres.getMont(src, FF.getModulus(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func fromBig*[Name: static Algebra](T: type FF[Name], src: BigInt): FF[Name] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
@@ -65,7 +65,7 @@ func fromBig*[Name: static Algebra](T: type FF[Name], src: BigInt): FF[Name] {.n
 
 func fromField*(dst: var BigInt, src: FF) {.inline.} =
   ## Convert a finite-field element to a BigInt in natural representation
-  dst.fromMont(src.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+  dst.fromMont(src.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func toBig*(src: FF): auto {.noInit, inline.} =
   ## Convert a finite-field element to a BigInt in natural representation
@@ -106,7 +106,7 @@ func cswap*(a, b: var FF, ctl: SecretBool) {.meter.} =
 #       exist and can be implemented with compile-time specialization.
 
 # Note: for `+=`, double, sum
-#       not(a.mres < FF.fieldMod()) is unnecessary if the prime has the form
+#       not(a.mres < FF.getModulus()) is unnecessary if the prime has the form
 #       (2^64)ʷ - 1 (if using uint64 words).
 # In practice I'm not aware of such prime being using in elliptic curves.
 # 2^127 - 1 and 2^521 - 1 are used but 127 and 521 are not multiple of 32/64
@@ -154,7 +154,7 @@ func setMinusOne*(a: var FF) =
 func neg*(r: var FF, a: FF) {.meter.} =
   ## Negate modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    negmod_asm(r.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
+    negmod_asm(r.mres.limbs, a.mres.limbs, FF.getModulus().limbs)
   else:
     # If a = 0 we need r = 0 and not r = M
     # as comparison operator assume unicity
@@ -162,7 +162,7 @@ func neg*(r: var FF, a: FF) {.meter.} =
     # Also make sure to handle aliasing where r.addr = a.addr
     var t {.noInit.}: FF
     let isZero = a.isZero()
-    discard t.mres.diff(FF.fieldMod(), a.mres)
+    discard t.mres.diff(FF.getModulus(), a.mres)
     t.mres.csetZero(isZero)
     r = t
 
@@ -173,38 +173,38 @@ func neg*(a: var FF) {.meter.} =
 func `+=`*(a: var FF, b: FF) {.meter.} =
   ## In-place addition modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits())
+    addmod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = add(a.mres, b.mres)
-    overflowed = overflowed or not(a.mres < FF.fieldMod())
-    discard csub(a.mres, FF.fieldMod(), overflowed)
+    overflowed = overflowed or not(a.mres < FF.getModulus())
+    discard csub(a.mres, FF.getModulus(), overflowed)
 
 func `-=`*(a: var FF, b: FF) {.meter.} =
   ## In-place substraction modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    submod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
+    submod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs)
   else:
     let underflowed = sub(a.mres, b.mres)
-    discard cadd(a.mres, FF.fieldMod(), underflowed)
+    discard cadd(a.mres, FF.getModulus(), underflowed)
 
 func double*(a: var FF) {.meter.} =
   ## Double ``a`` modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(a.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits())
+    addmod_asm(a.mres.limbs, a.mres.limbs, a.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = double(a.mres)
-    overflowed = overflowed or not(a.mres < FF.fieldMod())
-    discard csub(a.mres, FF.fieldMod(), overflowed)
+    overflowed = overflowed or not(a.mres < FF.getModulus())
+    discard csub(a.mres, FF.getModulus(), overflowed)
 
 func sum*(r: var FF, a, b: FF) {.meter.} =
   ## Sum ``a`` and ``b`` into ``r`` modulo p
   ## r is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits())
+    addmod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = r.mres.sum(a.mres, b.mres)
-    overflowed = overflowed or not(r.mres < FF.fieldMod())
-    discard csub(r.mres, FF.fieldMod(), overflowed)
+    overflowed = overflowed or not(r.mres < FF.getModulus())
+    discard csub(r.mres, FF.getModulus(), overflowed)
 
 func sumUnr*(r: var FF, a, b: FF) {.meter.} =
   ## Sum ``a`` and ``b`` into ``r`` without reduction
@@ -215,10 +215,10 @@ func diff*(r: var FF, a, b: FF) {.meter.} =
   ## `r` is initialized/overwritten
   ## Requires r != b
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    submod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
+    submod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs)
   else:
     var underflowed = r.mres.diff(a.mres, b.mres)
-    discard cadd(r.mres, FF.fieldMod(), underflowed)
+    discard cadd(r.mres, FF.getModulus(), underflowed)
 
 func diffUnr*(r: var FF, a, b: FF) {.meter.} =
   ## Substract `b` from `a` and store the result into `r`
@@ -229,20 +229,20 @@ func double*(r: var FF, a: FF) {.meter.} =
   ## Double ``a`` into ``r``
   ## `r` is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(r.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits())
+    addmod_asm(r.mres.limbs, a.mres.limbs, a.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = r.mres.double(a.mres)
-    overflowed = overflowed or not(r.mres < FF.fieldMod())
-    discard csub(r.mres, FF.fieldMod(), overflowed)
+    overflowed = overflowed or not(r.mres < FF.getModulus())
+    discard csub(r.mres, FF.getModulus(), overflowed)
 
 func prod*(r: var FF, a, b: FF, skipFinalSub: static bool = false) {.meter.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
-  r.mres.mulMont(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
+  r.mres.mulMont(a.mres, b.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
 
 func square*(r: var FF, a: FF, skipFinalSub: static bool = false) {.meter.} =
   ## Squaring modulo p
-  r.mres.squareMont(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
+  r.mres.squareMont(a.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
 
 func sumprod*[N: static int](r: var FF, a, b: array[N, FF], skipFinalSub: static bool = false) {.meter.} =
   ## Compute r <- ⅀aᵢ.bᵢ (mod M) (sum of products)
@@ -250,7 +250,7 @@ func sumprod*[N: static int](r: var FF, a, b: array[N, FF], skipFinalSub: static
   r.mres.sumprodMont(
     cast[ptr array[N, typeof(a[0].mres)]](a.unsafeAddr)[],
     cast[ptr array[N, typeof(b[0].mres)]](b.unsafeAddr)[],
-    FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
+    FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
 
 # ############################################################
 #
@@ -330,7 +330,7 @@ func inv*(r: var FF, a: FF) =
   ## Incidentally this avoids extra check
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
-  r.mres.invmod(a.mres, FF.getR2modP(), FF.fieldMod())
+  r.mres.invmod(a.mres, FF.getR2modP(), FF.getModulus())
 
 func inv*(a: var FF) =
   ## Inversion modulo p
@@ -348,7 +348,7 @@ func inv_vartime*(r: var FF, a: FF) {.tags: [VarTime].} =
   ## Incidentally this avoids extra check
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
-  r.mres.invmod_vartime(a.mres, FF.getR2modP(), FF.fieldMod())
+  r.mres.invmod_vartime(a.mres, FF.getR2modP(), FF.getModulus())
 
 func inv_vartime*(a: var FF) {.tags: [VarTime].} =
   ## Variable-time Inversion modulo p
@@ -513,7 +513,7 @@ func pow*(a: var FF, exponent: BigInt) =
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.powMont(
     exponent,
-    FF.fieldMod(), FF.getMontyOne(),
+    FF.getModulus(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
     FF.getSpareBits()
   )
@@ -525,7 +525,7 @@ func pow*(a: var FF, exponent: openarray[byte]) =
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.powMont(
     exponent,
-    FF.fieldMod(), FF.getMontyOne(),
+    FF.getModulus(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
     FF.getSpareBits()
   )
@@ -544,7 +544,7 @@ func pow_vartime*(a: var FF, exponent: BigInt) =
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.powMont_vartime(
     exponent,
-    FF.fieldMod(), FF.getMontyOne(),
+    FF.getModulus(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
     FF.getSpareBits()
   )
@@ -563,7 +563,7 @@ func pow_vartime*(a: var FF, exponent: openarray[byte]) =
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.powMont_vartime(
     exponent,
-    FF.fieldMod(), FF.getMontyOne(),
+    FF.getModulus(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
     FF.getSpareBits()
   )

@@ -494,14 +494,14 @@ proc applyEndomorphism_parallel[bits: static int, ECaff](
 
   return (endoCoefs, endoPoints, M*N)
 
-template withEndo[bits: static int, EC, ECaff](
+template withEndo[coefsBits: static int, EC, ECaff](
            msmProc: untyped,
            tp: Threadpool,
            r: ptr EC,
-           coefs: ptr UncheckedArray[BigInt[bits]],
+           coefs: ptr UncheckedArray[BigInt[coefsBits]],
            points: ptr UncheckedArray[ECaff],
            N: int, c: static int) =
-  when bits <= EC.F.Name.getCurveOrderBitwidth() and hasEndomorphismAcceleration(EC.F.Name):
+  when coefsBits <= EC.getScalarField().bits() and hasEndomorphismAcceleration(EC.F.Name):
     let (endoCoefs, endoPoints, endoN) = applyEndomorphism_parallel(tp, coefs, points, N)
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance
@@ -511,14 +511,14 @@ template withEndo[bits: static int, EC, ECaff](
   else:
     msmProc(tp, r, coefs, points, N, c)
 
-template withEndo[bits: static int, EC, ECaff](
+template withEndo[coefsBits: static int, EC, ECaff](
            msmProc: untyped,
            tp: Threadpool,
            r: ptr EC,
-           coefs: ptr UncheckedArray[BigInt[bits]],
+           coefs: ptr UncheckedArray[BigInt[coefsBits]],
            points: ptr UncheckedArray[ECaff],
            N: int, c: static int, useParallelBuckets: static bool) =
-  when bits <= EC.F.Name.getCurveOrderBitwidth() and hasEndomorphismAcceleration(EC.F.Name):
+  when coefsBits <= EC.getScalarField().bits() and hasEndomorphismAcceleration(EC.F.Name):
     let (endoCoefs, endoPoints, endoN) = applyEndomorphism_parallel(tp, coefs, points, N)
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance
@@ -631,7 +631,7 @@ proc multiScalarMul_vartime_parallel*[F, EC, ECaff](
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
 
   let n = cast[int](len)
-  let coefs_big = allocHeapArrayAligned(matchingOrderBigInt(F.Name), n, alignment = 64)
+  let coefs_big = allocHeapArrayAligned(F.getBigInt(), n, alignment = 64)
 
   syncScope:
     tp.parallelFor i in 0 ..< n:
