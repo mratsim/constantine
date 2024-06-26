@@ -67,9 +67,9 @@ template bench*(op: string, EC: typedesc, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
   report(op, fixEllipticDisplay(EC), startTime, stopTime, startClk, stopClk, iters)
 
-func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_JacExt[F, G]) {.inline.}=
+func `+=`[F; G: static Subgroup](P: var EC_ShortW_JacExt[F, G], Q: EC_ShortW_JacExt[F, G]) {.inline.}=
   P.sum_vartime(P, Q)
-func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) {.inline.}=
+func `+=`[F; G: static Subgroup](P: var EC_ShortW_JacExt[F, G], Q: EC_ShortW_Aff[F, G]) {.inline.}=
   P.madd_vartime(P, Q)
 
 proc addBench*(EC: typedesc, iters: int) =
@@ -77,7 +77,7 @@ proc addBench*(EC: typedesc, iters: int) =
   let P = rng.random_unsafe(EC)
   let Q = rng.random_unsafe(EC)
 
-  when EC is ECP_ShortW_JacExt:
+  when EC is EC_ShortW_JacExt:
     bench("EC Add vartime " & $EC.G, EC, iters):
       r.sum_vartime(P, Q)
   else:
@@ -92,10 +92,10 @@ proc mixedAddBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC
   let P = rng.random_unsafe(EC)
   let Q = rng.random_unsafe(EC)
-  var Qaff: ECP_ShortW_Aff[EC.F, EC.G]
+  var Qaff: EC_ShortW_Aff[EC.F, EC.G]
   Qaff.affine(Q)
 
-  when EC is ECP_ShortW_JacExt:
+  when EC is EC_ShortW_JacExt:
     bench("EC Mixed Addition vartime " & $EC.G, EC, iters):
       r.madd_vartime(P, Qaff)
   else:
@@ -113,13 +113,13 @@ proc doublingBench*(EC: typedesc, iters: int) =
     r.double(P)
 
 proc affFromProjBench*(EC: typedesc, iters: int) =
-  var r {.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+  var r {.noInit.}: EC_ShortW_Aff[EC.F, EC.G]
   let P = rng.random_unsafe(EC)
   bench("EC Projective to Affine " & $EC.G, EC, iters):
     r.affine(P)
 
 proc affFromJacBench*(EC: typedesc, iters: int) =
-  var r {.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+  var r {.noInit.}: EC_ShortW_Aff[EC.F, EC.G]
   let P = rng.random_unsafe(EC)
   bench("EC Jacobian to Affine " & $EC.G, EC, iters):
     r.affine(P)
@@ -254,10 +254,10 @@ proc subgroupCheckScalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: sta
     r.scalarMulEndo_minHammingWeight_windowed_vartime(exponent, window)
 
 proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
-  var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
+  var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](numPoints)
 
   for i in 0 ..< numPoints:
-    points[i] = rng.random_unsafe(ECP_ShortW_Aff[EC.F, EC.G])
+    points[i] = rng.random_unsafe(EC_ShortW_Aff[EC.F, EC.G])
 
   var r{.noInit.}: EC
 
@@ -273,7 +273,7 @@ proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int)
 
 proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
   const bits = EC.getScalarField().bits()
-  var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
+  var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](numPoints)
   var scalars = newSeq[BigInt[bits]](numPoints)
 
   for i in 0 ..< numPoints:

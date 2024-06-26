@@ -22,15 +22,15 @@ let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
 echo "bench xoshiro512** seed: ", seed
 
-func random_point*(rng: var RngState, EC: typedesc[ECP_ShortW_Aff]): EC {.noInit.} =
-  var jac = rng.random_unsafe(ECP_ShortW_Jac[EC.F, EC.G])
+func random_point*(rng: var RngState, EC: typedesc[EC_ShortW_Aff]): EC {.noInit.} =
+  var jac = rng.random_unsafe(EC_ShortW_Jac[EC.F, EC.G])
   jac.clearCofactor()
   result.affine(jac)
 
 proc pairingBLS12Meter*(Name: static Algebra) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
+    P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(EC_ShortW_Aff[Fp2[Name], G2])
 
   var f: Fp12[Name]
 

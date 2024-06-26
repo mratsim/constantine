@@ -149,7 +149,7 @@ proc blob_to_kzg_commitment_parallel*(
   block HappyPath:
     check HappyPath, tp.blob_to_bigint_polynomial_parallel(poly, blob)
 
-    var r {.noinit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+    var r {.noinit.}: EC_ShortW_Aff[Fp[BLS12_381], G1]
     tp.kzg_commit_parallel(ctx.srs_lagrange_g1, r, poly[])
     discard dst.serialize_g1_compressed(r)
 
@@ -191,7 +191,7 @@ proc compute_kzg_proof_parallel*(
 
     # KZG Prove
     var y {.noInit.}: Fr[BLS12_381]                         # y = p(z), eval at challenge z
-    var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
+    var proof {.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     tp.kzg_prove_parallel(
       ctx.srs_lagrange_g1,
@@ -235,7 +235,7 @@ proc compute_blob_kzg_proof_parallel*(
 
     # KZG Prove
     var y {.noInit.}: Fr[BLS12_381]                         # y = p(z), eval at opening challenge z
-    var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
+    var proof {.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     tp.kzg_prove_parallel(
       ctx.srs_lagrange_g1,
@@ -285,9 +285,9 @@ proc verify_blob_kzg_proof_parallel*(
     tp.evalPolyAt_parallel(ctx.domain, eval_at_challenge, poly[], opening_challenge)
 
     # KZG verification
-    let verif = kzg_verify(ECP_ShortW_Aff[Fp[BLS12_381], G1](commitment),
+    let verif = kzg_verify(EC_ShortW_Aff[Fp[BLS12_381], G1](commitment),
                           opening_challenge.toBig(), eval_at_challenge.toBig(),
-                          ECP_ShortW_Aff[Fp[BLS12_381], G1](proof),
+                          EC_ShortW_Aff[Fp[BLS12_381], G1](proof),
                           ctx.srs_monomial_g2.coefs[1])
     if verif:
       result =  cttEthKzg_Success
@@ -398,7 +398,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
     let linearIndepRandNumbers = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
     linearIndepRandNumbers.computePowers(randomBlindingFr, n)
 
-    type EcAffArray = ptr UncheckedArray[ECP_ShortW_Aff[Fp[BLS12_381], G1]]
+    type EcAffArray = ptr UncheckedArray[EC_ShortW_Aff[Fp[BLS12_381], G1]]
     let verif = tp.kzg_verify_batch_parallel(
                   cast[EcAffArray](commitments),
                   opening_challenges,

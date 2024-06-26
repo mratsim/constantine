@@ -15,7 +15,7 @@ import constantine/math/elliptic/ec_scalar_mul_vartime
 type B  = BigInt[254]
 type F  = Fp[BN254Snarks]
 type F2 = QuadraticExt[F]
-type G  = ECP_ShortW_Prj[F2, G2]
+type G  = EC_ShortW_Prj[F2, G2]
 
 #-------------------------------------------------------------------------------
 
@@ -67,7 +67,7 @@ proc printF2( z: F2) =
 
 
 proc printG( pt: G ) =
-  var aff : ECP_ShortW_Aff[F2, G2];
+  var aff : EC_ShortW_Aff[F2, G2];
   aff.affine(pt)
   echo(" affine x coord: ");  printF2( aff.x )
   echo(" affine y coord: ");  printF2( aff.y )

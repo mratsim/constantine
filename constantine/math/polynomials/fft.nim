@@ -346,7 +346,7 @@ when isMainModule:
     Fr[BLS12_381].fromHex"0x4b5371495990693fad1715b02e5713b5f070bb00e28a193d63e7cb4906ffc93f"
   ]
 
-  type EC_G1 = ECP_ShortW_Prj[Fp[BLS12_381], G1]
+  type EC_G1 = EC_ShortW_Prj[Fp[BLS12_381], G1]
 
   proc roundtrip() =
     let fftDesc = ECFFT_Descriptor[EC_G1].new(order = 1 shl 4, ctt_eth_kzg_fr_pow2_roots_of_unity[4])
@@ -456,8 +456,8 @@ when isMainModule:
       echo "optimal tile size for uint64: ", optTile, "x", optTile," (", sizeof(uint64) * optTile * optTile, " bytes)"
 
     block:
-      let optTile = 1 shl optimalLogTileSize(ECP_ShortW_Aff[Fp[BLS12_381], G1])
-      echo "optimal tile size for ECP_ShortW_Aff[Fp[BLS12_381], G1]: ", optTile, "x", optTile," (", sizeof(ECP_ShortW_Aff[Fp[BLS12_381], G1]) * optTile * optTile, " bytes)"
+      let optTile = 1 shl optimalLogTileSize(EC_ShortW_Aff[Fp[BLS12_381], G1])
+      echo "optimal tile size for EC_ShortW_Aff[Fp[BLS12_381], G1]: ", optTile, "x", optTile," (", sizeof(EC_ShortW_Aff[Fp[BLS12_381], G1]) * optTile * optTile, " bytes)"
 
   roundtrip()
   warmup()

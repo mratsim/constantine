@@ -41,10 +41,10 @@ export
 
 export
   ec_shortweierstrass.Subgroup,
-  ec_shortweierstrass.ECP_ShortW_Aff,
-  ec_shortweierstrass.ECP_ShortW_Jac,
-  ec_shortweierstrass.ECP_ShortW_Prj,
-  ec_shortweierstrass.ECP_ShortW
+  ec_shortweierstrass.EC_ShortW_Aff,
+  ec_shortweierstrass.EC_ShortW_Jac,
+  ec_shortweierstrass.EC_ShortW_Prj,
+  ec_shortweierstrass.EC_ShortW
 
 export
   ec_multi_scalar_mul_parallel.multiScalarMul_vartime_parallel

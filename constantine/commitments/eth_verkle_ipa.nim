@@ -159,7 +159,7 @@ func ipa_prove*[N, logN: static int, EcAff, F](
     doAssert N.uint.isPowerOf2_vartime()
     doAssert logN == N.uint.log2_vartime()
 
-  when EcAff is ECP_ShortW_Aff:
+  when EcAff is EC_ShortW_Aff:
     type EC = jacobian(EcAff)
   else: # Twisted Edwards
     type EC = projective(EcAff)
@@ -345,7 +345,7 @@ func ipa_verify*[N, logN: static int, EcAff, F](
     doAssert N.uint.isPowerOf2_vartime()
     doAssert logN == N.uint.log2_vartime()
 
-  when EcAff is ECP_ShortW_Aff:
+  when EcAff is EC_ShortW_Aff:
     type EC = jacobian(EcAff)
   else: # Twisted Edwards
     type EC = projective(EcAff)
@@ -616,7 +616,7 @@ func sumCommitmentsAndEvalsByChallenge[N: static int, F, ECaff](
       q += count
       eidx += 1
 
-  when EcAff is ECP_ShortW_Aff:
+  when EcAff is EC_ShortW_Aff:
     type EC = jacobian(EcAff)
   else: # Twisted Edwards
     type EC = projective(EcAff)
@@ -675,7 +675,7 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
     doAssert polys.len == commitments.len, "Polynomials and commitments inputs must be of the same length"
     doAssert polys.len == opening_challenges_in_domain.len, "Polynomials and opening challenges inputs must be of the same length"
 
-  when EcAff is ECP_ShortW_Aff:
+  when EcAff is EC_ShortW_Aff:
     type EC = jacobian(EcAff)
   else: # Twisted Edwards
     type EC = projective(EcAff)
@@ -851,7 +851,7 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
     doAssert commitments.len == opening_challenges.len, "Commitments and opening challenges inputs must be of the same length"
     doAssert commitments.len == evals_at_challenges.len, "Commitments and evaluations at challenges inputs must be of the same length"
 
-  when EcAff is ECP_ShortW_Aff:
+  when EcAff is EC_ShortW_Aff:
     type EC = jacobian(EcAff)
   else: # Twisted Edwards
     type EC = projective(EcAff)

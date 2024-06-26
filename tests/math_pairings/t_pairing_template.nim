@@ -37,13 +37,13 @@ type
     Long01Sequence
 
 template affineType[F; G: static Subgroup](
-    ec: ECP_ShortW_Prj[F, G]): type =
-  ECP_ShortW_Aff[F, G]
+    ec: EC_ShortW_Prj[F, G]): type =
+  EC_ShortW_Aff[F, G]
 
 func clearCofactor[F; G: static Subgroup](
-       ec: var ECP_ShortW_Aff[F, G]) =
+       ec: var EC_ShortW_Aff[F, G]) =
   # For now we don't have any affine operation defined
-  var t {.noInit.}: ECP_ShortW_Prj[F, G]
+  var t {.noInit.}: EC_ShortW_Prj[F, G]
   t.fromAffine(ec)
   t.clearCofactor()
   ec.affine(t)

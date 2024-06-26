@@ -38,7 +38,7 @@ export abstractions, arithmetic # generic sandwich
 # ----------------------------------------------------------------
 
 func mapToCurve_svdw[F, G](
-       r: var ECP_ShortW_Aff[F, G],
+       r: var EC_ShortW_Aff[F, G],
        u: F) =
   ## Deterministically map a field element u
   ## to an elliptic curve point `r`
@@ -91,7 +91,7 @@ func mapToCurve_svdw[F, G](
   r.y.cneg(sgn0(u) xor sgn0(r.y))
 
 func mapToIsoCurve_sswuG1_opt3mod4[F](
-       r: var ECP_ShortW_Jac[F, G1],
+       r: var EC_ShortW_Jac[F, G1],
        u: F) =
   var
     xn{.noInit.}, xd{.noInit.}: F
@@ -109,7 +109,7 @@ func mapToIsoCurve_sswuG1_opt3mod4[F](
   r.y.prod(yn, xd3) # Y = yZ³ = yn * xd³
 
 func mapToIsoCurve_sswuG2_opt9mod16[F](
-       r: var ECP_ShortW_Jac[F, G2],
+       r: var EC_ShortW_Jac[F, G2],
        u: F) =
   var
     xn{.noInit.}, xd{.noInit.}: F
@@ -127,20 +127,20 @@ func mapToIsoCurve_sswuG2_opt9mod16[F](
   r.y.prod(yn, xd3) # Y = yZ³ = yn * xd³
 
 func mapToCurve_svdw_fusedAdd[F; G: static Subgroup](
-       r: var ECP_ShortW_Jac[F, G],
+       r: var EC_ShortW_Jac[F, G],
        u0, u1: F) =
   ## Map 2 elements of the
   ## finite or extension field F
   ## to an elliptic curve E
   ## and add them
-  var Q0{.noInit.}, Q1{.noInit.}: ECP_ShortW_Aff[F, G]
+  var Q0{.noInit.}, Q1{.noInit.}: EC_ShortW_Aff[F, G]
   Q0.mapToCurve_svdw(u0)
   Q1.mapToCurve_svdw(u1)
 
   r.fromAffine(Q0)
   r += Q1
 
-func mapToCurve_sswu*[F; G: static Subgroup](r: var ECP_ShortW_Jac[F, G], u: F) =
+func mapToCurve_sswu*[F; G: static Subgroup](r: var EC_ShortW_Jac[F, G], u: F) =
   ## Map an element of the finite or extension field F to an elliptic curve E
   when F.Name.getCoefA() * F.Name.getCoefB() == 0:
     # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-6.6.3
@@ -162,7 +162,7 @@ func mapToCurve_sswu*[F; G: static Subgroup](r: var ECP_ShortW_Jac[F, G], u: F) 
     {.error: "Not implemented".}
 
 func mapToCurve_sswu_fusedAdd[F; G: static Subgroup](
-       r: var ECP_ShortW_Jac[F, G],
+       r: var EC_ShortW_Jac[F, G],
        u0, u1: F) =
   ## Map 2 elements of the
   ## finite or extension field F
@@ -185,7 +185,7 @@ func mapToCurve_sswu_fusedAdd[F; G: static Subgroup](
     # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-6.6.3
     # Simplified Shallue-van de Woestijne-Ulas method for AB == 0
 
-    var Q0{.noInit.}, Q1{.noInit.}: ECP_ShortW_Jac[F, G]
+    var Q0{.noInit.}, Q1{.noInit.}: EC_ShortW_Jac[F, G]
 
     # 1. Map to E' isogenous to E
     when F is Fp and F.Name.has_P_3mod4_primeModulus():
@@ -212,7 +212,7 @@ func mapToCurve_sswu_fusedAdd[F; G: static Subgroup](
 func hashToCurve_svdw*[F; G: static Subgroup](
        H: type CryptoHash,
        k: static int,
-       output: var ECP_ShortW_Jac[F, G],
+       output: var EC_ShortW_Jac[F, G],
        augmentation: openArray[byte],
        message: openArray[byte],
        domainSepTag: openArray[byte]) {.genCharAPI.} =
@@ -251,7 +251,7 @@ func hashToCurve_svdw*[F; G: static Subgroup](
 func hashToCurve_sswu*[F; G: static Subgroup](
        H: type CryptoHash,
        k: static int,
-       output: var ECP_ShortW_Jac[F, G],
+       output: var EC_ShortW_Jac[F, G],
        augmentation: openArray[byte],
        message: openArray[byte],
        domainSepTag: openArray[byte]) {.genCharAPI.} =
@@ -290,7 +290,7 @@ func hashToCurve_sswu*[F; G: static Subgroup](
 func hashToCurve*[F; G: static Subgroup](
        H: type CryptoHash,
        k: static int,
-       output: var ECP_ShortW_Jac[F, G],
+       output: var EC_ShortW_Jac[F, G],
        augmentation: openArray[byte],
        message: openArray[byte],
        domainSepTag: openArray[byte]) {.inline, genCharAPI.} =
@@ -325,7 +325,7 @@ func hashToCurve*[F; G: static Subgroup](
 func hashToCurve*[F; G: static Subgroup](
        H: type CryptoHash,
        k: static int,
-       output: var (ECP_ShortW_Prj[F, G] or ECP_ShortW_Aff[F, G]),
+       output: var (EC_ShortW_Prj[F, G] or EC_ShortW_Aff[F, G]),
        augmentation: openArray[byte],
        message: openArray[byte],
        domainSepTag: openArray[byte]) {.inline, genCharAPI.} =
@@ -349,9 +349,9 @@ func hashToCurve*[F; G: static Subgroup](
   ## - `message` is the message to hash
   ## - `domainSepTag` is the protocol domain separation tag (DST).
 
-  var Pjac{.noInit.}: ECP_ShortW_Jac[F, G]
+  var Pjac{.noInit.}: EC_ShortW_Jac[F, G]
   H.hashToCurve(k, Pjac, augmentation, message, domainSepTag)
-  when output is ECP_ShortW_Prj:
+  when output is EC_ShortW_Prj:
     output.projectiveFromJacobian(Pjac)
   else:
     output.affine(Pjac)

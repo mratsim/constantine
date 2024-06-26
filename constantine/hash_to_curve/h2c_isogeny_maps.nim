@@ -132,7 +132,7 @@ func h2c_isogeny_map[F](
   ryn *= yn
 
 func h2c_isogeny_map*[F; G: static Subgroup](
-       r: var ECP_ShortW_Prj[F, G],
+       r: var EC_ShortW_Prj[F, G],
        xn, xd, yn: F) =
   ## Given G2, the target prime order subgroup of E2,
   ## this function maps an element of
@@ -167,7 +167,7 @@ func h2c_isogeny_map*[F; G: static Subgroup](
   r.z *= t
 
 func h2c_isogeny_map*[F; G: static Subgroup](
-       r: var ECP_ShortW_Jac[F, G],
+       r: var EC_ShortW_Jac[F, G],
        xn, xd, yn: F) =
   ## Given G2, the target prime order subgroup of E2,
   ## this function maps an element of
@@ -205,8 +205,8 @@ func h2c_isogeny_map*[F; G: static Subgroup](
   r.y *= ryn         # Y = yn * yd² * xd³
 
 func h2c_isogeny_map*[F; G: static Subgroup](
-       r: var ECP_ShortW_Jac[F, G],
-       P: ECP_ShortW_Jac[F, G]) =
+       r: var EC_ShortW_Jac[F, G],
+       P: EC_ShortW_Jac[F, G]) =
   ## Map P in isogenous curve E'2
   ## to r in E2
   ##

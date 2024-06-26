@@ -64,7 +64,7 @@ func validate_scalar*(scalar: Fr[BLS12_381].getBigInt()): CttCodecScalarStatus {
     return cttCodecScalar_ScalarLargerThanCurveOrder
   return cttCodecScalar_Success
 
-func validate_g1*(g1P: ECP_ShortW_Aff[Fp[BLS12_381], G1]): CttCodecEccStatus {.libPrefix: pre.} =
+func validate_g1*(g1P: EC_ShortW_Aff[Fp[BLS12_381], G1]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Validate a G1 point
   ## This is an expensive operation that can be cached
   if g1P.isNeutral().bool():
@@ -75,7 +75,7 @@ func validate_g1*(g1P: ECP_ShortW_Aff[Fp[BLS12_381], G1]): CttCodecEccStatus {.l
     return cttCodecEcc_PointNotInSubgroup
   return cttCodecEcc_Success
 
-func validate_g2*(g2P: ECP_ShortW_Aff[Fp2[BLS12_381], G2]): CttCodecEccStatus {.libPrefix: pre.} =
+func validate_g2*(g2P: EC_ShortW_Aff[Fp2[BLS12_381], G2]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Validate a G2 point.
   ## This is an expensive operation that can be cached
   if g2P.isNeutral().bool():
@@ -112,7 +112,7 @@ func deserialize_scalar*(dst: var Fr[BLS12_381].getBigInt(), src: array[32, byte
   return cttCodecScalar_Success
 
 
-func serialize_g1_compressed*(dst: var array[48, byte], g1P: ECP_ShortW_Aff[Fp[BLS12_381], G1]): CttCodecEccStatus {.libPrefix: pre, discardable.} =
+func serialize_g1_compressed*(dst: var array[48, byte], g1P: EC_ShortW_Aff[Fp[BLS12_381], G1]): CttCodecEccStatus {.libPrefix: pre, discardable.} =
   ## Serialize a BLS12-381 G1 point in compressed (Zcash) format
   ##
   ## Returns cttCodecEcc_Success if successful
@@ -135,7 +135,7 @@ func serialize_g1_compressed*(dst: var array[48, byte], g1P: ECP_ShortW_Aff[Fp[B
 
   return cttCodecEcc_Success
 
-func deserialize_g1_compressed_unchecked*(dst: var ECP_ShortW_Aff[Fp[BLS12_381], G1], src: array[48, byte]): CttCodecEccStatus {.libPrefix: pre.} =
+func deserialize_g1_compressed_unchecked*(dst: var EC_ShortW_Aff[Fp[BLS12_381], G1], src: array[48, byte]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Deserialize a BLS12-381 G1 point in compressed (Zcash) format.
   ##
   ## Warning ⚠:
@@ -179,7 +179,7 @@ func deserialize_g1_compressed_unchecked*(dst: var ECP_ShortW_Aff[Fp[BLS12_381],
 
   return cttCodecEcc_Success
 
-func deserialize_g1_compressed*(dst: var ECP_ShortW_Aff[Fp[BLS12_381], G1], src: array[48, byte]): CttCodecEccStatus {.libPrefix: pre.} =
+func deserialize_g1_compressed*(dst: var EC_ShortW_Aff[Fp[BLS12_381], G1], src: array[48, byte]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Deserialize a BLS12-381 G1 point in compressed (Zcash) format
   ## This also validates the G1 point
   ##
@@ -195,7 +195,7 @@ func deserialize_g1_compressed*(dst: var ECP_ShortW_Aff[Fp[BLS12_381], G1], src:
   return cttCodecEcc_Success
 
 
-func serialize_g2_compressed*(dst: var array[96, byte], g2P: ECP_ShortW_Aff[Fp2[BLS12_381], G2]): CttCodecEccStatus {.libPrefix: pre.} =
+func serialize_g2_compressed*(dst: var array[96, byte], g2P: EC_ShortW_Aff[Fp2[BLS12_381], G2]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Serialize a BLS12-381 G2 point in compressed (Zcash) format
   ##
   ## Returns cttCodecEcc_Success if successful
@@ -217,7 +217,7 @@ func serialize_g2_compressed*(dst: var array[96, byte], g2P: ECP_ShortW_Aff[Fp2[
 
   return cttCodecEcc_Success
 
-func deserialize_g2_compressed_unchecked*(dst: var ECP_ShortW_Aff[Fp2[BLS12_381], G2], src: array[96, byte]): CttCodecEccStatus {.libPrefix: pre.} =
+func deserialize_g2_compressed_unchecked*(dst: var EC_ShortW_Aff[Fp2[BLS12_381], G2], src: array[96, byte]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Deserialize a BLS12-381 G2 point in compressed (Zcash) format.
   ##
   ## Warning ⚠:
@@ -272,7 +272,7 @@ func deserialize_g2_compressed_unchecked*(dst: var ECP_ShortW_Aff[Fp2[BLS12_381]
 
   return cttCodecEcc_Success
 
-func deserialize_g2_compressed*(dst: var ECP_ShortW_Aff[Fp2[BLS12_381], G2], src: array[96, byte]): CttCodecEccStatus {.libPrefix: pre.} =
+func deserialize_g2_compressed*(dst: var EC_ShortW_Aff[Fp2[BLS12_381], G2], src: array[96, byte]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Deserialize a BLS12-381 G2 point in compressed (Zcash) format
   ##
   ## Returns cttCodecEcc_Success if successful

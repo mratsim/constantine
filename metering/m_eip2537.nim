@@ -31,23 +31,23 @@ let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
 echo "bench xoshiro512** seed: ", seed
 
-func random_point*(rng: var RngState, EC: typedesc[ECP_ShortW_Aff]): EC {.noInit.} =
-  var jac = rng.random_unsafe(ECP_ShortW_Jac[EC.F, EC.G])
+func random_point*(rng: var RngState, EC: typedesc[EC_ShortW_Aff]): EC {.noInit.} =
+  var jac = rng.random_unsafe(EC_ShortW_Jac[EC.F, EC.G])
   jac.clearCofactor()
   result.affine(jac)
 
-func random_point*(rng: var RngState, EC: typedesc[ECP_ShortW_Jac or ECP_ShortW_Prj]): EC {.noInit.} =
+func random_point*(rng: var RngState, EC: typedesc[EC_ShortW_Jac or EC_ShortW_Prj]): EC {.noInit.} =
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
   result = P
 
 type
-  G1aff = ECP_ShortW_Aff[Fp[BLS12_381], G1]
-  G2aff = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
-  G1jac = ECP_ShortW_Jac[Fp[BLS12_381], G1]
-  G2jac = ECP_ShortW_Jac[Fp2[BLS12_381], G2]
-  G1prj = ECP_ShortW_Prj[Fp[BLS12_381], G1]
-  G2prj = ECP_ShortW_Prj[Fp2[BLS12_381], G2]
+  G1aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+  G2aff = EC_ShortW_Aff[Fp2[BLS12_381], G2]
+  G1jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
+  G2jac = EC_ShortW_Jac[Fp2[BLS12_381], G2]
+  G1prj = EC_ShortW_Prj[Fp[BLS12_381], G1]
+  G2prj = EC_ShortW_Prj[Fp2[BLS12_381], G2]
 
 proc g1addMeter(EC: typedesc) =
   let

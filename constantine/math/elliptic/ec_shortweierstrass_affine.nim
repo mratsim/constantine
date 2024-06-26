@@ -29,7 +29,7 @@ type
     G1
     G2
 
-  ECP_ShortW_Aff*[F; G: static Subgroup] = object
+  EC_ShortW_Aff*[F; G: static Subgroup] = object
     ## Elliptic curve point for a curve in Short Weierstrass form
     ##   y² = x³ + a x + b
     ##
@@ -38,28 +38,28 @@ type
 
   SexticNonResidue* = NonResidue
 
-template getScalarField*(EC: type ECP_ShortW_Aff): untyped =
+template getScalarField*(EC: type EC_ShortW_Aff): untyped =
   Fr[EC.F.Name]
 
-func `==`*(P, Q: ECP_ShortW_Aff): SecretBool =
+func `==`*(P, Q: EC_ShortW_Aff): SecretBool =
   ## Constant-time equality check
   result = P.x == Q.x
   result = result and (P.y == Q.y)
 
-func isNeutral*(P: ECP_ShortW_Aff): SecretBool =
+func isNeutral*(P: EC_ShortW_Aff): SecretBool =
   ## Returns true if P is the neutral element / identity element
   ## and false otherwise, i.e. ∀Q, P+Q == Q
   ## For Short Weierstrass curves, this is the infinity point.
   result = P.x.isZero() and P.y.isZero()
 
-func setNeutral*(P: var ECP_ShortW_Aff) =
+func setNeutral*(P: var EC_ShortW_Aff) =
   ## Set P to the neutral element / identity element
   ## i.e. ∀Q, P+Q == Q
   ## For Short Weierstrass curves, this is the infinity point.
   P.x.setZero()
   P.y.setZero()
 
-func ccopy*(P: var ECP_ShortW_Aff, Q: ECP_ShortW_Aff, ctl: SecretBool) {.inline.} =
+func ccopy*(P: var EC_ShortW_Aff, Q: EC_ShortW_Aff, ctl: SecretBool) {.inline.} =
   ## Constant-time conditional copy
   ## If ctl is true: Q is copied into P
   ## if ctl is false: Q is not copied and P is unmodified
@@ -100,7 +100,7 @@ func isOnCurve*[F](x, y: F, G: static Subgroup): SecretBool =
   return y2 == rhs
 
 func trySetFromCoordX*[F, G](
-       P: var ECP_ShortW_Aff[F, G],
+       P: var EC_ShortW_Aff[F, G],
        x: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
@@ -124,16 +124,16 @@ func trySetFromCoordX*[F, G](
   result = sqrt_if_square(P.y)
   P.x = x
 
-func neg*(P: var ECP_ShortW_Aff, Q: ECP_ShortW_Aff) =
+func neg*(P: var EC_ShortW_Aff, Q: EC_ShortW_Aff) =
   ## Negate ``P``
   P.x = Q.x
   P.y.neg(Q.y)
 
-func neg*(P: var ECP_ShortW_Aff) =
+func neg*(P: var EC_ShortW_Aff) =
   ## Negate ``P``
   P.y.neg()
 
-func cneg*(P: var ECP_ShortW_Aff, ctl: CTBool) =
+func cneg*(P: var EC_ShortW_Aff, ctl: CTBool) =
   ## Conditional negation.
   ## Negate if ``ctl`` is true
   P.y.cneg(ctl)

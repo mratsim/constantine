@@ -36,10 +36,10 @@ export bench_elliptic_template
 # ############################################################
 
 proc multiAddParallelBench*(EC: typedesc, numInputs: int, iters: int) =
-  var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numInputs)
+  var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](numInputs)
 
   for i in 0 ..< numInputs:
-    points[i] = rng.random_unsafe(ECP_ShortW_Aff[EC.F, EC.G])
+    points[i] = rng.random_unsafe(EC_ShortW_Aff[EC.F, EC.G])
 
   var r{.noInit.}: EC
 

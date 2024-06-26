@@ -120,7 +120,7 @@ type
 
     # Trusted setup, see https://vitalik.ca/general/2022/03/14/trustedsetup.html
 
-    srs_lagrange_g1*{.align: 64.}: PolynomialEval[FIELD_ELEMENTS_PER_BLOB, ECP_ShortW_Aff[Fp[BLS12_381], G1]]
+    srs_lagrange_g1*{.align: 64.}: PolynomialEval[FIELD_ELEMENTS_PER_BLOB, EC_ShortW_Aff[Fp[BLS12_381], G1]]
     # Part of the Structured Reference String (SRS) holding the 𝔾1 points
     # This is used for committing to polynomials and producing an opening proof at
     # a random value (chosen via Fiat-Shamir heuristic)
@@ -138,7 +138,7 @@ type
     #
     # Conversion can be done with a discrete Fourier transform.
 
-    srs_monomial_g2*{.align: 64.}: PolynomialCoef[KZG_SETUP_G2_LENGTH, ECP_ShortW_Aff[Fp2[BLS12_381], G2]]
+    srs_monomial_g2*{.align: 64.}: PolynomialCoef[KZG_SETUP_G2_LENGTH, EC_ShortW_Aff[Fp2[BLS12_381], G2]]
     # Part of the SRS holding the 𝔾2 points
     #
     # Referring to the 𝔾2 generator as H, we store

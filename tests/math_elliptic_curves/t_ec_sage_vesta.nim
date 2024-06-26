@@ -17,11 +17,11 @@ import
 
 staticFor(bits, [Fr[Vesta].bits()]):
   run_scalar_mul_test_vs_sage(
-    ECP_ShortW_Prj[Fp[Vesta], G1], bits,
+    EC_ShortW_Prj[Fp[Vesta], G1], bits,
     "t_ec_sage_vesta_g1_projective"
   )
 
   run_scalar_mul_test_vs_sage(
-    ECP_ShortW_Jac[Fp[Vesta], G1], bits,
+    EC_ShortW_Jac[Fp[Vesta], G1], bits,
     "t_ec_sage_vesta_g1_jacobian"
   )

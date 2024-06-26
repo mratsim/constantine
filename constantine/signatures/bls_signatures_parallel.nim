@@ -111,7 +111,7 @@ proc batchVerify_parallel*[Msg, Pubkey, Sig](
   debug: doAssert pubkeys.len <= 1 shl 32
   let N = pubkeys.len.uint32
   let numAccums = min(N, tp.numThreads.uint32)
-  let accums = allocHeapArray(BLSBatchSigAccumulator[H, FF1, FF2, Fpk, ECP_ShortW_Jac[Sig.F, Sig.G], k], numAccums)
+  let accums = allocHeapArray(BLSBatchSigAccumulator[H, FF1, FF2, Fpk, EC_ShortW_Jac[Sig.F, Sig.G], k], numAccums)
 
   # Stage 0b: Setup synchronization
   var currentItem {.noInit.}: Atomic[uint32]

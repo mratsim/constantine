@@ -49,9 +49,9 @@ template bench(op: string, Name: static Algebra, iters: int, body: untyped): unt
   report(op, $Name, startTime, stopTime, startClk, stopClk, iters)
 
 func clearCofactor[F; G: static Subgroup](
-       ec: var ECP_ShortW_Aff[F, G]) =
+       ec: var EC_ShortW_Aff[F, G]) =
   # For now we don't have any affine operation defined
-  var t {.noInit.}: ECP_ShortW_Prj[F, G]
+  var t {.noInit.}: EC_ShortW_Prj[F, G]
   t.fromAffine(ec)
   t.clearCofactor()
   ec.affine(t)
@@ -62,24 +62,24 @@ func random_point*(rng: var RngState, EC: typedesc): EC {.noInit.} =
 
 proc lineDoubleBench*(Name: static Algebra, iters: int) =
   var line: Line[Fp2[Name]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2])
-  let P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+  var T = rng.random_point(EC_ShortW_Prj[Fp2[Name], G2])
+  let P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
   bench("Line double", Name, iters):
     line.line_double(T, P)
 
 proc lineAddBench*(Name: static Algebra, iters: int) =
   var line: Line[Fp2[Name]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2])
+  var T = rng.random_point(EC_ShortW_Prj[Fp2[Name], G2])
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
+    P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(EC_ShortW_Aff[Fp2[Name], G2])
   bench("Line add", Name, iters):
     line.line_add(T, Q, P)
 
 proc mulFp12byLine_Bench*(Name: static Algebra, iters: int) =
   var line: Line[Fp2[Name]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2])
-  let P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+  var T = rng.random_point(EC_ShortW_Prj[Fp2[Name], G2])
+  let P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
   line.line_double(T, P)
   var f = rng.random_unsafe(Fp12[Name])
 
@@ -88,8 +88,8 @@ proc mulFp12byLine_Bench*(Name: static Algebra, iters: int) =
 
 proc mulLinebyLine_Bench*(Name: static Algebra, iters: int) =
   var l0, l1: Line[Fp2[Name]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2])
-  let P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+  var T = rng.random_point(EC_ShortW_Prj[Fp2[Name], G2])
+  let P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
   l0.line_double(T, P)
   l1.line_double(T, P)
   var f {.noInit.}: Fp12[Name]
@@ -106,8 +106,8 @@ proc mulFp12by_prod2lines_Bench*(Name: static Algebra, iters: int) =
 
 proc mulFp12_by_2lines_v1_Bench*(Name: static Algebra, iters: int) =
   var l0, l1: Line[Fp2[Name]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2])
-  let P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+  var T = rng.random_point(EC_ShortW_Prj[Fp2[Name], G2])
+  let P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
   l0.line_double(T, P)
   l1.line_double(T, P)
   var f = rng.random_unsafe(Fp12[Name])
@@ -118,8 +118,8 @@ proc mulFp12_by_2lines_v1_Bench*(Name: static Algebra, iters: int) =
 
 proc mulFp12_by_2lines_v2_Bench*(Name: static Algebra, iters: int) =
   var l0, l1: Line[Fp2[Name]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2])
-  let P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+  var T = rng.random_point(EC_ShortW_Prj[Fp2[Name], G2])
+  let P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
   l0.line_double(T, P)
   l1.line_double(T, P)
   var f = rng.random_unsafe(Fp12[Name])
@@ -179,8 +179,8 @@ proc cyclotomicDecompression_Bench*(Name: static Algebra, iters: int) =
 
 proc millerLoopBLS12Bench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
+    P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(EC_ShortW_Aff[Fp2[Name], G2])
 
   var f: Fp12[Name]
   bench("Miller Loop BLS12", Name, iters):
@@ -188,8 +188,8 @@ proc millerLoopBLS12Bench*(Name: static Algebra, iters: int) =
 
 proc millerLoopBNBench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
+    P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(EC_ShortW_Aff[Fp2[Name], G2])
 
   var f: Fp12[Name]
   bench("Miller Loop BN", Name, iters):
@@ -226,8 +226,8 @@ proc finalExpBNBench*(Name: static Algebra, iters: int) =
 
 proc pairingBLS12Bench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
+    P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(EC_ShortW_Aff[Fp2[Name], G2])
 
   var f: Fp12[Name]
   bench("Pairing BLS12", Name, iters):
@@ -235,8 +235,8 @@ proc pairingBLS12Bench*(Name: static Algebra, iters: int) =
 
 proc pairing_multisingle_BLS12Bench*(Name: static Algebra, N: static int, iters: int) =
   var
-    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[Name], G1]]
-    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[Name], G2]]
+    Ps {.noInit.}: array[N, EC_ShortW_Aff[Fp[Name], G1]]
+    Qs {.noInit.}: array[N, EC_ShortW_Aff[Fp2[Name], G2]]
 
     GTs {.noInit.}: array[N, Fp12[Name]]
 
@@ -255,8 +255,8 @@ proc pairing_multisingle_BLS12Bench*(Name: static Algebra, N: static int, iters:
 
 proc pairing_multipairing_BLS12Bench*(Name: static Algebra, N: static int, iters: int) =
   var
-    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[Name], G1]]
-    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[Name], G2]]
+    Ps {.noInit.}: array[N, EC_ShortW_Aff[Fp[Name], G1]]
+    Qs {.noInit.}: array[N, EC_ShortW_Aff[Fp2[Name], G2]]
 
   for i in 0 ..< N:
     Ps[i] = rng.random_unsafe(typeof(Ps[0]))
@@ -268,8 +268,8 @@ proc pairing_multipairing_BLS12Bench*(Name: static Algebra, N: static int, iters
 
 proc pairingBNBench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
+    P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(EC_ShortW_Aff[Fp2[Name], G2])
 
   var f: Fp12[Name]
   bench("Pairing BN", Name, iters):
@@ -277,8 +277,8 @@ proc pairingBNBench*(Name: static Algebra, iters: int) =
 
 proc pairing_multisingle_BNBench*(Name: static Algebra, N: static int, iters: int) =
   var
-    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[Name], G1]]
-    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[Name], G2]]
+    Ps {.noInit.}: array[N, EC_ShortW_Aff[Fp[Name], G1]]
+    Qs {.noInit.}: array[N, EC_ShortW_Aff[Fp2[Name], G2]]
 
     GTs {.noInit.}: array[N, Fp12[Name]]
 
@@ -297,8 +297,8 @@ proc pairing_multisingle_BNBench*(Name: static Algebra, N: static int, iters: in
 
 proc pairing_multipairing_BNBench*(Name: static Algebra, N: static int, iters: int) =
   var
-    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[Name], G1]]
-    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[Name], G2]]
+    Ps {.noInit.}: array[N, EC_ShortW_Aff[Fp[Name], G1]]
+    Qs {.noInit.}: array[N, EC_ShortW_Aff[Fp2[Name], G2]]
 
   for i in 0 ..< N:
     Ps[i] = rng.random_unsafe(typeof(Ps[0]))

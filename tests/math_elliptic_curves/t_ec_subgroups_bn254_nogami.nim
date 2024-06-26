@@ -19,13 +19,13 @@ const
   ItersMul = Iters div 4
 
 run_EC_subgroups_cofactors_impl(
-    ec = ECP_ShortW_Prj[Fp[BN254_Nogami], G1],
+    ec = EC_ShortW_Prj[Fp[BN254_Nogami], G1],
     ItersMul = ItersMul,
     moduleName = "test_ec_subgroups_g1_" & $BN254_Nogami
   )
 
 run_EC_subgroups_cofactors_impl(
-    ec = ECP_ShortW_Prj[Fp2[BN254_Nogami], G2],
+    ec = EC_ShortW_Prj[Fp2[BN254_Nogami], G2],
     ItersMul = ItersMul,
     moduleName = "test_ec_subgroups_g2_" & $BN254_Nogami
   )

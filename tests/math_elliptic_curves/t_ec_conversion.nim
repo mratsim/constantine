@@ -22,42 +22,42 @@ run_EC_conversion_failures(
 )
 
 run_EC_affine_conversion(
-    ec = ECP_ShortW_Jac[Fp[BN254_Snarks], G1],
+    ec = EC_ShortW_Jac[Fp[BN254_Snarks], G1],
     Iters = Iters,
     moduleName = "test_ec_conversion_shortw_affine_jacobian_g1_" & $BN254_Snarks
   )
 run_EC_affine_conversion(
-    ec = ECP_ShortW_Prj[Fp[BN254_Snarks], G1],
+    ec = EC_ShortW_Prj[Fp[BN254_Snarks], G1],
     Iters = Iters,
     moduleName = "test_ec_conversion_shortw_affine_projective_g1_" & $BN254_Snarks
   )
 run_EC_affine_conversion(
-    ec = ECP_ShortW_Jac[Fp2[BN254_Snarks], G2],
+    ec = EC_ShortW_Jac[Fp2[BN254_Snarks], G2],
     Iters = Iters,
     moduleName = "test_ec_conversion_shortw_affine_jacobian_g2_" & $BN254_Snarks
   )
 run_EC_affine_conversion(
-    ec = ECP_ShortW_Prj[Fp2[BN254_Snarks], G2],
+    ec = EC_ShortW_Prj[Fp2[BN254_Snarks], G2],
     Iters = Iters,
     moduleName = "test_ec_conversion_shortw_affine_projective_g2_" & $BN254_Snarks
   )
 run_EC_affine_conversion(
-    ec = ECP_ShortW_Jac[Fp[BLS12_381], G1],
+    ec = EC_ShortW_Jac[Fp[BLS12_381], G1],
     Iters = Iters,
     moduleName = "test_ec_conversion_shortw_affine_jacobian_g1_" & $BLS12_381
   )
 run_EC_affine_conversion(
-    ec = ECP_ShortW_Prj[Fp[BLS12_381], G1],
+    ec = EC_ShortW_Prj[Fp[BLS12_381], G1],
     Iters = Iters,
     moduleName = "test_ec_conversion_shortw_affine_projective_g1_" & $BLS12_381
   )
 run_EC_affine_conversion(
-    ec = ECP_ShortW_Jac[Fp2[BLS12_381], G2],
+    ec = EC_ShortW_Jac[Fp2[BLS12_381], G2],
     Iters = Iters,
     moduleName = "test_ec_conversion_shortw_affine_jacobian_g2_" & $BLS12_381
   )
 run_EC_affine_conversion(
-    ec = ECP_ShortW_Prj[Fp2[BLS12_381], G2],
+    ec = EC_ShortW_Prj[Fp2[BLS12_381], G2],
     Iters = Iters,
     moduleName = "test_ec_conversion_shortw_affine_projective_g2_" & $BLS12_381
   )

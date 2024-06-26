@@ -24,7 +24,7 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Jac[Fp[BN254_Snarks], G1],
+    ec = EC_ShortW_Jac[Fp[BN254_Snarks], G1],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_sanity_" & $BN254_Snarks
   )
@@ -56,8 +56,8 @@ suite "Order checks on BN254_Snarks":
           bool(impl.isNeutral())
           bool(reference.isNeutral())
 
-    test(ECP_ShortW_Jac[Fp[BN254_Snarks], G1], bits = BN254_Snarks.bits(), randZ = false)
-    test(ECP_ShortW_Jac[Fp[BN254_Snarks], G1], bits = BN254_Snarks.bits(), randZ = true)
+    test(EC_ShortW_Jac[Fp[BN254_Snarks], G1], bits = BN254_Snarks.bits(), randZ = false)
+    test(EC_ShortW_Jac[Fp[BN254_Snarks], G1], bits = BN254_Snarks.bits(), randZ = true)
 
   test "Not a point on the curve / not a square - #67":
     var ax, ay: Fp[BN254_Snarks]
@@ -69,13 +69,13 @@ suite "Order checks on BN254_Snarks":
       bool not ay.sqrt_if_square()
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Jac[Fp[BLS12_381], G1],
+    ec = EC_ShortW_Jac[Fp[BLS12_381], G1],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_sanity_" & $BLS12_381
   )
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Jac[Fp[BLS12_377], G1],
+    ec = EC_ShortW_Jac[Fp[BLS12_377], G1],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_sanity_" & $BLS12_377
   )

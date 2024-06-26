@@ -68,9 +68,9 @@ suite "Pairing - Line Functions on BLS12-381" & " [" & $WordBitWidth & "-bit wor
   test "Line double - lt,t(P)":
     proc test_line_double(Name: static Algebra, randZ: bool, gen: RandomGen) =
       for _ in 0 ..< Iters:
-        let P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1], gen)
-        var T = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2], randZ, gen)
-        let Q = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2], randZ, gen)
+        let P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1], gen)
+        var T = rng.random_point(EC_ShortW_Prj[Fp2[Name], G2], randZ, gen)
+        let Q = rng.random_point(EC_ShortW_Prj[Fp2[Name], G2], randZ, gen)
         var l: Line[Fp2[Name]]
 
         var T2: typeof(Q)
@@ -90,15 +90,15 @@ suite "Pairing - Line Functions on BLS12-381" & " [" & $WordBitWidth & "-bit wor
   test "Line add - lt,q(P)":
     proc test_line_add(Name: static Algebra, randZ: bool, gen: RandomGen) =
       for _ in 0 ..< Iters:
-        let P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1], gen)
-        let Q = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2], randZ, gen)
-        var T = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2], randZ, gen)
+        let P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1], gen)
+        let Q = rng.random_point(EC_ShortW_Prj[Fp2[Name], G2], randZ, gen)
+        var T = rng.random_point(EC_ShortW_Prj[Fp2[Name], G2], randZ, gen)
         var l: Line[Fp2[Name]]
 
         var TQ{.noInit.}: typeof(T)
         TQ.sum(T, Q)
 
-        var Qaff{.noInit.}: ECP_ShortW_Aff[Fp2[Name], G2]
+        var Qaff{.noInit.}: EC_ShortW_Aff[Fp2[Name], G2]
         Qaff.affine(Q)
         l.line_add(T, Qaff, P)
 

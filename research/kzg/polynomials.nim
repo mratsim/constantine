@@ -15,10 +15,10 @@ import
   ]
 
 type
-  G1 = ECP_ShortW_Prj[Fp[BLS12_381], G1]
-  G2 = ECP_ShortW_Prj[Fp2[BLS12_381], G2]
-  G1aff = ECP_ShortW_Aff[Fp[BLS12_381], G1]
-  G2aff = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  G1 = EC_ShortW_Prj[Fp[BLS12_381], G1]
+  G2 = EC_ShortW_Prj[Fp2[BLS12_381], G2]
+  G1aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+  G2aff = EC_ShortW_Aff[Fp2[BLS12_381], G2]
   GT = Fp12[BLS12_381]
 
 func linear_combination*(

@@ -127,7 +127,7 @@ func toHex*(line: Line): string =
 # Line evaluation
 # -----------------------------------------------------------------------
 
-func line_update[F1, F2](line: var Line[F2], P: ECP_ShortW_Aff[F1, G1]) =
+func line_update[F1, F2](line: var Line[F2], P: EC_ShortW_Aff[F1, G1]) =
   ## Update the line evaluation with P
   ## after addition or doubling
   ## P in G1
@@ -230,7 +230,7 @@ func line_update[F1, F2](line: var Line[F2], P: ECP_ShortW_Aff[F1, G1]) =
 
 func line_eval_fused_double[Field](
        line: var Line[Field],
-       T: var ECP_ShortW_Prj[Field, G2]) =
+       T: var EC_ShortW_Prj[Field, G2]) =
   ## Fused line evaluation and elliptic point doubling
   # Grewal et al, 2012 adapted to Scott 2019 line notation
 
@@ -280,8 +280,8 @@ func line_eval_fused_double[Field](
 
 func line_eval_fused_add[Field](
        line: var Line[Field],
-       T: var ECP_ShortW_Prj[Field, G2],
-       Q: ECP_ShortW_Aff[Field, G2]) =
+       T: var EC_ShortW_Prj[Field, G2],
+       Q: EC_ShortW_Aff[Field, G2]) =
   ## Fused line evaluation and elliptic point addition
   # Grewal et al, 2012 adapted to Scott 2019 line notation
   var
@@ -334,8 +334,8 @@ func line_eval_fused_add[Field](
 
 func line_double*[F1, F2](
        line: var Line[F2],
-       T: var ECP_ShortW_Prj[F2, G2],
-       P: ECP_ShortW_Aff[F1, G1]) {.meter.} =
+       T: var EC_ShortW_Prj[F2, G2],
+       P: EC_ShortW_Aff[F1, G1]) {.meter.} =
   ## Doubling step of the Miller loop
   ## T in G2, P in G1
   ##
@@ -346,9 +346,9 @@ func line_double*[F1, F2](
 
 func line_add*[F1, F2](
        line: var Line[F2],
-       T: var ECP_ShortW_Prj[F2, G2],
-       Q: ECP_ShortW_Aff[F2, G2],
-       P: ECP_ShortW_Aff[F1, G1]) {.meter.} =
+       T: var EC_ShortW_Prj[F2, G2],
+       Q: EC_ShortW_Aff[F2, G2],
+       P: EC_ShortW_Aff[F1, G1]) {.meter.} =
   ## Addition step of the Miller loop
   ## T and Q in G2, P in G1
   ##

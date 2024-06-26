@@ -30,7 +30,7 @@ import
 #
 # ############################################################
 
-func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff or ECP_ShortW_JacExt](P: EC, indent: static int = 0): string =
+func toHex*[EC: EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_Aff or EC_ShortW_JacExt](P: EC, indent: static int = 0): string =
   ## Stringify an elliptic curve point to Hex
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x
@@ -42,8 +42,8 @@ func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff or ECP_ShortW
   ##
   ## This proc output may change format in the future
 
-  var aff {.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
-  when EC isnot ECP_ShortW_Aff:
+  var aff {.noInit.}: EC_ShortW_Aff[EC.F, EC.G]
+  when EC isnot EC_ShortW_Aff:
     aff.affine(P)
   else:
     aff = P
@@ -82,7 +82,7 @@ func toHex*[EC: ECP_TwEdwards_Aff or ECP_TwEdwards_Prj](P: EC, indent: static in
   result.appendHex(aff.y)
   result &= "\n" & sp & ")"
 
-func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x, y: string): bool =
+func fromHex*(dst: var (EC_ShortW_Prj or EC_ShortW_Jac), x, y: string): bool =
   ## Convert hex strings to a G1 curve point
   ## Returns true if point exist or if input is the point at infinity (all 0)
   ## Returns `false` if there is no point with coordinates (`x`, `y`) on the curve
@@ -95,7 +95,7 @@ func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x, y: string): bool =
   dst.z.csetZero(isNeutral)
   return bool(isOnCurve(dst.x, dst.y, dst.G) or isNeutral)
 
-func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x0, x1, y0, y1: string): bool =
+func fromHex*(dst: var (EC_ShortW_Prj or EC_ShortW_Jac), x0, x1, y0, y1: string): bool =
   ## Convert hex strings to a G2 curve point
   ## Returns `false`
   ## if there is no point with coordinates (`x`, `y`) on the curve
@@ -108,7 +108,7 @@ func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x0, x1, y0, y1: strin
   dst.z.csetZero(isNeutral)
   return bool(isOnCurve(dst.x, dst.y, dst.G) or isNeutral)
 
-func fromHex*(dst: var ECP_ShortW_Aff, x, y: string): bool =
+func fromHex*(dst: var EC_ShortW_Aff, x, y: string): bool =
   ## Convert hex strings to a G1 curve point
   ## Returns true if point exist or if input is the point at infinity (all 0)
   ## Returns `false` if there is no point with coordinates (`x`, `y`) on the curve
@@ -118,7 +118,7 @@ func fromHex*(dst: var ECP_ShortW_Aff, x, y: string): bool =
   dst.y.fromHex(y)
   return bool(isOnCurve(dst.x, dst.y, dst.G) or dst.isNeutral())
 
-func fromHex*(dst: var ECP_ShortW_Aff, x0, x1, y0, y1: string): bool =
+func fromHex*(dst: var EC_ShortW_Aff, x0, x1, y0, y1: string): bool =
   ## Convert hex strings to a G2 curve point
   ## Returns true if point exist or if input is the point at infinity (all 0)
   ## Returns `false` if there is no point with coordinates (`x`, `y`) on the curve
@@ -128,11 +128,11 @@ func fromHex*(dst: var ECP_ShortW_Aff, x0, x1, y0, y1: string): bool =
   dst.y.fromHex(y0, y1)
   return bool(isOnCurve(dst.x, dst.y, dst.G) or dst.isNeutral())
 
-func fromHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](
+func fromHex*[EC: EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_Aff](
        _: type EC, x, y: string): EC =
   doAssert result.fromHex(x, y)
 
-func fromHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](
+func fromHex*[EC: EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_Aff](
        _: type EC, x0, x1, y0, y1: string): EC =
   doAssert result.fromHex(x0, x1, y0, y1)
 

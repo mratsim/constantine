@@ -29,8 +29,8 @@ echo "test_pairing_bls12_377_multi xoshiro512** seed: ", timeseed
 
 proc testMultiPairing(rng: var RngState, N: static int) =
   var
-    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[BLS12_381], G1]]
-    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[BLS12_381], G2]]
+    Ps {.noInit.}: array[N, EC_ShortW_Aff[Fp[BLS12_381], G1]]
+    Qs {.noInit.}: array[N, EC_ShortW_Aff[Fp2[BLS12_381], G2]]
 
     GTs {.noInit.}: array[N, Fp12[BLS12_381]]
 

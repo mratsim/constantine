@@ -18,37 +18,37 @@ const
   Iters = 6
 
 run_EC_mixed_add_impl(
-    ec = ECP_ShortW_JacExt[Fp[BN254_Snarks], G1],
+    ec = EC_ShortW_JacExt[Fp[BN254_Snarks], G1],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_jacobian_extendedmixed_add_" & $BN254_Snarks
   )
 
 run_EC_mixed_add_impl(
-    ec = ECP_ShortW_JacExt[Fp[BLS12_381], G1],
+    ec = EC_ShortW_JacExt[Fp[BLS12_381], G1],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_jacobian_extendedmixed_add_" & $BLS12_381
   )
 
 run_EC_mixed_add_impl(
-    ec = ECP_ShortW_JacExt[Fp[BLS12_377], G1],
+    ec = EC_ShortW_JacExt[Fp[BLS12_377], G1],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_jacobian_extendedmixed_add_" & $BLS12_377
   )
 
 run_EC_mixed_add_impl(
-    ec = ECP_ShortW_JacExt[Fp[BW6_761], G1],
+    ec = EC_ShortW_JacExt[Fp[BW6_761], G1],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_jacobian_extendedmixed_add_" & $BW6_761
   )
 
 run_EC_mixed_add_impl(
-    ec = ECP_ShortW_JacExt[Fp[Pallas], G1],
+    ec = EC_ShortW_JacExt[Fp[Pallas], G1],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_jacobian_extendedmixed_add_" & $Pallas
   )
 
 run_EC_mixed_add_impl(
-    ec = ECP_ShortW_JacExt[Fp[Vesta], G1],
+    ec = EC_ShortW_JacExt[Fp[Vesta], G1],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_jacobian_extendedmixed_add_" & $Vesta
   )

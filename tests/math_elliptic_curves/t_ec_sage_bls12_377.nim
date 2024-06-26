@@ -17,21 +17,21 @@ import
 
 staticFor(bits, [32, 64, 128, Fr[BLS12_377].bits()]):
   run_scalar_mul_test_vs_sage(
-    ECP_ShortW_Prj[Fp[BLS12_377], G1], bits,
+    EC_ShortW_Prj[Fp[BLS12_377], G1], bits,
     "t_ec_sage_bls12_377_g1_projective"
   )
 
   run_scalar_mul_test_vs_sage(
-    ECP_ShortW_Jac[Fp[BLS12_377], G1], bits,
+    EC_ShortW_Jac[Fp[BLS12_377], G1], bits,
     "t_ec_sage_bls12_377_g1_jacobian"
   )
 
   run_scalar_mul_test_vs_sage(
-    ECP_ShortW_Prj[Fp2[BLS12_377], G2], bits,
+    EC_ShortW_Prj[Fp2[BLS12_377], G2], bits,
     "t_ec_sage_bls12_377_g2_projective"
   )
 
   run_scalar_mul_test_vs_sage(
-    ECP_ShortW_Jac[Fp2[BLS12_377], G2], bits,
+    EC_ShortW_Jac[Fp2[BLS12_377], G2], bits,
     "t_ec_sage_bls12_377_g2_jacobian"
   )

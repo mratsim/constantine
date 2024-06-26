@@ -76,9 +76,9 @@ type
     # Hence we don't need to explicitly use ptr Blob
     # to avoid a 4096 byte copy on {.exportc.} procs.
 
-  KZGCommitment* = distinct ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  KZGCommitment* = distinct EC_ShortW_Aff[Fp[BLS12_381], G1]
 
-  KZGProof*      = distinct ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  KZGProof*      = distinct EC_ShortW_Aff[Fp[BLS12_381], G1]
 
   cttEthKzgStatus* = enum
     cttEthKzg_Success
@@ -293,7 +293,7 @@ func blob_to_kzg_commitment*(
   block HappyPath:
     check HappyPath, poly.blob_to_bigint_polynomial(blob)
 
-    var r {.noinit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+    var r {.noinit.}: EC_ShortW_Aff[Fp[BLS12_381], G1]
     kzg_commit(ctx.srs_lagrange_g1, r, poly[])
     discard dst.serialize_g1_compressed(r)
 
@@ -334,7 +334,7 @@ func compute_kzg_proof*(
 
     # KZG Prove
     var y {.noInit.}: Fr[BLS12_381]                         # y = p(z), eval at opening_challenge z
-    var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
+    var proof {.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     kzg_prove(
       ctx.srs_lagrange_g1,
@@ -370,9 +370,9 @@ func verify_kzg_proof*(
   var proof {.noInit.}: KZGProof
   checkReturn proof.bytes_to_kzg_proof(proof_bytes)
 
-  let verif = kzg_verify(ECP_ShortW_Aff[Fp[BLS12_381], G1](commitment),
+  let verif = kzg_verify(EC_ShortW_Aff[Fp[BLS12_381], G1](commitment),
                          opening_challenge, eval_at_challenge,
-                         ECP_ShortW_Aff[Fp[BLS12_381], G1](proof),
+                         EC_ShortW_Aff[Fp[BLS12_381], G1](proof),
                          ctx.srs_monomial_g2.coefs[1])
   if verif:
     return cttEthKzg_Success
@@ -403,7 +403,7 @@ func compute_blob_kzg_proof*(
 
     # KZG Prove
     var y {.noInit.}: Fr[BLS12_381]                         # y = p(z), eval at opening_challenge z
-    var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
+    var proof {.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     kzg_prove(
       ctx.srs_lagrange_g1,
@@ -445,9 +445,9 @@ func verify_blob_kzg_proof*(
     ctx.domain.evalPolyAt(eval_at_challenge, poly[], opening_challenge)
 
     # KZG verification
-    let verif = kzg_verify(ECP_ShortW_Aff[Fp[BLS12_381], G1](commitment),
+    let verif = kzg_verify(EC_ShortW_Aff[Fp[BLS12_381], G1](commitment),
                           opening_challenge.toBig(), eval_at_challenge.toBig(),
-                          ECP_ShortW_Aff[Fp[BLS12_381], G1](proof),
+                          EC_ShortW_Aff[Fp[BLS12_381], G1](proof),
                           ctx.srs_monomial_g2.coefs[1])
     if verif:
       result = cttEthKzg_Success
@@ -523,7 +523,7 @@ func verify_blob_kzg_proof_batch*(
     let linearIndepRandNumbers = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
     linearIndepRandNumbers.computePowers(randomBlindingFr, n)
 
-    type EcAffArray = ptr UncheckedArray[ECP_ShortW_Aff[Fp[BLS12_381], G1]]
+    type EcAffArray = ptr UncheckedArray[EC_ShortW_Aff[Fp[BLS12_381], G1]]
     let verif = kzg_verify_batch(
                   cast[EcAffArray](commitments),
                   opening_challenges,

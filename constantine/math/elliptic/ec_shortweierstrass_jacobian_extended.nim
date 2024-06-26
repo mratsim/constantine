@@ -27,7 +27,7 @@ export Subgroup
 #
 # ############################################################
 
-type ECP_ShortW_JacExt*[F; G: static Subgroup] = object
+type EC_ShortW_JacExt*[F; G: static Subgroup] = object
   ## Elliptic curve point for a curve in Short Weierstrass form
   ##   y² = x³ + a x + b
   ##
@@ -39,15 +39,15 @@ type ECP_ShortW_JacExt*[F; G: static Subgroup] = object
   ## Note that extended jacobian coordinates are not unique
   x*, y*, zz*, zzz*: F
 
-func fromAffine*[F; G](jacext: var ECP_ShortW_JacExt[F, G], aff: ECP_ShortW_Aff[F, G]) {.inline.}
+func fromAffine*[F; G](jacext: var EC_ShortW_JacExt[F, G], aff: EC_ShortW_Aff[F, G]) {.inline.}
 
-func isNeutral*(P: ECP_ShortW_JacExt): SecretBool {.inline, meter.} =
+func isNeutral*(P: EC_ShortW_JacExt): SecretBool {.inline, meter.} =
   ## Returns true if P is the neutral element / identity element
   ## and false otherwise, i.e. ∀Q, P+Q == Q
   ## For Short Weierstrass curves, this is the infinity point.
   result = P.zz.isZero()
 
-func setNeutral*(P: var ECP_ShortW_JacExt) {.inline.} =
+func setNeutral*(P: var EC_ShortW_JacExt) {.inline.} =
   ## Set P to the neutral element / identity element
   ## i.e. ∀Q, P+Q == Q
   ## For Short Weierstrass curves, this is the infinity point.
@@ -56,11 +56,11 @@ func setNeutral*(P: var ECP_ShortW_JacExt) {.inline.} =
   P.zz.setZero()
   P.zzz.setZero()
 
-func `==`*(P, Q: ECP_ShortW_JacExt): SecretBool {.meter.} =
+func `==`*(P, Q: EC_ShortW_JacExt): SecretBool {.meter.} =
   ## Constant-time equality check
   ## This is a costly operation
   # Reminder: the representation is not unique
-  type F = ECP_ShortW_JacExt.F
+  type F = EC_ShortW_JacExt.F
 
   var a{.noInit.}, b{.noInit.}: F
 
@@ -76,7 +76,7 @@ func `==`*(P, Q: ECP_ShortW_JacExt): SecretBool {.meter.} =
   result = result and not(P.isNeutral() xor Q.isNeutral())
 
 func trySetFromCoordsXandZ*[F; G](
-       P: var ECP_ShortW_JacExt[F, G],
+       P: var EC_ShortW_JacExt[F, G],
        x, z: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## Y² = X³ + aXZ⁴ + bZ⁶  (Jacobian coordinates)
@@ -105,7 +105,7 @@ func trySetFromCoordsXandZ*[F; G](
   P.y.prod(P.y, P.zzz)
 
 func trySetFromCoordX*[F; G](
-       P: var ECP_ShortW_JacExt[F, G],
+       P: var EC_ShortW_JacExt[F, G],
        x: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
@@ -132,18 +132,18 @@ func trySetFromCoordX*[F; G](
   P.zz.setOne()
   P.zzz.setOne()
 
-func neg*(P: var ECP_ShortW_JacExt, Q: ECP_ShortW_JacExt) {.inline.} =
+func neg*(P: var EC_ShortW_JacExt, Q: EC_ShortW_JacExt) {.inline.} =
   ## Negate ``P``
   P.x = Q.x
   P.y.neg(Q.y)
   P.zz = Q.zz
   P.zzz = Q.zzz
 
-func neg*(P: var ECP_ShortW_JacExt) {.inline.} =
+func neg*(P: var EC_ShortW_JacExt) {.inline.} =
   ## Negate ``P``
   P.y.neg()
 
-func double*[F; G: static Subgroup](r: var ECP_ShortW_JacExt[F, G], P: ECP_ShortW_JacExt[F, G]) {.meter.} =
+func double*[F; G: static Subgroup](r: var EC_ShortW_JacExt[F, G], P: EC_ShortW_JacExt[F, G]) {.meter.} =
   # http://www.hyperelliptic.org/EFD/g1p/auto-shortw-xyzz.html#doubling-dbl-2008-s-1
   var U{.noInit.}, V{.noInit.}, W{.noinit.}, S{.noInit.}, M{.noInit.}: F
 
@@ -168,8 +168,8 @@ func double*[F; G: static Subgroup](r: var ECP_ShortW_JacExt[F, G], P: ECP_Short
   r.zzz.prod(P.zzz, W)
 
 func sum_vartime*[F; G: static Subgroup](
-       r: var ECP_ShortW_JacExt[F, G],
-       p, q: ECP_ShortW_JacExt[F, G])
+       r: var EC_ShortW_JacExt[F, G],
+       p, q: EC_ShortW_JacExt[F, G])
        {.tags:[VarTime], meter.} =
   ## **Variable-time** Extended Jacobian addition
   ##
@@ -226,7 +226,7 @@ func sum_vartime*[F; G: static Subgroup](
   r.zzz.prod(p.zzz, q.zzz)
   r.zzz *= PPP
 
-func mdouble*[F; G: static Subgroup](r: var ECP_ShortW_JacExt[F, G], P: ECP_ShortW_Aff[F, G]) {.meter.} =
+func mdouble*[F; G: static Subgroup](r: var EC_ShortW_JacExt[F, G], P: EC_ShortW_Aff[F, G]) {.meter.} =
   ## Mixed EC point double
   # http://www.hyperelliptic.org/EFD/g1p/auto-shortw-xyzz.html#doubling-mdbl-2008-s-1
 
@@ -253,9 +253,9 @@ func mdouble*[F; G: static Subgroup](r: var ECP_ShortW_JacExt[F, G], P: ECP_Shor
   r.zzz = W
 
 func madd_vartime*[F; G: static Subgroup](
-       r: var ECP_ShortW_JacExt[F, G],
-       p: ECP_ShortW_JacExt[F, G],
-       q: ECP_ShortW_Aff[F, G])
+       r: var EC_ShortW_JacExt[F, G],
+       p: EC_ShortW_JacExt[F, G],
+       q: EC_ShortW_Aff[F, G])
        {.tags:[VarTime], meter.} =
   ## **Variable-time** Extended Jacobian mixed addition
   ##
@@ -307,27 +307,27 @@ func madd_vartime*[F; G: static Subgroup](
   r.zzz.prod(p.zzz, PPP)
 
 func msub_vartime*[F; G: static Subgroup](
-       r: var ECP_ShortW_JacExt[F, G],
-       p: ECP_ShortW_JacExt[F, G],
-       q: ECP_ShortW_Aff[F, G]) {.tags:[VarTime], inline.} =
-  var nQ {.noInit.}: ECP_ShortW_Aff[F, G]
+       r: var EC_ShortW_JacExt[F, G],
+       p: EC_ShortW_JacExt[F, G],
+       q: EC_ShortW_Aff[F, G]) {.tags:[VarTime], inline.} =
+  var nQ {.noInit.}: EC_ShortW_Aff[F, G]
   nQ.neg(q)
   r.madd_vartime(p, nQ)
 
 # Conversions
 # -----------
 
-template affine*[F, G](_: type ECP_ShortW_JacExt[F, G]): untyped =
+template affine*[F, G](_: type EC_ShortW_JacExt[F, G]): untyped =
   ## Returns the affine type that corresponds to the Extended Jacobian type input
-  ECP_ShortW_Aff[F, G]
+  EC_ShortW_Aff[F, G]
 
 template jacobianExtended*[EC](_: typedesc[EC]): untyped =
   ## Returns the affine type that corresponds to the Extended Jacobian type input
-  ECP_ShortW_JacExt[EC.F, EC.G]
+  EC_ShortW_JacExt[EC.F, EC.G]
 
 func affine*[F; G](
-       aff: var ECP_ShortW_Aff[F, G],
-       jacext: ECP_ShortW_JacExt[F, G]) {.meter.} =
+       aff: var EC_ShortW_Aff[F, G],
+       jacext: EC_ShortW_JacExt[F, G]) {.meter.} =
   var invZZ {.noInit.}, invZZZ{.noInit.}: F
   invZZZ.inv(jacext.zzz)
   invZZ.prod(jacext.zz, invZZZ, skipFinalSub = true)
@@ -336,8 +336,8 @@ func affine*[F; G](
   aff.y.prod(jacext.y, invZZZ)
 
 func fromAffine*[F; G](
-       jacext: var ECP_ShortW_JacExt[F, G],
-       aff: ECP_ShortW_Aff[F, G]) {.inline, meter.} =
+       jacext: var EC_ShortW_JacExt[F, G],
+       aff: EC_ShortW_Aff[F, G]) {.inline, meter.} =
   jacext.x = aff.x
   jacext.y = aff.y
   jacext.zz.setOne()
@@ -348,8 +348,8 @@ func fromAffine*[F; G](
   jacext.zzz.csetZero(inf)
 
 func fromJacobianExtended_vartime*[F; G](
-       prj: var ECP_ShortW_Prj[F, G],
-       jacext: ECP_ShortW_JacExt[F, G]) {.inline, meter, tags:[VarTime].} =
+       prj: var EC_ShortW_Prj[F, G],
+       jacext: EC_ShortW_JacExt[F, G]) {.inline, meter, tags:[VarTime].} =
   # Affine (x, y)
   # Jacobian extended (xZ², yZ³, Z², Z³)
   # Projective        (xZ', yZ', Z')
@@ -362,8 +362,8 @@ func fromJacobianExtended_vartime*[F; G](
   prj.y.prod(jacext.y, jacext.zz)
 
 func fromJacobianExtended_vartime*[F; G](
-       jac: var ECP_ShortW_Jac[F, G],
-       jacext: ECP_ShortW_JacExt[F, G]) {.inline, meter, tags:[VarTime].} =
+       jac: var EC_ShortW_Jac[F, G],
+       jacext: EC_ShortW_JacExt[F, G]) {.inline, meter, tags:[VarTime].} =
   # Affine (x, y)
   # Jacobian extended (xZ²,  yZ³,  Z², Z³)
   # Jacobian          (xZ'², yZ'³, Z')

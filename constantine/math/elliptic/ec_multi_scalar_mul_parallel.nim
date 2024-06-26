@@ -530,9 +530,9 @@ template withEndo[coefsBits: static int, EC, ECaff](
 
 proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F, G](
        tp: Threadpool,
-       r: ptr (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
+       r: ptr (EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G]),
        coefs: ptr UncheckedArray[BigInt[bits]],
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
+       points: ptr UncheckedArray[EC_ShortW_Aff[F, G]], N: int) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)

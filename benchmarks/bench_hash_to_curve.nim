@@ -37,7 +37,7 @@ proc bench_BLS12_381_hash_to_G1(iters: int) =
   const dst = "BLS_SIG_BLS12381G1-SHA256-SSWU-RO_POP_"
   let msg = "Mr F was here"
 
-  var P: ECP_ShortW_Jac[Fp[BLS12_381], G1]
+  var P: EC_ShortW_Jac[Fp[BLS12_381], G1]
 
   bench("Hash to G1 (SSWU method - Draft #14)", BLS12_381, iters):
     sha256.hashToCurve(
@@ -52,7 +52,7 @@ proc bench_BLS12_381_hash_to_G2(iters: int) =
   const dst = "BLS_SIG_BLS12381G2-SHA256-SSWU-RO_POP_"
   let msg = "Mr F was here"
 
-  var P: ECP_ShortW_Jac[Fp2[BLS12_381], G2]
+  var P: EC_ShortW_Jac[Fp2[BLS12_381], G2]
 
   bench("Hash to G2 (SSWU method - Draft #14)", BLS12_381, iters):
     sha256.hashToCurve(
@@ -67,7 +67,7 @@ proc bench_BLS12_381_hash_to_G1_SVDW(iters: int) =
   const dst = "BLS_SIG_BLS12381G1-SHA256-SVDW-RO_POP_"
   let msg = "Mr F was here"
 
-  var P: ECP_ShortW_Jac[Fp[BLS12_381], G1]
+  var P: EC_ShortW_Jac[Fp[BLS12_381], G1]
 
   bench("Hash to G1 (SVDW method)", BLS12_381, iters):
     sha256.hashToCurve_svdw(
@@ -82,7 +82,7 @@ proc bench_BLS12_381_hash_to_G2_SVDW(iters: int) =
   const dst = "BLS_SIG_BLS12381G2-SHA256-SVDW-RO_POP_"
   let msg = "Mr F was here"
 
-  var P: ECP_ShortW_Jac[Fp2[BLS12_381], G2]
+  var P: EC_ShortW_Jac[Fp2[BLS12_381], G2]
 
   bench("Hash to G2 (SVDW method)", BLS12_381, iters):
     sha256.hashToCurve_svdw(
@@ -97,7 +97,7 @@ proc bench_BN254_Snarks_hash_to_G1(iters: int) =
   const dst = "BLS_SIG_BN254SNARKSG1-SHA256-SVDW-RO_POP_"
   let msg = "Mr F was here"
 
-  var P: ECP_ShortW_Jac[Fp[BN254_Snarks], G1]
+  var P: EC_ShortW_Jac[Fp[BN254_Snarks], G1]
 
   bench("Hash to G1 (SVDW method)", BN254_Snarks, iters):
     sha256.hashToCurve(
@@ -112,7 +112,7 @@ proc bench_BN254_Snarks_hash_to_G2(iters: int) =
   const dst = "BLS_SIG_BN254SNARKSG2-SHA256-SVDW-RO_POP_"
   let msg = "Mr F was here"
 
-  var P: ECP_ShortW_Jac[Fp2[BN254_Snarks], G2]
+  var P: EC_ShortW_Jac[Fp2[BN254_Snarks], G2]
 
   bench("Hash to G2 (SVDW method)", BN254_Snarks, iters):
     sha256.hashToCurve(
@@ -128,8 +128,8 @@ proc bench_BLS12_381_G1_jac_aff_conversion(iters: int) =
   const dst = "BLS_SIG_BLS12381G1-SHA256-SSWU-RO_POP_"
   let msg = "Mr F was here"
 
-  var P: ECP_ShortW_Jac[Fp[BLS12_381], G1]
-  var Paff: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  var P: EC_ShortW_Jac[Fp[BLS12_381], G1]
+  var Paff: EC_ShortW_Aff[Fp[BLS12_381], G1]
 
   sha256.hashToCurve(
     k = 128,
@@ -146,8 +146,8 @@ proc bench_BLS12_381_G2_jac_aff_conversion(iters: int) =
   const dst = "BLS_SIG_BLS12381G2-SHA256-SSWU-RO_POP_"
   let msg = "Mr F was here"
 
-  var P: ECP_ShortW_Jac[Fp2[BLS12_381], G2]
-  var Paff: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  var P: EC_ShortW_Jac[Fp2[BLS12_381], G2]
+  var Paff: EC_ShortW_Aff[Fp2[BLS12_381], G2]
 
   sha256.hashToCurve(
     k = 128,

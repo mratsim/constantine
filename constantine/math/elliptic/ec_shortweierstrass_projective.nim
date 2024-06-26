@@ -25,7 +25,7 @@ export Subgroup
 #
 # ############################################################
 
-type ECP_ShortW_Prj*[F; G: static Subgroup] = object
+type EC_ShortW_Prj*[F; G: static Subgroup] = object
   ## Elliptic curve point for a curve in Short Weierstrass form
   ##   y² = x³ + a x + b
   ##
@@ -37,10 +37,10 @@ type ECP_ShortW_Prj*[F; G: static Subgroup] = object
   ## Note that projective coordinates are not unique
   x*, y*, z*: F
 
-template getScalarField*(EC: type ECP_ShortW_Prj): untyped =
+template getScalarField*(EC: type EC_ShortW_Prj): untyped =
   Fr[EC.F.Name]
 
-func isNeutral*(P: ECP_ShortW_Prj): SecretBool {.inline.} =
+func isNeutral*(P: EC_ShortW_Prj): SecretBool {.inline.} =
   ## Returns true if P is the neutral element / identity element
   ## and false otherwise, i.e. ∀Q, P+Q == Q
   ## For Short Weierstrass curves, this is the infinity point.
@@ -50,7 +50,7 @@ func isNeutral*(P: ECP_ShortW_Prj): SecretBool {.inline.} =
   # Y can be anything
   result = P.x.isZero() and P.z.isZero()
 
-func setNeutral*(P: var ECP_ShortW_Prj) {.inline.} =
+func setNeutral*(P: var EC_ShortW_Prj) {.inline.} =
   ## Set P to the neutral element / identity element
   ## i.e. ∀Q, P+Q == Q
   ## For Short Weierstrass curves, this is the infinity point.
@@ -58,11 +58,11 @@ func setNeutral*(P: var ECP_ShortW_Prj) {.inline.} =
   P.y.setOne()
   P.z.setZero()
 
-func `==`*(P, Q: ECP_ShortW_Prj): SecretBool =
+func `==`*(P, Q: EC_ShortW_Prj): SecretBool =
   ## Constant-time equality check
   ## This is a costly operation
   # Reminder: the representation is not unique
-  type F = ECP_ShortW_Prj.F
+  type F = EC_ShortW_Prj.F
 
   var a{.noInit.}, b{.noInit.}: F
 
@@ -77,7 +77,7 @@ func `==`*(P, Q: ECP_ShortW_Prj): SecretBool =
   # Ensure a zero-init point doesn't propagate 0s and match any
   result = result and not(P.isNeutral() xor Q.isNeutral())
 
-func ccopy*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj, ctl: SecretBool) {.inline.} =
+func ccopy*(P: var EC_ShortW_Prj, Q: EC_ShortW_Prj, ctl: SecretBool) {.inline.} =
   ## Constant-time conditional copy
   ## If ctl is true: Q is copied into P
   ## if ctl is false: Q is not copied and P is unmodified
@@ -86,7 +86,7 @@ func ccopy*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj, ctl: SecretBool) {.inline.
     ccopy(fP, fQ, ctl)
 
 func trySetFromCoordsXandZ*[F; G](
-       P: var ECP_ShortW_Prj[F, G],
+       P: var EC_ShortW_Prj[F, G],
        x, z: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## Y²Z = X³ + aXZ² + bZ³ (projective coordinates)
@@ -113,7 +113,7 @@ func trySetFromCoordsXandZ*[F; G](
   P.z = z
 
 func trySetFromCoordX*[F; G](
-       P: var ECP_ShortW_Prj[F, G],
+       P: var EC_ShortW_Prj[F, G],
        x: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
@@ -139,24 +139,24 @@ func trySetFromCoordX*[F; G](
   P.x = x
   P.z.setOne()
 
-func neg*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj) {.inline.} =
+func neg*(P: var EC_ShortW_Prj, Q: EC_ShortW_Prj) {.inline.} =
   ## Negate ``P``
   P.x = Q.x
   P.y.neg(Q.y)
   P.z = Q.z
 
-func neg*(P: var ECP_ShortW_Prj) {.inline.} =
+func neg*(P: var EC_ShortW_Prj) {.inline.} =
   ## Negate ``P``
   P.y.neg()
 
-func cneg*(P: var ECP_ShortW_Prj, ctl: CTBool) {.inline.} =
+func cneg*(P: var EC_ShortW_Prj, ctl: CTBool) {.inline.} =
   ## Conditional negation.
   ## Negate if ``ctl`` is true
   P.y.cneg(ctl)
 
 func sum*[F; G: static Subgroup](
-       r: var ECP_ShortW_Prj[F, G],
-       P, Q: ECP_ShortW_Prj[F, G]
+       r: var EC_ShortW_Prj[F, G],
+       P, Q: EC_ShortW_Prj[F, G]
      ) {.meter.} =
   ## Elliptic curve point addition for Short Weierstrass curves in projective coordinates
   ##
@@ -254,9 +254,9 @@ func sum*[F; G: static Subgroup](
     {.error: "Not implemented.".}
 
 func madd*[F; G: static Subgroup](
-       r: var ECP_ShortW_Prj[F, G],
-       P: ECP_ShortW_Prj[F, G],
-       Q: ECP_ShortW_Aff[F, G]
+       r: var EC_ShortW_Prj[F, G],
+       P: EC_ShortW_Prj[F, G],
+       Q: EC_ShortW_Aff[F, G]
      ) {.meter.} =
   ## Elliptic curve mixed addition for Short Weierstrass curves
   ## with p in Projective coordinates and Q in affine coordinates
@@ -333,8 +333,8 @@ func madd*[F; G: static Subgroup](
     {.error: "Not implemented.".}
 
 func double*[F; G: static Subgroup](
-       r: var ECP_ShortW_Prj[F, G],
-       P: ECP_ShortW_Prj[F, G]
+       r: var EC_ShortW_Prj[F, G],
+       P: EC_ShortW_Prj[F, G]
      ) {.meter.} =
   ## Elliptic curve point doubling for Short Weierstrass curves in projective coordinate
   ##
@@ -409,47 +409,47 @@ func double*[F; G: static Subgroup](
   else:
     {.error: "Not implemented.".}
 
-func `+=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj) {.inline.} =
+func `+=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Prj) {.inline.} =
   ## In-place point addition
   P.sum(P, Q)
 
-func `+=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Aff) {.inline.} =
+func `+=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Aff) {.inline.} =
   ## In-place mixed point addition
   P.madd(P, Q)
 
-func double*(P: var ECP_ShortW_Prj) {.inline.} =
+func double*(P: var EC_ShortW_Prj) {.inline.} =
   ## In-place EC doubling
   P.double(P)
 
-func diff*(r: var ECP_ShortW_Prj, P, Q: ECP_ShortW_Prj) {.inline.} =
+func diff*(r: var EC_ShortW_Prj, P, Q: EC_ShortW_Prj) {.inline.} =
   ## r = P - Q
   ## Can handle r and Q aliasing
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
   r.sum(P, nQ)
 
-func diff*(r: var ECP_ShortW_Prj, P: ECP_ShortW_Prj, Q: ECP_ShortW_Aff) {.inline.} =
+func diff*(r: var EC_ShortW_Prj, P: EC_ShortW_Prj, Q: EC_ShortW_Aff) {.inline.} =
   ## r = P - Q
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
   r.madd(P, nQ)
 
-func `-=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj or ECP_ShortW_Aff) {.inline.} =
+func `-=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Prj or EC_ShortW_Aff) {.inline.} =
   ## In-place point substraction
   P.diff(P, Q)
 
-template affine*[F, G](_: type ECP_ShortW_Prj[F, G]): untyped =
+template affine*[F, G](_: type EC_ShortW_Prj[F, G]): untyped =
   ## Returns the affine type that corresponds to the Jacobian type input
-  ECP_ShortW_Aff[F, G]
+  EC_ShortW_Aff[F, G]
 
-template projective*[F, G](_: type ECP_ShortW_Aff[F, G]): untyped =
+template projective*[F, G](_: type EC_ShortW_Aff[F, G]): untyped =
   ## Returns the projective type that corresponds to the affine type input
-  ECP_ShortW_Prj[F, G]
+  EC_ShortW_Prj[F, G]
 
 
 func affine*[F, G](
-       aff: var ECP_ShortW_Aff[F, G],
-       proj: ECP_ShortW_Prj[F, G]) {.meter.} =
+       aff: var EC_ShortW_Aff[F, G],
+       proj: EC_ShortW_Prj[F, G]) {.meter.} =
   var invZ {.noInit.}: F
   invZ.inv(proj.z)
 
@@ -457,8 +457,8 @@ func affine*[F, G](
   aff.y.prod(proj.y, invZ)
 
 func fromAffine*[F, G](
-       proj: var ECP_ShortW_Prj[F, G],
-       aff: ECP_ShortW_Aff[F, G]) {.inline.} =
+       proj: var EC_ShortW_Prj[F, G],
+       aff: EC_ShortW_Aff[F, G]) {.inline.} =
   proj.x = aff.x
   proj.y = aff.y
   proj.z.setOne()
@@ -476,8 +476,8 @@ func fromAffine*[F, G](
 # to hours of computations. Those primitives do not need constant-timeness.
 
 func sum_vartime*[F; G: static Subgroup](
-       r: var ECP_ShortW_Prj[F, G],
-       p, q: ECP_ShortW_Prj[F, G])
+       r: var EC_ShortW_Prj[F, G],
+       p, q: EC_ShortW_Prj[F, G])
        {.tags:[VarTime], meter.} =
   ## **Variable-time** homogeneous projective addition
   ##
@@ -577,9 +577,9 @@ func sum_vartime*[F; G: static Subgroup](
   r.y -= Y1Z2
 
 func madd_vartime*[F; G: static Subgroup](
-       r: var ECP_ShortW_Prj[F, G],
-       p: ECP_ShortW_Prj[F, G],
-       q: ECP_ShortW_Aff[F, G])
+       r: var EC_ShortW_Prj[F, G],
+       p: EC_ShortW_Prj[F, G],
+       q: EC_ShortW_Aff[F, G])
        {.tags:[VarTime], meter.} =
   ## **Variable-time** homogeneous projective mixed addition
   ##
@@ -665,7 +665,7 @@ func madd_vartime*[F; G: static Subgroup](
   r.y *= R
   r.y -= Y1Z2
 
-func diff_vartime*(r: var ECP_ShortW_Prj, P, Q: ECP_ShortW_Prj) {.inline.} =
+func diff_vartime*(r: var EC_ShortW_Prj, P, Q: EC_ShortW_Prj) {.inline.} =
   ## r = P - Q
   ##
   ## This MUST NOT be used with secret data.
@@ -675,7 +675,7 @@ func diff_vartime*(r: var ECP_ShortW_Prj, P, Q: ECP_ShortW_Prj) {.inline.} =
   nQ.neg(Q)
   r.sum_vartime(P, nQ)
 
-func msub_vartime*(r: var ECP_ShortW_Prj, P: ECP_ShortW_Prj, Q: ECP_ShortW_Aff) {.inline.} =
+func msub_vartime*(r: var EC_ShortW_Prj, P: EC_ShortW_Prj, Q: EC_ShortW_Aff) {.inline.} =
   ## r = P - Q
   ##
   ## This MUST NOT be used with secret data.
@@ -685,16 +685,16 @@ func msub_vartime*(r: var ECP_ShortW_Prj, P: ECP_ShortW_Prj, Q: ECP_ShortW_Aff) 
   nQ.neg(Q)
   r.madd_vartime(P, nQ)
 
-template `~+=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj) =
+template `~+=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Prj) =
   ## Variable-time in-place point addition
   P.sum_vartime(P, Q)
 
-template `~+=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Aff) =
+template `~+=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Aff) =
   ## Variable-time in-place point mixed addition
   P.madd_vartime(P, Q)
 
-template `~-=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj) =
+template `~-=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Prj) =
   P.diff_vartime(P, Q)
 
-template `~-=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Aff) =
+template `~-=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Aff) =
   P.msub_vartime(P, Q)

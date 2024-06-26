@@ -445,9 +445,9 @@ template withEndo[coefsBits: static int, EC, ECaff](
     msmProc(r, coefs, points, N, c)
 
 func multiScalarMul_dispatch_vartime[bits: static int, F, G](
-       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
+       r: var (EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G]),
        coefs: ptr UncheckedArray[BigInt[bits]],
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
+       points: ptr UncheckedArray[EC_ShortW_Aff[F, G]], N: int) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)

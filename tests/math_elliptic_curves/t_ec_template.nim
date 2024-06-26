@@ -43,13 +43,13 @@ export unittest, abstractions, arithmetic # Generic sandwich
 # Hence we do not expose `sum` or `+=` for extended jacobian operation to prevent `vartime` mistakes
 # we create a local `sum` or `+=` for this module only
 
-func sum[F; G: static Subgroup](r: var ECP_ShortW_JacExt[F, G], P, Q: ECP_ShortW_JacExt[F, G]) =
+func sum[F; G: static Subgroup](r: var EC_ShortW_JacExt[F, G], P, Q: EC_ShortW_JacExt[F, G]) =
   r.sum_vartime(P, Q)
-func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_JacExt[F, G]) =
+func `+=`[F; G: static Subgroup](P: var EC_ShortW_JacExt[F, G], Q: EC_ShortW_JacExt[F, G]) =
   P.sum_vartime(P, Q)
-func madd[F; G: static Subgroup](r: var ECP_ShortW_JacExt[F, G], P: ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) =
+func madd[F; G: static Subgroup](r: var EC_ShortW_JacExt[F, G], P: EC_ShortW_JacExt[F, G], Q: EC_ShortW_Aff[F, G]) =
   r.madd_vartime(P, Q)
-func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) =
+func `+=`[F; G: static Subgroup](P: var EC_ShortW_JacExt[F, G], Q: EC_ShortW_Aff[F, G]) =
   P.madd_vartime(P, Q)
 
 # Twisted Edwards bindings
@@ -70,7 +70,7 @@ type
     Long01Sequence
 
 func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen): EC {.noInit.} =
-  when EC is ECP_ShortW_Aff:
+  when EC is EC_ShortW_Aff:
     if gen == Uniform:
       result = rng.random_unsafe(EC)
     elif gen == HighHammingWeight:
@@ -733,7 +733,7 @@ proc run_EC_mixed_add_impl*(
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
           let b = rng.random_point(EC, randZ, gen)
-          var bAff: ECP_ShortW_Aff[EC.F, EC.G]
+          var bAff: EC_ShortW_Aff[EC.F, EC.G]
           var bz1: EC
           bAff.affine(b)
           bz1.fromAffine(bAff) # internals special-case Z=1
@@ -763,7 +763,7 @@ proc run_EC_mixed_add_impl*(
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
-          var aAff: ECP_ShortW_Aff[EC.F, EC.G]
+          var aAff: EC_ShortW_Aff[EC.F, EC.G]
           var az1: EC
           aAff.affine(a)
           az1.fromAffine(aAff)
@@ -808,12 +808,12 @@ proc run_EC_mixed_add_impl*(
         for _ in 0 ..< Iters:
           var a{.noInit.}: EC
           a.setNeutral()
-          let bAff = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+          let bAff = rng.random_point(EC_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
 
           var r_mixed{.noInit.}: EC
           r_mixed.madd(a, bAff)
 
-          var r{.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+          var r{.noInit.}: EC_ShortW_Aff[EC.F, EC.G]
           r.affine(r_mixed)
 
           # Aliasing test
@@ -854,7 +854,7 @@ proc run_EC_mixed_add_impl*(
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
-          var bAff{.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+          var bAff{.noInit.}: EC_ShortW_Aff[EC.F, EC.G]
           bAff.setNeutral()
 
           var r{.noInit.}: EC
@@ -899,7 +899,7 @@ proc run_EC_mixed_add_impl*(
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
-          var naAff{.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+          var naAff{.noInit.}: EC_ShortW_Aff[EC.F, EC.G]
           naAff.affine(a)
           naAff.neg()
 
@@ -1078,7 +1078,7 @@ proc run_EC_conversion_failures*(
   suite moduleName & " - [" & $WordBitWidth & "-bit mode]":
     test "EC batchAffine fuzzing failures ":
       proc test_bn254_snarks_g1(ECP: type) =
-        type ECP_Aff = ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
+        type ECP_Aff = EC_ShortW_Aff[Fp[BN254_Snarks], G1]
 
         let Ps = [
           ECP.fromHex(
@@ -1171,8 +1171,8 @@ proc run_EC_conversion_failures*(
         for i in 0 ..< 10:
           doAssert bool(Qs[i] == Rs[i])
 
-      test_bn254_snarks_g1(ECP_ShortW_Prj[Fp[BN254_Snarks], G1])
-      test_bn254_snarks_g1(ECP_ShortW_Jac[Fp[BN254_Snarks], G1])
+      test_bn254_snarks_g1(EC_ShortW_Prj[Fp[BN254_Snarks], G1])
+      test_bn254_snarks_g1(EC_ShortW_Jac[Fp[BN254_Snarks], G1])
 
 proc run_EC_batch_add_impl*[N: static int](
        ec: typedesc,
@@ -1191,10 +1191,10 @@ proc run_EC_batch_add_impl*[N: static int](
     for n in numPoints:
       test $ec & " sum reduction (N=" & $n & ")":
         proc test(EC: typedesc, gen: RandomGen) =
-          var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
+          var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](n)
 
           for i in 0 ..< n:
-            points[i] = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+            points[i] = rng.random_point(EC_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
 
           var r_batch{.noinit.}, r_ref{.noInit.}: EC
 
@@ -1213,19 +1213,19 @@ proc run_EC_batch_add_impl*[N: static int](
 
       test "EC " & $ec.G & " sum reduction (N=" & $n & ") - special cases":
         proc test(EC: typedesc, gen: RandomGen) =
-          var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
+          var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](n)
 
           let halfN = n div 2
 
           for i in 0 ..< halfN:
-            points[i] = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+            points[i] = rng.random_point(EC_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
 
           for i in halfN ..< n:
             # The special cases test relies on internal knowledge that we sum(points[i], points[i+n/2]
             # It should be changed if scheduling change, for example if we sum(points[2*i], points[2*i+1])
             let c = rng.random_unsafe(3)
             if c == 0:
-              points[i] = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+              points[i] = rng.random_point(EC_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
             elif c == 1:
               points[i] = points[i-halfN]
             else:

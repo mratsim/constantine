@@ -215,7 +215,7 @@ func parseRawUint[Name: static Algebra](
   return cttEVM_Success
 
 func fromRawCoords[Name: static Algebra, G: static Subgroup](
-       dst: var ECP_ShortW_Aff[Fp[Name], G],
+       dst: var EC_ShortW_Aff[Fp[Name], G],
        x, y: openarray[byte],
        checkSubgroup: bool): CttEVMStatus =
 
@@ -249,7 +249,7 @@ func fromRawCoords[Name: static Algebra, G: static Subgroup](
   return cttEVM_Success
 
 func fromRawCoords[Name: static Algebra](
-       dst: var ECP_ShortW_Aff[Fp2[Name], G2],
+       dst: var EC_ShortW_Aff[Fp2[Name], G2],
        x0, x1, y0, y1: openarray[byte],
        checkSubgroup: bool): CttEVMStatus =
 
@@ -290,22 +290,22 @@ func fromRawCoords[Name: static Algebra](
   return cttEVM_Success
 
 func fromRawCoords[Name: static Algebra, G: static Subgroup](
-       dst: var ECP_ShortW_Jac[Fp[Name], G],
+       dst: var EC_ShortW_Jac[Fp[Name], G],
        x, y: openarray[byte],
        checkSubgroup: bool): CttEVMStatus =
 
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp[Name], G]
+  var aff{.noInit.}: EC_ShortW_Aff[Fp[Name], G]
   let status = aff.fromRawCoords(x, y, checkSubgroup)
   if status != cttEVM_Success:
     return status
   dst.fromAffine(aff)
 
 func fromRawCoords[Name: static Algebra, G: static Subgroup](
-       dst: var ECP_ShortW_Jac[Fp2[Name], G],
+       dst: var EC_ShortW_Jac[Fp2[Name], G],
        x0, x1, y0, y1: openarray[byte],
        checkSubgroup: bool): CttEVMStatus =
 
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp2[Name], G]
+  var aff{.noInit.}: EC_ShortW_Aff[Fp2[Name], G]
   let status = aff.fromRawCoords(x0, x1, y0, y1, checkSubgroup)
   if status != cttEVM_Success:
     return status
@@ -345,7 +345,7 @@ func eth_evm_bn254_g1add*(r: var openArray[byte], inputs: openarray[byte]): CttE
   var padded: array[128, byte]
   padded.rawCopy(0, inputs, 0, min(inputs.len, padded.len))
 
-  var P{.noInit.}, Q{.noInit.}, R{.noInit.}: ECP_ShortW_Jac[Fp[BN254_Snarks], G1]
+  var P{.noInit.}, Q{.noInit.}, R{.noInit.}: EC_ShortW_Jac[Fp[BN254_Snarks], G1]
 
   let statusP = P.fromRawCoords(
     x = padded.toOpenArray(0, 31),
@@ -362,7 +362,7 @@ func eth_evm_bn254_g1add*(r: var openArray[byte], inputs: openarray[byte]): CttE
     return statusQ
 
   R.sum_vartime(P, Q)
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
+  var aff{.noInit.}: EC_ShortW_Aff[Fp[BN254_Snarks], G1]
   aff.affine(R)
 
   r.toOpenArray(0, 31).marshal(aff.x, bigEndian)
@@ -403,7 +403,7 @@ func eth_evm_bn254_g1mul*(r: var openArray[byte], inputs: openarray[byte]): CttE
   var padded: array[96, byte]
   padded.rawCopy(0, inputs, 0, min(inputs.len, padded.len))
 
-  var P{.noInit.}: ECP_ShortW_Jac[Fp[BN254_Snarks], G1]
+  var P{.noInit.}: EC_ShortW_Jac[Fp[BN254_Snarks], G1]
 
   let statusP = P.fromRawCoords(
     x = padded.toOpenArray(0, 31),
@@ -434,7 +434,7 @@ func eth_evm_bn254_g1mul*(r: var openArray[byte], inputs: openarray[byte]): CttE
   else:
     P.scalarMul_vartime(s)
 
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
+  var aff{.noInit.}: EC_ShortW_Aff[Fp[BN254_Snarks], G1]
   aff.affine(P)
 
   r.toOpenArray(0, 31).marshal(aff.x, bigEndian)
@@ -478,8 +478,8 @@ func eth_evm_bn254_ecpairingcheck*(
     r[r.len-1] = byte 1
     return cttEVM_Success
 
-  var P{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
-  var Q{.noInit.}: ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]
+  var P{.noInit.}: EC_ShortW_Aff[Fp[BN254_Snarks], G1]
+  var Q{.noInit.}: EC_ShortW_Aff[Fp2[BN254_Snarks], G2]
 
   var acc {.noInit.}: MillerAccumulator[Fp[BN254_Snarks], Fp2[BN254_Snarks], Fp12[BN254_Snarks]]
   acc.init()
@@ -562,7 +562,7 @@ func eth_evm_bls12381_g1add*(r: var openArray[byte], inputs: openarray[byte]): C
   # Note that it has not been confirmed whether the complete formulas for projective coordinates
   # return correct result if input is NOT in the correct subgroup.
   # Hence we use the Jacobian vartime formulas.
-  var P{.noInit.}, Q{.noInit.}, R{.noInit.}: ECP_ShortW_Jac[Fp[BLS12_381], G1]
+  var P{.noInit.}, Q{.noInit.}, R{.noInit.}: EC_ShortW_Jac[Fp[BLS12_381], G1]
 
   let statusP = P.fromRawCoords(
     x = inputs.toOpenArray( 0,  64-1),
@@ -579,7 +579,7 @@ func eth_evm_bls12381_g1add*(r: var openArray[byte], inputs: openarray[byte]): C
     return statusQ
 
   R.sum_vartime(P, Q)
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  var aff{.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1]
   aff.affine(R)
 
   r.toOpenArray(0, 64-1).marshal(aff.x, bigEndian)
@@ -622,7 +622,7 @@ func eth_evm_bls12381_g2add*(r: var openArray[byte], inputs: openarray[byte]): C
   # Note that it has not been confirmed whether the complete formulas for projective coordinates
   # return correct result if input is NOT in the correct subgroup.
   # Hence we use the Jacobian vartime formulas.
-  var P{.noInit.}, Q{.noInit.}, R{.noInit.}: ECP_ShortW_Jac[Fp2[BLS12_381], G2]
+  var P{.noInit.}, Q{.noInit.}, R{.noInit.}: EC_ShortW_Jac[Fp2[BLS12_381], G2]
 
   let statusP = P.fromRawCoords(
     x0 = inputs.toOpenArray(  0,  64-1),
@@ -643,7 +643,7 @@ func eth_evm_bls12381_g2add*(r: var openArray[byte], inputs: openarray[byte]): C
     return statusQ
 
   R.sum_vartime(P, Q)
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  var aff{.noInit.}: EC_ShortW_Aff[Fp2[BLS12_381], G2]
   aff.affine(R)
 
   r.toOpenArray(  0,  64-1).marshal(aff.x.c0, bigEndian)
@@ -683,7 +683,7 @@ func eth_evm_bls12381_g1mul*(r: var openArray[byte], inputs: openarray[byte]): C
   if r.len != 128:
     return cttEVM_InvalidOutputSize
 
-  var P{.noInit.}: ECP_ShortW_Jac[Fp[BLS12_381], G1]
+  var P{.noInit.}: EC_ShortW_Jac[Fp[BLS12_381], G1]
 
   let statusP = P.fromRawCoords(
     x = inputs.toOpenArray( 0,  64-1),
@@ -713,7 +713,7 @@ func eth_evm_bls12381_g1mul*(r: var openArray[byte], inputs: openarray[byte]): C
   else:
     P.scalarMul_vartime(s)
 
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  var aff{.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1]
   aff.affine(P)
 
   r.toOpenArray( 0,  64-1).marshal(aff.x, bigEndian)
@@ -751,7 +751,7 @@ func eth_evm_bls12381_g2mul*(r: var openArray[byte], inputs: openarray[byte]): C
   if r.len != 256:
     return cttEVM_InvalidOutputSize
 
-  var P{.noInit.}: ECP_ShortW_Jac[Fp2[BLS12_381], G2]
+  var P{.noInit.}: EC_ShortW_Jac[Fp2[BLS12_381], G2]
 
   let statusP = P.fromRawCoords(
     x0 = inputs.toOpenArray(  0,  64-1),
@@ -783,7 +783,7 @@ func eth_evm_bls12381_g2mul*(r: var openArray[byte], inputs: openarray[byte]): C
   else:
     P.scalarMul_vartime(s)
 
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  var aff{.noInit.}: EC_ShortW_Aff[Fp2[BLS12_381], G2]
   aff.affine(P)
 
   r.toOpenArray(  0,  64-1).marshal(aff.x.c0, bigEndian)
@@ -828,7 +828,7 @@ func eth_evm_bls12381_g1msm*(r: var openArray[byte], inputs: openarray[byte]): C
   let N = inputs.len div 160
 
   let coefs_big = allocHeapArrayAligned(BigInt[255], N, alignment = 64)
-  let points = allocHeapArrayAligned(ECP_ShortW_Aff[Fp[BLS12_381], G1], N, alignment = 64)
+  let points = allocHeapArrayAligned(EC_ShortW_Aff[Fp[BLS12_381], G1], N, alignment = 64)
 
   for i in 0 ..< N:
     var smod{.noInit.}: Fr[BLS12_381]
@@ -859,13 +859,13 @@ func eth_evm_bls12381_g1msm*(r: var openArray[byte], inputs: openarray[byte]): C
 
     coefs_big[i].fromField(smod)
 
-  var R{.noInit.}: ECP_ShortW_Jac[Fp[BLS12_381], G1]
+  var R{.noInit.}: EC_ShortW_Jac[Fp[BLS12_381], G1]
   R.multiScalarMul_vartime(coefs_big, points, N)
 
   freeHeapAligned(points)
   freeHeapAligned(coefs_big)
 
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  var aff{.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1]
   aff.affine(R)
 
   r.toOpenArray( 0,  64-1).marshal(aff.x, bigEndian)
@@ -908,7 +908,7 @@ func eth_evm_bls12381_g2msm*(r: var openArray[byte], inputs: openarray[byte]): C
   let N = inputs.len div 288
 
   let coefs_big = allocHeapArrayAligned(BigInt[255], N, alignment = 64)
-  let points = allocHeapArrayAligned(ECP_ShortW_Aff[Fp2[BLS12_381], G2], N, alignment = 64)
+  let points = allocHeapArrayAligned(EC_ShortW_Aff[Fp2[BLS12_381], G2], N, alignment = 64)
 
   for i in 0 ..< N:
     var smod{.noInit.}: Fr[BLS12_381]
@@ -941,13 +941,13 @@ func eth_evm_bls12381_g2msm*(r: var openArray[byte], inputs: openarray[byte]): C
 
     coefs_big[i].fromField(smod)
 
-  var R{.noInit.}: ECP_ShortW_Jac[Fp2[BLS12_381], G2]
+  var R{.noInit.}: EC_ShortW_Jac[Fp2[BLS12_381], G2]
   R.multiScalarMul_vartime(coefs_big, points, N)
 
   freeHeapAligned(points)
   freeHeapAligned(coefs_big)
 
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  var aff{.noInit.}: EC_ShortW_Aff[Fp2[BLS12_381], G2]
   aff.affine(R)
 
   r.toOpenArray(  0,  64-1).marshal(aff.x.c0, bigEndian)
@@ -987,8 +987,8 @@ func eth_evm_bls12381_pairingcheck*(r: var openArray[byte], inputs: openarray[by
     # Spec doesn't allow empty inputs
     return cttEVM_InvalidInputSize
 
-  var P{.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
-  var Q{.noInit.}: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  var P{.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1]
+  var Q{.noInit.}: EC_ShortW_Aff[Fp2[BLS12_381], G2]
 
   var acc {.noInit.}: MillerAccumulator[Fp[BLS12_381], Fp2[BLS12_381], Fp12[BLS12_381]]
   acc.init()
@@ -1071,13 +1071,13 @@ func eth_evm_bls12381_map_fp_to_g1*(r: var openArray[byte], inputs: openarray[by
     return cttEVM_IntLargerThanModulus
 
   var u {.noInit.}: Fp[BLS12_381]
-  var R {.noInit.}: ECP_ShortW_Jac[Fp[BLS12_381], G1]
+  var R {.noInit.}: EC_ShortW_Jac[Fp[BLS12_381], G1]
 
   u.fromBig(u_big)
   R.mapToCurve_sswu(u)
   R.clearCofactor()
 
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  var aff{.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1]
   aff.affine(R)
 
   r.toOpenArray( 0,  64-1).marshal(aff.x, bigEndian)
@@ -1130,12 +1130,12 @@ func eth_evm_bls12381_map_fp2_to_g2*(r: var openArray[byte], inputs: openarray[b
     return cttEVM_IntLargerThanModulus
   u.c1.fromBig(t)
 
-  var R {.noInit.}: ECP_ShortW_Jac[Fp2[BLS12_381], G2]
+  var R {.noInit.}: EC_ShortW_Jac[Fp2[BLS12_381], G2]
 
   R.mapToCurve_sswu(u)
   R.clearCofactor()
 
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  var aff{.noInit.}: EC_ShortW_Aff[Fp2[BLS12_381], G2]
   aff.affine(R)
 
   r.toOpenArray(  0,  64-1).marshal(aff.x.c0, bigEndian)

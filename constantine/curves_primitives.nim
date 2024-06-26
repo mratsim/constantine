@@ -129,10 +129,10 @@ export arithmetic.sqrt_ratio_if_square
 
 export
   ec_shortweierstrass.Subgroup,
-  ec_shortweierstrass.ECP_ShortW_Aff,
-  ec_shortweierstrass.ECP_ShortW_Jac,
-  ec_shortweierstrass.ECP_ShortW_Prj,
-  ec_shortweierstrass.ECP_ShortW
+  ec_shortweierstrass.EC_ShortW_Aff,
+  ec_shortweierstrass.EC_ShortW_Jac,
+  ec_shortweierstrass.EC_ShortW_Prj,
+  ec_shortweierstrass.EC_ShortW
 
 export ec_shortweierstrass.`==`
 export ec_shortweierstrass.isNeutral

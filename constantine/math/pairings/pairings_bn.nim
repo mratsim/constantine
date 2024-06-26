@@ -49,12 +49,12 @@ export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11
 
 func millerLoopGenericBN*[Name](
        f: var Fp12[Name],
-       Q: ECP_ShortW_Aff[Fp2[Name], G2],
-       P: ECP_ShortW_Aff[Fp[Name], G1],
+       Q: EC_ShortW_Aff[Fp2[Name], G2],
+       P: EC_ShortW_Aff[Fp[Name], G1],
      ) {.meter.} =
   ## Generic Miller Loop for BN curves
   ## Computes f{6u+2,Q}(P) with u the BN curve parameter
-  var T {.noInit.}: ECP_ShortW_Prj[Fp2[Name], G2]
+  var T {.noInit.}: EC_ShortW_Prj[Fp2[Name], G2]
   T.fromAffine(Q)
 
   basicMillerLoop(f, T, P, Q, pairing(Name, ate_param))
@@ -68,13 +68,13 @@ func millerLoopGenericBN*[Name](
 
 func millerLoopGenericBN*[Name](
        f: var Fp12[Name],
-       Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[Name], G2]],
-       Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[Name], G1]],
+       Qs: ptr UncheckedArray[EC_ShortW_Aff[Fp2[Name], G2]],
+       Ps: ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]],
        N: int
      ) {.noinline, tags:[Alloca], meter.} =
   ## Generic Miller Loop for BN curves
   ## Computes f{6u+2,Q}(P) with u the BN curve parameter
-  var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[Name], G2], N)
+  var Ts = allocStackArray(EC_ShortW_Prj[Fp2[Name], G2], N)
   for i in 0 ..< N:
     Ts[i].fromAffine(Qs[i])
 
@@ -96,8 +96,8 @@ func finalExpGeneric[Name: static Algebra](f: var Fp12[Name]) =
 
 func pairing_bn_reference*[Name](
        gt: var Fp12[Name],
-       P: ECP_ShortW_Aff[Fp[Name], G1],
-       Q: ECP_ShortW_Aff[Fp2[Name], G2]) =
+       P: EC_ShortW_Aff[Fp[Name], G1],
+       Q: EC_ShortW_Aff[Fp2[Name], G2]) =
   ## Compute the optimal Ate Pairing for BN curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
@@ -163,8 +163,8 @@ func finalExpHard_BN*[Name: static Algebra](f: var Fp12[Name]) {.meter.} =
 
 func pairing_bn*[Name](
        gt: var Fp12[Name],
-       P: ECP_ShortW_Aff[Fp[Name], G1],
-       Q: ECP_ShortW_Aff[Fp2[Name], G2]) {.meter.} =
+       P: EC_ShortW_Aff[Fp[Name], G1],
+       Q: EC_ShortW_Aff[Fp2[Name], G2]) {.meter.} =
   ## Compute the optimal Ate Pairing for BN curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
@@ -177,8 +177,8 @@ func pairing_bn*[Name](
 
 func pairing_bn*[N: static int, Name](
        gt: var Fp12[Name],
-       Ps: array[N, ECP_ShortW_Aff[Fp[Name], G1]],
-       Qs: array[N, ECP_ShortW_Aff[Fp2[Name], G2]]) {.meter.} =
+       Ps: array[N, EC_ShortW_Aff[Fp[Name], G1]],
+       Qs: array[N, EC_ShortW_Aff[Fp2[Name], G2]]) {.meter.} =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: an array of Ps ∈ G1 and Qs ∈ G2
   ## Output:

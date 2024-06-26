@@ -286,19 +286,19 @@ func random_long01Seq(rng: var RngState, a: var ExtensionField) =
 # Elliptic curves
 # ------------------------------------------------------------
 
-type ECP = ECP_ShortW_Aff or ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_JacExt or
+type ECP = EC_ShortW_Aff or EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_JacExt or
            ECP_TwEdwards_Aff or ECP_TwEdwards_Prj
-type ECP_ext = ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_JacExt or
+type ECP_ext = EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_JacExt or
                ECP_TwEdwards_Prj
 
 template trySetFromCoord[F](a: ECP, fieldElem: F): SecretBool =
-  when a is (ECP_ShortW_Aff or ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_JacExt):
+  when a is (EC_ShortW_Aff or EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_JacExt):
     trySetFromCoordX(a, fieldElem)
   else:
     trySetFromCoordY(a, fieldElem)
 
 template trySetFromCoords[F](a: ECP, fieldElem, scale: F): SecretBool =
-  when a is (ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_JacExt):
+  when a is (EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_JacExt):
     trySetFromCoordsXandZ(a, fieldElem, scale)
   else:
     trySetFromCoordsYandZ(a, fieldElem, scale)

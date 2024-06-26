@@ -33,12 +33,12 @@ export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11
 
 func millerLoopBW6_761_naive[Name](
        f: var Fp6[Name],
-       Q: ECP_ShortW_Aff[Fp[Name], G2],
-       P: ECP_ShortW_Aff[Fp[Name], G1]
+       Q: EC_ShortW_Aff[Fp[Name], G2],
+       P: EC_ShortW_Aff[Fp[Name], G1]
      ) =
   ## Miller Loop for BW6_761 curve
   ## Computes f_{u+1,Q}(P)*Frobenius(f_{u*(u^2-u-1),Q}(P))
-  var T {.noInit.}: ECP_ShortW_Prj[Fp[Name], G2]
+  var T {.noInit.}: EC_ShortW_Prj[Fp[Name], G2]
   T.fromAffine(Q)
 
   basicMillerLoop(
@@ -75,14 +75,14 @@ func finalExpHard_BW6_761*[Name: static Algebra](f: var Fp6[Name]) =
 
 func millerLoopBW6_761_opt_to_debug[Name](
        f: var Fp6[Name],
-       Q: ECP_ShortW_Aff[Fp[Name], G2],
-       P: ECP_ShortW_Aff[Fp[Name], G1]
+       Q: EC_ShortW_Aff[Fp[Name], G2],
+       P: EC_ShortW_Aff[Fp[Name], G1]
      ) {.used.} =
   ## Miller Loop Otpimized for BW6_761 curve
 
   # 1st part: f_{u,Q}(P)
   # ------------------------------
-  var T {.noInit.}: ECP_ShortW_Prj[Fp[Name], G2]
+  var T {.noInit.}: EC_ShortW_Prj[Fp[Name], G2]
   var line {.noInit.}: Line[Fp[Name]]
 
   T.fromAffine(Q)
@@ -148,8 +148,8 @@ func millerLoopBW6_761_opt_to_debug[Name](
 
 func pairing_bw6_761_reference*[Name](
        gt: var Fp6[Name],
-       P: ECP_ShortW_Aff[Fp[Name], G1],
-       Q: ECP_ShortW_Aff[Fp[Name], G2]) =
+       P: EC_ShortW_Aff[Fp[Name], G1],
+       Q: EC_ShortW_Aff[Fp[Name], G2]) =
   ## Compute the optimal Ate Pairing for BW6 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
