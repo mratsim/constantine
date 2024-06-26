@@ -221,7 +221,7 @@ func reduce_vartime*(r: var openArray[SecretWord],
 
 # - https://en.wikipedia.org/wiki/Barrett_reduction
 # - Handbook of Applied Cryptography
-#   Alfred J. Menezes, Paul C. van Oorschot and Scott Name. Vanstone
+#   Alfred J. Menezes, Paul C. van Oorschot and Scott A. Vanstone
 #   https://cacr.uwaterloo.ca/hac/about/chap14.pdf
 # - Modern Computer Arithmetic
 #   Richard P. Brent and Paul Zimmermann
