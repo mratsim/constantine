@@ -245,7 +245,7 @@ proc parseR1csFile*(path: string): R1csBin =
     doAssert f.setFilePosition(np) == 0, "Failed to set file position to " & $np
 
   # Sort the positions by the section type
-  pos = pos.sortedByIt(it[0]) # sort by the section kind
+  pos = pos.sortedByIt(it[0])
   doAssert pos[0][0] == kHeader, "No header present in the file"
 
   # 2. iterate the different kinds / positions & parse them
