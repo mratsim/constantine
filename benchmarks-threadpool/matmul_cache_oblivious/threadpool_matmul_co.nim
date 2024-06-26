@@ -70,17 +70,17 @@ proc xorshiftRand(): uint32 =
 
 func zero[T](A: Matrix[T]) =
   # zeroing is not timed
-  zeroMem(Name.buffer, Name.ld * Name.ld * sizeof(T))
+  zeroMem(A.buffer, A.ld * A.ld * sizeof(T))
 
 proc fill[T](A: Matrix[T]) =
-  for i in 0 ..< Name.ld:
-    for j in 0 ..< Name.ld:
-      A[i, j] = T(xorshiftRand() mod Name.ld.uint32)
+  for i in 0 ..< A.ld:
+    for j in 0 ..< A.ld:
+      A[i, j] = T(xorshiftRand() mod A.ld.uint32)
 
 func maxError(A, B: Matrix): float64 =
-  assert Name.ld == B.ld
-  for i in 0 ..< Name.ld:
-    for j in 0 ..< Name.ld:
+  assert A.ld == B.ld
+  for i in 0 ..< A.ld:
+    for j in 0 ..< A.ld:
       var diff = (A[i, j] - B[i, j]) / A[i, j]
       if diff < 0:
         diff = -diff
@@ -130,11 +130,11 @@ proc matmul[T](A, B, C: Matrix[T], m, n, p: int, add: bool): bool =
   if m >= n and n >= p:
     let m1 = m shr 1 # divide by 2
     h0 = tp.spawn matmul(A, B, C, m1, n, p, add)
-    h1 = tp.spawn matmul(Name.stride(m1, 0), B, C.stride(m1, 0), m - m1, n, p, add)
+    h1 = tp.spawn matmul(A.stride(m1, 0), B, C.stride(m1, 0), m - m1, n, p, add)
   elif n >= m and n >= p:
     let n1 = n shr 1 # divide by 2
     h0 = tp.spawn matmul(A, B, C, m, n1, p, add)
-    h1 = tp.spawn matmul(Name.stride(0, n1), B.stride(n1, 0), C, m, n - n1, p, add = true)
+    h1 = tp.spawn matmul(A.stride(0, n1), B.stride(n1, 0), C, m, n - n1, p, add = true)
   else:
     let p1 = p shr 1
     h0 = tp.spawn matmul(A, B, C, m, n, p1, add)
