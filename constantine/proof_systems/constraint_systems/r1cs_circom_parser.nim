@@ -164,8 +164,7 @@ proc parseConstraints(f: File, constraints: var seq[Constraint], sectionSize: ui
       ?f.parseConstraint(constraint, fieldSize)
 
 proc parseMagicHeader(f: File, mh: var array[4, char]): bool =
-  let num = f.readChars(mh, 0, 4) # from start of file!
-  result = num == 4
+  result = f.readInto(mh)
 
 proc parseSectionKind(f: File, v: var R1csSectionKind): bool =
   var val: uint32
@@ -245,7 +244,7 @@ proc parseR1csFile*(path: string): R1csBin =
     doAssert f.setFilePosition(np) == 0, "Failed to set file position to " & $np
 
   # Sort the positions by the section type
-  pos = pos.sortedByIt(it[0]) # sort by the section kind
+  pos = pos.sortedByIt(it[0])
   doAssert pos[0][0] == kHeader, "No header present in the file"
 
   # 2. iterate the different kinds / positions & parse them
