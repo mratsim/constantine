@@ -121,7 +121,7 @@ func millerCorrectionBN*[FT, F1, F2](
 # ############################################################
 #
 # - Software Implementation, Algorithm 11.2 & 11.3
-#   Aranha, Dominguez Perez, Name. Mrabet, Schwabe,
+#   Aranha, Dominguez Perez, Mrabet, Schwabe,
 #   Guide to Pairing-Based Cryptography, 2015
 #
 # - Physical Attacks,

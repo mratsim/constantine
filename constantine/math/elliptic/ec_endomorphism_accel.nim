@@ -51,7 +51,7 @@ template decomposeEndoImpl[scalBits: static int](
   static: doAssert L >= ceilDiv_vartime(scalBits, M) + 1
   const w = Fr[F.Name].bits().wordsRequired()
 
-  # Upstream bug:Fr[T.Name].bits()
+  # Upstream bug:
   #   {.noInit.} variables must be {.inject.} as well
   #   or they'll be mangled as foo`gensym12345 instead of fooX60gensym12345 in C codegen
 

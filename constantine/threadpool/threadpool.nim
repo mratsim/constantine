@@ -425,7 +425,7 @@ proc schedule(ctx: var WorkerContext, task: ptr Task, forceWake = false) {.inlin
 
 # Inpired by
 # - Lazy binary-splitting: a run-time adaptive work-stealing scheduler.
-#   Tzannes, Name., G. C. Caragea, R. Barua, and U. Vishkin.
+#   A. Tzannes, G. C. Caragea, R. Barua, and U. Vishkin.
 #   In PPoPP ’10, Bangalore, India, January 2010. ACM, pp. 179–190.
 #   https://user.eng.umd.edu/~barua/ppopp164.pdf
 # - Embracing Explicit Communication in Work-Stealing Runtime Systems.
