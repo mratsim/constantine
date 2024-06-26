@@ -317,11 +317,11 @@ func msub_vartime*[F; G: static Subgroup](
 # Conversions
 # -----------
 
-template affine*[F, G](_: type ECP_ShortW_JacExt[F, G]): typedesc =
+template affine*[F, G](_: type ECP_ShortW_JacExt[F, G]): untyped =
   ## Returns the affine type that corresponds to the Extended Jacobian type input
   ECP_ShortW_Aff[F, G]
 
-template jacobianExtended*[EC](_: typedesc[EC]): typedesc =
+template jacobianExtended*[EC](_: typedesc[EC]): untyped =
   ## Returns the affine type that corresponds to the Extended Jacobian type input
   ECP_ShortW_JacExt[EC.F, EC.G]
 

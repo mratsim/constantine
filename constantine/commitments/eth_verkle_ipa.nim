@@ -11,11 +11,11 @@ import
   ./eth_verkle_transcripts,
   ./protocol_quotient_check,
   constantine/named/algebras,
-  ../math/polynomials/polynomials,
-  ../math/[arithmetic, ec_shortweierstrass, ec_twistededwards],
-  ../math/elliptic/ec_multi_scalar_mul,
-  ../math/io/io_fields,
-  ../platforms/[abstractions, views]
+  constantine/math/polynomials/polynomials,
+  constantine/math/[arithmetic, ec_shortweierstrass, ec_twistededwards],
+  constantine/math/elliptic/ec_multi_scalar_mul,
+  constantine/math/io/io_fields,
+  constantine/platforms/[abstractions, views]
 
 ## ############################################################
 ##

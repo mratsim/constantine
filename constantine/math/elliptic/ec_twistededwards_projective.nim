@@ -434,11 +434,11 @@ func `-=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Aff) {.inline.} =
   ## In-place point substraction
   P.msub(P, Q)
 
-template affine*[F](_: type ECP_TwEdwards_Prj[F]): typedesc =
+template affine*[F](_: type ECP_TwEdwards_Prj[F]): untyped =
   ## Returns the affine type that corresponds to the Jacobian type input
   ECP_TwEdwards_Aff[F]
 
-template projective*[F](_: type ECP_TwEdwards_Aff[F]): typedesc =
+template projective*[F](_: type ECP_TwEdwards_Aff[F]): untyped =
   ## Returns the projective type that corresponds to the affine type input
   ECP_TwEdwards_Prj[F]
 

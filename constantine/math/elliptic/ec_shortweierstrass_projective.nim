@@ -438,11 +438,11 @@ func `-=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj or ECP_ShortW_Aff) {.inline.
   ## In-place point substraction
   P.diff(P, Q)
 
-template affine*[F, G](_: type ECP_ShortW_Prj[F, G]): typedesc =
+template affine*[F, G](_: type ECP_ShortW_Prj[F, G]): untyped =
   ## Returns the affine type that corresponds to the Jacobian type input
   ECP_ShortW_Aff[F, G]
 
-template projective*[F, G](_: type ECP_ShortW_Aff[F, G]): typedesc =
+template projective*[F, G](_: type ECP_ShortW_Aff[F, G]): untyped =
   ## Returns the projective type that corresponds to the affine type input
   ECP_ShortW_Prj[F, G]
 

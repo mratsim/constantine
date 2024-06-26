@@ -84,7 +84,7 @@ macro baseFieldModulus(Name: static Algebra): untyped =
 macro scalarFieldModulus(Name: static Algebra): untyped =
   result = bindSym($Name & "_Order")
 
-template getModulus*[Name](F: type FF[Name]): untyped =
+template getModulus*[Name: static Algebra](F: type FF[Name]): untyped =
   # We use a template to ensure the caller directly reads
   # the data from ROM, and reduce chances of Nim duplicating the constant.
   # Also `F is Fp` has issues in macros
@@ -93,11 +93,11 @@ template getModulus*[Name](F: type FF[Name]): untyped =
   else:
     scalarFieldModulus(Name)
 
-template getBigInt*(T: type FF): type =
+template getBigInt*[Name: static Algebra](T: type FF[Name]): untyped =
   ## Get the underlying BigInt type.
   typeof(default(T).mres)
 
-func bits*(T: type FF): static int =
+func bits*[Name: static Algebra](T: type FF[Name]): static int =
   T.getBigInt().bits
 
 template getLimbs2x*(Name: static Algebra): typedesc =

@@ -13,7 +13,7 @@ import
   ../math/pairings/pairings_generic,
   ../named/zoo_generators,
   ../math/polynomials/polynomials,
-  ../platforms/[abstractions, views],
+  ../platforms/abstractions,
   ./protocol_quotient_check
 
 ## ############################################################

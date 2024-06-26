@@ -26,7 +26,7 @@ type FieldKind* = enum
   kBaseField
   kScalarField
 
-template getBigInt*(Name: Algebra, kind: static FieldKind): untyped =
+template getBigInt*(Name: static Algebra, kind: static FieldKind): untyped =
   # Workaround:
   # in `ptr UncheckedArray[BigInt[EC.getScalarField().bits()]]
   # EC.getScalarField is not accepted by the compiler
@@ -36,6 +36,12 @@ template getBigInt*(Name: Algebra, kind: static FieldKind): untyped =
     BigInt[Fp[Name].bits()]
   else:
     BigInt[Fr[Name].bits()]
+
+template getField*(Name: static Algebra, kind: static FieldKind): untyped =
+  when kind == kBaseField:
+    Fp[Name]
+  else:
+    Fr[Name]
 
 template family*(Name: Algebra): CurveFamily =
   CurveFamilies[Name]

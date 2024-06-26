@@ -651,11 +651,11 @@ func `-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac or ECP_ShortW_Aff) {.inline.
 # Conversions
 # -----------
 
-template affine*[F, G](_: type ECP_ShortW_Jac[F, G]): typedesc =
+template affine*[F, G](_: type ECP_ShortW_Jac[F, G]): untyped =
   ## Returns the affine type that corresponds to the Jacobian type input
   ECP_ShortW_Aff[F, G]
 
-template jacobian*[F, G](_: type ECP_ShortW_Aff[F, G]): typedesc =
+template jacobian*[F, G](_: type ECP_ShortW_Aff[F, G]): untyped =
   ## Returns the jacobian type that corresponds to the affine type input
   ECP_ShortW_Jac[F, G]
 
