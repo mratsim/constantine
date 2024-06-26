@@ -164,8 +164,7 @@ proc parseConstraints(f: File, constraints: var seq[Constraint], sectionSize: ui
       ?f.parseConstraint(constraint, fieldSize)
 
 proc parseMagicHeader(f: File, mh: var array[4, char]): bool =
-  let num = f.readChars(mh, 0, 4) # from start of file!
-  result = num == 4
+  result = f.readInto(mh)
 
 proc parseSectionKind(f: File, v: var R1csSectionKind): bool =
   var val: uint32
