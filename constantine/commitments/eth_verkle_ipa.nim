@@ -351,8 +351,8 @@ func ipa_verify*[N, logN: static int, EcAff, F](
     type EC = projective(EcAff)
 
   # Allocs
-  let fsBuf = allocHeapAligned(array[2*logN+2+N+1, F], alignment = 64)
-  let ecsBuf = allocHeapAligned(array[2*logN+2+N+1, EcAff], alignment = 64)
+  let fsBuf = allocHeapAligned(array[2*logN+1+N+1, F], alignment = 64)
+  let ecsBuf = allocHeapAligned(array[2*logN+1+N+1, EcAff], alignment = 64)
   let b = allocHeapAligned(array[N, F], alignment = 64)
 
   # Aliases

@@ -10,7 +10,7 @@ import
   constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/io/io_fields,
-  constantine/platforms/[allocs, bithacks, static_for]
+  constantine/platforms/[primitives, allocs, static_for]
 
 ## ############################################################
 ##
