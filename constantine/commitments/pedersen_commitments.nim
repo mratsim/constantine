@@ -33,7 +33,7 @@ func pedersen_commit[EC, ECaff](
   ##
   ## Output:
   ##   Commit(m) := ∑[mᵢ]Gᵢ
-  r.multiScalarMul_reference_vartime(messages, public_generators)
+  r.multiScalarMul_vartime(messages, public_generators)
 
 func pedersen_commit*[N: static int, EC, ECaff, F](
       crs: PolynomialEval[N, EcAff],
@@ -49,7 +49,7 @@ func pedersen_commit*[N: static int, EC, ECaff, F](
   ##
   ## Output:
   ##   Commit(m) := ∑[mᵢ]Gᵢ
-  r.multiScalarMul_reference_vartime(messages.evals, crs.evals)
+  r.multiScalarMul_vartime(messages.evals, crs.evals)
 
 func pedersen_commit*[EC, ECaff, F](
       public_generators: View[ECaff],
