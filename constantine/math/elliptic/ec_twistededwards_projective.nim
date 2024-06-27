@@ -461,6 +461,11 @@ func fromAffine*[F](
   proj.y = aff.y
   proj.z.setOne()
 
+  let inf = aff.isNeutral()
+  proj.x.csetZero(inf)
+  proj.y.csetOne(inf)
+  proj.z.csetOne(inf)
+
 # Vartime overloading
 # ------------------------------------------------------------
 # For generic vartime operations on both ShortWeierstrass curves and Twisted Edwards
