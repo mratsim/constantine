@@ -13,6 +13,7 @@ import
   constantine/math/arithmetic,
   constantine/math/extension_fields,
   constantine/math/ec_shortweierstrass,
+  constantine/math/elliptic/ec_scalar_mul,
   constantine/math/io/io_bigints,
   constantine/math/isogenies/frobenius
 

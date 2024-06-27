@@ -78,10 +78,10 @@ debug:
 
 {.experimental: "dynamicBindSym".}
 
-macro baseFieldModulus(Name: static Algebra): untyped =
+macro baseFieldModulus*(Name: static Algebra): untyped =
   result = bindSym($Name & "_Modulus")
 
-macro scalarFieldModulus(Name: static Algebra): untyped =
+macro scalarFieldModulus*(Name: static Algebra): untyped =
   result = bindSym($Name & "_Order")
 
 template getModulus*[Name: static Algebra](F: type FF[Name]): untyped =

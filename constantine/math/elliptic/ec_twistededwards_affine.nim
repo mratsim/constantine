@@ -54,6 +54,13 @@ func setNeutral*(P: var EC_TwEdw_Aff) {.inline.} =
   P.x.setZero()
   P.y.setOne()
 
+func ccopy*(P: var EC_TwEdw_Aff, Q: EC_TwEdw_Aff, ctl: SecretBool) {.inline.} =
+  ## Constant-time conditional copy
+  ## If ctl is true: Q is copied into P
+  ## if ctl is false: Q is not copied and P is unmodified
+  ## Time and memory accesses are the same whether a copy occurs or not
+  for fP, fQ in fields(P, Q):
+    ccopy(fP, fQ, ctl)
 
 func isOnCurve*[F](x, y: F): SecretBool =
   ## Returns true if the (x, y) coordinates

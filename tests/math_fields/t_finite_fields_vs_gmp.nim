@@ -63,8 +63,8 @@ proc binary_prologue[Name: static Algebra, N: static int](
 
   #########################################################
   # Conversion to GMP
-  const aLen = Name.getCurveBitwidth().ceilDiv_vartime(8)
-  const bLen = Name.getCurveBitwidth().ceilDiv_vartime(8)
+  const aLen = Fp[Name].bits().ceilDiv_vartime(8)
+  const bLen = Fp[Name].bits().ceilDiv_vartime(8)
 
   var aBuf: array[aLen, byte]
   var bBuf: array[bLen, byte]
@@ -118,7 +118,7 @@ proc addTests(rng: var RngState, a, b, p, r: var mpz_t, Name: static Algebra) =
   # echo "Testing: random modular addition on ", $Name
 
   const
-    bits = Name.getCurveBitwidth()
+    bits = Fp[Name].bits
     bufLen = bits.ceilDiv_vartime(8)
   var
     aTest, bTest{.noInit.}: Fp[Name]
@@ -141,7 +141,7 @@ proc subTests(rng: var RngState, a, b, p, r: var mpz_t, Name: static Algebra) =
   # echo "Testing: random modular substraction on ", $Name
 
   const
-    bits = Name.getCurveBitwidth()
+    bits = Fp[Name].bits
     bufLen = bits.ceilDiv_vartime(8)
   var
     aTest, bTest{.noInit.}: Fp[Name]
@@ -169,7 +169,7 @@ proc mulTests(rng: var RngState, a, b, p, r: var mpz_t, Name: static Algebra) =
   # echo "Testing: random modular multiplication on ", $Name
 
   const
-    bits = Name.getCurveBitwidth()
+    bits = Fp[Name].bits
     bufLen = bits.ceilDiv_vartime(8)
   var
     aTest, bTest{.noInit.}: Fp[Name]
@@ -193,7 +193,7 @@ proc invTests(rng: var RngState, a, b, p, r: var mpz_t, Name: static Algebra) =
   # echo "Testing: random modular inversion on ", $Name
 
   const
-    bits = Name.getCurveBitwidth()
+    bits = Fp[Name].bits
     bufLen = bits.ceilDiv_vartime(8)
   var
     aTest, bTest{.noInit.}: Fp[Name]
