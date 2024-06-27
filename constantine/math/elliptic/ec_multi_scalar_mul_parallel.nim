@@ -135,14 +135,15 @@ export bestBucketBitSize
 # Parallel MSM non-affine
 # ------------------------------
 
-proc bucketAccumReduce_zeroMem[bits: static int, EC, ECaff](
+proc bucketAccumReduce_withInit[bits: static int, EC, ECaff](
        windowSum: ptr EC,
        buckets: ptr EC or ptr UncheckedArray[EC],
        bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECaff], N: int) =
   const numBuckets = 1 shl (c-1)
   let buckets = cast[ptr UncheckedArray[EC]](buckets)
-  zeroMem(buckets, sizeof(EC) * numBuckets)
+  for i in 0 ..< numBuckets:
+    buckets[i].setNeutral()
   bucketAccumReduce(windowSum[], buckets, bitIndex, miniMsmKind, c, coefs, points, N)
 
 proc msm_vartime_parallel[bits: static int, EC, ECaff](
@@ -169,14 +170,14 @@ proc msm_vartime_parallel[bits: static int, EC, ECaff](
   # ---------
 
   block: # 1. Bucket accumulation and reduction
-    miniMSMsReady[0] = tp.spawnAwaitable bucketAccumReduce_zeroMem(
+    miniMSMsReady[0] = tp.spawnAwaitable bucketAccumReduce_withInit(
                                   miniMSMsResults[0].addr,
                                   bucketsMatrix[0].addr,
                                   bitIndex = 0, kBottomWindow, c,
                                   coefs, points, N)
 
   for w in 1 ..< numFullWindows:
-    miniMSMsReady[w] = tp.spawnAwaitable bucketAccumReduce_zeroMem(
+    miniMSMsReady[w] = tp.spawnAwaitable bucketAccumReduce_withInit(
                                   miniMSMsResults[w].addr,
                                   bucketsMatrix[w*numBuckets].addr,
                                   bitIndex = w*c, kFullWindow, c,
@@ -188,7 +189,7 @@ proc msm_vartime_parallel[bits: static int, EC, ECaff](
 
   when top != 0:
     when excess != 0:
-      bucketAccumReduce_zeroMem(
+      bucketAccumReduce_withInit(
         r,
         bucketsMatrix[numFullWindows*numBuckets].addr,
         bitIndex = top, kTopWindow, c,
@@ -375,7 +376,8 @@ proc msmAffine_vartime_parallel[bits: static int, EC, ECaff](
   when top != 0:
     when excess != 0:
       let buckets = allocHeapArray(EC, numBuckets)
-      zeroMem(buckets[0].addr, sizeof(EC) * numBuckets)
+      for i in 0 ..< numBuckets:
+        buckets[i].setNeutral()
       r[].bucketAccumReduce(buckets, bitIndex = top, kTopWindow, c,
                                 coefs, points, N)
       buckets.freeHeap()

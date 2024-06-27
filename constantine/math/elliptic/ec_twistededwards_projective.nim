@@ -36,6 +36,22 @@ type EC_TwEdw_Prj*[F] = object
 template getScalarField*(EC: type EC_TwEdw_Prj): untyped =
   Fr[EC.F.Name]
 
+func isNeutral*(P: EC_TwEdw_Prj): SecretBool {.inline.} =
+  ## Returns true if P is the neutral element / identity element
+  ## and false otherwise, i.e. ∀Q, P+Q == Q
+  ## Contrary to Short Weierstrass curve, the neutral element is on the curve
+  # Isogeny-based constructions to create
+  # prime order curves overload this generic identity check.
+  result = P.x.isZero() and (P.y == P.z)
+
+func setNeutral*(P: var EC_TwEdw_Prj) {.inline.} =
+  ## Set P to the neutral element / identity element
+  ## i.e. ∀Q, P+Q == Q.
+  ## Contrary to Short Weierstrass curve, the neutral element is on the curve
+  P.x.setZero()
+  P.y.setOne()
+  P.z.setOne()
+
 func `==`*(P, Q: EC_TwEdw_Prj): SecretBool =
   ## Constant-time equality check
   ## This is a costly operation
@@ -52,21 +68,8 @@ func `==`*(P, Q: EC_TwEdw_Prj): SecretBool =
   b.prod(Q.y, P.z)
   result = result and a == b
 
-func isNeutral*(P: EC_TwEdw_Prj): SecretBool {.inline.} =
-  ## Returns true if P is the neutral element / identity element
-  ## and false otherwise, i.e. ∀Q, P+Q == Q
-  ## Contrary to Short Weierstrass curve, the neutral element is on the curve
-  # Isogeny-based constructions to create
-  # prime order curves overload this generic identity check.
-  result = P.x.isZero() and (P.y == P.z)
-
-func setNeutral*(P: var EC_TwEdw_Prj) {.inline.} =
-  ## Set P to the neutral element / identity element
-  ## i.e. ∀Q, P+Q == Q.
-  ## Contrary to Short Weierstrass curve, the neutral element is on the curve
-  P.x.setZero()
-  P.y.setOne()
-  P.z.setOne()
+  # Ensure a zero-init point doesn't propagate 0s and match any
+  result = result and not(P.isNeutral() xor Q.isNeutral())
 
 func ccopy*(P: var EC_TwEdw_Prj, Q: EC_TwEdw_Prj, ctl: SecretBool) {.inline.} =
   ## Constant-time conditional copy

@@ -265,7 +265,8 @@ func multiScalarMul_vartime*[bits: static int, EC, ECaff](
   const numBuckets = 1 shl (c-1)
 
   let buckets = allocHeapArray(EC, numBuckets)
-  zeroMem(buckets[0].addr, sizeof(EC) * numBuckets)
+  for i in 0 ..< numBuckets:
+    buckets[i].setNeutral()
 
   # Algorithm
   # ---------
@@ -367,7 +368,8 @@ func multiScalarMulAffine_vartime[bits: static int, EC, ECaff](
   when top != 0:      # Prologue
     when excess != 0:
       # The top might use only a few bits, the affine scheduler would likely have significant collisions
-      zeroMem(sched.buckets.pt.addr, buckets.pt.sizeof())
+      for i in 0 ..< numBuckets:
+        sched.buckets.pt[i].setNeutral()
       r.miniMSM(sched.buckets.pt.asUnchecked(), w, kTopWindow, c, coefs, points, N)
       w -= c
     else:
