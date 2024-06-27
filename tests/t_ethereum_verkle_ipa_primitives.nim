@@ -415,46 +415,46 @@ suite "IPA proof tests":
   #   nim c -r --debugger:native --cc:clang --hints:off --warnings:off --outdir:build tests/t_ethereum_verkle_ipa_primitives.nim
   echo "Warning! - Skipping verification tests, they succeed under AddressSanitizer but fail without."
 
-  # test "Verify IPA Proof inside the domain by @Ignacio":
-  #   proc testIPAProofInDomain()=
+  test "Verify IPA Proof inside the domain by @Ignacio":
+    proc testIPAProofInDomain()=
 
-  #     var commitmentBytes {.noInit.} : array[32, byte]
-  #     commitmentBytes.fromHex(IPAPedersenCommitment)
+      var commitmentBytes {.noInit.} : array[32, byte]
+      commitmentBytes.fromHex(IPAPedersenCommitment)
 
-  #     var commitment: EC_TwEdw_Aff[Fp[Banderwagon]]
-  #     discard commitment.deserialize(commitmentBytes)
+      var commitment: EC_TwEdw_Aff[Fp[Banderwagon]]
+      discard commitment.deserialize_vartime(commitmentBytes)
 
-  #     var evalPoint: Fr[Banderwagon]
-  #     evalPoint.fromInt(IPAEvaluationPoint)
+      var evalPoint: Fr[Banderwagon]
+      evalPoint.fromInt(IPAEvaluationPoint)
 
-  #     var evaluationResultFr: Fr[Banderwagon]
-  #     evaluationResultFr.fromHex(IPAEvaluationResultFr)
+      var evaluationResultFr: Fr[Banderwagon]
+      evaluationResultFr.fromHex(IPAEvaluationResultFr)
 
-  #     var proof_bytes: EthVerkleIpaProofBytes
-  #     proof_bytes.fromHex(IPASerializedProofVec)
-  #     var proof {.noInit.}: IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
-  #     let status = proof.deserialize(proof_bytes)
-  #     doAssert status == cttEthVerkleIpa_Success
+      var proof_bytes: EthVerkleIpaProofBytes
+      proof_bytes.fromHex(IPASerializedProofVec)
+      var proof {.noInit.}: IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+      let status = proof.deserialize(proof_bytes)
+      doAssert status == cttEthVerkleIpa_Success
 
-  #     var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
-  #     CRS.evals.generate_random_points()
+      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
+      CRS.evals.generate_random_points()
 
-  #     var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
-  #     domain.setupLinearEvaluationDomain()
+      var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
+      domain.setupLinearEvaluationDomain()
 
-  #     var tr {.noInit.}: sha256
-  #     tr.initTranscript("ipa")
+      var tr {.noInit.}: sha256
+      tr.initTranscript("ipa")
 
-  #     let ok = ipa_verify(
-  #       CRS, domain,
-  #       tr, commitment,
-  #       evalPoint,
-  #       evaluationResultFr,
-  #       proof)
+      let ok = ipa_verify(
+        CRS, domain,
+        tr, commitment,
+        evalPoint,
+        evaluationResultFr,
+        proof)
 
-  #     doAssert ok, "ipaConfig.checkIPAProof: Unexpected Failure!"
+      doAssert ok, "ipaConfig.checkIPAProof: Unexpected Failure!"
 
-  #   testIPAProofInDomain()
+    testIPAProofInDomain()
 
   test "Test for IPA proof consistency":
     proc testIPAProofConsistency()=
@@ -507,51 +507,51 @@ suite "IPA proof tests":
 
     testIPAProofConsistency()
 
-  # test "Test for IPA Proof of Creation and Verification":
-  #   proc testIPAProofCreateAndVerify()=
-  #     # Common setup
-  #     var opening_challenge: Fr[Banderwagon]
-  #     opening_challenge.fromInt(2101)
+  test "Test for IPA Proof of Creation and Verification":
+    proc testIPAProofCreateAndVerify()=
+      # Common setup
+      var opening_challenge: Fr[Banderwagon]
+      opening_challenge.fromInt(2101)
 
-  #     var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
-  #     CRS.evals.generate_random_points()
+      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
+      CRS.evals.generate_random_points()
 
-  #     var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
-  #     domain.setupLinearEvaluationDomain()
+      var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
+      domain.setupLinearEvaluationDomain()
 
-  #     # Committer's side
-  #     var testVals : array[9, int] = [1,2,3,4,5,6,7,8,9]
-  #     var poly: PolynomialEval[256, Fr[Banderwagon]]
-  #     poly.evals.testPoly256(testVals)
+      # Committer's side
+      var testVals : array[9, int] = [1,2,3,4,5,6,7,8,9]
+      var poly: PolynomialEval[256, Fr[Banderwagon]]
+      poly.evals.testPoly256(testVals)
 
-  #     var comm: EC_TwEdw_Prj[Fp[Banderwagon]]
-  #     CRS.pedersen_commit(comm, poly)
-  #     var commitment: EC_TwEdw_Aff[Fp[Banderwagon]]
-  #     commitment.affine(comm)
+      var comm: EC_TwEdw_Prj[Fp[Banderwagon]]
+      CRS.pedersen_commit(comm, poly)
+      var commitment: EC_TwEdw_Aff[Fp[Banderwagon]]
+      commitment.affine(comm)
 
-  #     # Prover's side
-  #     var prover_transcript {.noInit.}: sha256
-  #     prover_transcript.initTranscript("ipa")
+      # Prover's side
+      var prover_transcript {.noInit.}: sha256
+      prover_transcript.initTranscript("ipa")
 
-  #     var proof {.noInit.}: IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
-  #     var eval_at_challenge {.noInit.}: Fr[Banderwagon]
-  #     CRS.ipa_prove(
-  #       domain, prover_transcript,
-  #       eval_at_challenge, proof,
-  #       poly, commitment,
-  #       opening_challenge)
+      var proof {.noInit.}: IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+      var eval_at_challenge {.noInit.}: Fr[Banderwagon]
+      CRS.ipa_prove(
+        domain, prover_transcript,
+        eval_at_challenge, proof,
+        poly, commitment,
+        opening_challenge)
 
-  #     # Verifier's side
-  #     var verifier_transcript: sha256
-  #     verifier_transcript.initTranscript("ipa")
+      # Verifier's side
+      var verifier_transcript: sha256
+      verifier_transcript.initTranscript("ipa")
 
-  #     let verif = CRS.ipa_verify(
-  #       domain, verifier_transcript,
-  #       commitment, opening_challenge,
-  #       eval_at_challenge, proof
-  #     )
-  #     doAssert verif, "Issue in checking IPA proof!"
-  #   testIPAProofCreateAndVerify()
+      let verif = CRS.ipa_verify(
+        domain, verifier_transcript,
+        commitment, opening_challenge,
+        eval_at_challenge, proof
+      )
+      doAssert verif, "Issue in checking IPA proof!"
+    testIPAProofCreateAndVerify()
 
 
 # ############################################################
@@ -656,7 +656,7 @@ suite "Multiproof Tests":
   #     var multiproof {.noInit.}: IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
   #     CRS.ipa_multi_prove(
   #       domain, prover_transcript,
-  #       multiproof, [poly], [Name], [0'u32]
+  #       multiproof, [poly], [C], [0'u32]
   #     )
 
   #     var hexproof: EthVerkleIpaMultiProofBytes
@@ -667,7 +667,7 @@ suite "Multiproof Tests":
   #     var verifier_transcript: sha256
   #     verifier_transcript.initTranscript("multiproof")
 
-  #     let ok = CRS.ipa_multi_verify(domain, verifier_transcript, [Name], [0'u32], [Fr[Banderwagon].fromUint(1'u32)], multiproof)
+  #     let ok = CRS.ipa_multi_verify(domain, verifier_transcript, [C], [0'u32], [Fr[Banderwagon].fromUint(1'u32)], multiproof)
 
   #     doAssert ok, "Multiproof verification error!"
 
