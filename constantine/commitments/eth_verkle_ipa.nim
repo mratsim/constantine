@@ -422,7 +422,7 @@ func ipa_verify*[N, logN: static int, EcAff, F](
 
   # ∑ᵢ[uᵢ]Lᵢ + ∑ᵢ[uᵢ⁻¹]Rᵢ + [⟨ā,b̄⟩.w]G - [a₀]G₀ - [a₀.b₀.w]G
   var t {.noInit.}: EC
-  t.multiScalarMul_reference_vartime(fs.toOpenArray(), ecs.toOpenArray())
+  t.multiScalarMul_vartime(fs.toOpenArray(), ecs.toOpenArray())
 
   # ∑ᵢ[uᵢ]Lᵢ + ∑ᵢ[uᵢ⁻¹]Rᵢ + [⟨ā,b̄⟩.w]G - [a₀]G₀ - [a₀.b₀.w]G = -⟨ā,Ḡ⟩
   var C {.noInit.}: EC
@@ -949,7 +949,7 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
   # E = ∑rⁱ.Cᵢ/(t-zᵢ)
   var E {.noInit.}: EC
   var Eaff {.noInit.}: EcAff
-  E.multiScalarMul_reference_vartime(invTminusChallenges, comms_by_challenges, num_distinct_challenges)
+  E.multiScalarMul_vartime(invTminusChallenges, comms_by_challenges, num_distinct_challenges)
   Eaff.affine(E)
   transcript.absorb("E", Eaff)
   freeHeapAligned(invTminusChallenges)

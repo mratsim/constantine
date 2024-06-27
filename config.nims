@@ -1,2 +1,2 @@
-# Absolute imports from porject root
+# Absolute imports from project root
 --path:"."
