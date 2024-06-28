@@ -206,7 +206,8 @@ func parseRawUint[Name: static Algebra](
   ## Return false if the integer is larger than the field modulus.
   ## Returns true on success.
   var big {.noInit.}: Fp[Name].getBigInt()
-  big.unmarshal(src, bigEndian)
+  if not big.unmarshal(src, bigEndian):
+    return cttEVM_IntLargerThanModulus # `dst` too small for `src`!
 
   if not bool(big < Fp[Name].getModulus()):
     return cttEVM_IntLargerThanModulus
