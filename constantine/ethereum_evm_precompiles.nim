@@ -830,47 +830,50 @@ func eth_evm_bls12381_g1msm*(r: var openArray[byte], inputs: openarray[byte]): C
   let coefs_big = allocHeapArrayAligned(BigInt[255], N, alignment = 64)
   let points = allocHeapArrayAligned(EC_ShortW_Aff[Fp[BLS12_381], G1], N, alignment = 64)
 
-  for i in 0 ..< N:
-    var smod{.noInit.}: Fr[BLS12_381]
-    var s{.noInit.}: BigInt[256]
+  block HappyPath:
+    for i in 0 ..< N:
+      var smod{.noInit.}: Fr[BLS12_381]
+      var s{.noInit.}: BigInt[256]
 
-    let statusP = points[i].fromRawCoords(
-      x = inputs.toOpenArray( i*160     , i*160 +  64-1),
-      y = inputs.toOpenArray( i*160 + 64, i*160 + 128-1),
-      checkSubgroup = true)
+      let statusP = points[i].fromRawCoords(
+        x = inputs.toOpenArray( i*160     , i*160 +  64-1),
+        y = inputs.toOpenArray( i*160 + 64, i*160 + 128-1),
+        checkSubgroup = true)
 
-    if statusP != cttEVM_Success:
-      return statusP
+      if statusP != cttEVM_Success:
+        result = statusP
+        break HappyPath
 
-    s.unmarshal(inputs.toOpenArray(i*160 + 128, i*160 + 160-1), bigEndian)
+      s.unmarshal(inputs.toOpenArray(i*160 + 128, i*160 + 160-1), bigEndian)
 
-    # The spec allows s to be bigger than the curve order r and the field modulus p.
-    # As, elliptic curve are a cyclic group mod r, we can reduce modulo r and get the same result.
-    # This allows to use windowed endomorphism acceleration
-    # at the low cost of a modular reduction.
+      # The spec allows s to be bigger than the curve order r and the field modulus p.
+      # As, elliptic curve are a cyclic group mod r, we can reduce modulo r and get the same result.
+      # This allows to use windowed endomorphism acceleration
+      # at the low cost of a modular reduction.
 
-    # Due to mismatch between the BigInt[256] input and the rest being BigInt[255]
-    # we use the low-level getMont instead of 'fromBig'
-    getMont(smod.mres.limbs, s.limbs,
-                Fr[BLS12_381].getModulus().limbs,
-                Fr[BLS12_381].getR2modP().limbs,
-                Fr[BLS12_381].getNegInvModWord(),
-                Fr[BLS12_381].getSpareBits())
+      # Due to mismatch between the BigInt[256] input and the rest being BigInt[255]
+      # we use the low-level getMont instead of 'fromBig'
+      getMont(smod.mres.limbs, s.limbs,
+                  Fr[BLS12_381].getModulus().limbs,
+                  Fr[BLS12_381].getR2modP().limbs,
+                  Fr[BLS12_381].getNegInvModWord(),
+                  Fr[BLS12_381].getSpareBits())
 
-    coefs_big[i].fromField(smod)
+      coefs_big[i].fromField(smod)
 
-  var R{.noInit.}: EC_ShortW_Jac[Fp[BLS12_381], G1]
-  R.multiScalarMul_vartime(coefs_big, points, N)
+    var R{.noInit.}: EC_ShortW_Jac[Fp[BLS12_381], G1]
+    R.multiScalarMul_vartime(coefs_big, points, N)
+
+    var aff{.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1]
+    aff.affine(R)
+
+    r.toOpenArray( 0,  64-1).marshal(aff.x, bigEndian)
+    r.toOpenArray(64, 128-1).marshal(aff.y, bigEndian)
+
+    result = cttEVM_Success
 
   freeHeapAligned(points)
   freeHeapAligned(coefs_big)
-
-  var aff{.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1]
-  aff.affine(R)
-
-  r.toOpenArray( 0,  64-1).marshal(aff.x, bigEndian)
-  r.toOpenArray(64, 128-1).marshal(aff.y, bigEndian)
-  return cttEVM_Success
 
 func eth_evm_bls12381_g2msm*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Elliptic Curve addition on BLS12-381 G2
@@ -910,51 +913,55 @@ func eth_evm_bls12381_g2msm*(r: var openArray[byte], inputs: openarray[byte]): C
   let coefs_big = allocHeapArrayAligned(BigInt[255], N, alignment = 64)
   let points = allocHeapArrayAligned(EC_ShortW_Aff[Fp2[BLS12_381], G2], N, alignment = 64)
 
-  for i in 0 ..< N:
-    var smod{.noInit.}: Fr[BLS12_381]
-    var s{.noInit.}: BigInt[256]
+  block HappyPath:
+    for i in 0 ..< N:
+      var smod{.noInit.}: Fr[BLS12_381]
+      var s{.noInit.}: BigInt[256]
 
-    let statusP = points[i].fromRawCoords(
-      x0 = inputs.toOpenArray( i*288      , i*288 +  64-1),
-      x1 = inputs.toOpenArray( i*288 +  64, i*288 + 128-1),
-      y0 = inputs.toOpenArray( i*288 + 128, i*288 + 192-1),
-      y1 = inputs.toOpenArray( i*288 + 192, i*288 + 256-1),
-      checkSubgroup = true)
+      let statusP = points[i].fromRawCoords(
+        x0 = inputs.toOpenArray( i*288      , i*288 +  64-1),
+        x1 = inputs.toOpenArray( i*288 +  64, i*288 + 128-1),
+        y0 = inputs.toOpenArray( i*288 + 128, i*288 + 192-1),
+        y1 = inputs.toOpenArray( i*288 + 192, i*288 + 256-1),
+        checkSubgroup = true)
 
-    if statusP != cttEVM_Success:
-      return statusP
+      if statusP != cttEVM_Success:
+        result = statusP
+        break HappyPath
 
-    s.unmarshal(inputs.toOpenArray(i*288 + 256, i*288 + 288-1), bigEndian)
+      s.unmarshal(inputs.toOpenArray(i*288 + 256, i*288 + 288-1), bigEndian)
 
-    # The spec allows s to be bigger than the curve order r and the field modulus p.
-    # As, elliptic curve are a cyclic group mod r, we can reduce modulo r and get the same result.
-    # This allows to use windowed endomorphism acceleration
-    # at the low cost of a modular reduction.
+      # The spec allows s to be bigger than the curve order r and the field modulus p.
+      # As, elliptic curve are a cyclic group mod r, we can reduce modulo r and get the same result.
+      # This allows to use windowed endomorphism acceleration
+      # at the low cost of a modular reduction.
 
-    # Due to mismatch between the BigInt[256] input and the rest being BigInt[255]
-    # we use the low-level getMont instead of 'fromBig'
-    getMont(smod.mres.limbs, s.limbs,
-                Fr[BLS12_381].getModulus().limbs,
-                Fr[BLS12_381].getR2modP().limbs,
-                Fr[BLS12_381].getNegInvModWord(),
-                Fr[BLS12_381].getSpareBits())
+      # Due to mismatch between the BigInt[256] input and the rest being BigInt[255]
+      # we use the low-level getMont instead of 'fromBig'
+      getMont(smod.mres.limbs, s.limbs,
+                  Fr[BLS12_381].getModulus().limbs,
+                  Fr[BLS12_381].getR2modP().limbs,
+                  Fr[BLS12_381].getNegInvModWord(),
+                  Fr[BLS12_381].getSpareBits())
 
-    coefs_big[i].fromField(smod)
+      coefs_big[i].fromField(smod)
 
-  var R{.noInit.}: EC_ShortW_Jac[Fp2[BLS12_381], G2]
-  R.multiScalarMul_vartime(coefs_big, points, N)
+    var R{.noInit.}: EC_ShortW_Jac[Fp2[BLS12_381], G2]
+    R.multiScalarMul_vartime(coefs_big, points, N)
+
+    var aff{.noInit.}: EC_ShortW_Aff[Fp2[BLS12_381], G2]
+    aff.affine(R)
+
+    r.toOpenArray(  0,  64-1).marshal(aff.x.c0, bigEndian)
+    r.toOpenArray( 64, 128-1).marshal(aff.x.c1, bigEndian)
+    r.toOpenArray(128, 192-1).marshal(aff.y.c0, bigEndian)
+    r.toOpenArray(192, 256-1).marshal(aff.y.c1, bigEndian)
+
+    result = cttEVM_Success
 
   freeHeapAligned(points)
   freeHeapAligned(coefs_big)
 
-  var aff{.noInit.}: EC_ShortW_Aff[Fp2[BLS12_381], G2]
-  aff.affine(R)
-
-  r.toOpenArray(  0,  64-1).marshal(aff.x.c0, bigEndian)
-  r.toOpenArray( 64, 128-1).marshal(aff.x.c1, bigEndian)
-  r.toOpenArray(128, 192-1).marshal(aff.y.c0, bigEndian)
-  r.toOpenArray(192, 256-1).marshal(aff.y.c1, bigEndian)
-  return cttEVM_Success
 
 func eth_evm_bls12381_pairingcheck*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Elliptic curve pairing check on BLS12-381
