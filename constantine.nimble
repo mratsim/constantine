@@ -510,6 +510,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_msm.nim", false),
   ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_msm.nim", false),
   ("tests/math_elliptic_curves/t_ec_twedw_prj_msm.nim", false),
+  ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_msm_bug_366.nim", false),
 
   # Subgroups and cofactors
   # ----------------------------------------------------------
