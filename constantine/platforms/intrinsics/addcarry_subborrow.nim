@@ -30,6 +30,7 @@ import
 # See https://gcc.godbolt.org/z/2h768y (Mar 2020 compilers)
 #     https://gcc.godbolt.org/z/WP38PzsMs
 #    (Dec 2023 compilers improved but __builtin_addcll leads to very poor GCC codegen)
+#    Tracking compiler inefficients - https://github.com/mratsim/constantine/issues/357
 #
 # ```C
 # #include <stdint.h>
@@ -100,6 +101,13 @@ when X86:
   func addcarry_u64(carryIn: Carry, a, b: Ct[uint64], sum: var Ct[uint64]): Carry {.importc: "_addcarry_u64", intrinsics.}
   func subborrow_u64(borrowIn: Borrow, a, b: Ct[uint64], diff: var Ct[uint64]): Borrow {.importc: "_subborrow_u64", intrinsics.}
 
+elif defined(clang):
+  func builtin_addcl(x, y: Ct[uint32], carryIn: Ct[uint32], carryOut: var Ct[uint32]): Ct[uint32] {.importc: "__builtin_addcl", nodecl.}
+  func builtin_subcl(x, y: Ct[uint32], carryIn: Ct[uint32], carryOut: var Ct[uint32]): Ct[uint32] {.importc: "__builtin_subcl", nodecl.}
+
+  func builtin_addcll(x, y: Ct[uint64], carryIn: Ct[uint64], carryOut: var Ct[uint64]): Ct[uint64] {.importc: "__builtin_addcll", nodecl.}
+  func builtin_subcll(x, y: Ct[uint64], carryIn: Ct[uint64], carryOut: var Ct[uint64]): Ct[uint64] {.importc: "__builtin_subcll", nodecl.}
+
 # ############################################################
 #
 #                     Public
@@ -116,6 +124,10 @@ func addC*(cOut: var Carry, sum: var Ct[uint32], a, b: Ct[uint32], cIn: Carry) {
   ## (CarryOut, Sum) <- a + b + CarryIn
   when X86:
     cOut = addcarry_u32(cIn, a, b, sum)
+  elif defined(clang):
+    var carryOut: Ct[uint32]
+    sum = builtin_addcl(a, b, cast[Ct[uint32]](cIn), carryOut)
+    cOut = cast[Carry](carryOut)
   else:
     let dblPrec = uint64(cIn) + uint64(a) + uint64(b)
     sum = (Ct[uint32])(dblPrec)
@@ -126,6 +138,10 @@ func subB*(bOut: var Borrow, diff: var Ct[uint32], a, b: Ct[uint32], bIn: Borrow
   ## (BorrowOut, Diff) <- a - b - borrowIn
   when X86:
     bOut = subborrow_u32(bIn, a, b, diff)
+  elif defined(clang):
+    var borrowOut: Ct[uint32]
+    diff = builtin_subcl(a, b, cast[Ct[uint32]](bIn), borrowOut)
+    bOut = cast[Borrow](borrowOut)
   else:
     let dblPrec = uint64(a) - uint64(b) - uint64(bIn)
     diff = (Ct[uint32])(dblPrec)
@@ -137,6 +153,10 @@ func addC*(cOut: var Carry, sum: var Ct[uint64], a, b: Ct[uint64], cIn: Carry) {
   ## (CarryOut, Sum) <- a + b + CarryIn
   when X86:
     cOut = addcarry_u64(cIn, a, b, sum)
+  elif defined(clang):
+    var carryOut: Ct[uint64]
+    sum = builtin_addcll(a, b, cast[Ct[uint64]](cIn), carryOut)
+    cOut = cast[Carry](carryOut)
   else:
     block:
       static:
@@ -158,6 +178,10 @@ func subB*(bOut: var Borrow, diff: var Ct[uint64], a, b: Ct[uint64], bIn: Borrow
   ## (BorrowOut, Diff) <- a - b - borrowIn
   when X86:
     bOut = subborrow_u64(bIn, a, b, diff)
+  elif defined(clang):
+    var borrowOut: Ct[uint64]
+    diff = builtin_subcll(a, b, cast[Ct[uint64]](bIn), borrowOut)
+    bOut = cast[Borrow](borrowOut)
   else:
     block:
       static:
