@@ -65,9 +65,9 @@ type HexString = String;
 struct PrecompileTest {
     Input: HexString,
     #[serde(default)]
-    Expected: HexString,
+    Expected: Option<HexString>,
     #[serde(default)]
-    ExpectedError: String,
+    ExpectedError: Option<String>,
     Name: String,
     #[serde(default)]
     Gas: i64,
@@ -75,9 +75,9 @@ struct PrecompileTest {
     NoBenchmark: bool,
 }
 
-type TestFunction = fn(&mut [u8], &[u8]) -> Result<bool, ctt_evm_status>;
+type TestFunction = fn(&mut [u8], &[u8]) -> Result<(), ctt_evm_status>;
 
-fn from_hex(hex: HexString) -> Result<Vec<u8>, bool> {
+fn from_hex(hex: HexString) -> Option<Vec<u8>> {
     // data does not always have `0x` prefix in JSON files!
     // Check for the '0x' prefix
     let href: &[u8] = hex.as_ref();
@@ -89,8 +89,8 @@ fn from_hex(hex: HexString) -> Result<Vec<u8>, bool> {
     // TODO: why cannot use `with_capacity`?
     let mut result = vec![0u8; href.len() / 2];
     match hex::decode_to_slice(href, result.as_mut_slice() as &mut [u8]) {
-        Ok(_) => Ok(result),
-        Err(_) => Err(false),
+        Ok(_) => Some(result),
+        Err(_) => None,
     }
 }
 
@@ -107,24 +107,20 @@ fn t_generate(test_name: String, func: TestFunction) {
     for vector in vectors {
         println!("Running test case: {}", vector.Name);
 
-	let input = vector.Input;
-	let expected = vector.Expected;
+        let input = vector.Input;
+        let expected = vector.Expected;
+        let expected_error = vector.ExpectedError;
 
         let input_bytes = from_hex(input)
             .expect("Test failed; input bytes could not be unmarshaled.");
-        let expected_bytes = from_hex(expected)
-            .expect("Test failed; input bytes could not be unmarshaled.");
-        let mut r = vec![0u8; expected_bytes.len()];
-        // Call the test function
-        let status = func(&mut r, &input_bytes);
+        let expected_bytes = from_hex(expected);
+
+            // Call the test function
+        let result = func(&input_bytes);
         match status {
-            Ok(v) => assert!(v),
-            Err(e) => {
-                // reset!
-                r = vec![0u8; expected_bytes.len()];
-            }
-        }
-        assert!(r == expected_bytes);
+            Ok(_) => assert!(r == expected_bytes.unwrap()),
+            Err(_) => assert!(expected_error.is_some()),
+        };
     }
 }
 
