@@ -10,8 +10,9 @@ import constantine/named/algebras,
        ./ec_multi_scalar_mul_scheduler,
        ./ec_endomorphism_accel,
        constantine/math/extension_fields,
-       constantine/named/zoo_endomorphisms
-export bestBucketBitSize
+       constantine/named/zoo_endomorphisms,
+       constantine/platforms/abstractions
+export bestBucketBitSize, abstractions
 
 # No exceptions allowed in core cryptographic operations
 {.push raises: [].}
@@ -281,7 +282,7 @@ func multiScalarMul_vartime*[bits: static int, EC, ECaff](
     else:
       # If c divides bits exactly, the signed windowed recoding still needs to see an extra 0
       # Since we did r.setNeutral() earlier, this is a no-op
-      w -= c
+      discard
 
   while w != 0:       # Steady state
     r.miniMSM(buckets, w, kFullWindow, c, coefs, points, N)
@@ -374,7 +375,7 @@ func multiScalarMulAffine_vartime[bits: static int, EC, ECaff](
     else:
       # If c divides bits exactly, the signed windowed recoding still needs to see an extra 0
       # Since we did r.setNeutral() earlier, this is a no-op
-      w -= c
+      discard
 
   while w != 0:       # Steady state
     r.miniMSM_affine(sched, w, kFullWindow, c, coefs, N)
