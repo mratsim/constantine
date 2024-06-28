@@ -439,10 +439,10 @@ fn t_verify() {
                 Err(_e) => assert!(test.output == false), // expected test failure
                 Ok(v) => {
                     if !test.output { // Test failure!
-			println!("Verification differs from expected \n
-				  valid sig? {}\n
-				  expected: {}", v, test.output);
-			assert!(test.output == true); // will fail
+                        println!("Verification differs from expected \n
+                                  valid sig? {}\n
+                                  expected: {}", v, test.output);
+                        assert!(test.output == true); // will fail
                     } else {
                         let mut output = [0u8; 48];
                         let status = serialize_pubkey_compressed(&pkey, &mut output);
@@ -538,10 +538,10 @@ fn t_fast_aggregate_verify() {
             Err(_e) => assert!(!test.output), // expected test failure
             Ok(v) => {
                 if v != test.output {
-		    println!("Verification differs from expected \n
-			      valid sig? {}\n
- 			      expected: {}", v, test.output
-		    );
+                    println!("Verification differs from expected \n
+                              valid sig? {}\n
+                              expected: {}", v, test.output
+                    );
                 }
                 assert!(v == test.output);
             }
@@ -625,10 +625,10 @@ fn t_aggregate_verify() {
             Err(_e) => assert!(!test.output), // expected test failure
             Ok(v) => {
                 if v != test.output {
-		    println!("Verification differs from expected \n
-			      valid sig? {}\n
- 			      expected: {}", v, test.output
-		    );
+                    println!("Verification differs from expected \n
+                              valid sig? {}\n
+                              expected: {}", v, test.output
+                    );
                 }
                 assert!(v == test.output);
             }
@@ -720,10 +720,10 @@ fn t_batch_verify() {
             Err(_e) => assert!(!test.output), // expected test failure
             Ok(v) => {
                 if v != test.output {
-		    println!("Verification differs from expected \n
-			      valid sig? {}\n
- 			      expected: {}", v, test.output
-		    );
+                    println!("Verification differs from expected \n
+                              valid sig? {}\n
+                              expected: {}", v, test.output
+                    );
                 }
                 assert!(v == test.output);
             }
@@ -735,10 +735,10 @@ fn t_batch_verify() {
             Err(_e) => assert!(!test.output), // expected test failure
             Ok(v) => {
                 if v != test.output {
-		    println!("Verification differs from expected \n
-			      valid sig? {}\n
- 			      expected: {}", v, test.output
-		    );
+                    println!("Verification differs from expected \n
+                              valid sig? {}\n
+                              expected: {}", v, test.output
+                    );
                 }
                 assert!(v == test.output);
             }

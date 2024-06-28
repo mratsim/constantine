@@ -107,8 +107,8 @@ fn t_generate(test_name: String, func: TestFunction) {
     for vector in vectors {
         println!("Running test case: {}", vector.Name);
 
-	let input = vector.Input;
-	let expected = vector.Expected;
+        let input = vector.Input;
+        let expected = vector.Expected;
 
         let input_bytes = from_hex(input)
             .expect("Test failed; input bytes could not be unmarshaled.");

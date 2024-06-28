@@ -24,7 +24,7 @@ pub fn deserialize_seckey(
             skey as *mut ctt_eth_bls_seckey,
             src.as_ptr() as *const byte,
         );
-	match status {
+        match status {
             ctt_codec_scalar_status::cttCodecScalar_Success => Ok(true),
             _ => Err(status),
         }

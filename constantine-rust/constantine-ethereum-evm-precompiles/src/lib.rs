@@ -37,12 +37,12 @@ pub fn evm_modexp(
     inputs: &[u8]
 ) -> Result<bool, ctt_evm_status> {
     unsafe {
-	let status = ctt_eth_evm_modexp(
+        let status = ctt_eth_evm_modexp(
             result.as_mut_ptr() as *mut byte,
             result.len() as isize,
             inputs.as_ptr() as *const byte,
             inputs.len() as isize,
-	);
+        );
         match status {
             ctt_evm_status::cttEVM_Success => Ok(true),
             _ => Err(status)
@@ -55,12 +55,12 @@ pub fn evm_bn254_g1add(
     inputs: &[u8]
 ) -> Result<bool, ctt_evm_status> {
     unsafe {
-	let status = ctt_eth_evm_bn254_g1add(
+        let status = ctt_eth_evm_bn254_g1add(
             result.as_mut_ptr() as *mut byte,
             result.len() as isize,
             inputs.as_ptr() as *const byte,
             inputs.len() as isize,
-	);
+        );
         match status {
             ctt_evm_status::cttEVM_Success => Ok(true),
             _ => Err(status)
@@ -73,12 +73,12 @@ pub fn evm_bn254_g1mul(
     inputs: &[u8]
 ) -> Result<bool, ctt_evm_status> {
     unsafe {
-	let status = ctt_eth_evm_bn254_g1mul(
+        let status = ctt_eth_evm_bn254_g1mul(
             result.as_mut_ptr() as *mut byte,
             result.len() as isize,
             inputs.as_ptr() as *const byte,
             inputs.len() as isize,
-	);
+        );
         match status {
             ctt_evm_status::cttEVM_Success => Ok(true),
             _ => Err(status)
@@ -91,12 +91,12 @@ pub fn evm_bn254_ec_pairing_check(
     inputs: &[u8]
 ) -> Result<bool, ctt_evm_status> {
     unsafe {
-	let status = ctt_eth_evm_bn254_ecpairingcheck(
+        let status = ctt_eth_evm_bn254_ecpairingcheck(
             result.as_mut_ptr() as *mut byte,
             result.len() as isize,
             inputs.as_ptr() as *const byte,
             inputs.len() as isize,
-	);
+        );
         match status {
             ctt_evm_status::cttEVM_Success => Ok(true),
             _ => Err(status)
@@ -108,12 +108,12 @@ pub fn evm_bls12381_g1add(
     inputs: &[u8]
 ) -> Result<bool, ctt_evm_status> {
     unsafe {
-	let status = ctt_eth_evm_bls12381_g1add(
+        let status = ctt_eth_evm_bls12381_g1add(
             result.as_mut_ptr() as *mut byte,
             result.len() as isize,
             inputs.as_ptr() as *const byte,
             inputs.len() as isize,
-	);
+        );
         match status {
             ctt_evm_status::cttEVM_Success => Ok(true),
             _ => Err(status)
@@ -126,12 +126,12 @@ pub fn evm_bls12381_g1mul(
     inputs: &[u8]
 ) -> Result<bool, ctt_evm_status> {
     unsafe {
-	let status = ctt_eth_evm_bls12381_g1mul(
+        let status = ctt_eth_evm_bls12381_g1mul(
             result.as_mut_ptr() as *mut byte,
             result.len() as isize,
             inputs.as_ptr() as *const byte,
             inputs.len() as isize,
-	);
+        );
         match status {
             ctt_evm_status::cttEVM_Success => Ok(true),
             _ => Err(status)
@@ -144,12 +144,12 @@ pub fn evm_bls12381_g1msm(
     inputs: &[u8]
 ) -> Result<bool, ctt_evm_status> {
     unsafe {
-	let status = ctt_eth_evm_bls12381_g1msm(
+        let status = ctt_eth_evm_bls12381_g1msm(
             result.as_mut_ptr() as *mut byte,
             result.len() as isize,
             inputs.as_ptr() as *const byte,
             inputs.len() as isize,
-	);
+        );
         match status {
             ctt_evm_status::cttEVM_Success => Ok(true),
             _ => Err(status)
@@ -162,12 +162,12 @@ pub fn evm_bls12381_g2add(
     inputs: &[u8]
 ) -> Result<bool, ctt_evm_status> {
     unsafe {
-	let status = ctt_eth_evm_bls12381_g2add(
+        let status = ctt_eth_evm_bls12381_g2add(
             result.as_mut_ptr() as *mut byte,
             result.len() as isize,
             inputs.as_ptr() as *const byte,
             inputs.len() as isize,
-	);
+        );
         match status {
             ctt_evm_status::cttEVM_Success => Ok(true),
             _ => Err(status)
@@ -180,12 +180,12 @@ pub fn evm_bls12381_g2mul(
     inputs: &[u8]
 ) -> Result<bool, ctt_evm_status> {
     unsafe {
-	let status = ctt_eth_evm_bls12381_g2mul(
+        let status = ctt_eth_evm_bls12381_g2mul(
             result.as_mut_ptr() as *mut byte,
             result.len() as isize,
             inputs.as_ptr() as *const byte,
             inputs.len() as isize,
-	);
+        );
         match status {
             ctt_evm_status::cttEVM_Success => Ok(true),
             _ => Err(status)
@@ -198,12 +198,12 @@ pub fn evm_bls12381_g2msm(
     inputs: &[u8]
 ) -> Result<bool, ctt_evm_status> {
     unsafe {
-	let status = ctt_eth_evm_bls12381_g2msm(
+        let status = ctt_eth_evm_bls12381_g2msm(
             result.as_mut_ptr() as *mut byte,
             result.len() as isize,
             inputs.as_ptr() as *const byte,
             inputs.len() as isize,
-	);
+        );
         match status {
             ctt_evm_status::cttEVM_Success => Ok(true),
             _ => Err(status)
@@ -217,12 +217,12 @@ pub fn evm_bls12381_pairing_check(
     inputs: &[u8]
 ) -> Result<bool, ctt_evm_status> {
     unsafe {
-	let status = ctt_eth_evm_bls12381_pairingcheck(
+        let status = ctt_eth_evm_bls12381_pairingcheck(
             result.as_mut_ptr() as *mut byte,
             result.len() as isize,
             inputs.as_ptr() as *const byte,
             inputs.len() as isize,
-	);
+        );
         match status {
             ctt_evm_status::cttEVM_Success => Ok(true),
             _ => Err(status)
@@ -235,12 +235,12 @@ pub fn evm_bls12381_map_fp_to_g1(
     inputs: &[u8]
 ) -> Result<bool, ctt_evm_status> {
     unsafe {
-	let status = ctt_eth_evm_bls12381_map_fp_to_g1(
+        let status = ctt_eth_evm_bls12381_map_fp_to_g1(
             result.as_mut_ptr() as *mut byte,
             result.len() as isize,
             inputs.as_ptr() as *const byte,
             inputs.len() as isize,
-	);
+        );
         match status {
             ctt_evm_status::cttEVM_Success => Ok(true),
             _ => Err(status)
@@ -253,12 +253,12 @@ pub fn evm_bls12381_map_fp2_to_g2(
     inputs: &[u8]
 ) -> Result<bool, ctt_evm_status> {
     unsafe {
-	let status = ctt_eth_evm_bls12381_map_fp2_to_g2(
+        let status = ctt_eth_evm_bls12381_map_fp2_to_g2(
             result.as_mut_ptr() as *mut byte,
             result.len() as isize,
             inputs.as_ptr() as *const byte,
             inputs.len() as isize,
-	);
+        );
         match status {
             ctt_evm_status::cttEVM_Success => Ok(true),
             _ => Err(status)
