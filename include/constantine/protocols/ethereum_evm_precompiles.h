@@ -56,8 +56,8 @@ static const char* ctt_evm_status_to_string(ctt_evm_status status) {
  *    cttEVM_InvalidOutputSize
  */
 ctt_evm_status ctt_eth_evm_sha256(
-    byte* r, ptrdiff_t r_len,
-    const byte* inputs, ptrdiff_t inputs_len
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
     ) __attribute__((warn_unused_result));
 
 /**
@@ -90,8 +90,8 @@ ctt_evm_status ctt_eth_evm_sha256(
  *    Make sure to validate gas costs and reject large inputs to bound stack usage.
  */
 ctt_evm_status ctt_eth_evm_modexp(
-    byte* r, ptrdiff_t r_len,
-    const byte* inputs, ptrdiff_t inputs_len
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));
 
 
@@ -123,8 +123,8 @@ ctt_evm_status ctt_eth_evm_modexp(
   *  Spec https://eips.ethereum.org/EIPS/eip-196
   */
 ctt_evm_status ctt_eth_evm_bn254_g1add(
-    byte* r, ptrdiff_t r_len,
-    const byte* inputs, ptrdiff_t inputs_len
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));
 
 /**
@@ -155,8 +155,8 @@ ctt_evm_status ctt_eth_evm_bn254_g1add(
   *  Spec https://eips.ethereum.org/EIPS/eip-196
   */
 ctt_evm_status ctt_eth_evm_bn254_g1mul(
-    byte* r, ptrdiff_t r_len,
-    const byte* inputs, ptrdiff_t inputs_len
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));
 
 /**
@@ -184,8 +184,8 @@ ctt_evm_status ctt_eth_evm_bn254_g1mul(
   *        https://eips.ethereum.org/EIPS/eip-1108
   */
 ctt_evm_status ctt_eth_evm_bn254_ecpairingcheck(
-    byte* r, ptrdiff_t r_len,
-    const byte* inputs, ptrdiff_t inputs_len
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));
 
 /**
@@ -216,8 +216,8 @@ ctt_evm_status ctt_eth_evm_bn254_ecpairingcheck(
   *  Spec https://eips.ethereum.org/EIPS/eip-2537
   */
 ctt_evm_status ctt_eth_evm_bls12381_g1add(
-    byte* r, ptrdiff_t r_len,
-    const byte* inputs, ptrdiff_t inputs_len
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));
 
 /**
@@ -248,8 +248,8 @@ ctt_evm_status ctt_eth_evm_bls12381_g1add(
   *  Spec https://eips.ethereum.org/EIPS/eip-2537
   */
 ctt_evm_status ctt_eth_evm_bls12381_g2add(
-    byte* r, ptrdiff_t r_len,
-    const byte* inputs, ptrdiff_t inputs_len
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));
 
 /**
@@ -279,8 +279,8 @@ ctt_evm_status ctt_eth_evm_bls12381_g2add(
   *  Spec https://eips.ethereum.org/EIPS/eip-2537
   */
 ctt_evm_status ctt_eth_evm_bls12381_g1mul(
-    byte* r, ptrdiff_t r_len,
-    const byte* inputs, ptrdiff_t inputs_len
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));
 
 /**
@@ -310,8 +310,8 @@ ctt_evm_status ctt_eth_evm_bls12381_g1mul(
   *  Spec https://eips.ethereum.org/EIPS/eip-2537
   */
 ctt_evm_status ctt_eth_evm_bls12381_g2mul(
-    byte* r, ptrdiff_t r_len,
-    const byte* inputs, ptrdiff_t inputs_len
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));
 
 /**
@@ -343,8 +343,8 @@ ctt_evm_status ctt_eth_evm_bls12381_g2mul(
   *  Spec https://eips.ethereum.org/EIPS/eip-2537
   */
 ctt_evm_status ctt_eth_evm_bls12381_g1msm(
-    byte* r, ptrdiff_t r_len,
-    const byte* inputs, ptrdiff_t inputs_len
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));
 
 /**
@@ -376,8 +376,8 @@ ctt_evm_status ctt_eth_evm_bls12381_g1msm(
   *  Spec https://eips.ethereum.org/EIPS/eip-2537
   */
 ctt_evm_status ctt_eth_evm_bls12381_g2msm(
-    byte* r, ptrdiff_t r_len,
-    const byte* inputs, ptrdiff_t inputs_len
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));
 
 /**
@@ -402,8 +402,8 @@ ctt_evm_status ctt_eth_evm_bls12381_g2msm(
   *  specs https://eips.ethereum.org/EIPS/eip-2537
   */
 ctt_evm_status ctt_eth_evm_bls12381_pairingcheck(
-    byte* r, ptrdiff_t r_len,
-    const byte* inputs, ptrdiff_t inputs_len
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));
 
 /**
@@ -427,8 +427,8 @@ ctt_evm_status ctt_eth_evm_bls12381_pairingcheck(
   *  Spec https://eips.ethereum.org/EIPS/eip-2537
   */
 ctt_evm_status ctt_eth_evm_bls12381_map_fp_to_g1(
-    byte* r, ptrdiff_t r_len,
-    const byte* inputs, ptrdiff_t inputs_len
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));
 
 /**
@@ -452,8 +452,8 @@ ctt_evm_status ctt_eth_evm_bls12381_map_fp_to_g1(
   *  Spec https://eips.ethereum.org/EIPS/eip-2537
   */
 ctt_evm_status ctt_eth_evm_bls12381_map_fp2_to_g2(
-    byte* r, ptrdiff_t r_len,
-    const byte* inputs, ptrdiff_t inputs_len
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));
 
 

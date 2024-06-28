@@ -350,7 +350,7 @@ func (pub *EthBlsPubKey) DerivePubKey(sec EthBlsSecKey) {
 func (pub *EthBlsPubKey) Verify(message []byte, sig EthBlsSignature) (bool, error) {
 	status := C.ctt_eth_bls_verify((*C.ctt_eth_bls_pubkey)(pub),
 		(*C.byte)(getAddr(message)),
-		(C.ptrdiff_t)(len(message)),
+		(C.size_t)(len(message)),
 		(*C.ctt_eth_bls_signature)(&sig),
 	)
 	if status != C.cttEthBls_Success {
@@ -508,7 +508,7 @@ func (sig *EthBlsSignature) DeserializeCompressed(src [96]byte) (bool, error) {
 func (sig *EthBlsSignature) Sign(sec EthBlsSecKey, message []byte) {
 	C.ctt_eth_bls_sign((*C.ctt_eth_bls_signature)(sig), (*C.ctt_eth_bls_seckey)(&sec),
 		(*C.byte)(getAddr(message)),
-		(C.ptrdiff_t)(len(message)),
+		(C.size_t)(len(message)),
 	)
 }
 
@@ -520,9 +520,9 @@ func FastAggregateVerify(pubkeys []EthBlsPubKey, message []byte, aggregate_sig E
 		return false, err
 	}
 	status := C.ctt_eth_bls_fast_aggregate_verify((*C.ctt_eth_bls_pubkey)(getAddr(pubkeys)),
-		(C.ptrdiff_t)(len(pubkeys)),
+		(C.size_t)(len(pubkeys)),
 		(*C.byte)(getAddr(message)),
-		(C.ptrdiff_t)(len(message)),
+		(C.size_t)(len(message)),
 		(*C.ctt_eth_bls_signature)(&aggregate_sig),
 	)
 	if status != C.cttEthBls_Success {
@@ -556,7 +556,7 @@ func (accum ethBlsBatchSigAccumulator) init(secureRandomBytes [32]byte, accumSep
 	C.ctt_eth_bls_init_batch_sig_accumulator((*C.ctt_eth_bls_batch_sig_accumulator)(accum.ctx),
 		(*C.byte)(&secureRandomBytes[0]),
 		(*C.byte)(getAddr(accumSepTag)),
-		(C.ptrdiff_t)(len(accumSepTag)),
+		(C.size_t)(len(accumSepTag)),
 	)
 }
 
@@ -564,7 +564,7 @@ func (accum ethBlsBatchSigAccumulator) update(pub EthBlsPubKey, message []byte, 
 	status := C.ctt_eth_bls_update_batch_sig_accumulator((*C.ctt_eth_bls_batch_sig_accumulator)(accum.ctx),
 		(*C.ctt_eth_bls_pubkey)(&pub),
 		(*C.byte)(getAddr(message)),
-		(C.ptrdiff_t)(len(message)),
+		(C.size_t)(len(message)),
 		(*C.ctt_eth_bls_signature)(&sig),
 	)
 	return bool(status)
@@ -738,7 +738,7 @@ func EvmBn254G1Mul(inputs []byte) (result Bytes64, error) {
 	status := C.ctt_eth_evm_bn254_g1mul((*C.byte)(&result),
 		64,
 		(*C.byte)(getAddr(inputs)),
-		(C.ptrdiff_t)(len(inputs)),
+		(C.size_t)(len(inputs)),
 	)
 	if status != C.cttEVM_Success {
 		err := errors.New(
@@ -753,7 +753,7 @@ func EvmBn254G1EcPairingCheck(inputs []byte) (result Bytes32, error) {
 	status := C.ctt_eth_evm_bn254_ecpairingcheck((*C.byte)(&result),
 		32,
 		(*C.byte)(getAddr(inputs)),
-		(C.ptrdiff_t)(len(inputs)),
+		(C.size_t)(len(inputs)),
 	)
 	if status != C.cttEVM_Success {
 		err := errors.New(
@@ -768,9 +768,9 @@ func EvmBn254G1EcPairingCheck(inputs []byte) (result Bytes32, error) {
 
 func EvmBls12381G1Add(result []byte, inputs []byte) (bool, error) {
 	status := C.ctt_eth_evm_bls12381_g1add((*C.byte)(getAddr(result)),
-		(C.ptrdiff_t)(len(result)),
+		(C.size_t)(len(result)),
 		(*C.byte)(getAddr(inputs)),
-		(C.ptrdiff_t)(len(inputs)),
+		(C.size_t)(len(inputs)),
 	)
 	if status != C.cttEVM_Success {
 		err := errors.New(
@@ -783,9 +783,9 @@ func EvmBls12381G1Add(result []byte, inputs []byte) (bool, error) {
 
 func EvmBls12381G1Mul(result []byte, inputs []byte) (bool, error) {
 	status := C.ctt_eth_evm_bls12381_g1mul((*C.byte)(getAddr(result)),
-		(C.ptrdiff_t)(len(result)),
+		(C.size_t)(len(result)),
 		(*C.byte)(getAddr(inputs)),
-		(C.ptrdiff_t)(len(inputs)),
+		(C.size_t)(len(inputs)),
 	)
 	if status != C.cttEVM_Success {
 		err := errors.New(
@@ -798,9 +798,9 @@ func EvmBls12381G1Mul(result []byte, inputs []byte) (bool, error) {
 
 func EvmBls12381G1Msm(result []byte, inputs []byte) (bool, error) {
 	status := C.ctt_eth_evm_bls12381_g1msm((*C.byte)(getAddr(result)),
-		(C.ptrdiff_t)(len(result)),
+		(C.size_t)(len(result)),
 		(*C.byte)(getAddr(inputs)),
-		(C.ptrdiff_t)(len(inputs)),
+		(C.size_t)(len(inputs)),
 	)
 	if status != C.cttEVM_Success {
 		err := errors.New(
@@ -813,9 +813,9 @@ func EvmBls12381G1Msm(result []byte, inputs []byte) (bool, error) {
 
 func EvmBls12381G2Add(result []byte, inputs []byte) (bool, error) {
 	status := C.ctt_eth_evm_bls12381_g2add((*C.byte)(getAddr(result)),
-		(C.ptrdiff_t)(len(result)),
+		(C.size_t)(len(result)),
 		(*C.byte)(getAddr(inputs)),
-		(C.ptrdiff_t)(len(inputs)),
+		(C.size_t)(len(inputs)),
 	)
 	if status != C.cttEVM_Success {
 		err := errors.New(
@@ -828,9 +828,9 @@ func EvmBls12381G2Add(result []byte, inputs []byte) (bool, error) {
 
 func EvmBls12381G2Mul(result []byte, inputs []byte) (bool, error) {
 	status := C.ctt_eth_evm_bls12381_g2mul((*C.byte)(getAddr(result)),
-		(C.ptrdiff_t)(len(result)),
+		(C.size_t)(len(result)),
 		(*C.byte)(getAddr(inputs)),
-		(C.ptrdiff_t)(len(inputs)),
+		(C.size_t)(len(inputs)),
 	)
 	if status != C.cttEVM_Success {
 		err := errors.New(
@@ -843,9 +843,9 @@ func EvmBls12381G2Mul(result []byte, inputs []byte) (bool, error) {
 
 func EvmBls12381G2Msm(result []byte, inputs []byte) (bool, error) {
 	status := C.ctt_eth_evm_bls12381_g2msm((*C.byte)(getAddr(result)),
-		(C.ptrdiff_t)(len(result)),
+		(C.size_t)(len(result)),
 		(*C.byte)(getAddr(inputs)),
-		(C.ptrdiff_t)(len(inputs)),
+		(C.size_t)(len(inputs)),
 	)
 	if status != C.cttEVM_Success {
 		err := errors.New(
@@ -858,9 +858,9 @@ func EvmBls12381G2Msm(result []byte, inputs []byte) (bool, error) {
 
 func EvmBls12381PairingCheck(result []byte, inputs []byte) (bool, error) {
 	status := C.ctt_eth_evm_bls12381_pairingcheck((*C.byte)(getAddr(result)),
-		(C.ptrdiff_t)(len(result)),
+		(C.size_t)(len(result)),
 		(*C.byte)(getAddr(inputs)),
-		(C.ptrdiff_t)(len(inputs)),
+		(C.size_t)(len(inputs)),
 	)
 	if status != C.cttEVM_Success {
 		err := errors.New(
@@ -873,9 +873,9 @@ func EvmBls12381PairingCheck(result []byte, inputs []byte) (bool, error) {
 
 func EvmBls12381MapFpToG1(result []byte, inputs []byte) (bool, error) {
 	status := C.ctt_eth_evm_bls12381_map_fp_to_g1((*C.byte)(getAddr(result)),
-		(C.ptrdiff_t)(len(result)),
+		(C.size_t)(len(result)),
 		(*C.byte)(getAddr(inputs)),
-		(C.ptrdiff_t)(len(inputs)),
+		(C.size_t)(len(inputs)),
 	)
 	if status != C.cttEVM_Success {
 		err := errors.New(
@@ -888,9 +888,9 @@ func EvmBls12381MapFpToG1(result []byte, inputs []byte) (bool, error) {
 
 func EvmBls12381MapFp2ToG2(result []byte, inputs []byte) (bool, error) {
 	status := C.ctt_eth_evm_bls12381_map_fp2_to_g2((*C.byte)(getAddr(result)),
-		(C.ptrdiff_t)(len(result)),
+		(C.size_t)(len(result)),
 		(*C.byte)(getAddr(inputs)),
-		(C.ptrdiff_t)(len(inputs)),
+		(C.size_t)(len(inputs)),
 	)
 	if status != C.cttEVM_Success {
 		err := errors.New(

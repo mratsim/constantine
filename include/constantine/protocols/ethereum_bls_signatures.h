@@ -195,7 +195,7 @@ void ctt_eth_bls_derive_pubkey(ctt_eth_bls_pubkey* pubkey, const ctt_eth_bls_sec
  */
 void ctt_eth_bls_sign(ctt_eth_bls_signature* sig,
                       const ctt_eth_bls_seckey* seckey,
-                      const byte* message, ptrdiff_t message_len);
+                      const byte* message, size_t message_len);
 
 /** Check that a signature is valid for a message
  *  under the provided public key.
@@ -217,7 +217,7 @@ void ctt_eth_bls_sign(ctt_eth_bls_signature* sig,
  *  In particular, the public key and signature are assumed to be on curve and subgroup-checked.
  */
 ctt_eth_bls_status ctt_eth_bls_verify(const ctt_eth_bls_pubkey* pubkey,
-                                      const byte* message, ptrdiff_t message_len,
+                                      const byte* message, size_t message_len,
                                       const ctt_eth_bls_signature* sig) __attribute__((warn_unused_result));
 
 // TODO: API for pubkeys and signature aggregation. Return a bool or a status code or nothing?
@@ -237,8 +237,8 @@ ctt_eth_bls_status ctt_eth_bls_verify(const ctt_eth_bls_pubkey* pubkey,
  *
  *  In particular, the public keys and signature are assumed to be on curve subgroup checked.
  */
-ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pubkeys[], ptrdiff_t pubkeys_len,
-                                                     const byte* message, ptrdiff_t message_len,
+ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pubkeys[], size_t pubkeys_len,
+                                                     const byte* message, size_t message_len,
                                                      const ctt_eth_bls_signature* aggregate_sig) __attribute__((warn_unused_result));
 
 
@@ -263,7 +263,7 @@ ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pu
  */
 ctt_eth_bls_status ctt_eth_bls_aggregate_verify(const ctt_eth_bls_pubkey* pubkeys,
 						const ctt_span messages[],
-						ptrdiff_t len,
+						size_t len,
 						const ctt_eth_bls_signature* aggregate_sig) __attribute__((warn_unused_result));
 
 
@@ -294,7 +294,7 @@ ctt_eth_bls_status ctt_eth_bls_aggregate_verify(const ctt_eth_bls_pubkey* pubkey
 ctt_eth_bls_status ctt_eth_bls_batch_verify(const ctt_eth_bls_pubkey pubkeys[],
 					    const ctt_span messages[],
 					    const ctt_eth_bls_signature signatures[],
-					    ptrdiff_t len,
+					    size_t len,
 					    const byte secure_random_bytes[32]
     ) __attribute__((warn_unused_result));
 
@@ -327,10 +327,10 @@ void ctt_eth_bls_free_batch_sig_accumulator(ctt_eth_bls_batch_sig_accumulator *p
 void ctt_eth_bls_init_batch_sig_accumulator(
     ctt_eth_bls_batch_sig_accumulator* ctx,
     //const byte domain_sep_tag[],
-    //ptrdiff_t domain_sep_tag_len,
+    //size_t domain_sep_tag_len,
     const byte secure_random_bytes[32],
     const byte accum_sep_tag[],
-    ptrdiff_t accum_sep_tag_len
+    size_t accum_sep_tag_len
     );
 
 /**
@@ -346,7 +346,7 @@ void ctt_eth_bls_init_batch_sig_accumulator(
 ctt_bool ctt_eth_bls_update_batch_sig_accumulator(
     ctt_eth_bls_batch_sig_accumulator* ctx,
     const ctt_eth_bls_pubkey* pubkey,
-    const byte* message, ptrdiff_t message_len,
+    const byte* message, size_t message_len,
     const ctt_eth_bls_signature* signature
     ) __attribute__((warn_unused_result));
 
