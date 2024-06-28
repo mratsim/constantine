@@ -41,7 +41,7 @@ func (ctx *Sha256Context) Init() {
 func (ctx *Sha256Context) Update(data []byte) {
 	C.ctt_sha256_update((*C.ctt_sha256_context)(ctx),
 		(*C.byte)(unsafe.Pointer(&data[0])),
-		(C.ptrdiff_t)(len(data)),
+		(C.size_t)(len(data)),
 	)
 }
 
@@ -58,7 +58,7 @@ func (ctx *Sha256Context) Clear() {
 func Hash(digest *[32]byte, message []byte, clearMemory bool) {
 	C.ctt_sha256_hash((*C.byte)(unsafe.Pointer(digest)),
 		(*C.byte)(unsafe.Pointer(&message[0])),
-		(C.ptrdiff_t)(len(message)),
+		(C.size_t)(len(message)),
 		(C.ctt_bool)(clearMemory),
 	)
 }

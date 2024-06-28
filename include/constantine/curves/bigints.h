@@ -19,12 +19,12 @@ typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(381)]; } big381;
 typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(255)]; } big255;
 typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(254)]; } big254;
 
-ctt_bool    ctt_big254_unmarshalBE(big254* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
-ctt_bool    ctt_big254_marshalBE(byte dst[], ptrdiff_t dst_len, const big254* src) __attribute__((warn_unused_result));
-ctt_bool    ctt_big255_unmarshalBE(big255* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
-ctt_bool    ctt_big255_marshalBE(byte dst[], ptrdiff_t dst_len, const big255* src) __attribute__((warn_unused_result));
-ctt_bool    ctt_big381_unmarshalBE(big381* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
-ctt_bool    ctt_big381_marshalBE(byte dst[], ptrdiff_t dst_len, const big381* src) __attribute__((warn_unused_result));
+ctt_bool    ctt_big254_unmarshalBE(big254* dst, const byte src[], size_t src_len) __attribute__((warn_unused_result));
+ctt_bool    ctt_big254_marshalBE(byte dst[], size_t dst_len, const big254* src) __attribute__((warn_unused_result));
+ctt_bool    ctt_big255_unmarshalBE(big255* dst, const byte src[], size_t src_len) __attribute__((warn_unused_result));
+ctt_bool    ctt_big255_marshalBE(byte dst[], size_t dst_len, const big255* src) __attribute__((warn_unused_result));
+ctt_bool    ctt_big381_unmarshalBE(big381* dst, const byte src[], size_t src_len) __attribute__((warn_unused_result));
+ctt_bool    ctt_big381_marshalBE(byte dst[], size_t dst_len, const big381* src) __attribute__((warn_unused_result));
 
 #ifdef __cplusplus
 }

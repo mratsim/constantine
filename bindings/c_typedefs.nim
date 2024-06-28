@@ -175,18 +175,18 @@ proc toCparam*(name: string, typ: NimNode): string =
       typ.treeRepr()
     let sTyp = $typ[2]
     if sTyp in TypeMap:
-      "const " & TypeMap[sTyp] & " "  & name & "[], ptrdiff_t " & name & "_len"
+      "const " & TypeMap[sTyp] & " "  & name & "[], size_t " & name & "_len"
     else:
-      "const " & sTyp & " " & name & "[], ptrdiff_t " & name & "_len"
+      "const " & sTyp & " " & name & "[], size_t " & name & "_len"
   elif typ.kind == nnkVarTy and typ[0].kind == nnkCall:
     typ[0][0].expectKind(nnkOpenSymChoice)
     doAssert typ[0][0][0].eqIdent"[]"
     doAssert typ[0][1].eqIdent"openArray"
     let sTyp = $typ[0][2]
     if sTyp in TypeMap:
-      TypeMap[sTyp] & " " & name & "[], ptrdiff_t " & name & "_len"
+      TypeMap[sTyp] & " " & name & "[], size_t " & name & "_len"
     else:
-      sTyp & " " & name & "[], ptrdiff_t " & name & "_len"
+      sTyp & " " & name & "[], size_t " & name & "_len"
   elif typ.kind == nnkPtrTy and typ[0].kind == nnkCall:
     typ[0][0].expectKind(nnkOpenSymChoice)
     doAssert typ[0][0][0].eqIdent"[]"
