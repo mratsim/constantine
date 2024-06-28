@@ -124,6 +124,10 @@ func (ctx EthKzgContext) VerifyKzgProof(commitment EthKzgCommitment, z EthKzgCha
 		(*C.ctt_eth_kzg_proof)(unsafe.Pointer(&proof)),
 	)
 	if status != C.cttEthKzg_Success {
+		if status == C.cttEthKzg_VerificationFailure {
+			return false, nil
+		}
+
 		err := errors.New(
 			C.GoString(C.ctt_eth_kzg_status_to_string(status)),
 		)
@@ -155,6 +159,10 @@ func (ctx EthKzgContext) VerifyBlobKzgProof(blob EthBlob, commitment EthKzgCommi
 		(*C.ctt_eth_kzg_proof)(unsafe.Pointer(&proof)),
 	)
 	if status != C.cttEthKzg_Success {
+		if status == C.cttEthKzg_VerificationFailure {
+			return false, nil
+		}
+
 		err := errors.New(
 			C.GoString(C.ctt_eth_kzg_status_to_string(status)),
 		)
@@ -178,6 +186,10 @@ func (ctx EthKzgContext) VerifyBlobKzgProofBatch(blobs []EthBlob, commitments []
 		(*C.uint8_t)(unsafe.Pointer(&secureRandomBytes)),
 	)
 	if status != C.cttEthKzg_Success {
+		if status == C.cttEthKzg_VerificationFailure {
+			return false, nil
+		}
+
 		err := errors.New(
 			C.GoString(C.ctt_eth_kzg_status_to_string(status)),
 		)
@@ -254,6 +266,10 @@ func (ctx EthKzgContext) VerifyBlobKzgProofParallel(blob EthBlob, commitment Eth
 		(*C.ctt_eth_kzg_proof)(unsafe.Pointer(&proof)),
 	)
 	if status != C.cttEthKzg_Success {
+		if status == C.cttEthKzg_VerificationFailure {
+			return false, nil
+		}
+
 		err := errors.New(
 			C.GoString(C.ctt_eth_kzg_status_to_string(status)),
 		)
@@ -278,6 +294,10 @@ func (ctx EthKzgContext) VerifyBlobKzgProofBatchParallel(blobs []EthBlob, commit
 		(*C.uint8_t)(unsafe.Pointer(&secureRandomBytes)),
 	)
 	if status != C.cttEthKzg_Success {
+		if status == C.cttEthKzg_VerificationFailure {
+			return false, nil
+		}
+
 		err := errors.New(
 			C.GoString(C.ctt_eth_kzg_status_to_string(status)),
 		)
@@ -334,6 +354,10 @@ func (pub *EthBlsPubKey) Verify(message []byte, sig EthBlsSignature) (bool, erro
 		(*C.ctt_eth_bls_signature)(&sig),
 	)
 	if status != C.cttEthBls_Success {
+		if status == C.cttEthBls_VerificationFailure {
+			return false, nil
+		}
+
 		err := errors.New(
 			C.GoString(C.ctt_eth_bls_status_to_string(status)),
 		)
@@ -502,6 +526,10 @@ func FastAggregateVerify(pubkeys []EthBlsPubKey, message []byte, aggregate_sig E
 		(*C.ctt_eth_bls_signature)(&aggregate_sig),
 	)
 	if status != C.cttEthBls_Success {
+		if status == C.cttEthBls_VerificationFailure {
+			return false, nil
+		}
+
 		err := errors.New(
 			C.GoString(C.ctt_eth_bls_status_to_string(status)),
 		)
@@ -657,24 +685,58 @@ func BatchVerifyAoS(triplets []BatchVerifyTriplet, secureRandomBytes [32]byte) (
 // ------- EVM precompiles --------
 // --------------------------------
 
-func EvmSha256(result *[32]byte, inputs []byte) (bool, error) {
-	status := C.ctt_eth_evm_sha256((*C.byte)(&result[0]),
-		(C.ptrdiff_t)(len(result)),
+type (
+	Bytes32      [32]byte
+	Bytes64      [64]byte
+)
+
+func EvmSha256(result *[32]byte, inputs []byte) (result Bytes32, err error) {
+	status := C.ctt_eth_evm_sha256((*C.byte)(&result),
+		32,
 		(*C.byte)(getAddr(inputs)),
-		(C.ptrdiff_t)(len(inputs)),
+		(C.size_t)(len(inputs)),
 	)
 	if status != C.cttEVM_Success {
 		err := errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
-		return false, err
 	}
-	return true, nil
 }
 
-func EvmModexp(result []byte, inputs []byte) (bool, error) {
+// TODO: similar to Rust, we need a C function to preallocate the result buffer
+func EvmModexp(result []byte, inputs []byte) (result []byte, err error) {
 	status := C.ctt_eth_evm_modexp((*C.byte)(getAddr(result)),
-		(C.ptrdiff_t)(len(result)),
+		(C.size_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.size_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmBn254G1Add(inputs []byte) (result Bytes64, err error) {
+	status := C.ctt_eth_evm_bn254_g1add((*C.byte)(&result),
+		64,
+		(*C.byte)(getAddr(inputs)),
+		(C.size_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmBn254G1Mul(inputs []byte) (result Bytes64, error) {
+	status := C.ctt_eth_evm_bn254_g1mul((*C.byte)(&result),
+		64,
 		(*C.byte)(getAddr(inputs)),
 		(C.ptrdiff_t)(len(inputs)),
 	)
@@ -687,9 +749,9 @@ func EvmModexp(result []byte, inputs []byte) (bool, error) {
 	return true, nil
 }
 
-func EvmBn254G1Add(result []byte, inputs []byte) (bool, error) {
-	status := C.ctt_eth_evm_bn254_g1add((*C.byte)(getAddr(result)),
-		(C.ptrdiff_t)(len(result)),
+func EvmBn254G1EcPairingCheck(inputs []byte) (result Bytes32, error) {
+	status := C.ctt_eth_evm_bn254_ecpairingcheck((*C.byte)(&result),
+		32,
 		(*C.byte)(getAddr(inputs)),
 		(C.ptrdiff_t)(len(inputs)),
 	)
@@ -702,35 +764,7 @@ func EvmBn254G1Add(result []byte, inputs []byte) (bool, error) {
 	return true, nil
 }
 
-func EvmBn254G1Mul(result []byte, inputs []byte) (bool, error) {
-	status := C.ctt_eth_evm_bn254_g1mul((*C.byte)(getAddr(result)),
-		(C.ptrdiff_t)(len(result)),
-		(*C.byte)(getAddr(inputs)),
-		(C.ptrdiff_t)(len(inputs)),
-	)
-	if status != C.cttEVM_Success {
-		err := errors.New(
-			C.GoString(C.ctt_evm_status_to_string(status)),
-		)
-		return false, err
-	}
-	return true, nil
-}
-
-func EvmBn254G1EcPairingCheck(result []byte, inputs []byte) (bool, error) {
-	status := C.ctt_eth_evm_bn254_ecpairingcheck((*C.byte)(getAddr(result)),
-		(C.ptrdiff_t)(len(result)),
-		(*C.byte)(getAddr(inputs)),
-		(C.ptrdiff_t)(len(inputs)),
-	)
-	if status != C.cttEVM_Success {
-		err := errors.New(
-			C.GoString(C.ctt_evm_status_to_string(status)),
-		)
-		return false, err
-	}
-	return true, nil
-}
+// TODO: continue from here
 
 func EvmBls12381G1Add(result []byte, inputs []byte) (bool, error) {
 	status := C.ctt_eth_evm_bls12381_g1add((*C.byte)(getAddr(result)),
