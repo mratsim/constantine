@@ -174,5 +174,27 @@ Curves = {
       'a': 0,
       'b': 5
     }
+  },
+  'Banderwagon' : {
+    'field': {
+      'modulus': Integer('0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001'),
+      'order' : Integer('0x1cfb69d4ca675f520cce760202687600ff8f87007419047174fd06b52876e7e1')
+    },
+    'curve' : {
+      'form': 'short_weierstrass',
+      'a': −3763200000,
+      'b': -7867596800000
+    }
+  },
+   'Bandersnatch' : {
+    'field': {
+      'modulus': Integer('0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001'),
+      'order' : Integer('0x1cfb69d4ca675f520cce760202687600ff8f87007419047174fd06b52876e7e1')
+    },
+    'curve' : {
+      'form': 'short_weierstrass',
+      'a': −3763200000,
+      'b': -7867596800000
+    }
   }
 }

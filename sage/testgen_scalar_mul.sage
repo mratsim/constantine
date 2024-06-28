@@ -34,49 +34,7 @@ from sage.structure.proof.all import arithmetic
 arithmetic(False)
 
 load('curves.sage')
-
-# Utilities
-# ---------------------------------------------------------
-
-def progressbar(it, prefix="", size=60, file=sys.stdout):
-  count = len(it)
-  def show(j):
-    x = int(size*j/count)
-    file.write("%s[%s%s] %i/%i\r" % (prefix, "#"*x, "."*(size-x), j, count))
-    file.flush()
-  show(0)
-  for i, item in enumerate(it):
-    yield item
-    show(i+1)
-  file.write("\n")
-  file.flush()
-
-def serialize_bigint(x):
-  return '0x' + Integer(x).hex()
-
-def serialize_EC_Fp(P):
-  (Px, Py, Pz) = P
-  coords = {
-    'x': serialize_bigint(Px),
-    'y': serialize_bigint(Py)
-  }
-  return coords
-
-def serialize_EC_Fp2(P):
-  (Px, Py, Pz) = P
-  Px = vector(Px)
-  Py = vector(Py)
-  coords = {
-    'x': {
-      'c0': serialize_bigint(Px[0]),
-      'c1': serialize_bigint(Px[1])
-    },
-    'y': {
-      'c0': serialize_bigint(Py[0]),
-      'c1': serialize_bigint(Py[1])
-    }
-  }
-  return coords
+load('utils.sage')
 
 # Generator
 # ---------------------------------------------------------
@@ -115,6 +73,7 @@ def genScalarMulG1(curve_name, curve_config, count, seed, scalarBits = None):
     Q = scalar * P
 
     v['id'] = i
+    print(i)
     v['P'] = serialize_EC_Fp(P)
     v['scalarBits'] = scalarBits if scalarBits else r.bit_length()
     v['scalar'] = serialize_bigint(scalar)
