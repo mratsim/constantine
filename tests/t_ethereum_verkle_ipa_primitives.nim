@@ -408,12 +408,6 @@ suite "Transcript Tests":
 # TODO: missing serialization proof tests
 
 suite "IPA proof tests":
-  # TODO fix test
-  # it passes under:
-  #   nim c -r --debugger:native --cc:clang --hints:off --warnings:off --outdir:build --passC:-fsanitize=address --passL:-fsanitize=address tests/t_ethereum_verkle_ipa_primitives.nim
-  # but not without the sanitizer, the verifier fails
-  #   nim c -r --debugger:native --cc:clang --hints:off --warnings:off --outdir:build tests/t_ethereum_verkle_ipa_primitives.nim
-  echo "Warning! - Skipping verification tests, they succeed under AddressSanitizer but fail without."
 
   test "Verify IPA Proof inside the domain by @Ignacio":
     proc testIPAProofInDomain()=
@@ -504,6 +498,21 @@ suite "IPA proof tests":
         opening_challenge)
 
       doAssert eval_at_challenge.toHex(littleEndian) == "0x4a353e70b03c89f161de002e8713beec0d740a5e20722fd5bd68b30540a33208", "Issue with computing commitment"
+      
+      var prover_challenge {.noInit.}: Fr[Banderwagon]
+      prover_transcript.squeezeChallenge("state", prover_challenge)
+      doAssert prover_challenge.toHex(littleEndian) == "0x0a81881cbfd7d7197a54ebd67ed6a68b5867f3c783706675b34ece43e85e7306", "Issue with squeezing prover challenge"
+
+      # Verifier's side
+      var verifier_transcript: sha256
+      verifier_transcript.initTranscript("test")
+
+      let verif = CRS.ipa_verify(
+        domain, verifier_transcript,
+        commitment, opening_challenge,
+        eval_at_challenge, proof
+      )
+      doAssert verif, "Issue in checking IPA proof!"
 
     testIPAProofConsistency()
 
