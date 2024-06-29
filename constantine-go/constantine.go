@@ -914,7 +914,7 @@ func EvmBls12381MapFpToG1(inputs []byte) (result Bytes128, err error) {
 
 func EvmBls12381MapFp2ToG2(inputs []byte) (result Bytes256, err error) {
 	status := C.ctt_eth_evm_bls12381_map_fp2_to_g2((*C.byte)(&result[0]),
-		128,
+		256,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
 	)
