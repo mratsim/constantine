@@ -85,3 +85,16 @@ export zoo_subgroups.isInSubgroup
 # ------------------------------------------------------------
 
 export hash_to_curve.hash_to_curve
+
+# Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+# tend to generate useless memory moves or have difficulties to minimize stack allocation
+# and our types might be large (Fp12 ...)
+# See: https://github.com/mratsim/constantine/issues/145
+#
+# They are intended for rapid prototyping, testing and debugging.
+export ec_shortweierstrass.`+`
+export ec_shortweierstrass.`-`
+export ec_shortweierstrass.`~+`
+export ec_shortweierstrass.`~-`
+export ec_shortweierstrass.`*`
+export ec_shortweierstrass.`~*`

@@ -73,6 +73,10 @@ export arithmetic.setZero
 export arithmetic.setOne
 export arithmetic.setMinusOne
 
+export arithmetic.getZero
+export arithmetic.getOne
+export arithmetic.getMinusOne
+
 export arithmetic.neg
 export arithmetic.sum
 export arithmetic.`+=`
@@ -102,3 +106,14 @@ export arithmetic.sqrt_invsqrt_if_square
 export arithmetic.sqrt_if_square
 export arithmetic.invsqrt_if_square
 export arithmetic.sqrt_ratio_if_square
+
+
+# Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+# tend to generate useless memory moves or have difficulties to minimize stack allocation
+# and our types might be large (Fp12 ...)
+# See: https://github.com/mratsim/constantine/issues/145
+#
+# They are intended for rapid prototyping, testing and debugging.
+export arithmetic.`+`
+export arithmetic.`-`
+export arithmetic.`*`

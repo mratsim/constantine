@@ -60,7 +60,7 @@ proc evalPolyOffDomainAt_parallel*[N: static int, Field](
   t = z[]
   const numDoublings = log2_vartime(uint32 N) # N is a power of 2
   t.square_repeated(int numDoublings)         # exponentiation by a power of 2
-  t.diff(Field(mres: Field.getMontyOne()), t) # TODO: refactor getMontyOne to getOne and return a field element.
+  t.diff(Field.getOne(), t)
 
   r.prod(t, domain.invMaxDegree)
   r *= sync(globalSum)

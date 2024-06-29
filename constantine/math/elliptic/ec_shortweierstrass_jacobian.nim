@@ -935,3 +935,120 @@ template `~-=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Jac) =
 
 template `~-=`*(P: var EC_ShortW_Jac, Q: EC_ShortW_Aff) =
   P.mixedDiff_vartime(P, Q)
+
+# ############################################################
+#
+#                 Out-of-Place functions
+#
+# ############################################################
+#
+# Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+# tend to generate useless memory moves or have difficulties to minimize stack allocation
+# and our types might be large (Fp12 ...)
+# See: https://github.com/mratsim/constantine/issues/145
+
+func `+`*(a, b: EC_ShortW_Jac): EC_ShortW_Jac {.noInit, inline.} =
+  ## Elliptic curve addition
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.sum(a, b)
+
+func `+`*(a: EC_ShortW_Jac, b: EC_ShortW_Aff): EC_ShortW_Jac {.noInit, inline.} =
+  ## Elliptic curve addition
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.mixedSum(a, b)
+
+func `~+`*(a, b: EC_ShortW_Jac): EC_ShortW_Jac {.noInit, inline.} =
+  ## Elliptic curve variable-time addition
+  ##
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.sum_vartime(a, b)
+
+func `~+`*(a: EC_ShortW_Jac, b: EC_ShortW_Aff): EC_ShortW_Jac {.noInit, inline.} =
+  ## Elliptic curve variable-time addition
+  ##
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.mixedSum_vartime(a, b)
+
+func `-`*(a, b: EC_ShortW_Jac): EC_ShortW_Jac {.noInit, inline.} =
+  ## Elliptic curve substraction
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.diff(a, b)
+
+func `-`*(a: EC_ShortW_Jac, b: EC_ShortW_Aff): EC_ShortW_Jac {.noInit, inline.} =
+  ## Elliptic curve addition
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.mixedDiff(a, b)
+
+func `~-`*(a, b: EC_ShortW_Jac): EC_ShortW_Jac {.noInit, inline.} =
+  ## Elliptic curve variable-time substraction
+  ##
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.diff_vartime(a, b)
+
+func `~-`*(a: EC_ShortW_Jac, b: EC_ShortW_Aff): EC_ShortW_Jac {.noInit, inline.} =
+  ## Elliptic curve variable-time substraction
+  ##
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.]
+  ## 
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.mixedDiff_vartime(a, b)
+
+func getAffine*[F, G](jac: EC_ShortW_Jac[F, G]): EC_ShortW_Aff[F, G] {.noInit, inline.} =
+  ## Jacobian to Affine conversion
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.affine(jac)
+
+func getJacobian*[F, G](aff: EC_ShortW_Aff[F, G]): EC_ShortW_Jac[F, G] {.noInit, inline.} =
+  ## Affine to Jacobian conversion
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.fromAffine(aff)

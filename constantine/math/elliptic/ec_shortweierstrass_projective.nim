@@ -698,3 +698,104 @@ template `~-=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Prj) =
 
 template `~-=`*(P: var EC_ShortW_Prj, Q: EC_ShortW_Aff) =
   P.mixedDiff_vartime(P, Q)
+
+# ############################################################
+#
+#                 Out-of-Place functions
+#
+# ############################################################
+#
+# Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+# tend to generate useless memory moves or have difficulties to minimize stack allocation
+# and our types might be large (Fp12 ...)
+# See: https://github.com/mratsim/constantine/issues/145
+
+func `+`*(a, b: EC_ShortW_Prj): EC_ShortW_Prj {.noInit, inline.} =
+  ## Elliptic curve addition
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.sum(a, b)
+
+func `+`*(a: EC_ShortW_Prj, b: EC_ShortW_Aff): EC_ShortW_Prj {.noInit, inline.} =
+  ## Elliptic curve addition
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.mixedSum(a, b)
+
+func `~+`*(a, b: EC_ShortW_Prj): EC_ShortW_Prj {.noInit, inline.} =
+  ## Elliptic curve variable-time addition
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.sum_vartime(a, b)
+
+func `~+`*(a: EC_ShortW_Prj, b: EC_ShortW_Aff): EC_ShortW_Prj {.noInit, inline.} =
+  ## Elliptic curve variable-time addition
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.mixedSum_vartime(a, b)
+
+func `-`*(a, b: EC_ShortW_Prj): EC_ShortW_Prj {.noInit, inline.} =
+  ## Elliptic curve substraction
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.diff(a, b)
+
+func `-`*(a: EC_ShortW_Prj, b: EC_ShortW_Aff): EC_ShortW_Prj {.noInit, inline.} =
+  ## Elliptic curve substraction
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.mixedDiff(a, b)
+
+func `~-`*(a, b: EC_ShortW_Prj): EC_ShortW_Prj {.noInit, inline.} =
+  ## Elliptic curve variable-time substraction
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.diff_vartime(a, b)
+
+func `~-`*(a: EC_ShortW_Prj, b: EC_ShortW_Aff): EC_ShortW_Prj {.noInit, inline.} =
+  ## Elliptic curve variable-time substraction
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.mixedDiff_vartime(a, b)
+
+func getAffine*[F, G](prj: EC_ShortW_Prj[F, G]): EC_ShortW_Aff[F, G] {.noInit, inline.} =
+  ## Projective to Affine conversion
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.affine(prj)
+
+func getProjective*[F, G](aff: EC_ShortW_Aff[F, G]): EC_ShortW_Prj[F, G] {.noInit, inline.} =
+  ## Affine to Projective conversion
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.fromAffine(aff)

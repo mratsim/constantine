@@ -12,20 +12,20 @@ Other tracks are stretch goals, contributions towards them are accepted.
 <!-- TOC -->
 
 - [Constantine's planning](#constantines-planning)
-    - [Table of Contents](#table-of-contents)
-    - [Tracks](#tracks)
-        - [Tech debt track](#tech-debt-track)
-        - [Ethereum Consensus Track](#ethereum-consensus-track)
-        - [Ethereum Execution Track](#ethereum-execution-track)
-        - [Proving Ethereum track](#proving-ethereum-track)
-        - [Optimization track](#optimization-track)
-        - [User Experience track](#user-experience-track)
-        - [Technical marketing track](#technical-marketing-track)
-        - [ZK and proof systems track](#zk-and-proof-systems-track)
-        - [Multi-party computation MPC track](#multi-party-computation-mpc-track)
-        - [Core crypto track](#core-crypto-track)
-        - [Fully-Homomorphic encryption FHE track](#fully-homomorphic-encryption-fhe-track)
-        - [Post-Quantum cryptography PQC track](#post-quantum-cryptography-pqc-track)
+  - [Table of Contents](#table-of-contents)
+  - [Tracks](#tracks)
+    - [Tech debt track](#tech-debt-track)
+    - [Ethereum Consensus Track](#ethereum-consensus-track)
+    - [Ethereum Execution Track](#ethereum-execution-track)
+    - [Proving Ethereum track](#proving-ethereum-track)
+    - [Optimization track](#optimization-track)
+    - [User Experience track](#user-experience-track)
+    - [Technical marketing track](#technical-marketing-track)
+    - [ZK and proof systems track](#zk-and-proof-systems-track)
+    - [Multi-party computation (MPC) track](#multi-party-computation-mpc-track)
+    - [Core crypto track](#core-crypto-track)
+    - [Fully-Homomorphic encryption (FHE) track](#fully-homomorphic-encryption-fhe-track)
+    - [Post-Quantum cryptography (PQC) track](#post-quantum-cryptography-pqc-track)
 
 <!-- /TOC -->
 
@@ -102,21 +102,7 @@ Other tracks are stretch goals, contributions towards them are accepted.
 
 ### User Experience track
 
-- Provide curves_sugar and fields_sugar higher-level with
-  out-of-place functions like `+` and `*`.
-    - They should be tagged {.inline, noInit.} and just forward to the in-place function
-      to guarantee copy elision.
-    - Mention lack of control over stack space
-    - Guaranteed optimization issue
-        - with even up to a dramatic 20% perf:
-            - https://www.reddit.com/r/rust/comments/kfs0oe/comment/ggc0dui/
-            - past Constantine large copy bug:
-                - out-of-place function lead to bad codegen:
-                  - https://github.com/mratsim/constantine/issues/145
-                - https://github.com/nim-lang/Nim/issues/16897
-    - Mention Rust GCE and NRVO / RVO
-    - https://github.com/rust-lang/rust/pull/76986
-    - https://github.com/rust-lang/rfcs/pull/2884
+Create a "Constantine book" to introduce Constantine concepts and walkthrough available protocols.
 
 ### Technical marketing track
 

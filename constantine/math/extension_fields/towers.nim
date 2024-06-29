@@ -2250,5 +2250,43 @@ func inv_vartime*(a: var ExtensionField) {.tags:[VarTime].} =
   ## to affine for elliptic curve
   a.invImpl(a, useVartime = true)
 
+# ############################################################
+#
+#                 Out-of-Place functions
+#
+# ############################################################
+#
+# They SHOULD NOT be used in performance-critical subroutines as compilers
+# tend to generate useless memory moves or have difficulties to minimize stack allocation
+# and our types might be large (Fp12 ...)
+# See: https://github.com/mratsim/constantine/issues/145
+
+func `+`*(a, b: ExtensionField): ExtensionField {.noInit, inline.} =
+  ## Finite Field addition
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.sum(a, b)
+
+func `-`*(a, b: ExtensionField): ExtensionField {.noInit, inline.} =
+  ## Finite Field addition
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.diff(a, b)
+
+func `*`*(a, b: ExtensionField): ExtensionField {.noInit, inline.} =
+  ## Finite Field substraction
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.prod(a, b)
+
 {.pop.} # inline
 {.pop.} # raises no exceptions
