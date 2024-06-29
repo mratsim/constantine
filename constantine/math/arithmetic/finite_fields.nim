@@ -150,7 +150,6 @@ func setMinusOne*(a: var FF) =
   #       Check if the compiler optimizes it away
   a.mres = FF.getMontyPrimeMinus1()
 
-
 func neg*(r: var FF, a: FF) {.meter.} =
   ## Negate modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
@@ -872,3 +871,53 @@ func batchInv_vartime*[F](dst: var openArray[F], source: openArray[F]) {.inline.
 
 func batchInv_vartime*[N: static int, F](dst: var array[N, F], src: array[N, F]) =
   batchInv_vartime(dst.asUnchecked(), src.asUnchecked(), N)
+
+# ############################################################
+#
+#                 Out-of-Place functions
+#
+# ############################################################
+#
+# Except from the constant function getZero, getOne, getMinusOne
+# out-of-place functions are intended for rapid prototyping, debugging and testing.
+#
+# They SHOULD NOT be used in performance-critical subroutines as compilers
+# tend to generate useless memory moves or have difficulties to minimize stack allocation
+# and our types might be large (Fp12 ...)
+# See: https://github.com/mratsim/constantine/issues/145
+
+func getZero*(T: type FF): T {.inline.} =
+  discard
+
+func getOne*(T: type FF): T {.noInit, inline.} =
+  cast[ptr T](T.getMontyOne().unsafeAddr)[]
+
+func getMinusOne*(T: type FF): T {.noInit, inline.} =
+  cast[ptr T](T.getMontyPrimeMinus1().unsafeAddr)[]
+
+func `+`*(a, b: FF): FF {.noInit, inline.} =
+  ## Finite Field addition
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.sum(a, b)
+
+func `-`*(a, b: FF): FF {.noInit, inline.} =
+  ## Finite Field addition
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.diff(a, b)
+
+func `*`*(a, b: FF): FF {.noInit, inline.} =
+  ## Finite Field substraction
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.prod(a, b)

@@ -320,8 +320,7 @@ proc largeField() =
 
     test "fromMont doesn't need a final substraction with 256-bit prime (full word used)":
       block:
-        var a: Fp[Secp256k1]
-        a.mres = Fp[Secp256k1].getMontyPrimeMinus1()
+        let a = Fp[Secp256k1].getOne()
         let expected = BigInt[256].fromHex"0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E"
 
         var r: BigInt[256]
@@ -345,8 +344,7 @@ proc largeField() =
 
     test "fromMont doesn't need a final substraction with 255-bit prime (1 spare bit)":
       block:
-        var a: Fp[Edwards25519]
-        a.mres = Fp[Edwards25519].getMontyPrimeMinus1()
+        let a = Fp[Edwards25519].getOne()
         let expected = BigInt[255].fromHex"0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"
 
         var r: BigInt[255]

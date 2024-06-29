@@ -54,11 +54,11 @@ func mapToCurve_svdw[F, G](
   tv1 *= h2cConst(F.Name, svdw, G, curve_eq_rhs_Z)
   tv2 = tv1
   when F is Fp:
-    tv2 += F(mres: F.getMontyOne())
-    tv1.diff(F(mres: F.getMontyOne()), tv1)
+    tv2 += F.getOne()
+    tv1.diff(F.getOne(), tv1)
   else:
-    tv2.c0 += Fp[F.F.Name](mres: Fp[F.F.Name].getMontyOne())
-    tv1.c0.diff(Fp[F.F.Name](mres: Fp[F.F.Name].getMontyOne()), tv1.c0)
+    tv2.c0 += Fp[F.F.Name].getOne()
+    tv1.c0.diff(Fp[F.F.Name].getOne(), tv1.c0)
     tv1.c1.neg()
   tv3.prod(tv1, tv2)
   tv3.inv()

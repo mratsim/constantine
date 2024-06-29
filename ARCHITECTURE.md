@@ -30,6 +30,24 @@ and prefer mutable out parameters.
    on large inputs like `Fp12[BLS12_381]` 48\*12 bytes = 576 bytes.
 4. As we sometimes return SecretBool or status code, this keeps the API consistent.
 
+Syntactic sugar through out-of-place arithmetic functions like `+` and `*`
+is available for rapid prototyping, testing and debugging.
+
+For elliptic curves, variable time functions are prefixed with a tilde like
+`~+` `~-` and `~*`.
+
+They SHOULD NOT be use in performance-critical or stack space critical
+subroutines.
+- They should be tagged {.inline, noInit.} and just forward to the in-place function
+  to guarantee copy elision. (and even then it's not guaranteed)
+- Issues:
+  - Extremely inefficient codegen in Constantine itself https://github.com/mratsim/constantine/issues/145
+    with useless moves instead of in-place construction.
+  - In other languages like Rust, users have seen a dramatic 20% increase in performance by moving from out-of-place to in-place mutation: https://www.reddit.com/r/rust/comments/kfs0oe/comment/ggc0dui/
+    - And they are struggling with GCE (Guarenteed Copy Elision) and NRVO/RVO(Named) Return Value Optimization
+      - https://github.com/rust-lang/rust/pull/76986
+      - https://github.com/rust-lang/rfcs/pull/2884
+
 ## Code organization
 
 TBD

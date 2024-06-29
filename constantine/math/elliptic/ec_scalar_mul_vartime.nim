@@ -11,6 +11,8 @@ import
   ./ec_shortweierstrass_affine,
   ./ec_shortweierstrass_jacobian,
   ./ec_shortweierstrass_projective,
+  ./ec_twistededwards_affine,
+  ./ec_twistededwards_projective,
   ./ec_endomorphism_accel,
   ./ec_shortweierstrass_batch_ops,
   ./ec_twistededwards_batch_ops,
@@ -409,3 +411,63 @@ func scalarMul_vartime*[EC; Ecaff: not EC](R: var EC, scalar: Fr or BigInt, P: E
   ## Those conditions will be assumed.
   R.fromAffine(P)
   R.scalarMul_vartime(scalar)
+
+# ############################################################
+#
+#                 Out-of-Place functions
+#
+# ############################################################
+#
+# Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+# tend to generate useless memory moves or have difficulties to minimize stack allocation
+# and our types might be large (Fp12 ...)
+# See: https://github.com/mratsim/constantine/issues/145
+
+func `~*`*[EC: EC_ShortW_Jac or EC_ShortW_Prj or EC_TwEdw_Prj](
+      scalar: Fr or BigInt, P: EC): EC {.noInit, inline.} =
+  ## Elliptic Curve variable-time Scalar Multiplication
+  ##
+  ##   R <- [k] P
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.scalarMul_vartime(scalar, P)
+
+func `~*`*[F, G](
+      scalar: Fr or BigInt,
+      P: EC_ShortW_Aff[F, G],
+      T: typedesc[EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G]]
+      ): T {.noInit, inline.} =
+  ## Elliptic Curve variable-time Scalar Multiplication
+  ##
+  ##   R <- [k] P
+  ##
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.scalarMul_vartime(scalar, P)
+
+func `~*`*[F, G](
+      scalar: Fr or BigInt,
+      P: EC_ShortW_Aff[F, G],
+      ): EC_ShortW_Jac[F, G] {.noInit, inline.} =
+  ## Elliptic Curve variable-time Scalar Multiplication
+  ##
+  ##   R <- [k] P
+  ##
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.scalarMul_vartime(scalar, P)

@@ -291,3 +291,55 @@ func scalarMul*[EC; Ecaff: not EC](R: var EC, scalar: Fr or BigInt, P: ECaff) {.
   ## Those will be assumed to maintain constant-time property
   R.fromAffine(P)
   R.scalarMul(scalar)
+
+# ############################################################
+#
+#                 Out-of-Place functions
+#
+# ############################################################
+#
+# Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+# tend to generate useless memory moves or have difficulties to minimize stack allocation
+# and our types might be large (Fp12 ...)
+# See: https://github.com/mratsim/constantine/issues/145
+
+func `*`*[EC: EC_ShortW_Jac or EC_ShortW_Prj or EC_TwEdw_Prj](
+      scalar: Fr or BigInt, P: EC): EC {.noInit, inline.} =
+  ## Elliptic Curve Scalar Multiplication
+  ##
+  ##   R <- [k] P
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.scalarMul(scalar, P)
+
+func `*`*[F, G](
+      scalar: Fr or BigInt,
+      P: EC_ShortW_Aff[F, G],
+      T: typedesc[EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G]]
+      ): T {.noInit, inline.} =
+  ## Elliptic Curve Scalar Multiplication
+  ##
+  ##   R <- [k] P
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.scalarMul(scalar, P)
+
+func `*`*[F, G](
+      scalar: Fr or BigInt,
+      P: EC_ShortW_Aff[F, G]
+      ): EC_ShortW_Jac[F, G] {.noInit, inline.} =
+  ## Elliptic Curve Scalar Multiplication
+  ##
+  ##   R <- [k] P
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.scalarMul(scalar, P)
