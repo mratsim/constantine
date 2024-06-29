@@ -61,6 +61,24 @@ ctt_evm_status ctt_eth_evm_sha256(
     ) __attribute__((warn_unused_result));
 
 /**
+ *  Helper for `eth_evm_modexp`. Returns the size required to be allocated based on the
+ *  given input. Call this function first, then allocate space for the result buffer
+ *  in the call to `eth_evm_modexp` based on this function's result.
+ *
+ *  The size depends on the `modulusLen`, which is the third 32 bytes,
+ *  `inputs == [baseLen { 32 bytes }, exponentLen { 32 bytes }, modulusLen { 32 bytes }, ... ]`
+ *  in `inputs`.
+ *
+ *  The associated modulus length in bytes is the size required by the
+ *  result to `eth_evm_modexp`.
+ */
+ctt_evm_status ctt_modexp_result_size(
+    uint64_t* size,
+    const byte* inputs, size_t inputs_len
+) __attribute__((warn_unused_result));
+
+
+/**
  *  Modular exponentiation
  *
  *  Name: MODEXP
