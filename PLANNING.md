@@ -34,7 +34,6 @@ Other tracks are stretch goals, contributions towards them are accepted.
 ### Tech debt track
 
 - Endomorphism splitting bounds guarantee: i.e. division-based vs lattice-based splitting
-- Fix optimized MSM
 
 ### Ethereum Consensus Track
 
@@ -66,7 +65,6 @@ Other tracks are stretch goals, contributions towards them are accepted.
 - KZG point precompile
 - Verkle Tries
   - Finish IPA for Verkle Tries:
-    - Fix verification outside AddressSanitizer
     - Full test suite coverage https://github.com/mratsim/constantine/issues/396
     - Fix multiproofs
     - Add IPA and multiproofs to benchmark to compare with other implementations
@@ -94,6 +92,8 @@ Other tracks are stretch goals, contributions towards them are accepted.
 
 - ARM assembly
 - Finish Nvidia GPU codegenerator up to MSM
+- Implement a backend for prime moduli of special form with fast reduction
+  that don't need Montgomery form
 - Implement an unsaturated finite fields backend for Risc-V, WASM, WebGPU, AMD GPU, Apple Metal, Vulkan, ...
     - ideally in LLVM IR so that pristine Risc-V assembly can be generated
       and used in zkVMs without any risk of C stdlib or syscalls being used
@@ -184,7 +184,7 @@ Long-term, unspecified:
 - Implement lattice-based RLWE: Ring-Learning-With-Errors
 
 Long-term, unspecified:
-- Privacy-perserving machine learning
+- Privacy-preserving machine learning
 
 ### Post-Quantum cryptography (PQC) track
 
