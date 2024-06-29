@@ -763,28 +763,24 @@ func TestVerifyBlobKzgProofBatchParallel(t *testing.T) {
 
 // To be removed. This is the C example ported
 func TestExampleCBlsSig(t *testing.T) {
-	var secKey EthBlsSecKey
 	str := "Security pb becomes key mgmt pb!"
 	var rawSecKey [32]byte
 	copy(rawSecKey[:], str)
-	status, err := secKey.Deserialize(rawSecKey)
-	fmt.Println("deserialized: Status: ", status, " err = ", err)
+	secKey, err := DeserializeSecKey(rawSecKey)
+	fmt.Println("deserialized: err = ", err)
 
 	// Derive the matching public key
-	var pubKey EthBlsPubKey
-	pubKey.DerivePubKey(secKey)
+	pubKey := DerivePubKey(secKey)
 
 	// Sign a message
-	var message [32]byte
-	sha256.Hash(&message, []byte("Mr F was here"), false)
+	message := sha256.Hash([]byte("Mr F was here"), false)
 
 	fmt.Println("message: ", message)
-	var sig EthBlsSignature
-	sig.Sign(secKey, message[:])
-	fmt.Println("signed: status", status, " err = ", err)
+	sig := Sign(secKey, message[:])
+	fmt.Println("signed:  err = ", err)
 
 	// Verify that a signature is valid for a message under the provided public key
-	status, err = pubKey.Verify(message[:], sig)
+	status, err := pubKey.Verify(message[:], sig)
 	fmt.Println("verified: status", status, " err = ", err)
 
 	// try to use batch verify; We just reuse the data from above 3 times
@@ -812,11 +808,11 @@ var (
 // These types correspond to the serialized pub/sec keys / signatures
 // (and test messages / test outputs)
 type (
-	EthBlsPubKeyRaw    [48]byte
-	EthBlsSignatureRaw [96]byte
-	EthBlsSecKeyRaw    [32]byte
-	EthBlsMessage      [32]byte
-	EthBlsTestOutput   [96]byte
+	EthBlsPubKeyRaw    Bytes48
+	EthBlsSignatureRaw Bytes96
+	EthBlsSecKeyRaw    Bytes32
+	EthBlsMessage      Bytes32
+	EthBlsTestOutput   Bytes96
 )
 
 // Helpers to convert the strings from the JSON files to bytes
@@ -865,23 +861,19 @@ func TestDeserializeG1(t *testing.T) {
 				return
 			}
 
-			var pk EthBlsPubKey
-			var status bool
-			status, err = pk.DeserializeCompressed(rawPk)
+			pk, err := DeserializePubKeyCompressed(Bytes48(rawPk))
 
-			if status {
-				var s [48]byte
-				status, err = pk.SerializeCompressed(&s)
+			if err == nil {
+				s, err := pk.SerializeCompressed()
 				if err != nil {
 					require.Nil(t, test.Output)
 				}
-				require.True(t, status)
 				require.Equal(t, s[:], rawPk[:])
-				// The status now must be the same as the expected output
-				require.Equal(t, status, test.Output)
+				// Indicates test is supposed to pass
+				require.Equal(t, true, test.Output)
 			} else {
-				// sanity check the output matches status
-				require.Equal(t, status, test.Output)
+				// Indicates test is supposed to fail
+				require.Equal(t, false, test.Output)
 			}
 		})
 	}
@@ -912,23 +904,19 @@ func TestDeserializeG2(t *testing.T) {
 				return
 			}
 
-			var sig EthBlsSignature
-			var status bool
-			status, err = sig.DeserializeCompressed(rawSig)
+			sig, err := DeserializeSignatureCompressed(Bytes96(rawSig))
 
-			if status {
-				var s [96]byte
-				status, err = sig.SerializeCompressed(&s)
+			if err == nil {
+				s, err := sig.SerializeCompressed()
 				if err != nil {
 					require.Nil(t, test.Output)
 				}
-				require.True(t, status)
 				require.Equal(t, s[:], rawSig[:])
-				// The status now must be the same as the expected output
-				require.Equal(t, status, test.Output)
+				// Indicates test intends to pass
+				require.Equal(t, true, test.Output)
 			} else {
-				// sanity check the output matches status
-				require.Equal(t, status, test.Output)
+				// Indicates test is supposed to fail
+				require.Equal(t, false, test.Output)
 			}
 		})
 	}
@@ -972,34 +960,30 @@ func TestSign(t *testing.T) {
 				return
 			}
 
-			var secKey EthBlsSecKey
-			var status bool
-			status, err = secKey.Deserialize(rawSecKey)
-			var sig EthBlsSignature
-			if !status {
+			secKey, err := DeserializeSecKey(Bytes32(rawSecKey))
+			if err != nil {
 				// sanity check the output matches status
 				require.Equal(t, test.Output, "") // one file: has `null` JSON value
 				//require.Equal(t, status, test.Output)
-				sig.Sign(secKey, msg[:])
+				_ = Sign(secKey, msg[:])
 			} else {
 				// sign the message
-				sig.Sign(secKey, msg[:])
+				sig := Sign(secKey, msg[:])
 				{ // deserialiaze output for extra codec testing
-					var output EthBlsSignature
-					status, err = output.DeserializeCompressed(tOut)
+					output, err := DeserializeSignatureCompressed(Bytes96(tOut))
 					if err != nil {
 						require.Nil(t, test.Output)
 						return
 					}
-					status = sig.AreEqual(output)
+					status := sig.AreEqual(output)
 					if !status { // signatures mismatch
-						var sigBytes [96]byte
-						var roundTrip [96]byte
-						sb_status, _ := sig.SerializeCompressed(&sigBytes)
-						rt_status, _ := output.SerializeCompressed(&roundTrip)
+						var sigBytes Bytes96
+						var roundTrip Bytes96
+						sigBytes, sb_err := sig.SerializeCompressed()
+						roundTrip, rt_err := output.SerializeCompressed()
 						fmt.Println("\nResult signature differs from expected \n",
-							"   computed:  0x", sigBytes, " (", sb_status, ")\n",
-							"   roundtrip: 0x", roundTrip, " (", rt_status, ")\n",
+							"   computed:  0x", sigBytes, " (", sb_err, ")\n",
+							"   roundtrip: 0x", roundTrip, " (", rt_err, ")\n",
 							"   expected:  0x", test.Output,
 						)
 						require.True(t, false) // fail the test case
@@ -1008,8 +992,7 @@ func TestSign(t *testing.T) {
 
 				}
 				{ // serialize result for extra codec testing
-					var sigBytes [96]byte
-					status, err = sig.SerializeCompressed(&sigBytes)
+					sigBytes, err := sig.SerializeCompressed()
 					if err != nil {
 						require.Nil(t, test.Output)
 						return
@@ -1057,32 +1040,30 @@ func TestVerify(t *testing.T) {
 				return
 			}
 
-			var status bool
-			var sig EthBlsSignature
-			var pk EthBlsPubKey
-			{ // testChecks
-				status, err = pk.DeserializeCompressed(rawPk)
-				if err != nil {
-					require.Nil(t, test.Output)
-					return
-				}
-				status, err = sig.DeserializeCompressed(rawSig)
-				if err != nil { // expected this verification fails?
-					require.Equal(t, status, test.Output)
-					return
-				}
-				var msg EthBlsMessage
-				err = msg.UnmarshalText([]byte(test.Input.Message))
-				if err != nil {
-					require.Nil(t, test.Output)
-					return
-				}
-				status, err = pk.Verify(msg[:], sig)
 
-				if err != nil { // expected this verification fails?
-					require.Equal(t, status, test.Output)
-					return
-				}
+			// Test checks
+			var status bool
+			pk, err := DeserializePubKeyCompressed(Bytes48(rawPk))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+			sig, err := DeserializeSignatureCompressed(Bytes96(rawSig))
+			if err != nil { // expected this verification fails?
+				require.Equal(t, false, test.Output)
+				return
+			}
+			var msg EthBlsMessage
+			err = msg.UnmarshalText([]byte(test.Input.Message))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+			status, err = pk.Verify(msg[:], sig)
+
+			if err != nil { // expected this verification fails?
+				require.Equal(t, status, test.Output)
+				return
 			}
 			if status != test.Output {
 				fmt.Println("Verification differs from expected \n",
@@ -1093,24 +1074,20 @@ func TestVerify(t *testing.T) {
 				return
 			} else if status {
 				{
-					var output [48]byte
-					status, err = pk.SerializeCompressed(&output)
+					output, err := pk.SerializeCompressed()
 					if err != nil {
 						require.Nil(t, test.Output)
 						return
 					}
 					require.Equal(t, output[:], rawPk[:])
-					return
 				}
 				{
-					var output [96]byte
-					status, err = sig.SerializeCompressed(&output)
+					output, err := sig.SerializeCompressed()
 					if err != nil {
 						require.Nil(t, test.Output)
 						return
 					}
 					require.Equal(t, output[:], rawSig[:])
-					return
 				}
 			}
 		})
@@ -1155,16 +1132,14 @@ func TestFastAggregateVerify(t *testing.T) {
 			var status bool
 			{ // testChecks
 				for _, rawPk := range rawPks {
-					var pk EthBlsPubKey
-					status, err = pk.DeserializeCompressed(rawPk)
+					pk, err := DeserializePubKeyCompressed(Bytes48(rawPk))
 					if err != nil {
 						require.Equal(t, status, test.Output)
 						return
 					}
 					pks = append(pks, pk)
 				}
-				var sig EthBlsSignature
-				status, err = sig.DeserializeCompressed(rawSig)
+				sig, err := DeserializeSignatureCompressed(Bytes96(rawSig))
 				if err != nil {
 					require.Equal(t, status, test.Output)
 					return
@@ -1316,8 +1291,7 @@ func TestBatchVerify(t *testing.T) {
 			{ // testChecks
 				var pks []EthBlsPubKey
 				for _, rawPk := range rawPks {
-					var pk EthBlsPubKey
-					status, err = pk.DeserializeCompressed(rawPk)
+					pk, err := DeserializePubKeyCompressed(Bytes48(rawPk))
 					if err != nil {
 						require.Equal(t, status, test.Output)
 						return
@@ -1326,8 +1300,7 @@ func TestBatchVerify(t *testing.T) {
 				}
 				var sigs []EthBlsSignature
 				for _, rawSig := range rawSigs {
-					var sig EthBlsSignature
-					status, err = sig.DeserializeCompressed(rawSig)
+					sig, err := DeserializeSignatureCompressed(Bytes96(rawSig))
 					if err != nil {
 						require.Equal(t, status, test.Output)
 						return
@@ -1344,8 +1317,7 @@ func TestBatchVerify(t *testing.T) {
 					}
 					msgs = append(msgs, msg[:])
 				}
-				var randomBytes [32]byte
-				sha256.Hash(&randomBytes, []byte("totally non-secure source of entropy"), false)
+				randomBytes := sha256.Hash([]byte("totally non-secure source of entropy"), false)
 
 				// Now batch verify using SoA API
 				status, err = BatchVerifySoA(pks, msgs[:], sigs, randomBytes)
@@ -1399,10 +1371,8 @@ func TestSha256(t *testing.T) {
 		require.True(t, false)
 	}
 
-	var r [32]byte
-
-	status, err := EvmSha256(&r, inputBytes)
-	if status != true {
+	r, err := EvmSha256(inputBytes)
+	if err != nil {
 		require.True(t, false)
 	}
 
