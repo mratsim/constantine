@@ -844,7 +844,7 @@ func eth_evm_bls12381_g1msm*(r: var openArray[byte], inputs: openarray[byte]): C
   ##   cttEVM_PointNotOnCurve
   ##
   ## Spec https://eips.ethereum.org/EIPS/eip-2537
-  if inputs.len mod 160 != 0:
+  if inputs.len == 0 or inputs.len mod 160 != 0:
     return cttEVM_InvalidInputSize
 
   if r.len != 128:
@@ -927,7 +927,7 @@ func eth_evm_bls12381_g2msm*(r: var openArray[byte], inputs: openarray[byte]): C
   ##   cttEVM_PointNotOnCurve
   ##
   ## Spec https://eips.ethereum.org/EIPS/eip-2537
-  if inputs.len mod 288 != 0:
+  if inputs.len == 0 or inputs.len mod 288 != 0:
     return cttEVM_InvalidInputSize
 
   if r.len != 256:
