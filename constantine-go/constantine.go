@@ -325,26 +325,35 @@ type (
 	EthBlsSignature C.ctt_eth_bls_signature
 )
 
+
+// Several byte array aliases used for BLS sigs and EVM prec.
+type (
+	Bytes32         [32]byte // serialized secret key
+	Bytes48         [48]byte // compressed, serialized public key
+	Bytes96         [96]byte // compressed, serialized signature
+)
+
 func (pub EthBlsPubKey) IsZero() bool {
 	status := C.ctt_eth_bls_pubkey_is_zero((*C.ctt_eth_bls_pubkey)(&pub))
 	return bool(status)
 }
 
-func (sec *EthBlsSecKey) Deserialize(src [32]byte) (bool, error) {
-	status := C.ctt_eth_bls_deserialize_seckey((*C.ctt_eth_bls_seckey)(sec),
+func DeserializeSecKey(src Bytes32) (sec EthBlsSecKey, err error) {
+	status := C.ctt_eth_bls_deserialize_seckey((*C.ctt_eth_bls_seckey)(&sec),
 		(*C.byte)(&src[0]),
 	)
 	if status != C.cttCodecScalar_Success {
-		err := errors.New(
+		err = errors.New(
 			C.GoString(C.ctt_codec_scalar_status_to_string(status)),
 		)
-		return false, err
+		return sec, err
 	}
-	return true, nil
+	return sec, nil
 }
 
-func (pub *EthBlsPubKey) DerivePubKey(sec EthBlsSecKey) {
-	C.ctt_eth_bls_derive_pubkey((*C.ctt_eth_bls_pubkey)(pub), (*C.ctt_eth_bls_seckey)(&sec))
+func DerivePubKey(sec EthBlsSecKey) (pub EthBlsPubKey) {
+	C.ctt_eth_bls_derive_pubkey((*C.ctt_eth_bls_pubkey)(&pub), (*C.ctt_eth_bls_seckey)(&sec))
+	return pub
 }
 
 func (pub *EthBlsPubKey) Verify(message []byte, sig EthBlsSignature) (bool, error) {
@@ -381,135 +390,136 @@ func (sig1 EthBlsSignature) AreEqual(sig2 EthBlsSignature) bool {
 	return bool(status)
 }
 
-func (sec *EthBlsSecKey) Validate() (bool, error) {
+func (sec *EthBlsSecKey) Validate() (err error) {
 	status := C.ctt_eth_bls_validate_seckey((*C.ctt_eth_bls_seckey)(sec))
 	if status != C.cttCodecScalar_Success {
-		err := errors.New(
+		err = errors.New(
 			C.GoString(C.ctt_codec_scalar_status_to_string(status)),
 		)
-		return false, err
+		return err
 	}
-	return true, nil
+	return nil
 }
 
-func (pub *EthBlsPubKey) Validate() (bool, error) {
+func (pub *EthBlsPubKey) Validate() (err error) {
 	status := C.ctt_eth_bls_validate_pubkey((*C.ctt_eth_bls_pubkey)(pub))
 	if status != C.cttCodecEcc_Success {
-		err := errors.New(
+		err = errors.New(
 			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
 		)
-		return false, err
+		return err
 	}
-	return true, nil
+	return nil
 }
 
-func (sig *EthBlsSignature) Validate() (bool, error) {
+func (sig *EthBlsSignature) Validate() (err error) {
 	status := C.ctt_eth_bls_validate_signature((*C.ctt_eth_bls_signature)(sig))
 	if status != C.cttCodecEcc_Success {
 		err := errors.New(
 			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
 		)
-		return false, err
+		return err
 	}
-	return true, nil
+	return nil
 }
 
-func (sec *EthBlsSecKey) Serialize(dst *[32]byte) (bool, error) {
-	status := C.ctt_eth_bls_serialize_seckey((*C.byte)(unsafe.Pointer(dst)),
+func (sec *EthBlsSecKey) Serialize() (dst Bytes32, err error) {
+	status := C.ctt_eth_bls_serialize_seckey((*C.byte)(unsafe.Pointer(&dst)),
 		(*C.ctt_eth_bls_seckey)(sec),
 	)
 	if status != C.cttCodecScalar_Success {
 		err := errors.New(
 			C.GoString(C.ctt_codec_scalar_status_to_string(status)),
 		)
-		return false, err
+		return dst, err
 	}
-	return true, nil
+	return dst, nil
 }
 
-func (pub *EthBlsPubKey) SerializeCompressed(dst *[48]byte) (bool, error) {
-	status := C.ctt_eth_bls_serialize_pubkey_compressed((*C.byte)(unsafe.Pointer(dst)),
+func (pub *EthBlsPubKey) SerializeCompressed() (dst Bytes48, err error) {
+	status := C.ctt_eth_bls_serialize_pubkey_compressed((*C.byte)(unsafe.Pointer(&dst)),
 		(*C.ctt_eth_bls_pubkey)(pub),
 	)
 	if status != C.cttCodecEcc_Success {
 		err := errors.New(
 			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
 		)
-		return false, err
+		return dst, err
 	}
-	return true, nil
+	return dst, nil
 }
 
-func (sig *EthBlsSignature) SerializeCompressed(dst *[96]byte) (bool, error) {
-	status := C.ctt_eth_bls_serialize_signature_compressed((*C.byte)(unsafe.Pointer(dst)),
+func (sig *EthBlsSignature) SerializeCompressed() (dst Bytes96, err error) {
+	status := C.ctt_eth_bls_serialize_signature_compressed((*C.byte)(unsafe.Pointer(&dst)),
 		(*C.ctt_eth_bls_signature)(sig),
 	)
 	if status != C.cttCodecEcc_Success {
 		err := errors.New(
 			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
 		)
-		return false, err
+		return dst, err
 	}
-	return true, nil
+	return dst, nil
 }
 
-func (pub *EthBlsPubKey) DeserializeCompressedUnchecked(src [48]byte) (bool, error) {
-	status := C.ctt_eth_bls_deserialize_pubkey_compressed_unchecked((*C.ctt_eth_bls_pubkey)(pub),
+func DeserializePubKeyCompressedUnchecked(src Bytes48) (pub EthBlsPubKey, err error) {
+	status := C.ctt_eth_bls_deserialize_pubkey_compressed_unchecked((*C.ctt_eth_bls_pubkey)(&pub),
 		(*C.byte)(&src[0]),
 	)
 	if status != C.cttCodecEcc_Success {
 		err := errors.New(
 			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
 		)
-		return false, err
+		return pub, err
 	}
-	return true, nil
+	return pub, nil
 }
 
-func (sig *EthBlsSignature) DeserializeCompressedUnchecked(src [96]byte) (bool, error) {
-	status := C.ctt_eth_bls_deserialize_signature_compressed_unchecked((*C.ctt_eth_bls_signature)(sig),
+func DeserializeSignatureCompressedUnchecked(src Bytes96) (sig EthBlsSignature, err error) {
+	status := C.ctt_eth_bls_deserialize_signature_compressed_unchecked((*C.ctt_eth_bls_signature)(&sig),
 		(*C.byte)(&src[0]),
 	)
 	if status != C.cttCodecEcc_Success {
 		err := errors.New(
 			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
 		)
-		return false, err
+		return sig, err
 	}
-	return true, nil
+	return sig, nil
 }
 
-func (pub *EthBlsPubKey) DeserializeCompressed(src [48]byte) (bool, error) {
-	status := C.ctt_eth_bls_deserialize_pubkey_compressed((*C.ctt_eth_bls_pubkey)(pub),
+func DeserializePubKeyCompressed(src Bytes48) (pub EthBlsPubKey, err error) {
+	status := C.ctt_eth_bls_deserialize_pubkey_compressed((*C.ctt_eth_bls_pubkey)(&pub),
 		(*C.byte)(&src[0]),
 	)
 	if status != C.cttCodecEcc_Success && status != C.cttCodecEcc_PointAtInfinity {
 		err := errors.New(
 			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
 		)
-		return false, err
+		return pub, err
 	}
-	return true, nil
+	return pub, nil
 }
 
-func (sig *EthBlsSignature) DeserializeCompressed(src [96]byte) (bool, error) {
-	status := C.ctt_eth_bls_deserialize_signature_compressed((*C.ctt_eth_bls_signature)(sig),
+func DeserializeSignatureCompressed(src Bytes96) (sig EthBlsSignature, err error) {
+	status := C.ctt_eth_bls_deserialize_signature_compressed((*C.ctt_eth_bls_signature)(&sig),
 		(*C.byte)(&src[0]),
 	)
 	if status != C.cttCodecEcc_Success && status != C.cttCodecEcc_PointAtInfinity {
 		err := errors.New(
 			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
 		)
-		return false, err
+		return sig, err
 	}
-	return true, nil
+	return sig, nil
 }
 
-func (sig *EthBlsSignature) Sign(sec EthBlsSecKey, message []byte) {
-	C.ctt_eth_bls_sign((*C.ctt_eth_bls_signature)(sig), (*C.ctt_eth_bls_seckey)(&sec),
+func Sign(sec EthBlsSecKey, message []byte) (sig EthBlsSignature) {
+	C.ctt_eth_bls_sign((*C.ctt_eth_bls_signature)(&sig), (*C.ctt_eth_bls_seckey)(&sec),
 		(*C.byte)(getAddr(message)),
 		(C.size_t)(len(message)),
 	)
+	return sig
 }
 
 func FastAggregateVerify(pubkeys []EthBlsPubKey, message []byte, aggregate_sig EthBlsSignature) (bool, error) {
@@ -552,7 +562,7 @@ func ethBlsBatchSigAccumulatorFree(accum ethBlsBatchSigAccumulator) {
 	C.ctt_eth_bls_free_batch_sig_accumulator(accum.ctx)
 }
 
-func (accum ethBlsBatchSigAccumulator) init(secureRandomBytes [32]byte, accumSepTag []byte) {
+func (accum ethBlsBatchSigAccumulator) init(secureRandomBytes Bytes32, accumSepTag []byte) {
 	C.ctt_eth_bls_init_batch_sig_accumulator((*C.ctt_eth_bls_batch_sig_accumulator)(accum.ctx),
 		(*C.byte)(&secureRandomBytes[0]),
 		(*C.byte)(getAddr(accumSepTag)),
@@ -578,7 +588,7 @@ func (accum ethBlsBatchSigAccumulator) finalVerify() bool {
 }
 
 
-func BatchVerifySoA(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthBlsSignature, secureRandomBytes [32]byte) (bool, error) {
+func BatchVerifySoA(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthBlsSignature, secureRandomBytes Bytes32) (bool, error) {
 	if len(pubkeys) == 0 {
 		err := errors.New(
 			C.GoString(
@@ -642,7 +652,7 @@ type BatchVerifyTriplet struct {
 	sig EthBlsSignature
 }
 
-func BatchVerifyAoS(triplets []BatchVerifyTriplet, secureRandomBytes [32]byte) (bool, error) {
+func BatchVerifyAoS(triplets []BatchVerifyTriplet, secureRandomBytes Bytes32) (bool, error) {
 	if len(triplets) == 0 {
 		err := errors.New(
 			C.GoString(
@@ -686,12 +696,14 @@ func BatchVerifyAoS(triplets []BatchVerifyTriplet, secureRandomBytes [32]byte) (
 // --------------------------------
 
 type (
-	Bytes32      [32]byte
-	Bytes64      [64]byte
+	Bytes64     [64]byte
+	Bytes128    [128]byte
+	Bytes256    [256]byte
 )
 
-func EvmSha256(result *[32]byte, inputs []byte) (result Bytes32, err error) {
-	status := C.ctt_eth_evm_sha256((*C.byte)(&result),
+
+func EvmSha256(inputs []byte) (result Bytes32, err error) {
+	status := C.ctt_eth_evm_sha256((*C.byte)(&result[0]),
 		32,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
@@ -700,12 +712,26 @@ func EvmSha256(result *[32]byte, inputs []byte) (result Bytes32, err error) {
 		err := errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
+		return result, err
 	}
+	return result, err
 }
 
-// TODO: similar to Rust, we need a C function to preallocate the result buffer
-func EvmModexp(result []byte, inputs []byte) (result []byte, err error) {
-	status := C.ctt_eth_evm_modexp((*C.byte)(getAddr(result)),
+func EvmModexp(inputs []byte) (result []byte, err error) {
+	var size C.uint64_t
+	// Call Nim function to determine correct size to allocate for `result`
+	status := C.ctt_modexp_result_size(&size,
+		(*C.byte)(getAddr(inputs)),
+		(C.size_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return result, err
+	}
+	result = make([]byte, int(size), int(size))
+	status = C.ctt_eth_evm_modexp((*C.byte)(getAddr(result)),
 		(C.size_t)(len(result)),
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
@@ -714,13 +740,13 @@ func EvmModexp(result []byte, inputs []byte) (result []byte, err error) {
 		err := errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
-		return false, err
+		return result, err
 	}
-	return true, nil
+	return result, nil
 }
 
 func EvmBn254G1Add(inputs []byte) (result Bytes64, err error) {
-	status := C.ctt_eth_evm_bn254_g1add((*C.byte)(&result),
+	status := C.ctt_eth_evm_bn254_g1add((*C.byte)(&result[0]),
 		64,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
@@ -729,28 +755,28 @@ func EvmBn254G1Add(inputs []byte) (result Bytes64, err error) {
 		err := errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
-		return false, err
+		return result, err
 	}
-	return true, nil
+	return result, nil
 }
 
-func EvmBn254G1Mul(inputs []byte) (result Bytes64, error) {
-	status := C.ctt_eth_evm_bn254_g1mul((*C.byte)(&result),
+func EvmBn254G1Mul(inputs []byte) (result Bytes64, err error) {
+	status := C.ctt_eth_evm_bn254_g1mul((*C.byte)(&result[0]),
 		64,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
 	)
 	if status != C.cttEVM_Success {
-		err := errors.New(
+		err = errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
-		return false, err
+		return result, err
 	}
-	return true, nil
+	return result, nil
 }
 
-func EvmBn254G1EcPairingCheck(inputs []byte) (result Bytes32, error) {
-	status := C.ctt_eth_evm_bn254_ecpairingcheck((*C.byte)(&result),
+func EvmBn254G1EcPairingCheck(inputs []byte) (result Bytes32, err error) {
+	status := C.ctt_eth_evm_bn254_ecpairingcheck((*C.byte)(&result[0]),
 		32,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
@@ -759,16 +785,16 @@ func EvmBn254G1EcPairingCheck(inputs []byte) (result Bytes32, error) {
 		err := errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
-		return false, err
+		return result, err
 	}
-	return true, nil
+	return result, nil
 }
 
 // TODO: continue from here
 
-func EvmBls12381G1Add(result []byte, inputs []byte) (bool, error) {
-	status := C.ctt_eth_evm_bls12381_g1add((*C.byte)(getAddr(result)),
-		(C.size_t)(len(result)),
+func EvmBls12381G1Add(inputs []byte) (result Bytes128, err error) {
+	status := C.ctt_eth_evm_bls12381_g1add((*C.byte)(&result[0]),
+		128,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
 	)
@@ -776,14 +802,14 @@ func EvmBls12381G1Add(result []byte, inputs []byte) (bool, error) {
 		err := errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
-		return false, err
+		return result, err
 	}
-	return true, nil
+	return result, nil
 }
 
-func EvmBls12381G1Mul(result []byte, inputs []byte) (bool, error) {
-	status := C.ctt_eth_evm_bls12381_g1mul((*C.byte)(getAddr(result)),
-		(C.size_t)(len(result)),
+func EvmBls12381G1Mul(inputs []byte) (result Bytes128, err error) {
+	status := C.ctt_eth_evm_bls12381_g1mul((*C.byte)(&result[0]),
+		128,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
 	)
@@ -791,14 +817,14 @@ func EvmBls12381G1Mul(result []byte, inputs []byte) (bool, error) {
 		err := errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
-		return false, err
+		return result, err
 	}
-	return true, nil
+	return result, nil
 }
 
-func EvmBls12381G1Msm(result []byte, inputs []byte) (bool, error) {
-	status := C.ctt_eth_evm_bls12381_g1msm((*C.byte)(getAddr(result)),
-		(C.size_t)(len(result)),
+func EvmBls12381G1Msm(inputs []byte) (result Bytes128, err error) {
+	status := C.ctt_eth_evm_bls12381_g1msm((*C.byte)(&result[0]),
+		128,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
 	)
@@ -806,14 +832,14 @@ func EvmBls12381G1Msm(result []byte, inputs []byte) (bool, error) {
 		err := errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
-		return false, err
+		return result, err
 	}
-	return true, nil
+	return result, nil
 }
 
-func EvmBls12381G2Add(result []byte, inputs []byte) (bool, error) {
-	status := C.ctt_eth_evm_bls12381_g2add((*C.byte)(getAddr(result)),
-		(C.size_t)(len(result)),
+func EvmBls12381G2Add(inputs []byte) (result Bytes256, err error) {
+	status := C.ctt_eth_evm_bls12381_g2add((*C.byte)(&result[0]),
+		256,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
 	)
@@ -821,14 +847,14 @@ func EvmBls12381G2Add(result []byte, inputs []byte) (bool, error) {
 		err := errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
-		return false, err
+		return result, err
 	}
-	return true, nil
+	return result, nil
 }
 
-func EvmBls12381G2Mul(result []byte, inputs []byte) (bool, error) {
-	status := C.ctt_eth_evm_bls12381_g2mul((*C.byte)(getAddr(result)),
-		(C.size_t)(len(result)),
+func EvmBls12381G2Mul(inputs []byte) (result Bytes256, err error) {
+	status := C.ctt_eth_evm_bls12381_g2mul((*C.byte)(&result[0]),
+		256,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
 	)
@@ -836,14 +862,14 @@ func EvmBls12381G2Mul(result []byte, inputs []byte) (bool, error) {
 		err := errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
-		return false, err
+		return result, err
 	}
-	return true, nil
+	return result, nil
 }
 
-func EvmBls12381G2Msm(result []byte, inputs []byte) (bool, error) {
-	status := C.ctt_eth_evm_bls12381_g2msm((*C.byte)(getAddr(result)),
-		(C.size_t)(len(result)),
+func EvmBls12381G2Msm(inputs []byte) (result Bytes256, err error) {
+	status := C.ctt_eth_evm_bls12381_g2msm((*C.byte)(&result[0]),
+		256,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
 	)
@@ -851,14 +877,14 @@ func EvmBls12381G2Msm(result []byte, inputs []byte) (bool, error) {
 		err := errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
-		return false, err
+		return result, err
 	}
-	return true, nil
+	return result, nil
 }
 
-func EvmBls12381PairingCheck(result []byte, inputs []byte) (bool, error) {
-	status := C.ctt_eth_evm_bls12381_pairingcheck((*C.byte)(getAddr(result)),
-		(C.size_t)(len(result)),
+func EvmBls12381PairingCheck(inputs []byte) (result Bytes32, err error) {
+	status := C.ctt_eth_evm_bls12381_pairingcheck((*C.byte)(&result[0]),
+		32,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
 	)
@@ -866,14 +892,14 @@ func EvmBls12381PairingCheck(result []byte, inputs []byte) (bool, error) {
 		err := errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
-		return false, err
+		return result, err
 	}
-	return true, nil
+	return result, nil
 }
 
-func EvmBls12381MapFpToG1(result []byte, inputs []byte) (bool, error) {
-	status := C.ctt_eth_evm_bls12381_map_fp_to_g1((*C.byte)(getAddr(result)),
-		(C.size_t)(len(result)),
+func EvmBls12381MapFpToG1(inputs []byte) (result Bytes128, err error) {
+	status := C.ctt_eth_evm_bls12381_map_fp_to_g1((*C.byte)(&result[0]),
+		128,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
 	)
@@ -881,14 +907,14 @@ func EvmBls12381MapFpToG1(result []byte, inputs []byte) (bool, error) {
 		err := errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
-		return false, err
+		return result, err
 	}
-	return true, nil
+	return result, nil
 }
 
-func EvmBls12381MapFp2ToG2(result []byte, inputs []byte) (bool, error) {
-	status := C.ctt_eth_evm_bls12381_map_fp2_to_g2((*C.byte)(getAddr(result)),
-		(C.size_t)(len(result)),
+func EvmBls12381MapFp2ToG2(inputs []byte) (result Bytes256, err error) {
+	status := C.ctt_eth_evm_bls12381_map_fp2_to_g2((*C.byte)(&result[0]),
+		128,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
 	)
@@ -896,7 +922,7 @@ func EvmBls12381MapFp2ToG2(result []byte, inputs []byte) (bool, error) {
 		err := errors.New(
 			C.GoString(C.ctt_evm_status_to_string(status)),
 		)
-		return false, err
+		return result, err
 	}
-	return true, nil
+	return result, nil
 }
