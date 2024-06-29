@@ -8,8 +8,9 @@
 
 import
   # Internals
-  ../../constantine/math/config/[type_ff, curves],
-  ../../constantine/math/ec_shortweierstrass,
+  constantine/named/algebras,
+  constantine/math/ec_shortweierstrass,
+  constantine/math/extension_fields,
   # Test utilities
   ./t_ec_template
 
@@ -18,7 +19,7 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_endomorphism_impl(
-    ec = ECP_ShortW_Jac[Fp2[BLS12_381], G2],
+    ec = EC_ShortW_Jac[Fp2[BLS12_381], G2],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortw_jac_g2_mul_endomorphism_" & $BLS12_381
   )

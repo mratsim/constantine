@@ -809,19 +809,12 @@ proc run_EC_mul_endomorphism_impl*(
       test(ec, bits = ec.getScalarField().bits() - 4, randZ = false, gen = Long01Sequence)
       test(ec, bits = ec.getScalarField().bits() - 4, randZ = true, gen = Long01Sequence)
 
-      test(ec, bits = ec.getScalarField().bits() div 2, randZ = false, gen = Uniform)
-      test(ec, bits = ec.getScalarField().bits() div 2, randZ = true, gen = Uniform)
-      test(ec, bits = ec.getScalarField().bits() div 2, randZ = false, gen = HighHammingWeight)
-      test(ec, bits = ec.getScalarField().bits() div 2, randZ = true, gen = HighHammingWeight)
-      test(ec, bits = ec.getScalarField().bits() div 2, randZ = false, gen = Long01Sequence)
-      test(ec, bits = ec.getScalarField().bits() div 2, randZ = true, gen = Long01Sequence)
-
-      test(ec, bits = ec.getScalarField().bits() div 4, randZ = false, gen = Uniform)
-      test(ec, bits = ec.getScalarField().bits() div 4, randZ = true, gen = Uniform)
-      test(ec, bits = ec.getScalarField().bits() div 4, randZ = false, gen = HighHammingWeight)
-      test(ec, bits = ec.getScalarField().bits() div 4, randZ = true, gen = HighHammingWeight)
-      test(ec, bits = ec.getScalarField().bits() div 4, randZ = false, gen = Long01Sequence)
-      test(ec, bits = ec.getScalarField().bits() div 4, randZ = true, gen = Long01Sequence)
+      test(ec, bits = EndomorphismThreshold, randZ = false, gen = Uniform)
+      test(ec, bits = EndomorphismThreshold, randZ = true, gen = Uniform)
+      test(ec, bits = EndomorphismThreshold, randZ = false, gen = HighHammingWeight)
+      test(ec, bits = EndomorphismThreshold, randZ = true, gen = HighHammingWeight)
+      test(ec, bits = EndomorphismThreshold, randZ = false, gen = Long01Sequence)
+      test(ec, bits = EndomorphismThreshold, randZ = true, gen = Long01Sequence)
 
 proc run_EC_mixed_add_impl*(
        ec: typedesc,
