@@ -401,7 +401,7 @@ proc applyEndomorphism[bits: static int, ECaff](
             elif ECaff.F is Fp2: 4
             else: {.error: "Unconfigured".}
 
-  const L = bits.ceilDiv_vartime(M) + 1
+  const L = ECaff.getScalarField().bits().ceilDiv_vartime(M) + 1
   let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
   let endoBasis    = allocHeapArray(array[M, ECaff], N)
 
@@ -429,7 +429,13 @@ template withEndo[coefsBits: static int, EC, ECaff](
            coefs: ptr UncheckedArray[BigInt[coefsBits]],
            points: ptr UncheckedArray[ECaff],
            N: int, c: static int) =
-  when coefsBits <= EC.getScalarField().bits() and hasEndomorphismAcceleration(EC.F.Name):
+  when hasEndomorphismAcceleration(EC.F.Name) and
+        EndomorphismThreshold <= coefsBits and
+        coefsBits <= EC.getScalarField().bits() and
+        # computeEndomorphism assumes they can be applied to affine repr
+        # but this is not the case for Bandersnatch/wagon
+        # instead Twisted Edwards MSM should be overloaded for Projective/ProjectiveExtended
+        EC.F.Name notin {Bandersnatch, Banderwagon}:
     let (endoCoefs, endoPoints, endoN) = applyEndomorphism(coefs, points, N)
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance

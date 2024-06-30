@@ -48,8 +48,10 @@ template decomposeEndoImpl[scalBits: static int](
        copyMiniScalarsResult: untyped) =
   static: doAssert scalBits >= L, "Cannot decompose a scalar smaller than a mini-scalar or the decomposition coefficient"
   # Equal when no window or no negative handling, greater otherwise
-  static: doAssert L >= ceilDiv_vartime(scalBits, M) + 1
-  const w = Fr[F.Name].bits().wordsRequired()
+  const frBits = Fr[F.Name].bits()
+  static: doAssert frBits >= scalBits
+  static: doAssert L >= ceilDiv_vartime(frBits, M) + 1
+  const w = frBits.wordsRequired()
 
   # Upstream bug:
   #   {.noInit.} variables must be {.inject.} as well
@@ -57,15 +59,15 @@ template decomposeEndoImpl[scalBits: static int](
 
   when M == 2:
     var alphas{.noInit, inject.}: (
-      BigInt[scalBits + babai(F)[0][0].bits],
-      BigInt[scalBits + babai(F)[1][0].bits]
+      BigInt[frBits + babai(F)[0][0].bits],
+      BigInt[frBits + babai(F)[1][0].bits]
     )
   elif M == 4:
     var alphas{.noInit, inject.}: (
-      BigInt[scalBits + babai(F)[0][0].bits],
-      BigInt[scalBits + babai(F)[1][0].bits],
-      BigInt[scalBits + babai(F)[2][0].bits],
-      BigInt[scalBits + babai(F)[3][0].bits]
+      BigInt[frBits + babai(F)[0][0].bits],
+      BigInt[frBits + babai(F)[1][0].bits],
+      BigInt[frBits + babai(F)[2][0].bits],
+      BigInt[frBits + babai(F)[3][0].bits]
     )
   else:
     {.error: "The decomposition degree " & $M & " is not configured".}
@@ -79,9 +81,9 @@ template decomposeEndoImpl[scalBits: static int](
   # We have k0 = s - 𝛼0 b00 - 𝛼1 b10 ... - 𝛼m bm0
   # and     kj = 0 - 𝛼j b0j - 𝛼1 b1j ... - 𝛼m bmj
   var
-    k {.inject.}: array[M, BigInt[scalBits]] # zero-init required
-    alphaB {.noInit, inject.}: BigInt[scalBits]
-  k[0] = scalar
+    k {.inject.}: array[M, BigInt[frBits]] # zero-init required
+    alphaB {.noInit, inject.}: BigInt[frBits]
+  k[0].copyTruncatedFrom(scalar)
   staticFor miniScalarIdx, 0, M:
     staticFor basisIdx, 0, M:
       when not bool lattice(F)[basisIdx][miniScalarIdx][0].isZero():
@@ -342,7 +344,7 @@ func scalarMulEndo*[scalBits; EC](
   endos.computeEndomorphisms(P)
 
   # 2. Decompose scalar into mini-scalars
-  const L = scalBits.ceilDiv_vartime(M) + 1
+  const L = EC.getScalarField().bits().ceilDiv_vartime(M) + 1
   var miniScalars {.noInit.}: array[M, BigInt[L]]
   var negatePoints {.noInit.}: array[M, SecretBool]
   miniScalars.decomposeEndo(negatePoints, scalar, P.F)

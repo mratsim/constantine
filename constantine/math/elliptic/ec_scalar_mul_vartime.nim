@@ -262,7 +262,7 @@ func scalarMulEndo_minHammingWeight_windowed_vartime*[scalBits: static int; EC](
   endos.computeEndomorphisms(P)
 
   # 2. Decompose scalar into mini-scalars
-  const L = scalBits.ceilDiv_vartime(M) + 1
+  const L = EC.getScalarField().bits().ceilDiv_vartime(M) + 1
   var miniScalars {.noInit.}: array[M, BigInt[L]]
   var negatePoints {.noInit.}: array[M, SecretBool]
   miniScalars.decomposeEndo(negatePoints, scalar, EC.F)
@@ -340,16 +340,16 @@ func scalarMul_vartime*[scalBits; EC](P: var EC, scalar: BigInt[scalBits]) {.met
 
   let usedBits = scalar.limbs.getBits_LE_vartime()
 
-  when scalBits == EC.getScalarField().bits() and
-       EC.F.Name.hasEndomorphismAcceleration():
-    if usedBits >= L:
-      when EC.F is Fp:
-        P.scalarMulEndo_minHammingWeight_windowed_vartime(scalar, window = 4)
-      elif EC.F is Fp2:
-        P.scalarMulEndo_minHammingWeight_windowed_vartime(scalar, window = 3)
-      else: # Curves defined on Fp^m with m > 2
-        {.error: "Unreachable".}
-      return
+  when EC.F.Name.hasEndomorphismAcceleration():
+    when scalBits >= EndomorphismThreshold: # Skip static: doAssert when multiplying by intentionally small scalars.
+      if usedBits >= EndomorphismThreshold:
+        when EC.F is Fp:
+          P.scalarMulEndo_minHammingWeight_windowed_vartime(scalar, window = 4)
+        elif EC.F is Fp2:
+          P.scalarMulEndo_minHammingWeight_windowed_vartime(scalar, window = 3)
+        else: # Curves defined on Fp^m with m > 2
+          {.error: "Unreachable".}
+        return
 
   if 64 < usedBits:
     # With a window of 5, we precompute 2^3 = 8 points

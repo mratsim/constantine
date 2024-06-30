@@ -105,9 +105,8 @@ func computeEndomorphisms*[EC; M: static int](endos: var array[M-1, EC], P: EC) 
 
 func hasEndomorphismAcceleration*(Name: static Algebra): bool {.compileTime.} =
   Name in {
-    # TODO: MSM assumes that endomorphism can be computed with affine coordinates
-    # Bandersnatch,
-    # Banderwagon,
+    Bandersnatch,
+    Banderwagon,
     BN254_Nogami,
     BN254_Snarks,
     BLS12_377,
@@ -117,9 +116,9 @@ func hasEndomorphismAcceleration*(Name: static Algebra): bool {.compileTime.} =
     Vesta
   }
 
-const EndomorphismThreshold* = 196
+const EndomorphismThreshold* = 192
   ## We use substraction by maximum infinity norm coefficient
   ## to split scalars for endomorphisms
-  ## For small scalars the substraction will overflow
   ##
-  ## TODO: implement an alternative way to split scalars.
+  ## TODO: explore an alternative way to split scalars, for example via division
+  ## https://github.com/mratsim/constantine/issues/347
