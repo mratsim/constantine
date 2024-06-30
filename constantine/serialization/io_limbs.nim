@@ -63,8 +63,17 @@ func unmarshalLE[T](
 
     # if full, dump
     if acc_len >= wordBitWidth:
-      if dst_idx == dst.len:
-        return false
+      if dst_idx == dst.len: # return, however check if all remaining
+        # elements are 0 (more significant bits beyond `src_idx`)
+        # For example, given a
+        # `src = "DDCCBBAA0000"`
+        # and a 4 byte LittleEndian `BigInt`, `src` is fine, because the most
+        # significant two bytes are all zero.
+        var allZero = true
+        for jidx in src_idx ..< dst.len:
+          if src[jidx] != 0: allZero = false
+        if allZero: return true
+        else: return false
 
       dst[dst_idx] = acc
       inc dst_idx
@@ -118,8 +127,17 @@ func unmarshalBE[T](
 
     # if full, dump
     if acc_len >= wordBitWidth:
-      if dst_idx == dst.len:
-        return false
+      if dst_idx == dst.len: # return, however check if all remaining
+        # elements are 0 (more significant bits beyond `src_idx-1`)
+        # For examplle, given a
+        # `src = "0000AABBCCDD"`
+        # and a 4 byte BigEndian `BigInt`, `src` is fine, because the most
+        # significant two bytes are all zero.
+        var allZero = true
+        for jidx in countdown(src_idx, 0):
+          if src[jidx] != 0: allZero = false
+        if allZero: return true
+        else: return false
 
       dst[dst_idx] = acc
       inc dst_idx
