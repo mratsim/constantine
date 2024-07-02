@@ -6,12 +6,12 @@
 //!   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 //! at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-use constantine_sys::ctt_evm_status;
 use constantine_ethereum_evm_precompiles::*;
+use constantine_sys::ctt_evm_status;
 
 use ::core::mem::MaybeUninit;
 use std::fs;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 
 use glob::glob;
 use hex;
@@ -28,36 +28,38 @@ macro_rules! test_dir {
     };
 }
 
-const MODEXP_TESTS: &str                 = concat!(test_dir!(), "modexp.json");
-const MODEXP_EIP2565_TESTS: &str         = concat!(test_dir!(), "modexp_eip2565.json");
+const MODEXP_TESTS: &str = concat!(test_dir!(), "modexp.json");
+const MODEXP_EIP2565_TESTS: &str = concat!(test_dir!(), "modexp_eip2565.json");
 
-const BN256ADD_TESTS: &str               = concat!(test_dir!(), "bn256Add.json");
-const BN256SCALARMUL_TESTS: &str         = concat!(test_dir!(), "bn256ScalarMul.json");
-const BN256PAIRING_TESTS: &str           = concat!(test_dir!(), "bn256Pairing.json");
+const BN256ADD_TESTS: &str = concat!(test_dir!(), "bn256Add.json");
+const BN256SCALARMUL_TESTS: &str = concat!(test_dir!(), "bn256ScalarMul.json");
+const BN256PAIRING_TESTS: &str = concat!(test_dir!(), "bn256Pairing.json");
 
-const ADD_G1_BLS_TESTS: &str             = concat!(test_dir!(), "eip-2537/add_G1_bls.json");
-const FAIL_ADD_G1_BLS_TESTS: &str        = concat!(test_dir!(), "eip-2537/fail-add_G1_bls.json");
-const ADD_G2_BLS_TESTS: &str             = concat!(test_dir!(), "eip-2537/add_G2_bls.json");
-const FAIL_ADD_G2_BLS_TESTS: &str        = concat!(test_dir!(), "eip-2537/fail-add_G2_bls.json");
+const ADD_G1_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/add_G1_bls.json");
+const FAIL_ADD_G1_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/fail-add_G1_bls.json");
+const ADD_G2_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/add_G2_bls.json");
+const FAIL_ADD_G2_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/fail-add_G2_bls.json");
 
-const MUL_G1_BLS_TESTS: &str             = concat!(test_dir!(), "eip-2537/mul_G1_bls.json");
-const FAIL_MUL_G1_BLS_TESTS: &str        = concat!(test_dir!(), "eip-2537/fail-mul_G1_bls.json");
-const MUL_G2_BLS_TESTS: &str             = concat!(test_dir!(), "eip-2537/mul_G2_bls.json");
-const FAIL_MUL_G2_BLS_TESTS: &str        = concat!(test_dir!(), "eip-2537/fail-mul_G2_bls.json");
+const MUL_G1_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/mul_G1_bls.json");
+const FAIL_MUL_G1_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/fail-mul_G1_bls.json");
+const MUL_G2_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/mul_G2_bls.json");
+const FAIL_MUL_G2_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/fail-mul_G2_bls.json");
 
-const MULTIEXP_G1_BLS_TESTS: &str        = concat!(test_dir!(), "eip-2537/multiexp_G1_bls.json");
-const FAIL_MULTIEXP_G1_BLS_TESTS: &str   = concat!(test_dir!(), "eip-2537/fail-multiexp_G1_bls.json");
-const MULTIEXP_G2_BLS_TESTS: &str        = concat!(test_dir!(), "eip-2537/multiexp_G2_bls.json");
-const FAIL_MULTIEXP_G2_BLS_TESTS: &str   = concat!(test_dir!(), "eip-2537/fail-multiexp_G2_bls.json");
+const MULTIEXP_G1_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/multiexp_G1_bls.json");
+const FAIL_MULTIEXP_G1_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/fail-multiexp_G1_bls.json");
+const MULTIEXP_G2_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/multiexp_G2_bls.json");
+const FAIL_MULTIEXP_G2_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/fail-multiexp_G2_bls.json");
 
-const PAIRING_CHECK_BLS_TESTS: &str      = concat!(test_dir!(), "eip-2537/pairing_check_bls.json");
-const FAIL_PAIRING_CHECK_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/fail-pairing_check_bls.json");
+const PAIRING_CHECK_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/pairing_check_bls.json");
+const FAIL_PAIRING_CHECK_BLS_TESTS: &str =
+    concat!(test_dir!(), "eip-2537/fail-pairing_check_bls.json");
 
-const MAP_FP_TO_G1_BLS_TESTS: &str       = concat!(test_dir!(), "eip-2537/map_fp_to_G1_bls.json");
-const FAIL_MAP_FP_TO_G1_BLS_TESTS: &str  = concat!(test_dir!(), "eip-2537/fail-map_fp_to_G1_bls.json");
-const MAP_FP2_TO_G2_BLS_TESTS: &str      = concat!(test_dir!(), "eip-2537/map_fp2_to_G2_bls.json");
-const FAIL_MAP_FP2_TO_G2_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/fail-map_fp2_to_G2_bls.json");
-
+const MAP_FP_TO_G1_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/map_fp_to_G1_bls.json");
+const FAIL_MAP_FP_TO_G1_BLS_TESTS: &str =
+    concat!(test_dir!(), "eip-2537/fail-map_fp_to_G1_bls.json");
+const MAP_FP2_TO_G2_BLS_TESTS: &str = concat!(test_dir!(), "eip-2537/map_fp2_to_G2_bls.json");
+const FAIL_MAP_FP2_TO_G2_BLS_TESTS: &str =
+    concat!(test_dir!(), "eip-2537/fail-map_fp2_to_G2_bls.json");
 
 type HexString = String;
 
@@ -74,8 +76,6 @@ struct PrecompileTest {
     #[serde(default)]
     NoBenchmark: bool,
 }
-
-type TestFunction = fn(&mut [u8], &[u8]) -> Result<(), ctt_evm_status>;
 
 fn from_hex(hex: HexString) -> Option<Vec<u8>> {
     // data does not always have `0x` prefix in JSON files!
@@ -94,8 +94,44 @@ fn from_hex(hex: HexString) -> Option<Vec<u8>> {
     }
 }
 
+trait CompareReturn {
+    fn compare(self, v: Vec<u8>) -> bool;
+}
 
-fn t_generate(test_name: String, func: TestFunction) {
+impl CompareReturn for [u8; 32] {
+    fn compare(self, v: Vec<u8>) -> bool {
+        return self.to_vec() == v;
+    }
+}
+
+impl CompareReturn for [u8; 64] {
+    fn compare(self, v: Vec<u8>) -> bool {
+        return self.to_vec() == v;
+    }
+}
+
+impl CompareReturn for [u8; 128] {
+    fn compare(self, v: Vec<u8>) -> bool {
+        return self.to_vec() == v;
+    }
+}
+
+impl CompareReturn for [u8; 256] {
+    fn compare(self, v: Vec<u8>) -> bool {
+        return self.to_vec() == v;
+    }
+}
+
+impl CompareReturn for Vec<u8> {
+    fn compare(self, v: Vec<u8>) -> bool {
+        return self == v;
+    }
+}
+
+fn t_generate<T: CompareReturn, F>(test_name: String, func: F)
+where
+    F: Fn(&[u8]) -> Result<T, ctt_evm_status>,
+{
     type TestVectors = Vec<PrecompileTest>;
 
     let unparsed = fs::read_to_string(&test_name).unwrap();
@@ -109,17 +145,27 @@ fn t_generate(test_name: String, func: TestFunction) {
 
         let input = vector.Input;
         let expected = vector.Expected;
-        let expected_error = vector.ExpectedError;
 
-        let input_bytes = from_hex(input)
-            .expect("Test failed; input bytes could not be unmarshaled.");
-        let expected_bytes = from_hex(expected);
+        // TODO: Needs to be fixed after Nim parsing logic is fixed
 
-            // Call the test function
+        // let expected_error = vector.ExpectedError;
+
+        let input_bytes =
+            from_hex(input).expect("Test failed; input bytes could not be unmarshaled.");
+        // Call the test function
         let result = func(&input_bytes);
-        match status {
-            Ok(_) => assert!(r == expected_bytes.unwrap()),
-            Err(_) => assert!(expected_error.is_some()),
+        match result {
+            Ok(r) => {
+                assert!(expected.is_some());
+                let expected_bytes = from_hex(expected.unwrap());
+                assert!(r.compare(expected_bytes.unwrap()))
+            }
+            Err(_) => {
+                if expected.is_some() {
+                    println!("expected ? {:#?} for test {}", expected, vector.Name);
+                }
+                assert!(expected.is_none());
+            } //assert!(expected_error.is_some()),
         };
     }
 }
