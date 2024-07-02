@@ -466,7 +466,7 @@ func DeserializePubKeyCompressedUnchecked(src Bytes48) (pub EthBlsPubKey, err er
 	status := C.ctt_eth_bls_deserialize_pubkey_compressed_unchecked((*C.ctt_eth_bls_pubkey)(&pub),
 		(*C.byte)(&src[0]),
 	)
-	if status != C.cttCodecEcc_Success {
+	if status != C.cttCodecEcc_Success && status != C.cttCodecEcc_PointAtInfinity {
 		err := errors.New(
 			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
 		)
@@ -479,7 +479,7 @@ func DeserializeSignatureCompressedUnchecked(src Bytes96) (sig EthBlsSignature, 
 	status := C.ctt_eth_bls_deserialize_signature_compressed_unchecked((*C.ctt_eth_bls_signature)(&sig),
 		(*C.byte)(&src[0]),
 	)
-	if status != C.cttCodecEcc_Success {
+	if status != C.cttCodecEcc_Success && status != C.cttCodecEcc_PointAtInfinity {
 		err := errors.New(
 			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
 		)
