@@ -763,28 +763,24 @@ func TestVerifyBlobKzgProofBatchParallel(t *testing.T) {
 
 // To be removed. This is the C example ported
 func TestExampleCBlsSig(t *testing.T) {
-	var secKey EthBlsSecKey
 	str := "Security pb becomes key mgmt pb!"
 	var rawSecKey [32]byte
 	copy(rawSecKey[:], str)
-	status, err := secKey.Deserialize(rawSecKey)
-	fmt.Println("deserialized: Status: ", status, " err = ", err)
+	secKey, err := DeserializeSecKey(rawSecKey)
+	fmt.Println("deserialized: err = ", err)
 
 	// Derive the matching public key
-	var pubKey EthBlsPubKey
-	pubKey.DerivePubKey(secKey)
+	pubKey := DerivePubKey(secKey)
 
 	// Sign a message
-	var message [32]byte
-	sha256.Hash(&message, []byte("Mr F was here"), false)
+	message := sha256.Hash([]byte("Mr F was here"), false)
 
 	fmt.Println("message: ", message)
-	var sig EthBlsSignature
-	sig.Sign(secKey, message[:])
-	fmt.Println("signed: status", status, " err = ", err)
+	sig := Sign(secKey, message[:])
+	fmt.Println("signed:  err = ", err)
 
 	// Verify that a signature is valid for a message under the provided public key
-	status, err = pubKey.Verify(message[:], sig)
+	status, err := pubKey.Verify(message[:], sig)
 	fmt.Println("verified: status", status, " err = ", err)
 
 	// try to use batch verify; We just reuse the data from above 3 times
@@ -812,11 +808,11 @@ var (
 // These types correspond to the serialized pub/sec keys / signatures
 // (and test messages / test outputs)
 type (
-	EthBlsPubKeyRaw    [48]byte
-	EthBlsSignatureRaw [96]byte
-	EthBlsSecKeyRaw    [32]byte
-	EthBlsMessage      [32]byte
-	EthBlsTestOutput   [96]byte
+	EthBlsPubKeyRaw    Bytes48
+	EthBlsSignatureRaw Bytes96
+	EthBlsSecKeyRaw    Bytes32
+	EthBlsMessage      Bytes32
+	EthBlsTestOutput   Bytes96
 )
 
 // Helpers to convert the strings from the JSON files to bytes
@@ -865,23 +861,19 @@ func TestDeserializeG1(t *testing.T) {
 				return
 			}
 
-			var pk EthBlsPubKey
-			var status bool
-			status, err = pk.DeserializeCompressed(rawPk)
+			pk, err := DeserializePubKeyCompressed(Bytes48(rawPk))
 
-			if status {
-				var s [48]byte
-				status, err = pk.SerializeCompressed(&s)
+			if err == nil {
+				s, err := pk.SerializeCompressed()
 				if err != nil {
 					require.Nil(t, test.Output)
 				}
-				require.True(t, status)
 				require.Equal(t, s[:], rawPk[:])
-				// The status now must be the same as the expected output
-				require.Equal(t, status, test.Output)
+				// Indicates test is supposed to pass
+				require.Equal(t, true, test.Output)
 			} else {
-				// sanity check the output matches status
-				require.Equal(t, status, test.Output)
+				// Indicates test is supposed to fail
+				require.Equal(t, false, test.Output)
 			}
 		})
 	}
@@ -912,23 +904,19 @@ func TestDeserializeG2(t *testing.T) {
 				return
 			}
 
-			var sig EthBlsSignature
-			var status bool
-			status, err = sig.DeserializeCompressed(rawSig)
+			sig, err := DeserializeSignatureCompressed(Bytes96(rawSig))
 
-			if status {
-				var s [96]byte
-				status, err = sig.SerializeCompressed(&s)
+			if err == nil {
+				s, err := sig.SerializeCompressed()
 				if err != nil {
 					require.Nil(t, test.Output)
 				}
-				require.True(t, status)
 				require.Equal(t, s[:], rawSig[:])
-				// The status now must be the same as the expected output
-				require.Equal(t, status, test.Output)
+				// Indicates test intends to pass
+				require.Equal(t, true, test.Output)
 			} else {
-				// sanity check the output matches status
-				require.Equal(t, status, test.Output)
+				// Indicates test is supposed to fail
+				require.Equal(t, false, test.Output)
 			}
 		})
 	}
@@ -972,34 +960,30 @@ func TestSign(t *testing.T) {
 				return
 			}
 
-			var secKey EthBlsSecKey
-			var status bool
-			status, err = secKey.Deserialize(rawSecKey)
-			var sig EthBlsSignature
-			if !status {
+			secKey, err := DeserializeSecKey(Bytes32(rawSecKey))
+			if err != nil {
 				// sanity check the output matches status
 				require.Equal(t, test.Output, "") // one file: has `null` JSON value
 				//require.Equal(t, status, test.Output)
-				sig.Sign(secKey, msg[:])
+				_ = Sign(secKey, msg[:])
 			} else {
 				// sign the message
-				sig.Sign(secKey, msg[:])
+				sig := Sign(secKey, msg[:])
 				{ // deserialiaze output for extra codec testing
-					var output EthBlsSignature
-					status, err = output.DeserializeCompressed(tOut)
+					output, err := DeserializeSignatureCompressed(Bytes96(tOut))
 					if err != nil {
 						require.Nil(t, test.Output)
 						return
 					}
-					status = sig.AreEqual(output)
+					status := sig.AreEqual(output)
 					if !status { // signatures mismatch
-						var sigBytes [96]byte
-						var roundTrip [96]byte
-						sb_status, _ := sig.SerializeCompressed(&sigBytes)
-						rt_status, _ := output.SerializeCompressed(&roundTrip)
+						var sigBytes Bytes96
+						var roundTrip Bytes96
+						sigBytes, sb_err := sig.SerializeCompressed()
+						roundTrip, rt_err := output.SerializeCompressed()
 						fmt.Println("\nResult signature differs from expected \n",
-							"   computed:  0x", sigBytes, " (", sb_status, ")\n",
-							"   roundtrip: 0x", roundTrip, " (", rt_status, ")\n",
+							"   computed:  0x", sigBytes, " (", sb_err, ")\n",
+							"   roundtrip: 0x", roundTrip, " (", rt_err, ")\n",
 							"   expected:  0x", test.Output,
 						)
 						require.True(t, false) // fail the test case
@@ -1008,8 +992,7 @@ func TestSign(t *testing.T) {
 
 				}
 				{ // serialize result for extra codec testing
-					var sigBytes [96]byte
-					status, err = sig.SerializeCompressed(&sigBytes)
+					sigBytes, err := sig.SerializeCompressed()
 					if err != nil {
 						require.Nil(t, test.Output)
 						return
@@ -1057,32 +1040,30 @@ func TestVerify(t *testing.T) {
 				return
 			}
 
-			var status bool
-			var sig EthBlsSignature
-			var pk EthBlsPubKey
-			{ // testChecks
-				status, err = pk.DeserializeCompressed(rawPk)
-				if err != nil {
-					require.Nil(t, test.Output)
-					return
-				}
-				status, err = sig.DeserializeCompressed(rawSig)
-				if err != nil { // expected this verification fails?
-					require.Equal(t, status, test.Output)
-					return
-				}
-				var msg EthBlsMessage
-				err = msg.UnmarshalText([]byte(test.Input.Message))
-				if err != nil {
-					require.Nil(t, test.Output)
-					return
-				}
-				status, err = pk.Verify(msg[:], sig)
 
-				if err != nil { // expected this verification fails?
-					require.Equal(t, status, test.Output)
-					return
-				}
+			// Test checks
+			var status bool
+			pk, err := DeserializePubKeyCompressed(Bytes48(rawPk))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+			sig, err := DeserializeSignatureCompressed(Bytes96(rawSig))
+			if err != nil { // expected this verification fails?
+				require.Equal(t, false, test.Output)
+				return
+			}
+			var msg EthBlsMessage
+			err = msg.UnmarshalText([]byte(test.Input.Message))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+			status, err = pk.Verify(msg[:], sig)
+
+			if err != nil { // expected this verification fails?
+				require.Equal(t, status, test.Output)
+				return
 			}
 			if status != test.Output {
 				fmt.Println("Verification differs from expected \n",
@@ -1093,24 +1074,20 @@ func TestVerify(t *testing.T) {
 				return
 			} else if status {
 				{
-					var output [48]byte
-					status, err = pk.SerializeCompressed(&output)
+					output, err := pk.SerializeCompressed()
 					if err != nil {
 						require.Nil(t, test.Output)
 						return
 					}
 					require.Equal(t, output[:], rawPk[:])
-					return
 				}
 				{
-					var output [96]byte
-					status, err = sig.SerializeCompressed(&output)
+					output, err := sig.SerializeCompressed()
 					if err != nil {
 						require.Nil(t, test.Output)
 						return
 					}
 					require.Equal(t, output[:], rawSig[:])
-					return
 				}
 			}
 		})
@@ -1155,16 +1132,14 @@ func TestFastAggregateVerify(t *testing.T) {
 			var status bool
 			{ // testChecks
 				for _, rawPk := range rawPks {
-					var pk EthBlsPubKey
-					status, err = pk.DeserializeCompressed(rawPk)
+					pk, err := DeserializePubKeyCompressed(Bytes48(rawPk))
 					if err != nil {
 						require.Equal(t, status, test.Output)
 						return
 					}
 					pks = append(pks, pk)
 				}
-				var sig EthBlsSignature
-				status, err = sig.DeserializeCompressed(rawSig)
+				sig, err := DeserializeSignatureCompressed(Bytes96(rawSig))
 				if err != nil {
 					require.Equal(t, status, test.Output)
 					return
@@ -1316,8 +1291,7 @@ func TestBatchVerify(t *testing.T) {
 			{ // testChecks
 				var pks []EthBlsPubKey
 				for _, rawPk := range rawPks {
-					var pk EthBlsPubKey
-					status, err = pk.DeserializeCompressed(rawPk)
+					pk, err := DeserializePubKeyCompressed(Bytes48(rawPk))
 					if err != nil {
 						require.Equal(t, status, test.Output)
 						return
@@ -1326,8 +1300,7 @@ func TestBatchVerify(t *testing.T) {
 				}
 				var sigs []EthBlsSignature
 				for _, rawSig := range rawSigs {
-					var sig EthBlsSignature
-					status, err = sig.DeserializeCompressed(rawSig)
+					sig, err := DeserializeSignatureCompressed(Bytes96(rawSig))
 					if err != nil {
 						require.Equal(t, status, test.Output)
 						return
@@ -1344,8 +1317,7 @@ func TestBatchVerify(t *testing.T) {
 					}
 					msgs = append(msgs, msg[:])
 				}
-				var randomBytes [32]byte
-				sha256.Hash(&randomBytes, []byte("totally non-secure source of entropy"), false)
+				randomBytes := sha256.Hash([]byte("totally non-secure source of entropy"), false)
 
 				// Now batch verify using SoA API
 				status, err = BatchVerifySoA(pks, msgs[:], sigs, randomBytes)
@@ -1399,10 +1371,8 @@ func TestSha256(t *testing.T) {
 		require.True(t, false)
 	}
 
-	var r [32]byte
-
-	status, err := EvmSha256(&r, inputBytes)
-	if status != true {
+	r, err := EvmSha256(inputBytes)
+	if err != nil {
 		require.True(t, false)
 	}
 
@@ -1453,151 +1423,288 @@ type PrecompileTest struct {
 	NoBenchmark bool
 }
 
-func loadVectors(fname string) (result []PrecompileTest) {
+func loadVectors(fname string) (result []PrecompileTest, status bool) {
 	var test []PrecompileTest
 
 	testFile, err := os.Open(fname)
 	err = json.NewDecoder(testFile).Decode(&test)
 	if err != nil {
-		fmt.Println("hehe")
+		return test, false
 	}
 
-	return test
+	return test, true
 }
 
-type TestFunction func([]byte, []byte) (bool, error)
+func parseTest(vec PrecompileTest) (inputBytes []byte, expectedBytes []byte, success bool) {
+	input := vec.Input
+	expected := vec.Expected
+
+	inputBytes = make([]byte, len(input)/2, len(input)/2)
+	expectedBytes = make([]byte, len(expected)/2, len(expected)/2)
+
+	err := fromHexImpl(inputBytes[:], []byte(input))
+	if err != nil {
+		return inputBytes, expectedBytes, false
+	}
+	err = fromHexImpl(expectedBytes[:], []byte(expected))
+	if err != nil {
+		return inputBytes, expectedBytes, false
+	}
+
+	return inputBytes, expectedBytes, true
+}
+
+type TF func([]byte) ([]byte, error)
+type TF32 func([]byte) (Bytes32, error)
+type TF64 func([]byte) (Bytes64, error)
+type TF128 func([]byte) (Bytes128, error)
+type TF256 func([]byte) (Bytes256, error)
 
 // Helper function to simplify the test generation. No need to duplicate test logic, all the same
-func runTest(t *testing.T, testPath string, fn TestFunction) {
+func runTestSlice(t *testing.T, testPath string, fn TF) {
 	fmt.Println("Running test for path: ", testPath)
 	tests, _ := filepath.Glob(testPath)
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			// Load from the given path
-			vectors := loadVectors(testPath)
+			vectors, pStatus := loadVectors(testPath)
+			if !pStatus {
+				require.True(t, false)
+			}
 			for _, vec := range vectors {
 				fmt.Println("Running test case: ", vec.Name)
 
-				input := vec.Input
-				expected := vec.Expected
-
-				var inputBytes []byte
-				inputBytes = make([]byte, len(input)/2, len(input)/2)
-				var expectedBytes []byte
-				expectedBytes = make([]byte, len(expected)/2, len(expected)/2)
-
-				err := fromHexImpl(inputBytes[:], []byte(input))
-				if err != nil {
+				inputBytes, expectedBytes, status := parseTest(vec)
+				if !status {
 					require.True(t, false)
 				}
-				err = fromHexImpl(expectedBytes[:], []byte(expected))
-				if err != nil {
-					require.True(t, false)
-				}
-
-				r := make([]byte, len(expected)/2, len(expected)/2)
 
 				// Call the test function
-				status, err := fn(r, inputBytes)
-				if status != true {
-					for i := range r { // reset to 0 (expected might be an empty array)
-						r[i] = '0'
-					}
+				r, err := fn(inputBytes)
+				if err != nil {
+					// in this case expected should be empty
+					require.Equal(t, expectedBytes[:], r[:])
+				} else {
+					require.Equal(t, expectedBytes[:], r[:])
 				}
-				require.Equal(t, r[:], expectedBytes[:])
+			}
+		})
+	}
+}
+
+func runTestB32(t *testing.T, testPath string, fn TF32) {
+	fmt.Println("Running test for path: ", testPath)
+	tests, _ := filepath.Glob(testPath)
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			// Load from the given path
+			vectors, pStatus := loadVectors(testPath)
+			if !pStatus {
+				require.True(t, false)
+			}
+			for _, vec := range vectors {
+				fmt.Println("Running test case: ", vec.Name)
+
+				inputBytes, expectedBytes, status := parseTest(vec)
+				if !status {
+					require.True(t, false)
+				}
+
+				// Call the test function
+				r, err := fn(inputBytes)
+				if err != nil {
+					// in this case expected should be empty
+					require.Equal(t, 0, len(expectedBytes))
+				} else {
+					require.Equal(t, expectedBytes[:], r[:])
+				}
+			}
+		})
+	}
+}
+
+func runTestB64(t *testing.T, testPath string, fn TF64) {
+	fmt.Println("Running test for path: ", testPath)
+	tests, _ := filepath.Glob(testPath)
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			// Load from the given path
+			vectors, pStatus := loadVectors(testPath)
+			if !pStatus {
+				require.True(t, false)
+			}
+			for _, vec := range vectors {
+				fmt.Println("Running test case: ", vec.Name)
+
+				inputBytes, expectedBytes, status := parseTest(vec)
+				if !status {
+					require.True(t, false)
+				}
+
+
+				// Call the test function
+				r, err := fn(inputBytes)
+				if err != nil {
+					// in this case expected should be empty
+					require.Equal(t, 0, len(expectedBytes))
+				} else {
+					require.Equal(t, expectedBytes[:], r[:])
+				}
+			}
+		})
+	}
+}
+
+func runTestB128(t *testing.T, testPath string, fn TF128) {
+	fmt.Println("Running test for path: ", testPath)
+	tests, _ := filepath.Glob(testPath)
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			// Load from the given path
+			vectors, pStatus := loadVectors(testPath)
+			if !pStatus {
+				require.True(t, false)
+			}
+			for _, vec := range vectors {
+				fmt.Println("Running test case: ", vec.Name)
+
+				inputBytes, expectedBytes, status := parseTest(vec)
+				if !status {
+					require.True(t, false)
+				}
+
+				// Call the test function
+				r, err := fn(inputBytes)
+				if err != nil {
+					// in this case expected should be empty
+					require.Equal(t, 0, len(expectedBytes))
+				} else {
+					require.Equal(t, expectedBytes[:], r[:])
+				}
+			}
+		})
+	}
+}
+
+func runTestB256(t *testing.T, testPath string, fn TF256) {
+	fmt.Println("Running test for path: ", testPath)
+	tests, _ := filepath.Glob(testPath)
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			// Load from the given path
+			vectors, pStatus := loadVectors(testPath)
+			if !pStatus {
+				require.True(t, false)
+			}
+			for _, vec := range vectors {
+				fmt.Println("Running test case: ", vec.Name)
+
+				inputBytes, expectedBytes, status := parseTest(vec)
+				if !status {
+					require.True(t, false)
+				}
+
+				// Call the test function
+				r, err := fn(inputBytes)
+				if err != nil {
+					// in this case expected should be empty
+					require.Equal(t, 0, len(expectedBytes))
+				} else {
+					require.Equal(t, expectedBytes[:], r[:])
+				}
 			}
 		})
 	}
 }
 
 func TestModexp(t *testing.T) {
-	runTest(t, modexp_tests, EvmModexp)
+	runTestSlice(t, modexp_tests, EvmModexp)
 }
 
 func TestModexpEip2565(t *testing.T) {
-	runTest(t, modexp_eip2565_tests, EvmModexp)
+	runTestSlice(t, modexp_eip2565_tests, EvmModexp)
 }
 
 func TestBn256Add(t *testing.T) {
-	runTest(t, bn256Add_tests, EvmBn254G1Add)
+	runTestB64(t, bn256Add_tests, EvmBn254G1Add)
 }
 
 func TestBn256ScalarMul(t *testing.T) {
-	runTest(t, bn256ScalarMul_tests, EvmBn254G1Mul)
+	runTestB64(t, bn256ScalarMul_tests, EvmBn254G1Mul)
 }
 
 func TestBn256Pairing(t *testing.T) {
-	runTest(t, bn256Pairing_tests, EvmBn254G1EcPairingCheck)
+	runTestB32(t, bn256Pairing_tests, EvmBn254G1EcPairingCheck)
 }
 
 func TestAddG1Bls(t *testing.T) {
-	runTest(t, add_G1_bls_tests, EvmBls12381G1Add)
+	runTestB128(t, add_G1_bls_tests, EvmBls12381G1Add)
 }
 
 func TestFailAddG1Bls(t *testing.T) {
-	runTest(t, fail_add_G1_bls_tests, EvmBls12381G1Add)
+	runTestB128(t, fail_add_G1_bls_tests, EvmBls12381G1Add)
 }
 
 func TestAddG2Bls(t *testing.T) {
-	runTest(t, add_G2_bls_tests, EvmBls12381G2Add)
+	runTestB256(t, add_G2_bls_tests, EvmBls12381G2Add)
 }
 
 func TestFailAddG2Bls(t *testing.T) {
-	runTest(t, fail_add_G2_bls_tests, EvmBls12381G2Add)
+	runTestB256(t, fail_add_G2_bls_tests, EvmBls12381G2Add)
 }
 
 func TestMulG1Bls(t *testing.T) {
-	runTest(t, mul_G1_bls_tests, EvmBls12381G1Mul)
+	runTestB128(t, mul_G1_bls_tests, EvmBls12381G1Mul)
 }
 
 func TestFailMulG1Bls(t *testing.T) {
-	runTest(t, fail_mul_G1_bls_tests, EvmBls12381G1Mul)
+	runTestB128(t, fail_mul_G1_bls_tests, EvmBls12381G1Mul)
 }
 
 func TestMulG2Bls(t *testing.T) {
-	runTest(t, mul_G2_bls_tests, EvmBls12381G2Mul)
+	runTestB256(t, mul_G2_bls_tests, EvmBls12381G2Mul)
 }
 
 func TestFailMulG2Bls(t *testing.T) {
-	runTest(t, fail_mul_G2_bls_tests, EvmBls12381G2Mul)
+	runTestB256(t, fail_mul_G2_bls_tests, EvmBls12381G2Mul)
 }
 
 func TestMsmG1Bls(t *testing.T) {
-	runTest(t, multiexp_G1_bls_tests, EvmBls12381G1Msm)
+	runTestB128(t, multiexp_G1_bls_tests, EvmBls12381G1Msm)
 }
 
 func TestFailMsmG1Bls(t *testing.T) {
-	runTest(t, fail_multiexp_G1_bls_tests, EvmBls12381G1Msm)
+	runTestB128(t, fail_multiexp_G1_bls_tests, EvmBls12381G1Msm)
 }
 
 func TestMsmG2Bls(t *testing.T) {
-	runTest(t, multiexp_G2_bls_tests, EvmBls12381G2Msm)
+	runTestB256(t, multiexp_G2_bls_tests, EvmBls12381G2Msm)
 }
 
 func TestFailMsmG2Bls(t *testing.T) {
-	runTest(t, fail_multiexp_G2_bls_tests, EvmBls12381G2Msm)
+	runTestB256(t, fail_multiexp_G2_bls_tests, EvmBls12381G2Msm)
 }
 
 func TestPairingCheckBls(t *testing.T) {
-	runTest(t, pairing_check_bls_tests, EvmBls12381PairingCheck)
+	runTestB32(t, pairing_check_bls_tests, EvmBls12381PairingCheck)
 }
 
 func TestFailPairingCheckBls(t *testing.T) {
-	runTest(t, fail_pairing_check_bls_tests, EvmBls12381PairingCheck)
+	runTestB32(t, fail_pairing_check_bls_tests, EvmBls12381PairingCheck)
 }
 
 func TestMapFpToG1Bls(t *testing.T) {
-	runTest(t, map_fp_to_G1_bls_tests, EvmBls12381MapFpToG1)
+	runTestB128(t, map_fp_to_G1_bls_tests, EvmBls12381MapFpToG1)
 }
 
 func TestFailMapFpToG1Bls(t *testing.T) {
-	runTest(t, fail_map_fp_to_G1_bls_tests, EvmBls12381MapFpToG1)
+	runTestB128(t, fail_map_fp_to_G1_bls_tests, EvmBls12381MapFpToG1)
 }
 
 func TestMapFp2ToG2Bls(t *testing.T) {
-	runTest(t, map_fp2_to_G2_bls_tests, EvmBls12381MapFp2ToG2)
+	runTestB256(t, map_fp2_to_G2_bls_tests, EvmBls12381MapFp2ToG2)
 }
 
 func TestFailMapFp2ToG2Bls(t *testing.T) {
-	runTest(t, fail_map_fp2_to_G2_bls_tests, EvmBls12381MapFp2ToG2)
+	runTestB256(t, fail_map_fp2_to_G2_bls_tests, EvmBls12381MapFp2ToG2)
 }

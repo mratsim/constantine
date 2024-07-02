@@ -60,6 +60,31 @@ func eth_evm_sha256*(r: var openArray[byte], inputs: openArray[byte]): CttEVMSta
   sha256.hash(cast[ptr array[32, byte]](r[0].addr)[], inputs)
   return cttEVM_Success
 
+func modexp_result_size*(size: var uint64, inputs: openArray[byte]): CttEVMStatus {.noInline, tags:[Alloca, Vartime], libPrefix: prefix_ffi, meter.} =
+  ## Helper for `eth_evm_modexp`. Returns the size required to be allocated based on the
+  ## given input. Call this function first, then allocate space for the result buffer
+  ## in the call to `eth_evm_modexp` based on the value stored in `size` after the call.
+  ##
+  ## The size depends on the `modulusLen`, which is the third 32 bytes,
+  ## `inputs == [baseLen { 32 bytes }, exponentLen { 32 bytes }, modulusLen { 32 bytes }, ... ]`
+  ## in `inputs`.
+  ##
+  ## The associated modulus length in bytes is the size required by the
+  ## result to `eth_evm_modexp`.
+  # Auto-pad with zero
+  var paddedLengths: array[96, byte]
+  paddedLengths.rawCopy(0, inputs, 0, min(inputs.len, paddedLengths.len))
+
+  let
+    mL = BigInt[256].unmarshal(paddedLengths.toOpenArray(64, 95), bigEndian)
+    maxSize = BigInt[256].fromUint(high(uint)) # A CPU can only address up to high(uint)
+  if bool(mL > maxSize):
+    return cttEVM_InvalidInputSize
+
+  let modulusByteLen = cast[int](mL.limbs[0])
+  size = uint64(modulusByteLen)
+  result = cttEVM_Success
+
 func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.noInline, tags:[Alloca, Vartime], libPrefix: prefix_ffi, meter.} =
   ## Modular exponentiation
   ##
@@ -819,7 +844,7 @@ func eth_evm_bls12381_g1msm*(r: var openArray[byte], inputs: openarray[byte]): C
   ##   cttEVM_PointNotOnCurve
   ##
   ## Spec https://eips.ethereum.org/EIPS/eip-2537
-  if inputs.len mod 160 != 0:
+  if inputs.len == 0 or inputs.len mod 160 != 0:
     return cttEVM_InvalidInputSize
 
   if r.len != 128:
@@ -902,7 +927,7 @@ func eth_evm_bls12381_g2msm*(r: var openArray[byte], inputs: openarray[byte]): C
   ##   cttEVM_PointNotOnCurve
   ##
   ## Spec https://eips.ethereum.org/EIPS/eip-2537
-  if inputs.len mod 288 != 0:
+  if inputs.len == 0 or inputs.len mod 288 != 0:
     return cttEVM_InvalidInputSize
 
   if r.len != 256:

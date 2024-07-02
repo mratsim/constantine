@@ -48,6 +48,23 @@ subroutines.
       - https://github.com/rust-lang/rust/pull/76986
       - https://github.com/rust-lang/rfcs/pull/2884
 
+### Error codes, and Result
+
+In low-level C, everything is return through status codes.
+
+In Rust, status is communicated through `Result<Output, Error>`
+In particular for verification, Errors are used if the protocol is not followed:
+- wrong input length
+- point not on curve
+- point not in subgroup
+- zero point
+
+However if all those exceptional rules are followed, but verification still fails,
+the failure is communicated through a boolean.
+
+Similarly in Go, errors are used to communicate breaking protocol rules
+and the result of verification is communicated through a bool.
+
 ## Code organization
 
 TBD
