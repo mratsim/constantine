@@ -247,6 +247,7 @@ pub fn evm_bls12381_map_fp_to_g1(inputs: &[u8]) -> Result<[u8; 128], ctt_evm_sta
     }
 }
 
+#[inline]
 pub fn evm_bls12381_map_fp2_to_g2(inputs: &[u8]) -> Result<[u8; 256], ctt_evm_status> {
     let mut result: MaybeUninit<[u8; 256]> = MaybeUninit::uninit();
     unsafe {

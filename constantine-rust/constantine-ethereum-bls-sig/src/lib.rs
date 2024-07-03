@@ -23,13 +23,14 @@ pub fn sha256_hash(message: &[u8], clear_memory: bool) -> [u8; 32] {
         ctt_sha256_hash(
             result.as_mut_ptr() as *mut byte,
             message.as_ptr() as *const byte,
-            message.len() as isize,
+            message.len() as usize,
             clear_memory as bool,
         )
     }
     return result;
 }
 
+#[must_use]
 pub fn derive_pubkey(skey: EthBlsSecKey) -> EthBlsPubKey {
     let mut result: MaybeUninit<EthBlsPubKey> = MaybeUninit::uninit();
     unsafe {
