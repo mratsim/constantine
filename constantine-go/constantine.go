@@ -714,7 +714,7 @@ func EvmSha256(inputs []byte) (result Bytes32, err error) {
 		)
 		return result, err
 	}
-	return result, err
+	return result, nil
 }
 
 func EvmModexp(inputs []byte) (result []byte, err error) {
