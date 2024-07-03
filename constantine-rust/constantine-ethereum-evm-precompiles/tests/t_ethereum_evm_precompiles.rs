@@ -94,42 +94,9 @@ fn from_hex(hex: HexString) -> Option<Vec<u8>> {
     }
 }
 
-trait CompareReturn {
-    fn compare(self, v: Vec<u8>) -> bool;
-}
-
-impl CompareReturn for [u8; 32] {
-    fn compare(self, v: Vec<u8>) -> bool {
-        return self.to_vec() == v;
-    }
-}
-
-impl CompareReturn for [u8; 64] {
-    fn compare(self, v: Vec<u8>) -> bool {
-        return self.to_vec() == v;
-    }
-}
-
-impl CompareReturn for [u8; 128] {
-    fn compare(self, v: Vec<u8>) -> bool {
-        return self.to_vec() == v;
-    }
-}
-
-impl CompareReturn for [u8; 256] {
-    fn compare(self, v: Vec<u8>) -> bool {
-        return self.to_vec() == v;
-    }
-}
-
-impl CompareReturn for Vec<u8> {
-    fn compare(self, v: Vec<u8>) -> bool {
-        return self == v;
-    }
-}
-
-fn t_generate<T: CompareReturn, F>(test_name: String, func: F)
+fn t_generate<T, F>(test_name: String, func: F)
 where
+    T: IntoIterator<Item = u8>,
     F: Fn(&[u8]) -> Result<T, ctt_evm_status>,
 {
     type TestVectors = Vec<PrecompileTest>;
@@ -158,7 +125,7 @@ where
             Ok(r) => {
                 assert!(expected.is_some());
                 let expected_bytes = from_hex(expected.unwrap());
-                assert!(r.compare(expected_bytes.unwrap()))
+                assert!(r.into_iter().collect::<Vec<u8>>() == expected_bytes.unwrap());
             }
             Err(_) => {
                 if expected.is_some() {
