@@ -196,20 +196,59 @@ func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMSta
 # Elliptic Curves
 # ----------------------------------------------------------------
 
-func parseRawUint[Name: static Algebra](
-       dst: var Fp[Name],
-       src: openarray[byte]): CttEVMStatus =
+proc parseEip2537(dst: var Fp[BLS12_381], src: openArray[byte]): CttEvmStatus {.inline.} =
+  ## Parses a curve point following the encoding rules defined in EIP-2537,
+  ## i.e. requiring the input to be exactly 64 bytes, with the 'upper' 16 bytes
+  ## required to be empty.
+  ## The input is required to be a coordinate of a point on the BLS12-381 curve and
+  ## stored in Big Endian format.
+  ##
+  ## For points on the quadratic extension field Fp2 the individual terms are
+  ## byte concatenated and the caller takes care of splitting the input for a
+  ## before calling this.
+  ##
+  ## Ref: https://eips.ethereum.org/EIPS/eip-2537#fine-points-and-encoding-of-base-elements
+
+  var big {.noInit.}: Fp[BLS12_381].getBigInt()
+  if src.len != 64:
+    return cttEVM_InvalidInputSize
+
+  # Parse the subslice of 48 bytes using regular `unmarshal`
+  var success = big.unmarshal(src.toOpenArray(16, 63), bigEndian)
+
+  # Now check that all lower bytes are empty
+  var allZero = success # if `success` already false we still continue
+  for i in 0 ..< 15: # order irrelevant
+    allZero = allZero and (src[i] == 0)
+
+  if not allZero or not bool(big < Fp[BLS12_381].getModulus()):
+    return cttEVM_IntLargerThanModulus
+
+  # assign result
+  dst.fromBig(big)
+  result = cttEVM_Success
+
+func parseRawUint(dst: var Fp[BLS12_381], src: openarray[byte]): CttEVMStatus =
+  ## Parse an unsigned integer from its canonical
+  ## big-endian or little-endian unsigned representation
+  ## And store it into a field element for
+  ##
+  ## Return false if the integer is larger than the field modulus.
+  ## Returns true on success.
+  result = dst.parseEip2537(src)
+
+func parseRawUint(dst: var Fp[BN254_Snarks], src: openarray[byte]): CttEVMStatus =
   ## Parse an unsigned integer from its canonical
   ## big-endian or little-endian unsigned representation
   ## And store it into a field element.
   ##
   ## Return false if the integer is larger than the field modulus.
   ## Returns true on success.
-  var big {.noInit.}: Fp[Name].getBigInt()
+  var big {.noInit.}: Fp[BN254_Snarks].getBigInt()
   if not big.unmarshal(src, bigEndian):
     return cttEVM_IntLargerThanModulus # `dst` too small for `src`!
 
-  if not bool(big < Fp[Name].getModulus()):
+  if not bool(big < Fp[BN254_Snarks].getModulus()):
     return cttEVM_IntLargerThanModulus
 
   dst.fromBig(big)
