@@ -790,8 +790,6 @@ func EvmBn254G1EcPairingCheck(inputs []byte) (result Bytes32, err error) {
 	return result, nil
 }
 
-// TODO: continue from here
-
 func EvmBls12381G1Add(inputs []byte) (result Bytes128, err error) {
 	status := C.ctt_eth_evm_bls12381_g1add((*C.byte)(&result[0]),
 		128,
