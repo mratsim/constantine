@@ -5200,7 +5200,7 @@ extern "C" {
 extern "C" {
     #[must_use]
     #[doc = "  Helper for `eth_evm_modexp`. Returns the size required to be allocated based on the\n  given input. Call this function first, then allocate space for the result buffer\n  in the call to `eth_evm_modexp` based on this function's result.\n\n  The size depends on the `modulusLen`, which is the third 32 bytes,\n  `inputs == [baseLen { 32 bytes }, exponentLen { 32 bytes }, modulusLen { 32 bytes }, ... ]`\n  in `inputs`.\n\n  The associated modulus length in bytes is the size required by the\n  result to `eth_evm_modexp`."]
-    pub fn ctt_modexp_result_size(
+    pub fn ctt_eth_evm_modexp_result_size(
         size: *mut u64,
         inputs: *const byte,
         inputs_len: usize,

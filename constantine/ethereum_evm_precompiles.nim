@@ -60,7 +60,7 @@ func eth_evm_sha256*(r: var openArray[byte], inputs: openArray[byte]): CttEVMSta
   sha256.hash(cast[ptr array[32, byte]](r[0].addr)[], inputs)
   return cttEVM_Success
 
-func modexp_result_size*(size: var uint64, inputs: openArray[byte]): CttEVMStatus {.noInline, tags:[Alloca, Vartime], libPrefix: prefix_ffi, meter.} =
+func eth_evm_modexp_result_size*(size: var uint64, inputs: openArray[byte]): CttEVMStatus {.noInline, tags:[Alloca, Vartime], libPrefix: prefix_ffi, meter.} =
   ## Helper for `eth_evm_modexp`. Returns the size required to be allocated based on the
   ## given input. Call this function first, then allocate space for the result buffer
   ## in the call to `eth_evm_modexp` based on the value stored in `size` after the call.

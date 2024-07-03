@@ -37,7 +37,7 @@ pub fn evm_modexp(inputs: &[u8]) -> Result<Vec<u8>, ctt_evm_status> {
     // Call Nim function to determine correct size to allocate for `result`
     unsafe {
         let mut size = 0u64;
-        let status = ctt_modexp_result_size(
+        let status = ctt_eth_evm_modexp_result_size(
             &mut size,
             inputs.as_ptr() as *const byte,
             inputs.len() as usize,

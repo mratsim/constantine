@@ -72,7 +72,7 @@ ctt_evm_status ctt_eth_evm_sha256(
  *  The associated modulus length in bytes is the size required by the
  *  result to `eth_evm_modexp`.
  */
-ctt_evm_status ctt_modexp_result_size(
+ctt_evm_status ctt_eth_evm_modexp_result_size(
     uint64_t* size,
     const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));

@@ -720,7 +720,7 @@ func EvmSha256(inputs []byte) (result Bytes32, err error) {
 func EvmModexp(inputs []byte) (result []byte, err error) {
 	var size C.uint64_t
 	// Call Nim function to determine correct size to allocate for `result`
-	status := C.ctt_modexp_result_size(&size,
+	status := C.ctt_eth_evm_modexp_result_size(&size,
 		(*C.byte)(getAddr(inputs)),
 		(C.size_t)(len(inputs)),
 	)
