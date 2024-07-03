@@ -205,7 +205,7 @@ fn t_add_g1_bls_tests() {
     t_generate(test_name, evm_bls12381_g1add);
 }
 #[test]
-fn t_fail_add_g1_bls_TESTS() {
+fn t_fail_add_g1_bls_tests() {
     let test_name = FAIL_ADD_G1_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_g1add);
 }
@@ -215,7 +215,7 @@ fn t_add_g2_bls_tests() {
     t_generate(test_name, evm_bls12381_g2add);
 }
 #[test]
-fn t_fail_add_g2_bls_TESTS() {
+fn t_fail_add_g2_bls_tests() {
     let test_name = FAIL_ADD_G2_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_g2add);
 }
@@ -226,7 +226,7 @@ fn t_mul_g1_bls_tests() {
     t_generate(test_name, evm_bls12381_g1mul);
 }
 #[test]
-fn t_fail_mul_g1_bls_TESTS() {
+fn t_fail_mul_g1_bls_tests() {
     let test_name = FAIL_MUL_G1_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_g1mul);
 }
@@ -236,7 +236,7 @@ fn t_mul_g2_bls_tests() {
     t_generate(test_name, evm_bls12381_g2mul);
 }
 #[test]
-fn t_fail_mul_g2_bls_TESTS() {
+fn t_fail_mul_g2_bls_tests() {
     let test_name = FAIL_MUL_G2_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_g2mul);
 }
@@ -247,7 +247,7 @@ fn t_multiexp_g1_bls_tests() {
     t_generate(test_name, evm_bls12381_g1msm);
 }
 #[test]
-fn t_fail_multiexp_g1_bls_TESTS() {
+fn t_fail_multiexp_g1_bls_tests() {
     let test_name = FAIL_MULTIEXP_G1_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_g1msm);
 }
@@ -257,7 +257,7 @@ fn t_multiexp_g2_bls_tests() {
     t_generate(test_name, evm_bls12381_g2msm);
 }
 #[test]
-fn t_fail_multiexp_g2_bls_TESTS() {
+fn t_fail_multiexp_g2_bls_tests() {
     let test_name = FAIL_MULTIEXP_G2_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_g2msm);
 }
@@ -268,28 +268,28 @@ fn t_pairing_check_bls_tests() {
     t_generate(test_name, evm_bls12381_pairing_check);
 }
 #[test]
-fn t_fail_pairing_check_bls_TESTS() {
+fn t_fail_pairing_check_bls_tests() {
     let test_name = FAIL_PAIRING_CHECK_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_pairing_check);
 }
 
 #[test]
-fn t_map_fp_to_g1_BLS_TESTS() {
+fn t_map_fp_to_g1_bls_tests() {
     let test_name = MAP_FP_TO_G1_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_map_fp_to_g1);
 }
 #[test]
-fn t_fail_map_fp_to_G1_BLS_TESTS() {
+fn t_fail_map_fp_to_G1_bls_tests() {
     let test_name = FAIL_MAP_FP_TO_G1_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_map_fp_to_g1);
 }
 #[test]
-fn t_map_fp2_to_G2_BLS_TESTS() {
+fn t_map_fp2_to_G2_bls_tests() {
     let test_name = MAP_FP2_TO_G2_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_map_fp2_to_g2);
 }
 #[test]
-fn t_fail_map_fp2_TO_G2_BLS_TESTS() {
+fn t_fail_map_fp2_TO_G2_bls_tests() {
     let test_name = FAIL_MAP_FP2_TO_G2_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_map_fp2_to_g2);
 }
