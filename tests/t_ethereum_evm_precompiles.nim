@@ -25,6 +25,7 @@ type
   PrecompileTest = object
     Input: HexString
     Expected: HexString
+    ExpectedError: string
     Name: string
     Gas: int
     NoBenchmark: bool
@@ -37,7 +38,7 @@ proc loadVectors(TestType: typedesc, filename: string): TestType =
   let content = readFile(TestVectorsDir/filename)
   result = content.fromJson(TestType)
 
-template runPrecompileTests(filename: string, funcname: untyped) =
+template runPrecompileTests(filename: string, funcname: untyped, outsize: int) =
   block:
     proc `PrecompileTestrunner _ funcname`() =
       let vec = seq[PrecompileTest].loadVectors(filename)
@@ -53,16 +54,23 @@ template runPrecompileTests(filename: string, funcname: untyped) =
         var expected = newSeq[byte](test.Expected.len div 2)
         expected.paddedFromHex(test.Expected, bigEndian)
 
-        var r = newSeq[byte](test.Expected.len div 2)
+        ## TODO: change to use `modexp_result_size` API after rebase
+        let outs = if outsize > 0: outsize else: test.Expected.len div 2
+        var r = newSeq[byte](outs)
 
         let status = funcname(r, inputbytes)
         if status != cttEVM_Success:
-          reset(r)
-
-        doAssert r == expected, "[Test Failure]\n" &
-          "  " & funcname.astToStr & " status: " & $status & "\n" &
-          "  " & "result:   " & r.toHex() & "\n" &
-          "  " & "expected: " & expected.toHex() & '\n'
+          doAssert test.ExpectedError.len > 0, "[Test Failure]\n" &
+            "  " & test.Name & "\n" &
+            "  " & funcname.astToStr & "\n" &
+            "  " & "Nim proc returned failure, but test expected to pass.\n" &
+            "  " & "Expected result: " & $expected.toHex()
+        else:
+          doAssert r == expected, "[Test Failure]\n" &
+            "  " & test.Name & "\n" &
+            "  " & funcname.astToStr & " status: " & $status & "\n" &
+            "  " & "result:   " & r.toHex() & "\n" &
+            "  " & "expected: " & expected.toHex() & '\n'
 
         stdout.write "Success\n"
 
@@ -99,32 +107,32 @@ proc testSha256() =
 
 testSha256()
 
-runPrecompileTests("modexp.json", eth_evm_modexp)
-runPrecompileTests("modexp_eip2565.json", eth_evm_modexp)
+runPrecompileTests("modexp.json", eth_evm_modexp, 0)
+runPrecompileTests("modexp_eip2565.json", eth_evm_modexp, 0)
 
-runPrecompileTests("bn256Add.json", eth_evm_bn254_g1add)
-runPrecompileTests("bn256ScalarMul.json", eth_evm_bn254_g1mul)
-runPrecompileTests("bn256Pairing.json", eth_evm_bn254_ecpairingcheck)
+runPrecompileTests("bn256Add.json", eth_evm_bn254_g1add, 64)
+runPrecompileTests("bn256ScalarMul.json", eth_evm_bn254_g1mul, 64)
+runPrecompileTests("bn256Pairing.json", eth_evm_bn254_ecpairingcheck, 32)
 
-runPrecompileTests("eip-2537/add_G1_bls.json", eth_evm_bls12381_g1add)
-runPrecompileTests("eip-2537/fail-add_G1_bls.json", eth_evm_bls12381_g1add)
-runPrecompileTests("eip-2537/add_G2_bls.json", eth_evm_bls12381_g2add)
-runPrecompileTests("eip-2537/fail-add_G2_bls.json", eth_evm_bls12381_g2add)
+runPrecompileTests("eip-2537/add_G1_bls.json", eth_evm_bls12381_g1add, 128)
+runPrecompileTests("eip-2537/fail-add_G1_bls.json", eth_evm_bls12381_g1add, 128)
+runPrecompileTests("eip-2537/add_G2_bls.json", eth_evm_bls12381_g2add, 256)
+runPrecompileTests("eip-2537/fail-add_G2_bls.json", eth_evm_bls12381_g2add, 256)
 
-runPrecompileTests("eip-2537/mul_G1_bls.json", eth_evm_bls12381_g1mul)
-runPrecompileTests("eip-2537/fail-mul_G1_bls.json", eth_evm_bls12381_g1mul)
-runPrecompileTests("eip-2537/mul_G2_bls.json", eth_evm_bls12381_g2mul)
-runPrecompileTests("eip-2537/fail-mul_G2_bls.json", eth_evm_bls12381_g2mul)
+runPrecompileTests("eip-2537/mul_G1_bls.json", eth_evm_bls12381_g1mul, 128)
+runPrecompileTests("eip-2537/fail-mul_G1_bls.json", eth_evm_bls12381_g1mul, 128)
+runPrecompileTests("eip-2537/mul_G2_bls.json", eth_evm_bls12381_g2mul, 256)
+runPrecompileTests("eip-2537/fail-mul_G2_bls.json", eth_evm_bls12381_g2mul, 256)
 
-runPrecompileTests("eip-2537/multiexp_G1_bls.json", eth_evm_bls12381_g1msm)
-runPrecompileTests("eip-2537/fail-multiexp_G1_bls.json", eth_evm_bls12381_g1msm)
-runPrecompileTests("eip-2537/multiexp_G2_bls.json", eth_evm_bls12381_g2msm)
-runPrecompileTests("eip-2537/fail-multiexp_G2_bls.json", eth_evm_bls12381_g2msm)
+runPrecompileTests("eip-2537/multiexp_G1_bls.json", eth_evm_bls12381_g1msm, 128)
+runPrecompileTests("eip-2537/fail-multiexp_G1_bls.json", eth_evm_bls12381_g1msm, 128)
+runPrecompileTests("eip-2537/multiexp_G2_bls.json", eth_evm_bls12381_g2msm, 256)
+runPrecompileTests("eip-2537/fail-multiexp_G2_bls.json", eth_evm_bls12381_g2msm, 256)
 
-runPrecompileTests("eip-2537/pairing_check_bls.json", eth_evm_bls12381_pairingcheck)
-runPrecompileTests("eip-2537/fail-pairing_check_bls.json", eth_evm_bls12381_pairingcheck)
+runPrecompileTests("eip-2537/pairing_check_bls.json", eth_evm_bls12381_pairingcheck, 32)
+runPrecompileTests("eip-2537/fail-pairing_check_bls.json", eth_evm_bls12381_pairingcheck, 32)
 
-runPrecompileTests("eip-2537/map_fp_to_G1_bls.json", eth_evm_bls12381_map_fp_to_g1)
-runPrecompileTests("eip-2537/fail-map_fp_to_G1_bls.json", eth_evm_bls12381_map_fp_to_g1)
-runPrecompileTests("eip-2537/map_fp2_to_G2_bls.json", eth_evm_bls12381_map_fp2_to_g2)
-runPrecompileTests("eip-2537/fail-map_fp2_to_G2_bls.json", eth_evm_bls12381_map_fp2_to_g2)
+runPrecompileTests("eip-2537/map_fp_to_G1_bls.json", eth_evm_bls12381_map_fp_to_g1, 128)
+runPrecompileTests("eip-2537/fail-map_fp_to_G1_bls.json", eth_evm_bls12381_map_fp_to_g1, 128)
+runPrecompileTests("eip-2537/map_fp2_to_G2_bls.json", eth_evm_bls12381_map_fp2_to_g2, 256)
+runPrecompileTests("eip-2537/fail-map_fp2_to_G2_bls.json", eth_evm_bls12381_map_fp2_to_g2, 256)
