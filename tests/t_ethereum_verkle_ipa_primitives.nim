@@ -453,7 +453,7 @@ suite "IPA proof tests":
   test "IPAProof Serialization and Deserialization":
     proc testIPAProofSerDe() =
 
-      ## Pull a valid Multiproof from a valid hex test vector as used in Go-IPA https://github.com/crate-crypto/go-ipa/blob/b1e8a79/ipa/ipa_test.go#L128
+      ## Pull a valid IPAProof from a valid hex test vector as used in Go-IPA https://github.com/crate-crypto/go-ipa/blob/b1e8a79/ipa/ipa_test.go#L128
       var validIPAProof_bytes {.noInit.}: EthVerkleIpaProofBytes
       validIPAProof_bytes.fromHex(validIPAProof)
 
@@ -462,7 +462,7 @@ suite "IPA proof tests":
       let s1 = ipa_proof.deserialize(validIPAProof_bytes)
       doAssert s1 == cttEthVerkleIpa_Success, "Failed to deserialize IPA Proof"
 
-      ## Serialize the Multiproof type in to a serialize Multiproof byte array
+      ## Serialize the IPAProof type in to a serialize IPAProof byte array
       var validIPAproof_bytes2 {.noInit} : EthVerkleIpaProofBytes
       validIPAproof_bytes2.serialize(ipa_proof)
       doAssert validIPAproof_bytes2.toHex() == validIPAProof, "Error in the multiproof serialization!\n" & (block:
