@@ -704,7 +704,7 @@ proc setupTestCommand(flags, path: string): string =
   if existsEnv"TEST_LANG":
     lang = getEnv"TEST_LANG"
 
-  return "nim " & lang &
+  return "../Nim/bin/nim " & lang &
     " -r " &
     flags &
     releaseBuildOptions() &
