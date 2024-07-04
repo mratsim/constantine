@@ -465,7 +465,7 @@ suite "IPA proof tests":
       ## Serialize the IPAProof type in to a serialize IPAProof byte array
       var validIPAproof_bytes2 {.noInit} : EthVerkleIpaProofBytes
       validIPAproof_bytes2.serialize(ipa_proof)
-      doAssert validIPAproof_bytes2.toHex() == validIPAProof, "Error in the multiproof serialization!\n" & (block:
+      doAssert validIPAproof_bytes2.toHex() == validIPAProof, "Error in the IPAProof serialization!\n" & (block:
         "  expected: " & validIPAProof & "\n" &
         "  computed: " & validIPAproof_bytes2.toHex()
       )
