@@ -9,14 +9,10 @@
 use constantine_ethereum_evm_precompiles::*;
 use constantine_sys::ctt_evm_status;
 
-use ::core::mem::MaybeUninit;
 use std::fs;
-use std::path::PathBuf;
 
-use glob::glob;
 use hex;
-use hex::FromHex;
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 use serde_json;
 
 // Rust does not support concatenating
