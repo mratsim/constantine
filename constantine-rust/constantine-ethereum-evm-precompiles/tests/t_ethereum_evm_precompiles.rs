@@ -252,7 +252,7 @@ fn t_map_fp2_to_G2_bls_tests() {
     t_generate(test_name, evm_bls12381_map_fp2_to_g2);
 }
 #[test]
-fn t_fail_map_fp2_TO_G2_bls_tests() {
+fn t_fail_map_fp2_to_G2_bls_tests() {
     let test_name = FAIL_MAP_FP2_TO_G2_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_map_fp2_to_g2);
 }
