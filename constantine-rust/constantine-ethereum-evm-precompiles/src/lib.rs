@@ -253,7 +253,7 @@ pub fn evm_bls12381_map_fp2_to_g2(inputs: &[u8]) -> Result<[u8; 256], ctt_evm_st
     unsafe {
         let status = ctt_eth_evm_bls12381_map_fp2_to_g2(
             result.as_mut_ptr() as *mut byte,
-            128,
+            256,
             inputs.as_ptr() as *const byte,
             inputs.len() as usize,
         );
