@@ -450,6 +450,27 @@ suite "IPA proof tests":
 
     testIPAProofInDomain()
 
+  test "IPAProof Serialization and Deserialization":
+    proc testIPAProofSerDe() =
+
+      ## Pull a valid IPAProof from a valid hex test vector as used in Go-IPA https://github.com/crate-crypto/go-ipa/blob/b1e8a79/ipa/ipa_test.go#L128
+      var validIPAProof_bytes {.noInit.}: EthVerkleIpaProofBytes
+      validIPAProof_bytes.fromHex(validIPAProof)
+
+      # Deserialize it into the IPAProof type
+      var ipa_proof {.noInit.}: IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+      let s1 = ipa_proof.deserialize(validIPAProof_bytes)
+      doAssert s1 == cttEthVerkleIpa_Success, "Failed to deserialize IPA Proof"
+
+      ## Serialize the IPAProof type in to a serialize IPAProof byte array
+      var validIPAproof_bytes2 {.noInit} : EthVerkleIpaProofBytes
+      validIPAproof_bytes2.serialize(ipa_proof)
+      doAssert validIPAproof_bytes2.toHex() == validIPAProof, "Error in the IPAProof serialization!\n" & (block:
+        "  expected: " & validIPAProof & "\n" &
+        "  computed: " & validIPAproof_bytes2.toHex()
+      )
+    testIPAProofSerDe()
+      
   test "Test for IPA proof consistency":
     proc testIPAProofConsistency()=
       # Common setup
