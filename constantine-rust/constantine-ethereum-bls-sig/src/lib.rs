@@ -234,7 +234,7 @@ pub fn sign(skey: EthBlsSecKey, message: &[u8]) -> EthBlsSignature {
             result.as_mut_ptr() as *mut ctt_eth_bls_signature,
             &skey as *const ctt_eth_bls_seckey,
             message.as_ptr() as *const byte,
-            message.len() as isize,
+            message.len() as usize,
         );
         return result.assume_init();
     }
@@ -250,7 +250,7 @@ pub fn verify(
         let status = ctt_eth_bls_verify(
             &pkey as *const ctt_eth_bls_pubkey,
             message.as_ptr() as *const byte,
-            message.len() as isize,
+            message.len() as usize,
             &sig as *const ctt_eth_bls_signature,
         );
         match status {
@@ -272,9 +272,9 @@ pub fn fast_aggregate_verify(
     unsafe {
         let status = ctt_eth_bls_fast_aggregate_verify(
             pubkeys.as_ptr() as *const ctt_eth_bls_pubkey,
-            pubkeys.len() as isize,
+            pubkeys.len() as usize,
             message.as_ptr() as *const byte,
-            message.len() as isize,
+            message.len() as usize,
             signature as *const ctt_eth_bls_signature,
         );
         match status {
@@ -321,7 +321,7 @@ pub fn aggregate_verify(
         let status = ctt_eth_bls_aggregate_verify(
             pubkeys.as_ptr() as *const ctt_eth_bls_pubkey,
             spans.as_ptr() as *const ctt_span,
-            pubkeys.len() as isize,
+            pubkeys.len() as usize,
             aggregate_sig as *const ctt_eth_bls_signature,
         );
         match status {
@@ -349,7 +349,7 @@ pub fn batch_verify(
             pubkeys.as_ptr() as *const ctt_eth_bls_pubkey,
             spans.as_ptr() as *const ctt_span,
             signatures.as_ptr() as *const ctt_eth_bls_signature,
-            messages.len() as isize,
+            messages.len() as usize,
             secure_random_bytes.as_ptr() as *const byte,
         );
         match status {
@@ -379,7 +379,7 @@ pub fn batch_verify_parallel(
             pubkeys.as_ptr() as *const ctt_eth_bls_pubkey,
             spans.as_ptr() as *const ctt_span,
             signatures.as_ptr() as *const ctt_eth_bls_signature,
-            messages.len() as isize,
+            messages.len() as usize,
             secure_random_bytes.as_ptr() as *const byte,
         );
         match status {
