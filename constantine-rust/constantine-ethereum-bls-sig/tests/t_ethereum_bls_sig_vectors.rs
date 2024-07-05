@@ -9,7 +9,6 @@
 use constantine_core::{hardware, Threadpool};
 use constantine_ethereum_bls_sig::*;
 
-use ::core::mem::MaybeUninit;
 use std::fs;
 use std::path::PathBuf;
 
@@ -304,14 +303,14 @@ fn t_sign() {
                 assert!(*tout == [0u8; 96]);
                 // Note: We cannot sign a message with `skey` in case of error
             }
-            Ok(vSec) => {
+            Ok(v_sec) => {
                 let (Some(tout), Some(tmsg)) =
                     (test.output.opt_bytes.0, test.input.message.opt_bytes.0)
                 else {
                     assert!(false);
                     continue;
                 };
-                let sig = sign(vSec, &*tmsg);
+                let sig = sign(v_sec, &*tmsg);
                 // deserialize output for extra codec testing
                 let output = deserialize_signature_compressed(tout.as_ref());
                 match output {
@@ -398,7 +397,7 @@ fn t_verify() {
                     assert!(!test.output);
                     continue;
                 } // expected test failure
-                Ok(v) => (),
+                Ok(_v) => (),
             };
 
             let sig = deserialize_signature_compressed(tsig.as_ref());
@@ -407,7 +406,7 @@ fn t_verify() {
                     assert!(!test.output);
                     continue;
                 } // expected test failure
-                Ok(v) => (), // signature might be valid, even if test fails!
+                Ok(_v) => (), // signature might be valid, even if test fails!
             };
 
             let status = verify(pkey.unwrap(), &*tmsg, sig.unwrap());
@@ -426,12 +425,12 @@ fn t_verify() {
                     } else {
                         let output = serialize_pubkey_compressed(&pkey.unwrap());
                         match output {
-                            Ok(vO) => assert!(vO == *tpkey),
+                            Ok(v_o) => assert!(v_o == *tpkey),
                             Err(_e) => assert!(test.output == false), // TODO THINK ABOUT better just assert!(false);?
                         }
                         let output = serialize_signature_compressed(&sig.unwrap());
                         match output {
-                            Ok(vO) => assert!(vO == *tsig),
+                            Ok(v_o) => assert!(v_o == *tsig),
                             Err(_e) => assert!(test.output == false), // TODO THINK ABOUT better just assert!(false);?
                         }
                     }
@@ -596,7 +595,7 @@ fn t_aggregate_verify() {
                 assert!(!test.output);
                 continue;
             } // expected test failure
-            Ok(v) => (),
+            Ok(_v) => (),
         };
         let status = aggregate_verify(&pks, &msgs, &sig.unwrap());
         match status {
