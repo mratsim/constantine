@@ -109,10 +109,6 @@ where
         let input = vector.Input;
         let expected = vector.Expected;
 
-        // TODO: Needs to be fixed after Nim parsing logic is fixed
-
-        // let expected_error = vector.ExpectedError;
-
         let input_bytes =
             from_hex(input).expect("Test failed; input bytes could not be unmarshaled.");
         // Call the test function
@@ -124,11 +120,11 @@ where
                 assert!(r.into_iter().collect::<Vec<u8>>() == expected_bytes.unwrap());
             }
             Err(_) => {
-                if expected.is_some() {
-                    println!("expected ? {:#?} for test {}", expected, vector.Name);
-                }
+                // in case of error there must not be an `expected` field
                 assert!(expected.is_none());
-            } //assert!(expected_error.is_some()),
+                let expected_error = vector.ExpectedError;
+                assert!(expected_error.is_some());
+            }
         };
     }
 }
