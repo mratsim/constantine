@@ -1,5 +1,5 @@
 packageName   = "constantine"
-version       = "0.0.1"
+version       = "0.1.0"
 author        = "Mamy Ratsimbazafy"
 description   = "This library provides thoroughly tested and highly-optimized implementations of cryptography protocols."
 license       = "MIT or Apache License 2.0"
