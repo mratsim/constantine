@@ -40,6 +40,11 @@ type
     num_vars*: int
     base_poly_evals*: ptr UncheckedArray[F]
 
+proc `=copy`*[F](dst: var MultilinearExtension[F], src: MultilinearExtension[F]) {.error: "A multilinear extension cannot be copied".}
+
+proc `=wasMoved`*[F](mle: var MultilinearExtension[F]) =
+  mle.base_poly_evals = nil
+
 proc `=destroy`*[F](mle: var MultilinearExtension[F]) =
   if not mle.base_poly_evals.isNil:
     freeHeapAligned(mle.base_poly_evals)
