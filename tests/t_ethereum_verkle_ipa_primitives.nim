@@ -100,7 +100,7 @@ suite "Barycentric Form Tests":
         lindom.setupLinearEvaluationDomain()
 
         var bar_coeffs {.noInit.}: array[256, Fr[Banderwagon]]
-        lindom.getLagrangeBasisPolysAt(bar_coeffs, p_outside_dom)
+        lindom.computeLagrangeBasisPolysAt(bar_coeffs, p_outside_dom)
 
         var expected0: Fr[Banderwagon]
         expected0.innerProduct(lagrange_values.evals, bar_coeffs)
@@ -519,7 +519,7 @@ suite "IPA proof tests":
         opening_challenge)
 
       doAssert eval_at_challenge.toHex(littleEndian) == "0x4a353e70b03c89f161de002e8713beec0d740a5e20722fd5bd68b30540a33208", "Issue with computing commitment"
-      
+
       var prover_challenge {.noInit.}: Fr[Banderwagon]
       prover_transcript.squeezeChallenge("state", prover_challenge)
       doAssert prover_challenge.toHex(littleEndian) == "0x0a81881cbfd7d7197a54ebd67ed6a68b5867f3c783706675b34ece43e85e7306", "Issue with squeezing prover challenge"

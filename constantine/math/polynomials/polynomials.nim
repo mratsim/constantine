@@ -443,7 +443,7 @@ func evalPolyAt*[N: static int, Field](
 
   freeHeapAligned(invZminusDomain)
 
-func getLagrangeBasisPolysAt*[N: static int, Field](
+func computeLagrangeBasisPolysAt*[N: static int, Field](
       domain: PolyEvalDomain[N, Field],
       lagrangePolys: var array[N, Field],
       z: Field) =
@@ -516,11 +516,11 @@ func evalPolyAt*[N: static int, Field](
        z: Field) =
   lindom.dom.evalPolyAt(r, poly, z)
 
-func getLagrangeBasisPolysAt*[N: static int, Field](
+func computeLagrangeBasisPolysAt*[N: static int, Field](
       lindom: PolyEvalLinearDomain[N, Field],
       lagrangePolys: var array[N, Field],
       z: Field) =
-  lindom.dom.getLagrangeBasisPolysAt(lagrangePolys, z)
+  lindom.dom.computeLagrangeBasisPolysAt(lagrangePolys, z)
 
 func setupLinearEvaluationDomain*[N: static int, Field](
       lindom: var PolyEvalLinearDomain[N, Field]) =

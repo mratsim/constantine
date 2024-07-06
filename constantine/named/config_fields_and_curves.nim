@@ -45,6 +45,10 @@ export CurveFamily, SexticTwist
 declareCurves:
   # -----------------------------------------------------------------------------
   # Curves added when passed "-d:CTT_TEST_CURVES"
+  curve F5:
+    testingCurve: true
+    bitwidth: 3
+    modulus: "0x5"
   curve Fake101:
     testingCurve: true
     bitwidth: 7
