@@ -213,6 +213,8 @@ template sumImpl[F; G: static Subgroup](
   # | Y₃ = R*(V-X₃)-S₁*HHH          | Y₃ = M*(S-X₃)-YY*YY                      |                   |                |
   # | Z₃ = Z₁*Z₂*H                  | Z₃ = Y₁*Z₁                               |                   |                |
 
+  bind mulCheckSparse
+
   # "when" static evaluation doesn't shortcut booleans :/
   # which causes issues when CoefA isn't an int but Fp or Fp2
   when CoefA is int:
@@ -1028,7 +1030,7 @@ func `~-`*(a: EC_ShortW_Jac, b: EC_ShortW_Aff): EC_ShortW_Jac {.noInit, inline.}
   ## This MUST NOT be used with secret data.
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks.]
-  ## 
+  ##
   ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
   ## tend to generate useless memory moves or have difficulties to minimize stack allocation
   ## and our types might be large (Fp12 ...)

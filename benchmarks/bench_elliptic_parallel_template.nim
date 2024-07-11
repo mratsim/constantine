@@ -66,6 +66,7 @@ proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int]): BenchMsmC
   const bits = EC.getScalarField().bits()
   type ECaff = affine(EC)
 
+  result.numInputs = maxNumInputs
   result.points = newSeq[ECaff](maxNumInputs)
   result.coefs = newSeq[BigInt[bits]](maxNumInputs)
 
@@ -81,7 +82,7 @@ proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int]): BenchMsmC
       var tmp = threadRng.random_unsafe(EC)
       tmp.clearCofactor()
       points[i].affine(tmp)
-      coefs[i] = rng.random_unsafe(BigInt[bits])
+      coefs[i] = threadRng.random_unsafe(BigInt[bits])
 
   let chunks = balancedChunksPrioNumber(0, maxNumInputs, result.tp.numThreads)
 

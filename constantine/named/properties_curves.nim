@@ -10,7 +10,8 @@ import
   std/macros,
   # Internal
   ./config_fields_and_curves,
-  ./deriv/parser_curves
+  ./deriv/parser_curves,
+  ./properties_fields
 
 export Algebra, CurveFamily, SexticTwist
 

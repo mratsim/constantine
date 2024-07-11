@@ -33,8 +33,10 @@ import
 # ------------------------------------------------------------
 
 export
-  abstractions,
-  algebras.Algebra
+  abstractions.SecretBool,
+  abstractions.SecretWord,
+  algebras.Algebra,
+  algebras.getBigInt
 
 # Pairings
 # ------------------------------------------------------------

@@ -26,6 +26,8 @@ export
   bn254_nogami_subgroups,
   bn254_snarks_subgroups,
   bw6_761_subgroups,
+  pallas_subgroups,
+  vesta_subgroups,
   secp256k1_subgroups
 
 func clearCofactor*[ECP](P: var ECP) {.inline.} =

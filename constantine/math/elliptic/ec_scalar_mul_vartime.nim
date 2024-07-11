@@ -21,7 +21,8 @@ import
   constantine/math/io/io_bigints,
   constantine/platforms/abstractions,
   constantine/math_arbitrary_precision/arithmetic/limbs_views,
-  constantine/named/zoo_endomorphisms
+  constantine/named/zoo_endomorphisms,
+  constantine/named/algebras
 
 {.push raises: [].} # No exceptions allowed in core cryptographic operations
 {.push checks: off.} # No defects due to array bound checking or signed integer overflow allowed
@@ -336,8 +337,6 @@ func scalarMul_vartime*[scalBits; EC](P: var EC, scalar: BigInt[scalBits]) {.met
   else:
     {.error: "Unconfigured".}
 
-  const L = scalBits.ceilDiv_vartime(M) + 1
-
   let usedBits = scalar.limbs.getBits_LE_vartime()
 
   when EC.F.Name.hasEndomorphismAcceleration():
@@ -352,8 +351,8 @@ func scalarMul_vartime*[scalBits; EC](P: var EC, scalar: BigInt[scalBits]) {.met
         return
 
   if 64 < usedBits:
-    # With a window of 5, we precompute 2^3 = 8 points
-    P.scalarMul_minHammingWeight_windowed_vartime(scalar, window = 5)
+    # With a window of 4, we precompute 2^4 = 4 points
+    P.scalarMul_minHammingWeight_windowed_vartime(scalar, window = 4)
   elif 16 < usedBits:
     # With a window of 3, we precompute 2^1 = 2 points
     P.scalarMul_minHammingWeight_windowed_vartime(scalar, window = 3)

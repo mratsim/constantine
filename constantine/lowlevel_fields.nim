@@ -30,8 +30,11 @@ import
 # ------------------------------------------------------------
 
 export
-  abstractions,
-  algebras.Algebra
+  abstractions.SecretBool,
+  abstractions.SecretWord,
+  abstractions.BigInt,
+  algebras.Algebra,
+  algebras.getBigInt
 
 # Scalar field Fr and Prime Field Fp
 # ------------------------------------------------------------
@@ -88,6 +91,7 @@ export arithmetic.prod
 export arithmetic.`*=`
 export arithmetic.square
 export arithmetic.square_repeated
+export arithmetic.sumprod
 
 export arithmetic.csetZero
 export arithmetic.csetOne
@@ -97,6 +101,7 @@ export arithmetic.csub
 
 export arithmetic.div2
 export arithmetic.inv
+export arithmetic.inv_vartime
 
 export arithmetic.isSquare
 export arithmetic.invsqrt

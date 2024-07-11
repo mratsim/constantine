@@ -14,7 +14,6 @@ import
     ./math/elliptic/[
       ec_scalar_mul_vartime,
       ec_multi_scalar_mul],
-    ./math/io/io_ec,
     ./hash_to_curve/hash_to_curve
 
 # ############################################################
@@ -35,8 +34,15 @@ import
 # ------------------------------------------------------------
 
 export
-  abstractions,
-  algebras.Algebra
+  abstractions.SecretBool,
+  abstractions.SecretWord,
+  abstractions.BigInt,
+  algebras.Algebra,
+  algebras.getBigInt,
+  algebras.FieldKind
+
+# Generic sandwich
+export abstractions
 
 # Elliptic curve
 # ------------------------------------------------------------

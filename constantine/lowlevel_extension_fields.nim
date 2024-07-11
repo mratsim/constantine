@@ -31,8 +31,10 @@ import
 # ------------------------------------------------------------
 
 export
-  abstractions,
-  algebras.Algebra
+  abstractions.SecretBool,
+  abstractions.SecretWord,
+  algebras.Algebra,
+  algebras.getBigInt
 
 # Extension fields
 # ------------------------------------------------------------
@@ -86,4 +88,3 @@ export extension_fields.sqrt_if_square
 export extension_fields.sqrt
 
 export frobenius.frobenius_map
-

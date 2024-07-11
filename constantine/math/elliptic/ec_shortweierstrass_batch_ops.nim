@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  constantine/named/algebras,
   constantine/platforms/abstractions,
   constantine/math/arithmetic,
   constantine/math/extension_fields,
