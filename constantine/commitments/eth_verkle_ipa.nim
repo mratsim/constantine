@@ -176,7 +176,7 @@ func ipa_prove*[N, logN: static int, EcAff, F](
   var G = gprime[].toMutableView()
 
   a.copyFrom(poly.evals)
-  domain.getLagrangeBasisPolysAt(bprime[], opening_challenge)
+  domain.computeLagrangeBasisPolysAt(bprime[], opening_challenge)
   G.copyFrom(crs.evals)
 
   # Protocol
@@ -415,7 +415,7 @@ func ipa_verify*[N, logN: static int, EcAff, F](
 
   # ... - [a₀.b₀.w]G ...
   # a₀.b₀.w = a₀.w.<s̄,b̄>
-  domain.getLagrangeBasisPolysAt(b[], opening_challenge)
+  domain.computeLagrangeBasisPolysAt(b[], opening_challenge)
   fs_a0b0wG[0].innerProduct(View[F](fs_a0g0), b.toView())
   fs_a0b0wG[0] *= w
   ecs_a0b0wG[0].setGenerator()

@@ -100,7 +100,7 @@ suite "Barycentric Form Tests":
         lindom.setupLinearEvaluationDomain()
 
         var bar_coeffs {.noInit.}: array[256, Fr[Banderwagon]]
-        lindom.getLagrangeBasisPolysAt(bar_coeffs, p_outside_dom)
+        lindom.computeLagrangeBasisPolysAt(bar_coeffs, p_outside_dom)
 
         var expected0: Fr[Banderwagon]
         expected0.innerProduct(lagrange_values.evals, bar_coeffs)
@@ -519,7 +519,7 @@ suite "IPA proof tests":
         opening_challenge)
 
       doAssert eval_at_challenge.toHex(littleEndian) == "0x4a353e70b03c89f161de002e8713beec0d740a5e20722fd5bd68b30540a33208", "Issue with computing commitment"
-      
+
       var prover_challenge {.noInit.}: Fr[Banderwagon]
       prover_transcript.squeezeChallenge("state", prover_challenge)
       doAssert prover_challenge.toHex(littleEndian) == "0x0a81881cbfd7d7197a54ebd67ed6a68b5867f3c783706675b34ece43e85e7306", "Issue with squeezing prover challenge"
@@ -596,9 +596,81 @@ suite "IPA proof tests":
 # TODO: refactor completely the tests - https://github.com/mratsim/constantine/issues/396
 
 suite "Multiproof Tests":
-  echo "Warning! - Skipping all but serialization tests due to issues outlined in https://github.com/mratsim/constantine/issues/396"
+  echo "Warning! - Skipping all but serialization tests and Multiproof consistency test due to issues outlined in https://github.com/mratsim/constantine/issues/396"
   # The comparison between previous and new implementation
   # can be done as of commit 182c4187ccc0751592fe52e7abaaa51fdde7edd6
+
+  test "Test for Multiproof Consistency":
+    proc testMultiproofConsistency() =
+
+      # Common setup
+      var opening_challenges: array[2, Fr[Banderwagon]] # to be added ipa_multi_verify once ready
+      opening_challenges[0].setOne()
+      opening_challenges[1].fromInt(32)
+
+      var opening_challenges_in_domain: array[2, uint8]
+      opening_challenges_in_domain[0] = 0'u8
+      opening_challenges_in_domain[1] = 0'u8
+
+      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
+      CRS.evals.generate_random_points()
+
+      var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
+      domain.setupLinearEvaluationDomain()
+
+      # Committer's side
+      var testVals1: array[256, int] = [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+      ]
+
+      var testVals2: array[256, int] = [
+        32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
+        32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
+        32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
+        32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
+        32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
+        32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
+        32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
+        32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
+      ]
+
+      var polys: array[2, PolynomialEval[256, Fr[Banderwagon]]]
+      polys[0].evals.testPoly256(testVals1)
+      polys[1].evals.testPoly256(testVals2)
+      
+      var comm_1: EC_TwEdw_Prj[Fp[Banderwagon]]
+      CRS.pedersen_commit(comm_1, polys[0])
+      
+      var comm_2: EC_TwEdw_Prj[Fp[Banderwagon]]
+      CRS.pedersen_commit(comm_2, polys[1])
+
+      var commitments: array[2, EC_TwEdw_Aff[Fp[Banderwagon]]]
+      commitments[0].affine(comm_1)
+      commitments[1].affine(comm_2)
+
+      # Prover's side
+      var prover_transcript {.noInit.}: sha256
+      prover_transcript.initTranscript("test")
+
+      var multiproof: IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+
+      CRS.ipa_multi_prove(
+        domain, prover_transcript,
+        multiproof, polys,
+        commitments, opening_challenges_in_domain)
+
+      var prover_challenge {.noInit.}: Fr[Banderwagon]
+      prover_transcript.squeezeChallenge("state", prover_challenge)
+      doAssert prover_challenge.toHex(littleEndian) == "0xeee8a80357ff74b766eba39db90797d022e8d6dee426ded71234241be504d519", "Issue with squeezing the prover challenge"
+
+      testMultiproofConsistency()
 
   # test "Multiproof Creation and Verification (old)":
   #   proc testMultiproofCreationAndVerification()=

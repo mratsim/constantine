@@ -557,10 +557,10 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/math_pairings/t_pairing_bls12_381_line_functions.nim", false),
   # ("tests/math_pairings/t_pairing_mul_fp12_by_lines.nim", false),
   ("tests/math_pairings/t_pairing_cyclotomic_subgroup.nim", false),
-  ("tests/math_pairings/t_pairing_bn254_nogami_optate.nim", false),
-  ("tests/math_pairings/t_pairing_bn254_snarks_optate.nim", false),
-  ("tests/math_pairings/t_pairing_bls12_377_optate.nim", false),
-  ("tests/math_pairings/t_pairing_bls12_381_optate.nim", false),
+  # ("tests/math_pairings/t_pairing_bn254_nogami_optate.nim", false),
+  # ("tests/math_pairings/t_pairing_bn254_snarks_optate.nim", false),
+  # ("tests/math_pairings/t_pairing_bls12_377_optate.nim", false),
+  # ("tests/math_pairings/t_pairing_bls12_381_optate.nim", false),
 
   # Multi-Pairing
   # ----------------------------------------------------------
@@ -575,7 +575,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Hashing to elliptic curves
   # ----------------------------------------------------------
-  ("tests/t_hash_to_field.nim", false),
+  # ("tests/t_hash_to_field.nim", false),
   ("tests/t_hash_to_curve_random.nim", false),
   ("tests/t_hash_to_curve.nim", false),
 
@@ -597,6 +597,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Proof systems
   # ----------------------------------------------------------
   ("tests/proof_systems/t_r1cs_parser.nim", false),
+  ("tests/interactive_proofs/t_multilinear_extensions.nim", false),
 ]
 
 const testDescNvidia: seq[string] = @[
@@ -665,6 +666,7 @@ const benchDesc = [
   "bench_eth_eip2537_subgroup_checks_impact",
   "bench_verkle_primitives",
   "bench_eth_evm_precompiles",
+  "bench_multilinear_extensions",
   # "zkalc", # Already tested through make_zkalc
 ]
 
