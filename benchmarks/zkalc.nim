@@ -223,8 +223,8 @@ proc benchFrIP(rng: var RngState, curve: static Algebra): ZkalcBenchDetails =
 
 proc benchEcAdd(rng: var RngState, EC: typedesc, useVartime: bool): ZkalcBenchDetails =
   const G =
-    when EC.G == G1: "𝔾1"
-    else: "𝔾2"
+    when EC.G == G1: "𝔾₁"
+    else: "𝔾₂"
   const curve = EC.getName()
 
   var r {.noInit.}: EC
@@ -250,8 +250,8 @@ proc benchEcAdd(rng: var RngState, EC: typedesc, useVartime: bool): ZkalcBenchDe
 
 proc benchEcMul(rng: var RngState, EC: typedesc, useVartime: bool): ZkalcBenchDetails =
   const G =
-    when EC.G == G1: "𝔾1"
-    else: "𝔾2"
+    when EC.G == G1: "𝔾₁"
+    else: "𝔾₂"
   const curve = EC.getName()
 
   var r {.noInit.}: EC
@@ -327,8 +327,8 @@ proc createBenchMsmContext*(rng: var RngState, EC: typedesc, maxNumInputs: int):
 
 proc benchEcMsm[EC](ctx: BenchMsmContext[EC]): ZkalcBenchDetails =
   const G =
-    when EC.G == G1: "𝔾1"
-    else: "𝔾2"
+    when EC.G == G1: "𝔾₁"
+    else: "𝔾₂"
   const curve = EC.getName()
 
   let tp = Threadpool.new()
@@ -353,8 +353,8 @@ proc benchEcMsm[EC](ctx: BenchMsmContext[EC]): ZkalcBenchDetails =
 
 proc benchEcIsInSubgroup(rng: var RngState, EC: type): ZkalcBenchDetails =
   const G =
-    when EC.G == G1: "𝔾1"
-    else: "𝔾2"
+    when EC.G == G1: "𝔾₁"
+    else: "𝔾₂"
   const curve = EC.getName()
 
   var P = rng.random_unsafe(EC)
@@ -369,15 +369,14 @@ proc benchEcIsInSubgroup(rng: var RngState, EC: type): ZkalcBenchDetails =
 
 proc benchEcHashToCurve(rng: var RngState, EC: type): ZkalcBenchDetails =
   const G =
-    when EC.G == G1: "𝔾1"
-    else: "𝔾2"
+    when EC.G == G1: "𝔾₁"
+    else: "𝔾₂"
   const curve = EC.getName()
 
   const dst = "Constantine_Zkalc_Bench_HashToCurve"
   # Gnark uses a message of size 54, probably to not spill over padding with SHA256
   let msg = "Privacy is necessary for an open society [...]"
 
-  type EC = EC_ShortW_Jac[Fp[curve], G1]
   var P {.noInit.}: EC
 
   let stats = bench():
@@ -424,7 +423,7 @@ proc benchMultiPairing*(rng: var RngState, curve: static Algebra, maxNumInputs: 
     Ps = newSeq[EC_ShortW_Aff[Fp[curve], G1]](maxNumInputs)
     Qs = newSeq[EC_ShortW_Aff[Fp2[curve], G2]](maxNumInputs)
 
-  stdout.write &"Generating {maxNumInputs} (𝔾1, 𝔾2) pairs ... "
+  stdout.write &"Generating {maxNumInputs} (𝔾₁, 𝔾₂) pairs ... "
   stdout.flushFile()
 
   let start = getMonotime()
@@ -451,7 +450,7 @@ proc benchMultiPairing*(rng: var RngState, curve: static Algebra, maxNumInputs: 
 # Run benches
 # -------------------------------------------------------------------------------------
 
-proc runBenches(curve: static Algebra, useVartime: bool) =
+proc runBenches(curve: static Algebra, useVartime: bool): ZkalcBenchResult =
   var rng: RngState
   rng.seed(42)
 
@@ -512,18 +511,23 @@ proc runBenches(curve: static Algebra, useVartime: bool) =
     zkalc.multipairing = rng.benchMultiPairing(curve, maxNumInputs = 1024)
     separator()
 
+  return zkalc
+
 proc main() =
   let cmd = commandLineParams()
-  cmd.getOpt (curve: BN254_Snarks, vartime: true)
+  cmd.getOpt (curve: BN254_Snarks, vartime: true, o: "constantine-bench-zkalc-" & $curve & "-" & now().format("yyyy-MM-dd--HH-mm-ss") & ".bench.json")
 
-  case curve
-  of BN254_Snarks: BN254_Snarks.runBenches(vartime)
-  of Pallas:       Pallas      .runBenches(vartime)
-  of Vesta:        Vesta       .runBenches(vartime)
-  of BLS12_377:    BLS12_377   .runBenches(vartime)
-  of BLS12_381:    BLS12_381   .runBenches(vartime)
-  else:
-    echo "This curve '" & $curve & "' is not configured for benchmarking at the moment."
+  let results =
+    case curve
+    of BN254_Snarks: BN254_Snarks.runBenches(vartime)
+    of Pallas:       Pallas      .runBenches(vartime)
+    of Vesta:        Vesta       .runBenches(vartime)
+    of BLS12_377:    BLS12_377   .runBenches(vartime)
+    of BLS12_381:    BLS12_381   .runBenches(vartime)
+    else:
+      raise newException(ValueError, "This curve '" & $curve & "' is not configured for benchmarking at the moment.")
+
+  writeFile(o, results.toJSON())
 
 when isMainModule:
   main()
