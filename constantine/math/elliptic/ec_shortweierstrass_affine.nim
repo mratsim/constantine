@@ -38,6 +38,9 @@ type
 
   SexticNonResidue* = NonResidue
 
+template getName*(EC: type EC_ShortW_Aff): untyped =
+  EC.F.Name
+
 template getScalarField*(EC: type EC_ShortW_Aff): untyped =
   Fr[EC.F.Name]
 

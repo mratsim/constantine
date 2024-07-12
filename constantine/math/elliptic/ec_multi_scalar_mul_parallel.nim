@@ -495,13 +495,13 @@ template withEndo[coefsBits: static int, EC, ECaff](
            coefs: ptr UncheckedArray[BigInt[coefsBits]],
            points: ptr UncheckedArray[ECaff],
            N: int, c: static int) =
-  when hasEndomorphismAcceleration(EC.F.Name) and
+  when hasEndomorphismAcceleration(EC.getName()) and
         EndomorphismThreshold <= coefsBits and
         coefsBits <= EC.getScalarField().bits() and
         # computeEndomorphism assumes they can be applied to affine repr
         # but this is not the case for Bandersnatch/wagon
         # instead Twisted Edwards MSM should be overloaded for Projective/ProjectiveExtended
-        EC.F.Name notin {Bandersnatch, Banderwagon}:
+        EC.getName() notin {Bandersnatch, Banderwagon}:
     let (endoCoefs, endoPoints, endoN) = applyEndomorphism_parallel(tp, coefs, points, N)
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance
@@ -518,7 +518,7 @@ template withEndo[coefsBits: static int, EC, ECaff](
            coefs: ptr UncheckedArray[BigInt[coefsBits]],
            points: ptr UncheckedArray[ECaff],
            N: int, c: static int, useParallelBuckets: static bool) =
-  when coefsBits <= EC.getScalarField().bits() and hasEndomorphismAcceleration(EC.F.Name):
+  when coefsBits <= EC.getScalarField().bits() and hasEndomorphismAcceleration(EC.getName()):
     let (endoCoefs, endoPoints, endoN) = applyEndomorphism_parallel(tp, coefs, points, N)
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance

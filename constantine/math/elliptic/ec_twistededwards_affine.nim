@@ -28,6 +28,9 @@ type EC_TwEdw_Aff*[F] = object
   ## over a field F
   x*, y*: F
 
+template getName*(EC: type EC_TwEdw_Aff): untyped =
+  EC.F.Name
+
 template getScalarField*(EC: type EC_TwEdw_Aff): untyped =
   Fr[EC.F.Name]
 

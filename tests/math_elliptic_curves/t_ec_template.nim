@@ -105,7 +105,7 @@ proc run_EC_addition_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.F.Name.getEquationForm() & " form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.getName().getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "The infinity point is the neutral element w.r.t. to EC " & " addition":
@@ -292,7 +292,7 @@ proc run_EC_addition_vartime_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.F.Name.getEquationForm() & " form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.getName().getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " (vartime) - [" & $WordBitWidth & "-bit mode]":
     test "The infinity point is the neutral element w.r.t. to EC " & $ec.G & " addition (vartime)":
@@ -479,7 +479,7 @@ proc run_EC_mul_sanity_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.F.Name.getEquationForm() & " form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.getName().getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "EC " & " mul [0]P == Inf":
@@ -584,7 +584,7 @@ proc run_EC_mul_distributive_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.F.Name.getEquationForm() & " form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.getName().getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
 
@@ -647,7 +647,7 @@ proc run_EC_mul_vs_ref_impl*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.F.Name.getEquationForm() & " form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.getName().getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "EC " & $ec.G & " mul constant-time is equivalent to a simple double-and-add and recoded algorithms":
@@ -727,7 +727,7 @@ proc run_EC_mul_endomorphism_impl*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.F.Name.getEquationForm() & " form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.getName().getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "EC " & $ec.G & " multiplication with endomorphism":
@@ -740,7 +740,7 @@ proc run_EC_mul_endomorphism_impl*(
           let scalarUnreduced = rng.random_long01Seq(BigInt[bits])
           # Ensure scalar is smaller than curve order
           var scalar {.noInit.}: BigInt[bits]
-          discard scalar.limbs.reduce_vartime(scalarUnreduced.limbs, EC.F.Name.scalarFieldModulus().limbs)
+          discard scalar.limbs.reduce_vartime(scalarUnreduced.limbs, EC.getName().scalarFieldModulus().limbs)
 
           proc diagnostic(expected, computed: EC): string {.used.} =
             return "\n" &
@@ -1126,7 +1126,7 @@ proc run_EC_affine_conversion*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.F.Name.getEquationForm() & " form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.getName().getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "EC " & $ec.G & " batchAffine is consistent with single affine conversion":

@@ -176,7 +176,7 @@ func ifft_vartime*[EC](
   var voutput = output.toView()
   fft_internal(voutput, vals.toView(), rootz)
 
-  var invLen {.noInit.}: Fr[EC.F.Name]
+  var invLen {.noInit.}: Fr[EC.getName()]
   invLen.fromUint(vals.len.uint64)
   invLen.inv_vartime()
   let inv = invLen.toBig()
@@ -192,7 +192,7 @@ func ifft_vartime*[EC](
 proc init*(T: type FFTDescriptor, maxScale: uint8): T =
   result.maxWidth = 1 shl maxScale
 
-  let root = scaleToRootOfUnity(T.EC.F.Name)[maxScale]
+  let root = scaleToRootOfUnity(T.EC.getName())[maxScale]
   result.rootOfUnity = root.toBig()
   result.expandedRootsOfUnity = root.expandRootOfUnity()
     # Aren't you tired of reading about unity?

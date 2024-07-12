@@ -33,6 +33,9 @@ type EC_TwEdw_Prj*[F] = object
   ## hence (aX² + Y²)Z² = Z⁴ + dX²Y²
   x*, y*, z*: F
 
+template getName*(EC: type EC_TwEdw_Prj): untyped =
+  EC.F.Name
+
 template getScalarField*(EC: type EC_TwEdw_Prj): untyped =
   Fr[EC.F.Name]
 

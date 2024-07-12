@@ -47,6 +47,9 @@ template getField*(Name: static Algebra, kind: static FieldKind): untyped =
 template family*(Name: Algebra): CurveFamily =
   CurveFamilies[Name]
 
+template isPairingFriendly*(Name: Algebra): bool =
+  family(Name) in {BarretoNaehrig, BarretoLynnScott, BrezingWeng}
+
 macro getEquationForm*(Name: static Algebra): untyped =
   ## Returns the equation form
   ## (ShortWeierstrass, Montgomery, Twisted Edwards, Weierstrass, ...)

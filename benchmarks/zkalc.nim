@@ -20,11 +20,13 @@ import
   constantine/lowlevel_fields,
   constantine/lowlevel_elliptic_curves,
   constantine/lowlevel_elliptic_curves_parallel,
+  # constantine/lowlevel_extension_fields,
+  constantine/lowlevel_pairing_curves,
   constantine/threadpool,
   # Helpers
   helpers/prng_unsafe,
   # Standard library
-  std/[stats, monotimes, times, strformat, strutils, cmdline],
+  std/[stats, monotimes, times, strformat, strutils, cmdline, macros],
   # Third-party
   jsony, cliche
 
@@ -87,6 +89,7 @@ template bench(body: untyped): AggStats =
     let (candidateIters, elapsedNs) = warmup(warmupMs)
 
     # Deduce batch size for bench iterations so that each batch is atleast 10ms to amortize clock overhead
+    # See https://gms.tf/on-the-costs-of-syscalls.html on clock and syscall latencies and vDSO.
     let batchSize = max(1, int(candidateIters.float64 * batchMs.float64 / warmupMs.float64))
     # Compute the number of iterations for ~5s of benchmarks
     let iters = int(
@@ -216,11 +219,11 @@ proc benchFrIP(rng: var RngState, curve: static Algebra): ZkalcBenchDetails =
 # EC benches
 # -------------------------------------------------------------------------------------
 
-proc benchEcAdd(rng: var RngState, EC: type, useVartime: bool): ZkalcBenchDetails =
+proc benchEcAdd(rng: var RngState, EC: typedesc, useVartime: bool): ZkalcBenchDetails =
   const G =
     when EC.G == G1: "𝔾1"
     else: "𝔾2"
-  const curve = EC.F.Name
+  const curve = EC.getName()
 
   var r {.noInit.}: EC
   let P = rng.random_unsafe(EC)
@@ -243,11 +246,11 @@ proc benchEcAdd(rng: var RngState, EC: type, useVartime: bool): ZkalcBenchDetail
     report(G & " Addition " & align("| constant-time", 29), curve, stats)
     stats.toZkalc()
 
-proc benchEcMul(rng: var RngState, EC: type, useVartime: bool): ZkalcBenchDetails =
+proc benchEcMul(rng: var RngState, EC: typedesc, useVartime: bool): ZkalcBenchDetails =
   const G =
     when EC.G == G1: "𝔾1"
     else: "𝔾2"
-  const curve = EC.F.Name
+  const curve = EC.getName()
 
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
@@ -273,7 +276,7 @@ proc benchEcMul(rng: var RngState, EC: type, useVartime: bool): ZkalcBenchDetail
 # EC Msm benches
 # -------------------------------------------------------------------------------------
 
-type BenchMsmContext*[EC] = object
+type BenchMsmContext[EC] = object
   numInputs: int
   coefs: seq[getBigInt(EC.F.Name, kScalarField)]
   points: seq[affine(EC)]
@@ -343,16 +346,15 @@ proc benchEcMsm[EC](ctx: BenchMsmContext[EC]): ZkalcBenchDetails =
 
   tp.shutdown()
 
-# EC Misc benches
+# EC serialization benches
 # -------------------------------------------------------------------------------------
 
 proc benchEcIsInSubgroup(rng: var RngState, EC: type): ZkalcBenchDetails =
   const G =
     when EC.G == G1: "𝔾1"
     else: "𝔾2"
-  const curve = EC.F.Name
+  const curve = EC.getName()
 
-  var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
   preventOptimAway(P)
@@ -367,7 +369,7 @@ proc benchEcHashToCurve(rng: var RngState, EC: type): ZkalcBenchDetails =
   const G =
     when EC.G == G1: "𝔾1"
     else: "𝔾2"
-  const curve = EC.F.Name
+  const curve = EC.getName()
 
   const dst = "Constantine_Zkalc_Bench_HashToCurve"
   # Gnark uses a message of size 54, probably to not spill over padding with SHA256
@@ -388,6 +390,62 @@ proc benchEcHashToCurve(rng: var RngState, EC: type): ZkalcBenchDetails =
   report(G & " Hash-to-Curve", curve, stats)
   stats.toZkalc()
 
+# Pairing benches
+# -------------------------------------------------------------------------------------
+
+func clearCofactor[F; G: static Subgroup](
+       ec: var EC_ShortW_Aff[F, G]) =
+  # For now we don't have any affine operation defined
+  var t {.noInit.}: EC_ShortW_Prj[F, G]
+  t.fromAffine(ec)
+  t.clearCofactor()
+  ec.affine(t)
+
+func random_point*(rng: var RngState, EC: typedesc): EC {.noInit.} =
+  result = rng.random_unsafe(EC)
+  result.clearCofactor()
+
+# proc benchPairing*(rng: var RngState, curve: static Algebra): ZkalcBenchDetails =
+#   let
+#     P = rng.random_point(EC_ShortW_Aff[Fp[curve], G1])
+#     Q = rng.random_point(EC_ShortW_Aff[Fp2[curve], G2])
+
+#   var f: Fp12[curve]
+#   let stats = bench():
+#     f.pairing(P, Q)
+
+#   report("Pairing", curve, stats)
+#   stats.toZkalc()
+
+# proc benchMultiPairing*(rng: var RngState, curve: static Algebra, maxNumInputs: int): ZkalcBenchDetails =
+#   var
+#     Ps = newSeq[EC_ShortW_Aff[Fp[curve], G1]](maxNumInputs)
+#     Qs = newSeq[EC_ShortW_Aff[Fp2[curve], G2]](maxNumInputs)
+
+#   stdout.write &"Generating {maxNumInputs} (𝔾1, 𝔾2) pairs ... "
+#   stdout.flushFile()
+
+#   let start = getMonotime()
+
+#   for i in 0 ..< maxNumInputs:
+#     Ps[i] = rng.random_point(typeof(Ps[0]))
+#     Qs[i] = rng.random_point(typeof(Qs[0]))
+
+#   let stop = getMonotime()
+#   stdout.write &"in {float64(inNanoSeconds(stop-start)) / 1e6:6.3f} ms\n"
+#   separator()
+
+#   var size = 2
+#   while size <= maxNumInputs:
+#     var f{.noInit.}: Fp12[curve]
+#     let stats = bench():
+#       f.pairing(Ps.toOpenArray(0, size-1), Qs.toOpenArray(0, size-1))
+
+#     report("Multipairing " & align($size, 5), curve, stats)
+#     result.append(stats, size)
+
+#     size *= 2
+
 # Run benches
 # -------------------------------------------------------------------------------------
 
@@ -397,13 +455,19 @@ proc runBenches(curve: static Algebra, useVartime: bool) =
 
   var zkalc: ZkalcBenchResult
 
-  type EcG1 = EC_ShortW_Jac[Fp[curve], G1]
+  # Fields
+  # --------------------------------------------------------------------
   separator()
   zkalc.add_ff = rng.benchFrAdd(curve)
   zkalc.mul_ff = rng.benchFrMul(curve)
   zkalc.invert = rng.benchFrInv(curve, useVartime)
   zkalc.ip_ff  = rng.benchFrIP(curve)
   separator()
+
+  # Elliptic curve
+  # --------------------------------------------------------------------
+  type EcG1 = EC_ShortW_Jac[Fp[curve], G1]
+
   zkalc.add_g1 = rng.benchEcAdd(EcG1, useVartime)
   zkalc.mul_g1 = rng.benchEcMul(EcG1, useVartime)
   separator()
@@ -415,6 +479,36 @@ proc runBenches(curve: static Algebra, useVartime: bool) =
   when curve in {BN254_Snarks, BLS12_381}:
     zkalc.hash_G1 = rng.benchEcHashToCurve(EcG1)
   separator()
+
+  # # Pairing-friendly curve only
+  # # --------------------------------------------------------------------
+
+  # when curve.isPairingFriendly():
+
+  #   # Elliptic curve 𝔾2
+  #   # --------------------------------------------------------------------
+
+  #   type EcG2 = EC_ShortW_Jac[Fp2[curve], G2] # For now we only supports G2 on Fp2 (not Fp like BW6 or Fp4 like BLS24)
+
+  #   zkalc.add_g2 = rng.benchEcAdd(EcG2, useVartime)
+  #   zkalc.mul_g2 = rng.benchEcMul(EcG2, useVartime)
+  #   separator()
+  #   let ctxG2    = rng.createBenchMsmContext(EcG2, maxNumInputs = 2097152)
+  #   separator()
+  #   zkalc.msm_g2 = benchEcMsm(ctxG2)
+  #   separator()
+  #   zkalc.is_in_sub_G2 = rng.benchEcIsInSubgroup(EcG2)
+  #   when curve in {BN254_Snarks, BLS12_381}:
+  #     zkalc.hash_G2 = rng.benchEcHashToCurve(EcG2)
+  #   separator()
+
+  #   # Pairings
+  #   # --------------------------------------------------------------------
+
+  #   zkalc.pairing = rng.benchPairing(curve)
+  #   separator()
+  #   zkalc.multipairing = rng.benchMultiPairing(curve, maxNumInputs = 1024)
+  #   separator()
 
 proc main() =
   let cmd = commandLineParams()
@@ -429,4 +523,5 @@ proc main() =
   else:
     echo "This curve '" & $curve & "' is not configured for benchmarking at the moment."
 
-main()
+when isMainModule:
+  main()

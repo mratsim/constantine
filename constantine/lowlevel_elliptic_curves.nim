@@ -39,7 +39,8 @@ export
   abstractions.BigInt,
   algebras.Algebra,
   algebras.getBigInt,
-  algebras.FieldKind
+  algebras.FieldKind,
+  algebras.isPairingFriendly
 
 # Generic sandwich
 export abstractions
@@ -52,7 +53,8 @@ export
   ec_shortweierstrass.EC_ShortW_Aff,
   ec_shortweierstrass.EC_ShortW_Jac,
   ec_shortweierstrass.EC_ShortW_Prj,
-  ec_shortweierstrass.EC_ShortW
+  ec_shortweierstrass.EC_ShortW,
+  ec_shortweierstrass.getName
 
 export ec_shortweierstrass.`==`
 export ec_shortweierstrass.isNeutral

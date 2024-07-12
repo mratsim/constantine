@@ -37,6 +37,9 @@ type EC_ShortW_Prj*[F; G: static Subgroup] = object
   ## Note that projective coordinates are not unique
   x*, y*, z*: F
 
+template getName*(EC: type EC_ShortW_Prj): untyped =
+  EC.F.Name
+
 template getScalarField*(EC: type EC_ShortW_Prj): untyped =
   Fr[EC.F.Name]
 

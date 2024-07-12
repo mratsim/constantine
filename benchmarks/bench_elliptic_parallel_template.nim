@@ -56,7 +56,7 @@ proc multiAddParallelBench*(EC: typedesc, numInputs: int, iters: int) =
 type BenchMsmContext*[EC] = object
   tp: Threadpool
   numInputs: int
-  coefs: seq[getBigInt(EC.F.Name, kScalarField)]
+  coefs: seq[getBigInt(EC.getName(), kScalarField)]
   points: seq[affine(EC)]
 
 proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int]): BenchMsmContext[EC] =

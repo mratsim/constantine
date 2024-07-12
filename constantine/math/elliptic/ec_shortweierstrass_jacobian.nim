@@ -37,6 +37,9 @@ type EC_ShortW_Jac*[F; G: static Subgroup] = object
   ## Note that jacobian coordinates are not unique
   x*, y*, z*: F
 
+template getName*(EC: type EC_ShortW_Jac): untyped =
+  EC.F.Name
+
 template getScalarField*(EC: type EC_ShortW_Jac): untyped =
   Fr[EC.F.Name]
 

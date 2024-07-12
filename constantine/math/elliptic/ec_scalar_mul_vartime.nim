@@ -339,7 +339,7 @@ func scalarMul_vartime*[scalBits; EC](P: var EC, scalar: BigInt[scalBits]) {.met
 
   let usedBits = scalar.limbs.getBits_LE_vartime()
 
-  when EC.F.Name.hasEndomorphismAcceleration():
+  when EC.getName().hasEndomorphismAcceleration():
     when scalBits >= EndomorphismThreshold: # Skip static: doAssert when multiplying by intentionally small scalars.
       if usedBits >= EndomorphismThreshold:
         when EC.F is Fp:

@@ -13,7 +13,7 @@ import
   constantine/math/extension_fields,
   constantine/named/zoo_pairings
 
-func pairing*[Name](gt: var Fp12[Name], P, Q: auto) {.inline.} =
+func pairing*[Name: static Algebra](gt: var Fp12[Name], P, Q: auto) {.inline.} =
   when family(Name) == BarretoNaehrig:
     pairing_bn(gt, P, Q)
   elif family(Name) == BarretoLynnScott:

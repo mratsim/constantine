@@ -278,7 +278,7 @@ suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitWidth & "-bit words]":
       {.error: "Not implemented".}
 
   proc test(EC: typedesc, randZ: static bool, gen: static RandomGen) =
-    let trace = trace(EC.F.Name)
+    let trace = trace(EC.getName())
 
     for i in 0 ..< Iters:
       let P = rng.random_point(EC, randZ, gen)

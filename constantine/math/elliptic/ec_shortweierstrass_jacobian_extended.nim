@@ -39,6 +39,9 @@ type EC_ShortW_JacExt*[F; G: static Subgroup] = object
   ## Note that extended jacobian coordinates are not unique
   x*, y*, zz*, zzz*: F
 
+template getName*(EC: type EC_ShortW_JacExt): untyped =
+  EC.F.Name
+
 func fromAffine*[F; G](jacext: var EC_ShortW_JacExt[F, G], aff: EC_ShortW_Aff[F, G]) {.inline.}
 
 func isNeutral*(P: EC_ShortW_JacExt): SecretBool {.inline, meter.} =
