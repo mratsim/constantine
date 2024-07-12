@@ -81,7 +81,7 @@ func scalarMul_addchain_4bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarT
   of 5:
     var t {.noInit.}: EC
     t.double(P)
-    t.double(P)
+    t.double()
     P ~+= t
   of 6:
     var t {.noInit.}: EC
