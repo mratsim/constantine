@@ -10,7 +10,8 @@ import
   std/macros,
   # Internal
   ./config_fields_and_curves,
-  ./deriv/parser_curves
+  ./deriv/parser_curves,
+  ./properties_fields
 
 export Algebra, CurveFamily, SexticTwist
 
@@ -45,6 +46,9 @@ template getField*(Name: static Algebra, kind: static FieldKind): untyped =
 
 template family*(Name: Algebra): CurveFamily =
   CurveFamilies[Name]
+
+template isPairingFriendly*(Name: Algebra): bool =
+  family(Name) in {BarretoNaehrig, BarretoLynnScott, BrezingWeng}
 
 macro getEquationForm*(Name: static Algebra): untyped =
   ## Returns the equation form

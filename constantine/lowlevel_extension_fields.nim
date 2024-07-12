@@ -31,18 +31,25 @@ import
 # ------------------------------------------------------------
 
 export
-  abstractions,
-  algebras.Algebra
+  abstractions.SecretBool,
+  abstractions.SecretWord,
+  algebras.Algebra,
+  algebras.getBigInt
+
+export
+  algebras.Fp,
+  algebras.Fr,
+  algebras.FF
 
 # Extension fields
 # ------------------------------------------------------------
 
 export
-  extension_fields.Fp2
+  extension_fields.Fp2,
   # TODO: deal with Fp2->Fp6 vs Fp3->Fp6 and Fp2->Fp6->Fp12 vs Fp2->Fp4->Fp12
   # extension_fields.Fp4,
   # extension_fields.Fp6,
-  # extension_fields.Fp12
+  extension_fields.Fp12
 
 # Generic sandwich - https://github.com/nim-lang/Nim/issues/11225
 export extension_fields.c0, extension_fields.`c0=`
@@ -86,4 +93,3 @@ export extension_fields.sqrt_if_square
 export extension_fields.sqrt
 
 export frobenius.frobenius_map
-

@@ -163,15 +163,28 @@ func pairing_bls12*[Name](
   gt.finalExpEasy()
   gt.finalExpHard_BLS12()
 
-func pairing_bls12*[N: static int, Name](
+func pairing_bls12*[Name: static Algebra](
        gt: var Fp12[Name],
-       Ps: array[N, EC_ShortW_Aff[Fp[Name], G1]],
-       Qs: array[N, EC_ShortW_Aff[Fp2[Name], G2]]) {.meter.} =
+       Ps: ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]],
+       Qs: ptr UncheckedArray[EC_ShortW_Aff[Fp2[Name], G2]],
+       len: int) {.meter.} =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: an array of Ps ∈ G1 and Qs ∈ G2
   ## Output:
   ##   The product of pairings
   ##   e(P₀, Q₀) * e(P₁, Q₁) * e(P₂, Q₂) * ... * e(Pₙ, Qₙ) ∈ Gt
-  gt.millerLoopAddchain(Qs.asUnchecked(), Ps.asUnchecked(), N)
+  gt.millerLoopAddchain(Qs, Ps, len)
   gt.finalExpEasy()
   gt.finalExpHard_BLS12()
+
+func pairing_bls12*[Name: static Algebra](
+       gt: var Fp12[Name],
+       Ps: openArray[EC_ShortW_Aff[Fp[Name], G1]],
+       Qs: openArray[EC_ShortW_Aff[Fp2[Name], G2]]) {.inline.} =
+  ## Compute the optimal Ate Pairing for BLS12 curves
+  ## Input: an array of Ps ∈ G1 and Qs ∈ G2
+  ## Output:
+  ##   The product of pairings
+  ##   e(P₀, Q₀) * e(P₁, Q₁) * e(P₂, Q₂) * ... * e(Pₙ, Qₙ) ∈ Gt
+  debug: doAssert Ps.len == Qs.len
+  gt.pairing_bls12(Ps.asUnchecked(), Qs.asUnchecked(), Ps.len)

@@ -32,12 +32,12 @@ type
   ECFFT_Descriptor*[EC] = object
     ## Metadata for FFT on Elliptic Curve
     order*: int
-    rootsOfUnity*: ptr UncheckedArray[getBigInt(EC.F.Name, kScalarField)]
+    rootsOfUnity*: ptr UncheckedArray[getBigInt(EC.getName(), kScalarField)]
       ## domain, starting and ending with 1, length is cardinality+1
       ## This allows FFT and inverse FFT to use the same buffer for roots.
 
 func computeRootsOfUnity[EC](ctx: var ECFFT_Descriptor[EC], generatorRootOfUnity: auto) =
-  static: doAssert typeof(generatorRootOfUnity) is Fr[EC.F.Name]
+  static: doAssert typeof(generatorRootOfUnity) is Fr[EC.getName()]
 
   ctx.rootsOfUnity[0].setOne()
 

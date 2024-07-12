@@ -8,7 +8,7 @@
 
 import
   constantine/platforms/abstractions,
-  constantine/math/arithmetic,
+  constantine/math/[arithmetic, extension_fields],
   ./ec_shortweierstrass_affine,
   ./ec_shortweierstrass_jacobian,
   ./ec_shortweierstrass_projective,
@@ -16,7 +16,7 @@ import
   ./ec_twistededwards_projective,
   ./ec_twistededwards_affine
 
-export abstractions, arithmetic,
+export abstractions, arithmetic, extension_fields,
        ec_shortweierstrass_affine,
        ec_shortweierstrass_jacobian,
        ec_shortweierstrass_projective,

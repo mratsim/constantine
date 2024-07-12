@@ -262,7 +262,7 @@ jobs:
         run: |
           pacman -S --needed --noconfirm mingw-w64-x86_64-gmp mingw-w64-x86_64-llvm
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp@#head jsony asynctools yaml@1.1.0
+          nimble install --verbose -y gmp@#head jsony asynctools yaml@1.1.0 cliche
 
           cd constantine
           go mod download -modfile=go_test.mod
@@ -272,7 +272,7 @@ jobs:
         shell: bash
         run: |
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp@#head jsony asynctools yaml@1.1.0
+          nimble install --verbose -y gmp@#head jsony asynctools yaml@1.1.0 cliche
 
           cd constantine
           go mod download -modfile=go_test.mod
@@ -336,6 +336,24 @@ jobs:
         run: |
           cd constantine
           CTT_ASM=0 cargo test -- --nocapture
+
+      - name: Compile Constantine Zkalc benchmark (no assembly)
+        # Skip 32-bit as that would need clang-multilib or -m32
+        # Skip Windows as clang throws fatal error LNK1107
+        if: matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu != 'i386' && runner.os != 'Windows'
+        shell: bash
+        run: |
+          cd constantine
+          CTT_ASM=0 nimble make_zkalc
+
+      - name: Compile Constantine Zkalc benchmark (with assembly)
+        # Skip 32-bit as that would need clang-multilib or -m32
+        # Skip Windows as clang throws fatal error LNK1107
+        if: matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386' && runner.os != 'Windows'
+        shell: bash
+        run: |
+          cd constantine
+          nimble make_zkalc
 
       - name: Run Constantine in-depth tests (Unix - with GMP, with Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'

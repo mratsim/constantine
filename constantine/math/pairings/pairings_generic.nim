@@ -13,7 +13,7 @@ import
   constantine/math/extension_fields,
   constantine/named/zoo_pairings
 
-func pairing*[Name](gt: var Fp12[Name], P, Q: auto) {.inline.} =
+func pairing*[Name: static Algebra](gt: var Fp12[Name], P, Q: auto) {.inline.} =
   when family(Name) == BarretoNaehrig:
     pairing_bn(gt, P, Q)
   elif family(Name) == BarretoLynnScott:
@@ -21,13 +21,13 @@ func pairing*[Name](gt: var Fp12[Name], P, Q: auto) {.inline.} =
   else:
     {.error: "Pairing not implemented for " & $Name.}
 
-func millerLoop*[Name](gt: var Fp12[Name], Q, P: auto, n: int) {.inline.} =
+func millerLoop*[Name: static Algebra](gt: var Fp12[Name], Q, P: auto, n: int) {.inline.} =
   when Name == BN254_Snarks:
     gt.millerLoopGenericBN(Q, P, n)
   else:
     gt.millerLoopAddchain(Q, P, n)
 
-func finalExp*[Name](gt: var Fp12[Name]){.inline.} =
+func finalExp*[Name: static Algebra](gt: var Fp12[Name]){.inline.} =
   gt.finalExpEasy()
   when family(Name) == BarretoNaehrig:
     gt.finalExpHard_BN()

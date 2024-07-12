@@ -146,7 +146,7 @@ proc run_scalar_mul_test_vs_sage*(
   const coord = when EC is EC_ShortW_Prj: " Projective coordinates "
                 elif EC is EC_ShortW_Jac: " Jacobian coordinates "
 
-  const testSuiteDesc = "Scalar Multiplication " & $EC.F.Name & " " & G1_or_G2 & " " & coord & " vs SageMath - " & $bits & "-bit scalar"
+  const testSuiteDesc = "Scalar Multiplication " & $EC.getName() & " " & G1_or_G2 & " " & coord & " vs SageMath - " & $bits & "-bit scalar"
 
   suite testSuiteDesc & " [" & $WordBitWidth & "-bit words]":
     for i in 0 ..< vec.vectors.len:

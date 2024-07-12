@@ -27,7 +27,10 @@ import
 # Base types
 # ------------------------------------------------------------
 
-export abstractions
+export
+  abstractions.SecretBool,
+  abstractions.SecretWord,
+  abstractions.BigInt
 
 # BigInt
 # ------------------------------------------------------------
