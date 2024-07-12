@@ -28,7 +28,7 @@ import
   # Helpers
   helpers/prng_unsafe,
   # Standard library
-  std/[stats, monotimes, times, strformat, strutils, cmdline, macros],
+  std/[stats, monotimes, times, strformat, strutils, os, macros],
   # Third-party
   jsony, cliche
 

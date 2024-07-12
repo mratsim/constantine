@@ -262,7 +262,7 @@ jobs:
         run: |
           pacman -S --needed --noconfirm mingw-w64-x86_64-gmp mingw-w64-x86_64-llvm
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp jsony asynctools yaml@1.1.0 cliche
+          nimble install --verbose -y gmp@#head jsony asynctools yaml@1.1.0 cliche
 
           cd constantine
           go mod download -modfile=go_test.mod
@@ -272,7 +272,7 @@ jobs:
         shell: bash
         run: |
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp jsony asynctools yaml@1.1.0 cliche
+          nimble install --verbose -y gmp@#head jsony asynctools yaml@1.1.0 cliche
 
           cd constantine
           go mod download -modfile=go_test.mod

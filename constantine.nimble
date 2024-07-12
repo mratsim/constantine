@@ -15,11 +15,11 @@ when (NimMajor, NimMinor) >= (2, 0): # Task-level dependencies
 
   taskRequires "test", "jsony"
   taskRequires "test", "yaml"
-  taskRequires "test", "gmp"
+  taskRequires "test", "gmp@#head"
 
   taskRequires "test_parallel", "jsony"
   taskRequires "test_parallel", "yaml"
-  taskRequires "test_parallel", "gmp"
+  taskRequires "test_parallel", "gmp@#head"
 
   taskRequires "test_no_gmp", "jsony"
   taskRequires "test_no_gmp", "yaml"
