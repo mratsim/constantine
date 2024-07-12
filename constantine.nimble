@@ -9,22 +9,23 @@ license       = "MIT or Apache License 2.0"
 
 requires "nim >= 1.6.12"
 
-taskRequires "make_zkalc", "jsony"
-taskRequires "make_zkalc", "cliche"
+when (NimMajor, NimMinor) >= (2, 0): # Task-level dependencies
+  taskRequires "make_zkalc", "jsony"
+  taskRequires "make_zkalc", "cliche"
 
-taskRequires "test", "jsony"
-taskRequires "test", "yaml"
-taskRequires "test", "gmp"
+  taskRequires "test", "jsony"
+  taskRequires "test", "yaml"
+  taskRequires "test", "gmp"
 
-taskRequires "test_parallel", "jsony"
-taskRequires "test_parallel", "yaml"
-taskRequires "test_parallel", "gmp"
+  taskRequires "test_parallel", "jsony"
+  taskRequires "test_parallel", "yaml"
+  taskRequires "test_parallel", "gmp"
 
-taskRequires "test_no_gmp", "jsony"
-taskRequires "test_no_gmp", "yaml"
+  taskRequires "test_no_gmp", "jsony"
+  taskRequires "test_no_gmp", "yaml"
 
-taskRequires "test_parallel_no_gmp", "jsony"
-taskRequires "test_parallel_no_gmp", "yaml"
+  taskRequires "test_parallel_no_gmp", "jsony"
+  taskRequires "test_parallel_no_gmp", "yaml"
 
 # Nimscript imports
 # ----------------------------------------------------------------
