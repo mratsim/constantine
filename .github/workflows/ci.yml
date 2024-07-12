@@ -339,7 +339,8 @@ jobs:
 
       - name: Compile Constantine Zkalc benchmark (no assembly)
         # Skip 32-bit as that would need clang-multilib or -m32
-        if: matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu != 'i386'
+        # Skip Windows as clang throws fatal error LNK1107
+        if: matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu != 'i386' && runner.os != 'Windows'
         shell: bash
         run: |
           cd constantine
@@ -347,7 +348,8 @@ jobs:
 
       - name: Compile Constantine Zkalc benchmark (with assembly)
         # Skip 32-bit as that would need clang-multilib or -m32
-        if: matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386'
+        # Skip Windows as clang throws fatal error LNK1107
+        if: matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386' && runner.os != 'Windows'
         shell: bash
         run: |
           cd constantine
