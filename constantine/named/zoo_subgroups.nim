@@ -33,7 +33,7 @@ export
 func clearCofactor*[EC](P: var EC) {.inline.} =
   ## Clear the cofactor of a point on the curve
   ## From a point on the curve, returns a point on the subgroup of order r
-  when EC.getName() in {BN254_Nogami, BN254_Snarks, BLS12_377, BLS12_381}:
+  when EC.F.Name in {BN254_Nogami, BN254_Snarks, BLS12_377, BLS12_381}:
     P.clearCofactorFast()
   else:
     P.clearCofactorReference()

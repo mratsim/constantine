@@ -32,6 +32,9 @@ import
   # Third-party
   jsony, cliche
 
+# Workarounds generic sandwich bug in 1.6.x
+from constantine/named/algebras import matchingBigInt, matchingOrderBigInt, getLimbs2x
+
 type
   ZkalcBenchDetails = object
     `range`: seq[int]
@@ -110,7 +113,7 @@ template bench(body: untyped): AggStats =
 
       # We can store integers up to 2⁵³ in a float64 without loss of precision (see also ulp)
       # 1 billion is ~ 2³⁰, so you would need 2²³ seconds = 8388608s = 13 weeks 6 days 2 hours 10 minutes 8 seconds
-      stats.push(elapsedNs)
+      stats.push(elapsedNs.int)
 
     (stats, batchSize)
 
