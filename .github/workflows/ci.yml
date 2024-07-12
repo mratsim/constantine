@@ -337,6 +337,20 @@ jobs:
           cd constantine
           CTT_ASM=0 cargo test -- --nocapture
 
+      - name: Compile Constantine Zkalc benchmark (no assembly)
+        if: matrix.target.BACKEND == 'NO_ASM'
+        shell: bash
+        run: |
+          cd constantine
+          CTT_ASM=0 nimble make_zkalc
+
+      - name: Compile Constantine Zkalc benchmark (with assembly)
+        if: matrix.target.BACKEND == 'ASM'
+        shell: bash
+        run: |
+          cd constantine
+          nimble make_zkalc
+
       - name: Run Constantine in-depth tests (Unix - with GMP, with Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
         shell: bash

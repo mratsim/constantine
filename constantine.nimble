@@ -277,6 +277,14 @@ task make_lib_rust, "Build Constantine library (use within a Rust build.rs scrip
                  else: "--passC:-fPIC"
   genStaticLib(rustOutDir, rustOutDir/"nimcache", extflags)
 
+task make_zkalc, "Build a benchmark executable for zkalc (with Clang)":
+  exec "nim c --cc:clang " &
+       releaseBuildOptions(bmBinary) &
+       " --threads:on " &
+       " --out:bin/constantine-bench-zkalc " &
+       " --nimcache:nimcache/bench_zkalc " &
+       " benchmarks/zkalc.nim"
+
 proc testLib(path, testName: string, useGMP: bool) =
   let dynlibName = if defined(windows): "constantine.dll"
                    elif defined(macosx) or defined(macos): "libconstantine.dylib"
@@ -639,6 +647,7 @@ const benchDesc = [
   "bench_eth_eip2537_subgroup_checks_impact",
   "bench_verkle_primitives",
   "bench_eth_evm_precompiles",
+  # "zkalc", # Already tested through make_zkalc
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI

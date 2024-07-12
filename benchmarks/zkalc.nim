@@ -16,13 +16,15 @@
 # https://github.com/mmaker/zkalc
 
 import
+  constantine/threadpool,
   constantine/hashes,
   constantine/lowlevel_fields,
+  # constantine/lowlevel_extension_fields,
+  constantine/math/extension_fields,
   constantine/lowlevel_elliptic_curves,
   constantine/lowlevel_elliptic_curves_parallel,
-  # constantine/lowlevel_extension_fields,
   constantine/lowlevel_pairing_curves,
-  constantine/threadpool,
+
   # Helpers
   helpers/prng_unsafe,
   # Standard library
@@ -278,13 +280,13 @@ proc benchEcMul(rng: var RngState, EC: typedesc, useVartime: bool): ZkalcBenchDe
 
 type BenchMsmContext[EC] = object
   numInputs: int
-  coefs: seq[getBigInt(EC.F.Name, kScalarField)]
+  coefs: seq[getBigInt(EC.getName(), kScalarField)]
   points: seq[affine(EC)]
 
 proc createBenchMsmContext*(rng: var RngState, EC: typedesc, maxNumInputs: int): BenchMsmContext[EC] =
   let tp = Threadpool.new()
 
-  type Big = EC.F.Name.getBigInt(kScalarField)
+  type Big = typeof(result.coefs[0])
   type ECaff = affine(EC)
 
   result.numInputs = maxNumInputs
@@ -327,7 +329,7 @@ proc benchEcMsm[EC](ctx: BenchMsmContext[EC]): ZkalcBenchDetails =
   const G =
     when EC.G == G1: "𝔾1"
     else: "𝔾2"
-  const curve = EC.F.Name
+  const curve = EC.getName()
 
   let tp = Threadpool.new()
   var size = 2
@@ -405,46 +407,46 @@ func random_point*(rng: var RngState, EC: typedesc): EC {.noInit.} =
   result = rng.random_unsafe(EC)
   result.clearCofactor()
 
-# proc benchPairing*(rng: var RngState, curve: static Algebra): ZkalcBenchDetails =
-#   let
-#     P = rng.random_point(EC_ShortW_Aff[Fp[curve], G1])
-#     Q = rng.random_point(EC_ShortW_Aff[Fp2[curve], G2])
+proc benchPairing*(rng: var RngState, curve: static Algebra): ZkalcBenchDetails =
+  let
+    P = rng.random_point(EC_ShortW_Aff[Fp[curve], G1])
+    Q = rng.random_point(EC_ShortW_Aff[Fp2[curve], G2])
 
-#   var f: Fp12[curve]
-#   let stats = bench():
-#     f.pairing(P, Q)
+  var f: Fp12[curve]
+  let stats = bench():
+    f.pairing(P, Q)
 
-#   report("Pairing", curve, stats)
-#   stats.toZkalc()
+  report("Pairing", curve, stats)
+  stats.toZkalc()
 
-# proc benchMultiPairing*(rng: var RngState, curve: static Algebra, maxNumInputs: int): ZkalcBenchDetails =
-#   var
-#     Ps = newSeq[EC_ShortW_Aff[Fp[curve], G1]](maxNumInputs)
-#     Qs = newSeq[EC_ShortW_Aff[Fp2[curve], G2]](maxNumInputs)
+proc benchMultiPairing*(rng: var RngState, curve: static Algebra, maxNumInputs: int): ZkalcBenchDetails =
+  var
+    Ps = newSeq[EC_ShortW_Aff[Fp[curve], G1]](maxNumInputs)
+    Qs = newSeq[EC_ShortW_Aff[Fp2[curve], G2]](maxNumInputs)
 
-#   stdout.write &"Generating {maxNumInputs} (𝔾1, 𝔾2) pairs ... "
-#   stdout.flushFile()
+  stdout.write &"Generating {maxNumInputs} (𝔾1, 𝔾2) pairs ... "
+  stdout.flushFile()
 
-#   let start = getMonotime()
+  let start = getMonotime()
 
-#   for i in 0 ..< maxNumInputs:
-#     Ps[i] = rng.random_point(typeof(Ps[0]))
-#     Qs[i] = rng.random_point(typeof(Qs[0]))
+  for i in 0 ..< maxNumInputs:
+    Ps[i] = rng.random_point(typeof(Ps[0]))
+    Qs[i] = rng.random_point(typeof(Qs[0]))
 
-#   let stop = getMonotime()
-#   stdout.write &"in {float64(inNanoSeconds(stop-start)) / 1e6:6.3f} ms\n"
-#   separator()
+  let stop = getMonotime()
+  stdout.write &"in {float64(inNanoSeconds(stop-start)) / 1e6:6.3f} ms\n"
+  separator()
 
-#   var size = 2
-#   while size <= maxNumInputs:
-#     var f{.noInit.}: Fp12[curve]
-#     let stats = bench():
-#       f.pairing(Ps.toOpenArray(0, size-1), Qs.toOpenArray(0, size-1))
+  var size = 2
+  while size <= maxNumInputs:
+    var f{.noInit.}: Fp12[curve]
+    let stats = bench():
+      f.pairing(Ps.toOpenArray(0, size-1), Qs.toOpenArray(0, size-1))
 
-#     report("Multipairing " & align($size, 5), curve, stats)
-#     result.append(stats, size)
+    report("Multipairing " & align($size, 5), curve, stats)
+    result.append(stats, size)
 
-#     size *= 2
+    size *= 2
 
 # Run benches
 # -------------------------------------------------------------------------------------
@@ -480,35 +482,35 @@ proc runBenches(curve: static Algebra, useVartime: bool) =
     zkalc.hash_G1 = rng.benchEcHashToCurve(EcG1)
   separator()
 
-  # # Pairing-friendly curve only
-  # # --------------------------------------------------------------------
+  # Pairing-friendly curve only
+  # --------------------------------------------------------------------
 
-  # when curve.isPairingFriendly():
+  when curve.isPairingFriendly():
 
-  #   # Elliptic curve 𝔾2
-  #   # --------------------------------------------------------------------
+    # Elliptic curve 𝔾2
+    # --------------------------------------------------------------------
 
-  #   type EcG2 = EC_ShortW_Jac[Fp2[curve], G2] # For now we only supports G2 on Fp2 (not Fp like BW6 or Fp4 like BLS24)
+    type EcG2 = EC_ShortW_Jac[Fp2[curve], G2] # For now we only supports G2 on Fp2 (not Fp like BW6 or Fp4 like BLS24)
 
-  #   zkalc.add_g2 = rng.benchEcAdd(EcG2, useVartime)
-  #   zkalc.mul_g2 = rng.benchEcMul(EcG2, useVartime)
-  #   separator()
-  #   let ctxG2    = rng.createBenchMsmContext(EcG2, maxNumInputs = 2097152)
-  #   separator()
-  #   zkalc.msm_g2 = benchEcMsm(ctxG2)
-  #   separator()
-  #   zkalc.is_in_sub_G2 = rng.benchEcIsInSubgroup(EcG2)
-  #   when curve in {BN254_Snarks, BLS12_381}:
-  #     zkalc.hash_G2 = rng.benchEcHashToCurve(EcG2)
-  #   separator()
+    zkalc.add_g2 = rng.benchEcAdd(EcG2, useVartime)
+    zkalc.mul_g2 = rng.benchEcMul(EcG2, useVartime)
+    separator()
+    let ctxG2    = rng.createBenchMsmContext(EcG2, maxNumInputs = 2097152)
+    separator()
+    zkalc.msm_g2 = benchEcMsm(ctxG2)
+    separator()
+    zkalc.is_in_sub_G2 = rng.benchEcIsInSubgroup(EcG2)
+    when curve in {BN254_Snarks, BLS12_381}:
+      zkalc.hash_G2 = rng.benchEcHashToCurve(EcG2)
+    separator()
 
-  #   # Pairings
-  #   # --------------------------------------------------------------------
+    # Pairings
+    # --------------------------------------------------------------------
 
-  #   zkalc.pairing = rng.benchPairing(curve)
-  #   separator()
-  #   zkalc.multipairing = rng.benchMultiPairing(curve, maxNumInputs = 1024)
-  #   separator()
+    zkalc.pairing = rng.benchPairing(curve)
+    separator()
+    zkalc.multipairing = rng.benchMultiPairing(curve, maxNumInputs = 1024)
+    separator()
 
 proc main() =
   let cmd = commandLineParams()

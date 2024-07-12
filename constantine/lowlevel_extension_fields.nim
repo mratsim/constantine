@@ -45,7 +45,6 @@ export
 # ------------------------------------------------------------
 
 export
-  extension_fields.Name,
   extension_fields.Fp2,
   # TODO: deal with Fp2->Fp6 vs Fp3->Fp6 and Fp2->Fp6->Fp12 vs Fp2->Fp4->Fp12
   # extension_fields.Fp4,
