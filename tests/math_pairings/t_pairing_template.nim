@@ -193,6 +193,15 @@ template runGTexponentiationTests*(Iters: static int, GT: typedesc): untyped {.d
       r_wNAF.gtExp_minHammingWeight_windowed_vartime(a, k, window = 4)
       doAssert bool(r_ref == r_wNAF)
 
+      # Windowed NAF + endomorphism acceleration
+      var r_endoWNAF {.noInit.}: GT
+      r_endoWNAF.gtExpEndo_minHammingWeight_windowed_vartime(a, k, window = 2)
+      doAssert bool(r_ref == r_endoWNAF)
+      r_endoWNAF.gtExpEndo_minHammingWeight_windowed_vartime(a, k, window = 3)
+      doAssert bool(r_ref == r_endoWNAF)
+      r_endoWNAF.gtExpEndo_minHammingWeight_windowed_vartime(a, k, window = 4)
+      doAssert bool(r_ref == r_endoWNAF)
+
       stdout.write '.'
 
     stdout.write '\n'

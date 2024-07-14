@@ -44,11 +44,12 @@ type
 
 template decomposeEndoImpl[scalBits: static int](
        scalar: BigInt[scalBits],
-       F: typedesc[Fp or Fp2],
+       frBits: static int,
+       Name: static Algebra,
+       G: static Subgroup,
        copyMiniScalarsResult: untyped) =
   static: doAssert scalBits >= L, "Cannot decompose a scalar smaller than a mini-scalar or the decomposition coefficient"
   # Equal when no window or no negative handling, greater otherwise
-  const frBits = Fr[F.Name].bits()
   static: doAssert frBits >= scalBits
   static: doAssert L >= ceilDiv_vartime(frBits, M) + 1
   const w = frBits.wordsRequired()
@@ -59,24 +60,24 @@ template decomposeEndoImpl[scalBits: static int](
 
   when M == 2:
     var alphas{.noInit, inject.}: (
-      BigInt[frBits + babai(F)[0][0].bits],
-      BigInt[frBits + babai(F)[1][0].bits]
+      BigInt[frBits + babai(Name, G)[0][0].bits],
+      BigInt[frBits + babai(Name, G)[1][0].bits]
     )
   elif M == 4:
     var alphas{.noInit, inject.}: (
-      BigInt[frBits + babai(F)[0][0].bits],
-      BigInt[frBits + babai(F)[1][0].bits],
-      BigInt[frBits + babai(F)[2][0].bits],
-      BigInt[frBits + babai(F)[3][0].bits]
+      BigInt[frBits + babai(Name, G)[0][0].bits],
+      BigInt[frBits + babai(Name, G)[1][0].bits],
+      BigInt[frBits + babai(Name, G)[2][0].bits],
+      BigInt[frBits + babai(Name, G)[3][0].bits]
     )
   else:
     {.error: "The decomposition degree " & $M & " is not configured".}
 
   staticFor i, 0, M:
-    when bool babai(F)[i][0].isZero():
+    when bool babai(Name, G)[i][0].isZero():
       alphas[i].setZero()
     else:
-      alphas[i].prod_high_words(babai(F)[i][0], scalar, w)
+      alphas[i].prod_high_words(babai(Name, G)[i][0], scalar, w)
 
   # We have k0 = s - 𝛼0 b00 - 𝛼1 b10 ... - 𝛼m bm0
   # and     kj = 0 - 𝛼j b0j - 𝛼1 b1j ... - 𝛼m bmj
@@ -86,13 +87,13 @@ template decomposeEndoImpl[scalBits: static int](
   k[0].copyTruncatedFrom(scalar)
   staticFor miniScalarIdx, 0, M:
     staticFor basisIdx, 0, M:
-      when not bool lattice(F)[basisIdx][miniScalarIdx][0].isZero():
-        when bool lattice(F)[basisIdx][miniScalarIdx][0].isOne():
+      when not bool lattice(Name, G)[basisIdx][miniScalarIdx][0].isZero():
+        when bool lattice(Name, G)[basisIdx][miniScalarIdx][0].isOne():
           alphaB.copyTruncatedFrom(alphas[basisIdx])
         else:
-          alphaB.prod(alphas[basisIdx], lattice(F)[basisIdx][miniScalarIdx][0])
+          alphaB.prod(alphas[basisIdx], lattice(Name, G)[basisIdx][miniScalarIdx][0])
 
-        when lattice(F)[basisIdx][miniScalarIdx][1] xor babai(F)[basisIdx][1]:
+        when lattice(Name, G)[basisIdx][miniScalarIdx][1] xor babai(Name, G)[basisIdx][1]:
           k[miniScalarIdx] += alphaB
         else:
           k[miniScalarIdx] -= alphaB
@@ -103,7 +104,9 @@ func decomposeEndo*[M, scalBits, L: static int](
        miniScalars: var MultiScalar[M, L],
        negatePoints: var array[M, SecretBool],
        scalar: BigInt[scalBits],
-       F: typedesc[Fp or Fp2]) =
+       frBits: static int,
+       Name: static Algebra,
+       G: static Subgroup) =
   ## Decompose a secret scalar into M mini-scalars
   ## using a curve endomorphism(s) characteristics.
   ##
@@ -119,7 +122,7 @@ func decomposeEndo*[M, scalBits, L: static int](
   ##     and negate it as well.
   ##
   ## This implements solution 1.
-  decomposeEndoImpl(scalar, F):
+  decomposeEndoImpl(scalar, frBits, Name, G):
     # Negative miniscalars are turned positive
     # Caller should negate the corresponding Elliptic Curve points
     let isNeg = k[miniScalarIdx].isMsbSet()
@@ -130,7 +133,9 @@ func decomposeEndo*[M, scalBits, L: static int](
 func decomposeEndo*[M, scalBits, L: static int](
        miniScalars: var MultiScalar[M, L],
        scalar: BigInt[scalBits],
-       F: typedesc[Fp or Fp2]) =
+       frBits: static int,
+       Name: static Algebra,
+       G: static Subgroup) =
   ## Decompose a secret scalar into M mini-scalars
   ## using a curve endomorphism(s) characteristics.
   ##
@@ -150,7 +155,7 @@ func decomposeEndo*[M, scalBits, L: static int](
   ## Also for partitioned GLV-SAC (with 8-way decomposition) it is necessary.
   ##
   ## This implements solution 2.
-  decomposeEndoImpl(scalar, F):
+  decomposeEndoImpl(scalar, frBits, Name, G):
     miniScalars[miniScalarIdx].copyTruncatedFrom(k[miniScalarIdx])
 
 # Secret scalar + dynamic point
@@ -339,6 +344,8 @@ func scalarMulEndo*[scalBits; EC](
   const M = when P.F is Fp:  2
             elif P.F is Fp2: 4
             else: {.error: "Unconfigured".}
+  const G = when EC isnot EC_ShortW_Aff|EC_ShortW_Jac|EC_ShortW_Prj: G1
+            else: EC.G
 
   var endos {.noInit.}: array[M-1, EC]
   endos.computeEndomorphisms(P)
@@ -347,7 +354,7 @@ func scalarMulEndo*[scalBits; EC](
   const L = EC.getScalarField().bits().ceilDiv_vartime(M) + 1
   var miniScalars {.noInit.}: array[M, BigInt[L]]
   var negatePoints {.noInit.}: array[M, SecretBool]
-  miniScalars.decomposeEndo(negatePoints, scalar, P.F)
+  miniScalars.decomposeEndo(negatePoints, scalar, EC.getScalarField().bits(), EC.getName(), G)
 
   # 3. Handle negative mini-scalars
   # A scalar decomposition might lead to negative miniscalar.
@@ -510,6 +517,8 @@ func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) {.me
   mixin affine
   const C = P0.F.Name # curve
   static: doAssert: scalBits <= EC.getScalarField().bits()
+  const G = when EC isnot EC_ShortW_Aff|EC_ShortW_Jac|EC_ShortW_Prj: G1
+            else: EC.G
 
   # 1. Compute endomorphisms
   var P1 {.noInit.}: EC
@@ -519,7 +528,7 @@ func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) {.me
   const L = computeRecodedLength(EC.getScalarField().bits(), 2)
   var miniScalars {.noInit.}: array[2, BigInt[L]]
   var negatePoints {.noInit.}: array[2, SecretBool]
-  miniScalars.decomposeEndo(negatePoints, scalar, P0.F)
+  miniScalars.decomposeEndo(negatePoints, scalar, EC.getScalarField().bits(), EC.getName(), G)
 
   # 3. Handle negative mini-scalars
   #    Either negate the associated base and the scalar (in the `endomorphisms` array)
