@@ -229,12 +229,13 @@ proc sqrtRatioVartimeBench*(T: typedesc, iters: int) =
 proc powBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
   let exponent = rng.random_unsafe(BigInt[Fr[T.Name].bits()])
+  var r = x
   bench("Exp curve order (constant-time) - " & $exponent.bits & "-bit", T, iters):
-    var r = x
     r.pow(exponent)
 
 proc powVartimeBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
   let exponent = rng.random_unsafe(BigInt[Fr[T.Name].bits()])
+  var r = x
   bench("Exp by curve order (vartime) - " & $exponent.bits & "-bit", T, iters):
     r.pow_vartime(exponent)
