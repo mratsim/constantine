@@ -180,7 +180,7 @@ func initNAF[precompSize, NafMax: static int, EC, ECaff](
     P.fromAffine(tab[digit shr 1])
     return true
   elif digit < 0:
-    P.fromAffine(tab[digit shr 1])
+    P.fromAffine(tab[-digit shr 1])
     P.neg()
     return true
   else:
@@ -213,7 +213,7 @@ func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt,
   # Odd-only divides precomputation table size by another 2
 
   const precompSize = 1 shl (window - 2)
-  static: doAssert window < 8, "Window is too large and precomputation would use " & $(precompSize * sizeof(EC)) & " stack space."
+  static: doAssert window < 8, "Window of size " & $window & " is too large and precomputation would use " & $(precompSize * sizeof(EC)) & " stack space."
 
   var tabEC {.noinit.}: array[precompSize, EC]
   var P2{.noInit.}: EC
@@ -252,12 +252,14 @@ func scalarMulEndo_minHammingWeight_windowed_vartime*[scalBits: static int; EC](
   # Signed digits divides precomputation table size by 2
   # Odd-only divides precomputation table size by another 2
   const precompSize = 1 shl (window - 2)
-  static: doAssert window < 8, "Window is too large and precomputation would use " & $(precompSize * sizeof(EC)) & " stack space."
+  static: doAssert window < 8, "Window of size " & $window & " is too large and precomputation would use " & $(precompSize * sizeof(EC)) & " stack space."
 
   # 1. Compute endomorphisms
   const M = when P.F is Fp:  2
             elif P.F is Fp2: 4
             else: {.error: "Unconfigured".}
+  const G = when EC isnot EC_ShortW_Aff|EC_ShortW_Jac|EC_ShortW_Prj: G1
+            else: EC.G
 
   var endos {.noInit.}: array[M-1, EC]
   endos.computeEndomorphisms(P)
@@ -266,7 +268,7 @@ func scalarMulEndo_minHammingWeight_windowed_vartime*[scalBits: static int; EC](
   const L = EC.getScalarField().bits().ceilDiv_vartime(M) + 1
   var miniScalars {.noInit.}: array[M, BigInt[L]]
   var negatePoints {.noInit.}: array[M, SecretBool]
-  miniScalars.decomposeEndo(negatePoints, scalar, EC.F)
+  miniScalars.decomposeEndo(negatePoints, scalar, EC.getScalarField().bits(), EC.getName(), G)
 
   # 3. Handle negative mini-scalars
   if negatePoints[0].bool:

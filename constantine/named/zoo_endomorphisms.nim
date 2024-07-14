@@ -8,6 +8,7 @@
 
 import
   std/macros,
+  constantine/platforms/abstractions,
   constantine/math/extension_fields,
   constantine/math/isogenies/frobenius,
   constantine/math/elliptic/[
@@ -34,17 +35,13 @@ import
 macro dispatch(Name: static Algebra, tag: static string, G: static string): untyped =
   result = bindSym($Name & "_" & tag & "_" & G)
 
-template babai*(F: typedesc[Fp or Fp2]): untyped =
+template babai*(Name: static Algebra, G: static Subgroup): untyped =
   ## Return the GLV Babai roundings vector
-  const G = if F is Fp: "G1"
-            else: "G2"
-  dispatch(F.Name, "Babai", G)
+  dispatch(Name, "Babai", $G)
 
-template lattice*(F: typedesc[Fp or Fp2]): untyped =
+template lattice*(Name: static Algebra, G: static Subgroup): untyped =
   ## Returns the GLV Decomposition Lattice
-  const G = if F is Fp: "G1"
-            else: "G2"
-  dispatch(F.Name, "Lattice", G)
+  dispatch(Name, "Lattice", $G)
 
 macro getCubicRootOfUnity_mod_p*(Name: static Algebra): untyped =
   ## Get a non-trivial cubic root of unity (mod p) with p the prime field
@@ -90,7 +87,7 @@ func computeEndomorphism*[EC](endo: var EC, P: EC) =
   else: # For BW6-761, both G1 and G2 are on Fp
     endo.frobenius_psi(P, 2)
 
-func computeEndomorphisms*[EC; M: static int](endos: var array[M-1, EC], P: EC) =
+func computeEndomorphisms*[EC: not ExtensionField; M: static int](endos: var array[M-1, EC], P: EC) =
   ## An endomorphism decomposes M-way.
   when P.F is Fp:
     static: doAssert M == 2
@@ -102,6 +99,10 @@ func computeEndomorphisms*[EC; M: static int](endos: var array[M-1, EC], P: EC) 
     endos[2].frobenius_psi(P, 3)
   else:
     {.error: "Unconfigured".}
+
+func computeEndomorphisms*[Gt: ExtensionField; M: static int](endos: var array[M-1, Gt], a: Gt) =
+  staticFor i, 0, M-1:
+    endos[i].frobenius_map(a, i+1)
 
 func hasEndomorphismAcceleration*(Name: static Algebra): bool {.compileTime.} =
   Name in {

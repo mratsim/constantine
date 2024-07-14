@@ -216,7 +216,7 @@ def genFrobeniusPsiConstants(curve_name, curve_config):
     # psi_2 ≡ ξ^((p-1)/6)^2 ≡ ξ^((p-1)/3)
     # psi_3 ≡ psi_2 * ξ^((p-1)/6) ≡ ξ^((p-1)/3) * ξ^((p-1)/6) ≡ ξ^((p-1)/2)
     #
-    # In Fp² (i.e. embedding degree of 12, G2 on Fp2)
+    # In Fp² (i.e. embedding degree of 12, 𝔾₂ on Fp2)
     # - quadratic non-residues respect the equation a^((p²-1)/2) ≡ -1 (mod p²) by the Legendre symbol
     # - sextic non-residues are also quadratic non-residues so ξ^((p²-1)/2) ≡ -1 (mod p²)
     # - QRT(1/a) = QRT(a) with QRT the quadratic residuosity test
@@ -229,7 +229,7 @@ def genFrobeniusPsiConstants(curve_name, curve_config):
     # So psi2_3 ≡ -1 (mod p²)
     #
     #
-    # In Fp (i.e. embedding degree of 6, G2 on Fp)
+    # In Fp (i.e. embedding degree of 6, 𝔾₂ on Fp)
     # - Fermat's Little Theorem gives us a^(p-1) ≡ 1 (mod p)
     #
     # psi2_3 ≡ ξ^((p-1)(p+1)/2) (mod p)

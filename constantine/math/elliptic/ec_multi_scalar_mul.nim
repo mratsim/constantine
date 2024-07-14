@@ -400,6 +400,8 @@ proc applyEndomorphism[bits: static int, ECaff](
   const M = when ECaff.F is Fp:  2
             elif ECaff.F is Fp2: 4
             else: {.error: "Unconfigured".}
+  const G = when ECaff isnot EC_ShortW_Aff: G1
+            else: ECaff.G
 
   const L = ECaff.getScalarField().bits().ceilDiv_vartime(M) + 1
   let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
@@ -407,7 +409,7 @@ proc applyEndomorphism[bits: static int, ECaff](
 
   for i in 0 ..< N:
     var negatePoints {.noinit.}: array[M, SecretBool]
-    splitCoefs[i].decomposeEndo(negatePoints, coefs[i], ECaff.F)
+    splitCoefs[i].decomposeEndo(negatePoints, coefs[i], ECaff.getScalarField().bits(), ECaff.getName(), G)
     if negatePoints[0].bool:
       endoBasis[i][0].neg(points[i])
     else:

@@ -90,8 +90,8 @@ For all elliptic curves, the following arithmetic is supported
     - on Fr (i.e. modulo the 255-bit curve order)
     - on Fp (i.e. modulo the 381-bit prime modulus)
   - elliptic curve arithmetic:
-    - on elliptic curve over Fp (EC G1) with affine, jacobian and homogenous projective coordinates
-    - on elliptic curve over Fp2 (EC G2) with affine, jacobian and homogenous projective coordinates
+    - on elliptic curve over Fp (EC 𝔾₁) with affine, jacobian and homogenous projective coordinates
+    - on elliptic curve over Fp2 (EC 𝔾₂) with affine, jacobian and homogenous projective coordinates
     - including scalar multiplication, multi-scalar-multiplication (MSM) and parallel MSM
 
 _All operations are constant-time unless explicitly mentioned_ vartime.
@@ -222,7 +222,7 @@ and modify Constantine's [`build.rs`](https://github.com/mratsim/constantine/blo
     ```
     > [!IMPORTANT]
     > Constantine uses a separate modfile for tests.<br />It has no dependencies (key to avoid supply chain attacks) except for testing.
-    
+
 ### From C
 
 1. Install a C compiler, `clang` is recommended, for example:

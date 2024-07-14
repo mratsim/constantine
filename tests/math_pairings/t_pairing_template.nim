@@ -16,7 +16,7 @@ import
   constantine/named/algebras,
   constantine/named/zoo_subgroups,
   constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  constantine/math/pairings/cyclotomic_subgroups,
+  constantine/math/pairings/[cyclotomic_subgroups, gt_exponentiations_vartime, pairings_generic],
   constantine/math/io/io_extfields,
 
   # Test utilities
@@ -27,7 +27,7 @@ export
   ec_shortweierstrass_affine, ec_shortweierstrass_projective,
   arithmetic, extension_fields,
   io_extfields,
-  cyclotomic_subgroups,
+  cyclotomic_subgroups, gt_exponentiations_vartime,
   abstractions, algebras
 
 type
@@ -105,7 +105,7 @@ template runPairingTests*(Iters: static int, Name: static Algebra, G1, G2, GT: t
       test_bilinearity_double_impl(randZ = false, gen = HighHammingWeight)
       test_bilinearity_double_impl(randZ = false, gen = Long01Sequence)
 
-func random_elem*(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, noInit.} =
+func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, noInit.} =
   if gen == Uniform:
     result = rng.random_unsafe(F)
   elif gen == HighHammingWeight:
@@ -114,7 +114,7 @@ func random_elem*(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, n
     result = rng.random_long01Seq(F)
 
 template runGTsubgroupTests*(Iters: static int, GT: typedesc, finalExpHard_fn: untyped): untyped {.dirty.}=
-  bind affineType
+  bind affineType, random_elem
 
   var rng: RngState
   let timeseed = uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -139,8 +139,76 @@ template runGTsubgroupTests*(Iters: static int, GT: typedesc, finalExpHard_fn: u
 
     stdout.write '\n'
 
-  suite "Pairing - GT subgroup " & $GT.Name & " [" & $WordBitWidth & "-bit words]":
-    test "Final Exponentiation and GT-subgroup membership":
+  suite "Pairing - 𝔾ₜ subgroup " & $GT.Name & " [" & $WordBitWidth & "-bit words]":
+    test "Final Exponentiation and 𝔾ₜ-subgroup membership":
       test_gt_impl(gen = Uniform)
       test_gt_impl(gen = HighHammingWeight)
       test_gt_impl(gen = Long01Sequence)
+
+func random_gt*(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, noInit.} =
+  if gen == Uniform:
+    result = rng.random_unsafe(F)
+  elif gen == HighHammingWeight:
+    result = rng.random_highHammingWeight(F)
+  else:
+    result = rng.random_long01Seq(F)
+
+  result.finalExp()
+
+template runGTexponentiationTests*(Iters: static int, GT: typedesc): untyped {.dirty.} =
+  var rng: RngState
+  let timeseed = uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  seed(rng, timeseed)
+  echo "\n------------------------------------------------------\n"
+  echo "test_pairing_",$GT.Name,"_gt_exponentiation xoshiro512** seed: ", timeseed
+
+  proc test_gt_exponentiation_impl(gen: RandomGen) =
+    stdout.write "    "
+    for _ in 0 ..< Iters:
+      let a = rng.random_gt(GT, gen)
+      let kUnred = rng.random_long01seq(GT.Name.getBigInt(kScalarField))
+      var k {.noInit.}: GT.Name.getBigInt(kScalarField)
+      discard k.reduce_vartime(kUnred, GT.Name.scalarFieldModulus())
+
+      # Reference impl using exponentiation with tables on any field/extension field
+      var r_ref = a
+      r_ref.pow_vartime(k, window = 3)
+
+      # Square-and-multiply
+      var r_sqrmul {.noInit.}: GT
+      r_sqrmul.gtExp_sqrmul_vartime(a, k)
+      doAssert bool(r_ref == r_sqrmul)
+
+      # MSB->LSB min Hamming Weight signed recoding
+      var r_l2r_recoding {.noInit.}: GT
+      r_l2r_recoding.gtExp_minHammingWeight_vartime(a, k)
+      doAssert bool(r_ref == r_l2r_recoding)
+
+      # Windowed NAF
+      var r_wNAF {.noInit.}: GT
+      r_wNAF.gtExp_minHammingWeight_windowed_vartime(a, k, window = 2)
+      doAssert bool(r_ref == r_wNAF)
+      r_wNAF.gtExp_minHammingWeight_windowed_vartime(a, k, window = 3)
+      doAssert bool(r_ref == r_wNAF)
+      r_wNAF.gtExp_minHammingWeight_windowed_vartime(a, k, window = 4)
+      doAssert bool(r_ref == r_wNAF)
+
+      # Windowed NAF + endomorphism acceleration
+      var r_endoWNAF {.noInit.}: GT
+      r_endoWNAF.gtExpEndo_minHammingWeight_windowed_vartime(a, k, window = 2)
+      doAssert bool(r_ref == r_endoWNAF)
+      r_endoWNAF.gtExpEndo_minHammingWeight_windowed_vartime(a, k, window = 3)
+      doAssert bool(r_ref == r_endoWNAF)
+      r_endoWNAF.gtExpEndo_minHammingWeight_windowed_vartime(a, k, window = 4)
+      doAssert bool(r_ref == r_endoWNAF)
+
+      stdout.write '.'
+
+    stdout.write '\n'
+
+
+  suite "Pairing - Exponentiation for 𝔾ₜ " & $GT.Name & " [" & $WordBitWidth & "-bit words]":
+    test "𝔾ₜ exponentiation consistency":
+      test_gt_exponentiation_impl(gen = Uniform)
+      test_gt_exponentiation_impl(gen = HighHammingWeight)
+      test_gt_exponentiation_impl(gen = Long01Sequence)

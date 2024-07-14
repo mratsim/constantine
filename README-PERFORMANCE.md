@@ -58,7 +58,7 @@ The full list of benchmarks is available in the [`benchmarks`](./benchmarks) fol
 
 As mentioned in the [Compiler caveats](#compiler-caveats) section, GCC is up to 2x slower than Clang due to mishandling of carries and register usage.
 
-#### Ethereum BLS signatures (over BLS12-381 G2)
+#### Ethereum BLS signatures (over BLS12-381 𝔾₂)
 
 ![Bench Ethereum BLS signature](./media/ethereum_bls_signatures.png)
 

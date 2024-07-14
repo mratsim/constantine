@@ -329,9 +329,6 @@ func has2extraBits*(E: type ExtensionField): bool =
   ## We construct extensions only on Fp (and not Fr)
   getSpareBits(Fp[E.F.Name]) >= 2
 
-template A(E: type ExtensionField2x): Algebra =
-  E.F.Name
-
 template c0*(a: ExtensionField2x): auto =
   a.coords[0]
 template c1*(a: ExtensionField2x): auto =
