@@ -8,6 +8,7 @@
 
 import
   std/macros,
+  constantine/platforms/abstractions,
   constantine/math/extension_fields,
   constantine/math/isogenies/frobenius,
   constantine/math/elliptic/[
@@ -102,6 +103,10 @@ func computeEndomorphisms*[EC; M: static int](endos: var array[M-1, EC], P: EC) 
     endos[2].frobenius_psi(P, 3)
   else:
     {.error: "Unconfigured".}
+
+func computeEndomorphisms*[Gt: ExtensionField; M: static int](endos: var array[M-1, Gt], a: Gt) =
+  staticFor i, 0, M-1:
+    endos[i].frobenius_map(a, i+1)
 
 func hasEndomorphismAcceleration*(Name: static Algebra): bool {.compileTime.} =
   Name in {

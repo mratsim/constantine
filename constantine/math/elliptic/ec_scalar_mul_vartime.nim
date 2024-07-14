@@ -180,7 +180,7 @@ func initNAF[precompSize, NafMax: static int, EC, ECaff](
     P.fromAffine(tab[digit shr 1])
     return true
   elif digit < 0:
-    P.fromAffine(tab[digit shr 1])
+    P.fromAffine(tab[-digit shr 1])
     P.neg()
     return true
   else:

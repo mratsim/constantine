@@ -430,7 +430,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/math_elliptic_curves/t_ec_conversion.nim", false),
 
-  # Elliptic curve arithmetic G1
+  # Elliptic curve arithmetic 𝔾₁
   # ----------------------------------------------------------
   ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_add_double.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_sanity.nim", false),
@@ -458,7 +458,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math_elliptic_curves/t_ec_twedwards_mul_endomorphism_bandersnatch", false),
 
 
-  # Elliptic curve arithmetic G2
+  # Elliptic curve arithmetic 𝔾₂
   # ----------------------------------------------------------
   # ("tests/math_elliptic_curves/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_prj_g2_mul_sanity_bn254_snarks.nim", false),
@@ -551,7 +551,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/math_pairings/t_pairing_bls12_381_gt_subgroup.nim", false),
   # ("tests/math_pairings/t_pairing_bw6_761_gt_subgroup.nim", false),
 
-  # Pairing
+  # Pairing &
   # ----------------------------------------------------------
   # ("tests/math_pairings/t_pairing_bls12_377_line_functions.nim", false),
   # ("tests/math_pairings/t_pairing_bls12_381_line_functions.nim", false),
@@ -561,6 +561,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/math_pairings/t_pairing_bn254_snarks_optate.nim", false),
   # ("tests/math_pairings/t_pairing_bls12_377_optate.nim", false),
   # ("tests/math_pairings/t_pairing_bls12_381_optate.nim", false),
+
+  ("tests/math_pairings/t_pairing_bn254_snarks_gt_exp.nim", false),
 
   # Multi-Pairing
   # ----------------------------------------------------------
@@ -977,25 +979,25 @@ task bench_fp6, "Run benchmark 𝔽p6 with your CC compiler":
 task bench_fp12, "Run benchmark 𝔽p12 with your CC compiler":
   runBench("bench_fp12")
 
-# Elliptic curve G1
+# Elliptic curve 𝔾₁
 # ------------------------------------------
 
 task bench_ec_g1, "Run benchmark on Elliptic Curve group 𝔾1 - CC compiler":
   runBench("bench_ec_g1")
 
-# Elliptic curve G1 - batch operations
+# Elliptic curve 𝔾₁ - batch operations
 # ------------------------------------------
 
 task bench_ec_g1_batch, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - CC compiler":
   runBench("bench_ec_g1_batch")
 
-# Elliptic curve G1 - scalar multiplication
+# Elliptic curve 𝔾₁ - scalar multiplication
 # ------------------------------------------
 
 task bench_ec_g1_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - CC compiler":
   runBench("bench_ec_g1_scalar_mul")
 
-# Elliptic curve G1 - Multi-scalar-mul
+# Elliptic curve 𝔾₁ - Multi-scalar-mul
 # ------------------------------------------
 
 task bench_ec_msm_pasta, "Run benchmark: Multi-Scalar-Mul for Pasta curves - CC compiler":
@@ -1014,13 +1016,13 @@ task bench_ec_msm_bandersnatch, "Run benchmark: Multi-Scalar-Mul for Bandersnatc
   runBench("bench_ec_msm_bandersnatch")
 
 
-# Elliptic curve G2
+# Elliptic curve 𝔾₂
 # ------------------------------------------
 
 task bench_ec_g2, "Run benchmark on Elliptic Curve group 𝔾2 - CC compiler":
   runBench("bench_ec_g2")
 
-# Elliptic curve G2 - scalar multiplication
+# Elliptic curve 𝔾₂ - scalar multiplication
 # ------------------------------------------
 
 task bench_ec_g2_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - CC compiler":
