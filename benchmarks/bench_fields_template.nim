@@ -233,9 +233,8 @@ proc powBench*(T: typedesc, iters: int) =
     var r = x
     r.pow(exponent)
 
-proc powUnsafeBench*(T: typedesc, iters: int) =
+proc powVartimeBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
   let exponent = rng.random_unsafe(BigInt[Fr[T.Name].bits()])
-  bench("Exp curve order (Leak exponent bits) - " & $exponent.bits & "-bit", T, iters):
-    var r = x
+  bench("Exp by curve order (vartime) - " & $exponent.bits & "-bit", T, iters):
     r.pow_vartime(exponent)

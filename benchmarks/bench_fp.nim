@@ -70,7 +70,7 @@ proc main() =
       sqrtRatioVartimeBench(Fp[curve], ExponentIters)
     # Exponentiation by a "secret" of size ~the curve order
     powBench(Fp[curve], ExponentIters)
-    powUnsafeBench(Fp[curve], ExponentIters)
+    powVartimeBench(Fp[curve], ExponentIters)
     separator()
 
 main()

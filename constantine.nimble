@@ -563,6 +563,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/math_pairings/t_pairing_bls12_381_optate.nim", false),
 
   ("tests/math_pairings/t_pairing_bn254_snarks_gt_exp.nim", false),
+  ("tests/math_pairings/t_pairing_bls12_381_gt_exp.nim", false),
 
   # Multi-Pairing
   # ----------------------------------------------------------
@@ -652,6 +653,7 @@ const benchDesc = [
   "bench_pairing_bls12_381",
   "bench_pairing_bn254_nogami",
   "bench_pairing_bn254_snarks",
+  "bench_gt",
   "bench_summary_bls12_377",
   "bench_summary_bls12_381",
   "bench_summary_bn254_nogami",
@@ -1027,6 +1029,12 @@ task bench_ec_g2, "Run benchmark on Elliptic Curve group 𝔾2 - CC compiler":
 
 task bench_ec_g2_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - CC compiler":
   runBench("bench_ec_g2_scalar_mul")
+
+# 𝔾ₜ
+# ------------------------------------------
+
+task bench_gt, "Run 𝔾ₜ benchmarks - CC compiler":
+  runBench("bench_gt")
 
 # Pairings
 # ------------------------------------------
