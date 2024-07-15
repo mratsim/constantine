@@ -34,7 +34,11 @@ export
   abstractions.SecretWord,
   abstractions.BigInt,
   algebras.Algebra,
-  algebras.getBigInt
+  algebras.getBigInt,
+  algebras.bits,
+  algebras.baseFieldModulus,
+  algebras.scalarFieldModulus
+
 
 # Scalar field Fr and Prime Field Fp
 # ------------------------------------------------------------
@@ -42,7 +46,11 @@ export
 export
   algebras.Fp,
   algebras.Fr,
-  algebras.FF
+  algebras.FF,
+
+  # Workaround generic sandwich
+  algebras.matchingBigInt,
+  algebras.matchingOrderBigInt
 
 func unmarshalBE*(dst: var FF, src: openarray[byte]): bool =
   ## Return true on success
@@ -112,6 +120,8 @@ export arithmetic.sqrt_if_square
 export arithmetic.invsqrt_if_square
 export arithmetic.sqrt_ratio_if_square
 
+export arithmetic.pow
+export arithmetic.pow_vartime
 
 # Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
 # tend to generate useless memory moves or have difficulties to minimize stack allocation
@@ -122,3 +132,6 @@ export arithmetic.sqrt_ratio_if_square
 export arithmetic.`+`
 export arithmetic.`-`
 export arithmetic.`*`
+export arithmetic.`^`
+export arithmetic.`~^`
+export arithmetic.toBig

@@ -53,7 +53,10 @@ func gtExpEndo*[Gt: ExtensionField, scalBits: static int](
   ## Requires:
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
-  static: doAssert scalBits <= Fr[Gt.Name].bits(), "Do not use endomorphism to multiply beyond the curve order"
+  static: doAssert scalBits <= Fr[Gt.Name].bits(), block:
+      "Do not use endomorphism to multiply beyond the curve order:\n" &
+      "  scalar: " & $scalBits & "-bit\n" &
+      "  order:  " & $Fr[Gt.Name].bits() & "-bit\n"
 
   # 1. Compute endomorphisms
   const M = when Gt is Fp6:  2
