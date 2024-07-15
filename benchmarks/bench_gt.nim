@@ -59,6 +59,9 @@ proc main() =
     gtExp_endo_wNAF_vartimeBench(Fp12[curve], window = 3, ExpIters)
     gtExp_endo_wNAF_vartimeBench(Fp12[curve], window = 4, ExpIters)
     separator()
+    gtExpEndo_constanttimeBench(Fp12[curve], ExpIters)
+    separator()
+
 
 main()
 notes()

@@ -16,7 +16,11 @@ import
   constantine/named/algebras,
   constantine/named/zoo_subgroups,
   constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  constantine/math/pairings/[cyclotomic_subgroups, gt_exponentiations_vartime, pairings_generic],
+  constantine/math/pairings/[
+    cyclotomic_subgroups,
+    gt_exponentiations,
+    gt_exponentiations_vartime,
+    pairings_generic],
   constantine/math/io/io_extfields,
 
   # Test utilities
@@ -27,7 +31,8 @@ export
   ec_shortweierstrass_affine, ec_shortweierstrass_projective,
   arithmetic, extension_fields,
   io_extfields,
-  cyclotomic_subgroups, gt_exponentiations_vartime,
+  cyclotomic_subgroups,
+  gt_exponentiations, gt_exponentiations_vartime,
   abstractions, algebras
 
 type
@@ -201,6 +206,11 @@ template runGTexponentiationTests*(Iters: static int, GT: typedesc): untyped {.d
       doAssert bool(r_ref == r_endoWNAF)
       r_endoWNAF.gtExpEndo_wNAF_vartime(a, k, window = 4)
       doAssert bool(r_ref == r_endoWNAF)
+
+      # Constant-time 𝔾ₜ exponentiation with endomorphism
+      var r_ctEndo {.noInit.}: GT
+      r_ctEndo.gtExpEndo(a, k)
+      doAssert bool(r_ref == r_ctEndo)
 
       stdout.write '.'
 

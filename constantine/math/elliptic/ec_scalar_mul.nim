@@ -22,6 +22,9 @@ import
   ./ec_shortweierstrass_batch_ops,
   ./ec_twistededwards_batch_ops
 
+{.push raises: [].} # No exceptions allowed in core cryptographic operations
+{.push checks: off.} # No defects due to array bound checking or signed integer overflow allowed
+
 # ############################################################
 #                                                            #
 #                   Scalar Multiplication                    #
@@ -275,7 +278,6 @@ func scalarMulEndo*[scalBits; EC](
   ## Requires:
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
-  const C = P.F.Name # curve
   static: doAssert scalBits <= EC.getScalarField().bits(), "Do not use endomorphism to multiply beyond the curve order"
 
   # 1. Compute endomorphisms
@@ -339,7 +341,7 @@ func scalarMulEndo*[scalBits; EC](
 func buildEndoLookupTable_m2w2[EC, ECaff](
        lut: var array[8, ECaff],
        P0, P1: EC) =
-  ## Build a lookup lutle for GLV with 2-dimensional decomposition
+  ## Build a lookup table for GLV with 2-dimensional decomposition
   ## and window of size 2
   # Step 1. Create the lookup-table in alternative coordinates
   var tab {.noInit.}: array[8, EC]
@@ -366,7 +368,6 @@ func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) {.me
   ## Requires:
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
-  const C = P0.F.Name # curve
   static: doAssert: scalBits <= EC.getScalarField().bits()
   const G = when EC isnot EC_ShortW_Aff|EC_ShortW_Jac|EC_ShortW_Prj: G1
             else: EC.G

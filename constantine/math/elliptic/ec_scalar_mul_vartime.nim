@@ -27,6 +27,13 @@ import
 {.push raises: [].} # No exceptions allowed in core cryptographic operations
 {.push checks: off.} # No defects due to array bound checking or signed integer overflow allowed
 
+# ############################################################
+#                                                            #
+#                 Scalar Multiplication                      #
+#                     variable-time                          #
+#                                                            #
+# ############################################################
+
 iterator unpackBE(scalarByte: byte): bool =
   for i in countdown(7, 0):
     yield bool((scalarByte shr i) and 1)
@@ -171,6 +178,9 @@ func scalarMul_jy00_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].}  
       P ~+= Paff
     elif bit == -1:
       P ~-= Paff
+
+# Non-Adjacent Form (NAF) recoding
+# ------------------------------------------------------------
 
 func initNAF[precompSize, NafMax: static int, EC, ECaff](
        P: var EC,

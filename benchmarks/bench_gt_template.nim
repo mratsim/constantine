@@ -20,6 +20,7 @@ import
   constantine/math/pairings/[
     pairings_generic,
     cyclotomic_subgroups,
+    gt_exponentiations,
     gt_exponentiations_vartime
   ],
   # Helpers
@@ -165,3 +166,10 @@ proc gtExp_endo_wNAF_vartimeBench*(T: typedesc, window: static int, iters: int) 
   var r {.noInit.}: T
   bench("𝔾ₜ Exponentiation " & $exponent.bits & "-bit (endomorphism, wNAF-" & $window & ", vartime)", T, iters):
     r.gtExpEndo_wNAF_vartime(x, exponent, window)
+
+proc gtExpEndo_constanttimeBench*(T: typedesc, iters: int) =
+  let x = rng.random_gt(T)
+  let exponent = rng.random_unsafe(BigInt[Fr[T.Name].bits()])
+  var r {.noInit.}: T
+  bench("𝔾ₜ Exponentiation " & $exponent.bits & "-bit (endomorphism, constant-time)", T, iters):
+    r.gtExpEndo(x, exponent)

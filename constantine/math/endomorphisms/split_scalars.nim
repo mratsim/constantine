@@ -15,10 +15,12 @@ import
   constantine/named/zoo_endomorphisms,
   constantine/math/arithmetic/bigints
 
+{.push raises: [].} # No exceptions allowed in core cryptographic operations
+{.push checks: off.} # No defects due to array bound checking or signed integer overflow allowed
+
 # ############################################################
 #
-#             Endomorphism acceleration for
-#                 Scalar Multiplication
+#         Splitting scalars for endomorphism acceleration
 #
 # ############################################################
 #
@@ -351,10 +353,10 @@ template buildEndoLookupTable_m2w2*[Group](
        lut: var array[8, Group],
        P0, P1: Group,
        groupLawAdd, groupLawSub, groupLawDouble: untyped) =
-  ## Build a lookup lutle for GLV with 2-dimensional decomposition
+  ## Build a lookup table for GLV with 2-dimensional decomposition
   ## and window of size 2
 
-  # Create the lookup-lutle in alternative coordinates
+  # Create the lookup-table in alternative coordinates
   # with [k0, k1] the mini-scalars with digits of size 2-bit
   #
   # 4 = 0b100 - encodes [0b01, 0b00] ≡ P0

@@ -23,6 +23,13 @@ from constantine/math/elliptic/ec_shortweierstrass_affine import G2
 {.push raises: [].} # No exceptions allowed in core cryptographic operations
 {.push checks: off.} # No defects due to array bound checking or signed integer overflow allowed
 
+# ############################################################
+#                                                            #
+#                 Exponentiation in 𝔾ₜ                       #
+#                     variable-time                          #
+#                                                            #
+# ############################################################
+
 iterator unpackBE(scalarByte: byte): bool =
   for i in countdown(7, 0):
     yield bool((scalarByte shr i) and 1)
@@ -171,6 +178,9 @@ func gtExp_jy00_vartime*[Gt: ExtensionField](r: var Gt, a: Gt, scalar: BigInt) {
     elif bit == -1:
       r *= na
 
+# Non-Adjacent Form (NAF) recoding
+# ------------------------------------------------------------
+
 func initNAF[precompSize, NafMax: static int, Gt: ExtensionField](
        acc: var Gt,
        tab: array[precompSize, Gt],
@@ -261,7 +271,7 @@ func gtExpEndo_wNAF_vartime*[Gt: ExtensionField, scalBits: static int](
   endos.computeEndomorphisms(a)
 
   # 2. Decompose scalar into mini-scalars
-  const L = Fr[Gt.Name].bits().ceilDiv_vartime(M) + 1
+  const L = Fr[Gt.Name].bits().computeEndoRecodedLength(M)
   var miniScalars {.noInit.}: array[M, BigInt[L]]
   var negateElems {.noInit.}: array[M, SecretBool]
   miniScalars.decomposeEndo(negateElems, scalar, Fr[Gt.Name].bits(), Gt.Name, G2) # 𝔾ₜ has same decomposition as 𝔾₂
