@@ -422,8 +422,11 @@ func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) {.me
   P0.diff(Q, P0)
   P0.ccopy(Q, k0isOdd)
 
-# Public API
-# --------------------------------------------------------------------------------------
+# ############################################################
+#
+#                 Public API
+#
+# ############################################################
 
 func scalarMul*[EC](P: var EC, scalar: BigInt) {.inline, meter.} =
   ## Elliptic Curve Scalar Multiplication

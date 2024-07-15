@@ -69,7 +69,7 @@ func gtExp_addchain_4bit_vartime[Gt: ExtensionField](r: var Gt, a: Gt, scalar: B
 
   case s
   of 0:
-    r.setNeutral()
+    r.setOne()
   of 1:
     discard
   of 2:
@@ -323,3 +323,97 @@ func gtExpEndo_wNAF_vartime*[Gt: ExtensionField, scalBits: static int](
         r.accumNAF(tab[m], tabNaf[m], NafLen, i)
       else:
         isInit = r.initNAF(tab[m], tabNaf[m], NafLen, i)
+
+# ############################################################
+#
+#                 Public API
+#
+# ############################################################
+
+func gtExp_vartime*[Gt: ExtensionField, scalBits: static int](
+      r: var Gt, a: Gt, scalar: BigInt[scalBits]) {.tags:[VarTime], meter.} =
+  ## Exponentiation in 𝔾ₜ
+  ##
+  ##   r <- aᵏ
+  ##
+  ## This selects the best algorithm depending on heuristics
+  ## and the scalar being multiplied.
+  ## The scalar MUST NOT be a secret as this does not use side-channel countermeasures
+  ##
+  ## This may use endomorphism acceleration.
+  ## As endomorphism acceleration requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  ## Those conditions will be assumed.
+
+  let usedBits = scalar.limbs.getBits_LE_vartime()
+
+  when Gt.Name.hasEndomorphismAcceleration():
+    when scalBits >= EndomorphismThreshold: # Skip static: doAssert when multiplying by intentionally small scalars.
+      if usedBits >= EndomorphismThreshold:
+        when Gt is Fp6:
+          r.gtExpEndo_wNAF_vartime(a, scalar, window = 4)
+        elif Gt is Fp12:
+          r.gtExpEndo_wNAF_vartime(a, scalar, window = 3)
+        else: # Curves defined on Fp^m with m > 2
+          {.error: "Unconfigured".}
+        return
+
+  if 64 < usedBits:
+    # With a window of 4, we precompute 2^4 = 4 elements
+    r.gtExp_wNAF_vartime(a, scalar, window = 4)
+  elif 16 < usedBits:
+    # With a window of 3, we precompute 2^1 = 2 elements
+    r.gtExp_wNAF_vartime(a, scalar, window = 3)
+  elif 4 < usedBits:
+    r.gtExp_jy00_vartime(a, scalar)
+  else:
+    r.gtExp_addchain_4bit_vartime(a, scalar)
+
+func gtExp_vartime*[Gt](r: var Gt, a: Gt, scalar: Fr) {.inline.} =
+  ## Exponentiation in 𝔾ₜ
+  ##
+  ##   r <- aᵏ
+  ##
+  ## This select the best algorithm depending on heuristics
+  ## and the scalar being multiplied.
+  ## The scalar MUST NOT be a secret as this does not use side-channel countermeasures
+  r.gtExp_vartime(a, scalar.toBig())
+
+func gtExp_vartime*[Gt](a: var Gt, scalar: Fr or BigInt) {.inline.} =
+  ## Exponentiation in 𝔾ₜ
+  ##
+  ##   r <- aᵏ
+  ##
+  ## This selects the best algorithm depending on heuristics
+  ## and the scalar being multiplied.
+  ## The scalar MUST NOT be a secret as this does not use side-channel countermeasures
+  ##
+  ## This may use endomorphism acceleration.
+  ## As endomorphism acceleration requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  ## Those conditions will be assumed.
+  a.gtExp_vartime(a, scalar)
+
+# ############################################################
+#
+#                 Out-of-Place functions
+#
+# ############################################################
+#
+# Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+# tend to generate useless memory moves or have difficulties to minimize stack allocation
+# and our types might be large (Fp12 ...)
+# See: https://github.com/mratsim/constantine/issues/145
+
+func `~^`*[Gt: ExtensionField](a: Gt, scalar: Fr or BigInt): Gt {.noInit, inline.} =
+  ## Elliptic Curve variable-time Scalar Multiplication
+  ##
+  ##   r <- aᵏ
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.gtExp_vartime(a, scalar)

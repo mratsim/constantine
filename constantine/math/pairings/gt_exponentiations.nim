@@ -108,3 +108,71 @@ func gtExpEndo*[Gt: ExtensionField, scalBits: static int](
   # Now we need to correct if the sign miniscalar was not odd
   r.quot(Q, r)
   r.ccopy(Q, k0isOdd)
+
+# ############################################################
+#
+#                 Public API
+#
+# ############################################################
+
+
+func gtExp*[Gt](r: var Gt, a: Gt, scalar: BigInt) {.inline, meter.} =
+  ## Exponentiation in 𝔾ₜ
+  ##
+  ##   r <- aᵏ
+  ##
+  ## This use endomorphism acceleration by default if available
+  ## Endomorphism acceleration requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  ## Those will be assumed to maintain constant-time property
+  when Gt.Name.hasEndomorphismAcceleration() and
+       BigInt.bits >= EndomorphismThreshold:
+    when Gt is Fp6:
+      r.gtExpEndo(a, scalar) # TODO: window method
+    elif Gt is Fp12:
+      r.gtExpEndo(a, scalar)
+    else: # Curves defined on Fp^m with m > 2
+      {.error: "Unconfigured".}
+  else:
+    {.error: "Unimplemented".}
+
+func gtExp*[EC](r: var EC, a: EC, scalar: Fr) {.inline.} =
+  ## Exponentiation in 𝔾ₜ
+  ##
+  ##   r <- aᵏ
+  r.gtExp(a, scalar.toBig())
+
+func gtExp*[EC](a: var EC, scalar: Fr or BigInt) {.inline.} =
+  ## Exponentiation in 𝔾ₜ
+  ##
+  ##   r <- aᵏ
+  ##
+  ## This use endomorphism acceleration by default if available
+  ## Endomorphism acceleration requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  ## Those will be assumed to maintain constant-time property
+  a.gtExp(a, scalar)
+
+# ############################################################
+#
+#                 Out-of-Place functions
+#
+# ############################################################
+#
+# Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+# tend to generate useless memory moves or have difficulties to minimize stack allocation
+# and our types might be large (Fp12 ...)
+# See: https://github.com/mratsim/constantine/issues/145
+
+func `^`*[Gt: ExtensionField](a: Gt, scalar: Fr or BigInt): Gt {.noInit, inline.} =
+  ## Exponentiation in 𝔾ₜ
+  ##
+  ##   r <- aᵏ
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.gtExp(a, scalar)

@@ -330,12 +330,18 @@ func scalarMulEndo_wNAF_vartime*[scalBits: static int; EC](
       else:
         isInit = P.initNAF(tab[m], tabNaf[m], NafLen, i)
 
+# ############################################################
+#
+#                 Public API
+#
+# ############################################################
+
 func scalarMul_vartime*[scalBits; EC](P: var EC, scalar: BigInt[scalBits]) {.meter.} =
   ## Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
   ##
-  ## This select the best algorithm depending on heuristics
+  ## This selects the best algorithm depending on heuristics
   ## and the scalar being multiplied.
   ## The scalar MUST NOT be a secret as this does not use side-channel countermeasures
   ##
@@ -372,7 +378,7 @@ func scalarMul_vartime*[scalBits; EC](P: var EC, scalar: BigInt[scalBits]) {.met
     # With a window of 3, we precompute 2^1 = 2 points
     P.scalarMul_wNAF_vartime(scalar, window = 3)
   elif 4 < usedBits:
-    P.scalarMul_doubleAdd_vartime(scalar)
+    P.scalarMul_jy00_vartime(scalar)
   else:
     P.scalarMul_addchain_4bit_vartime(scalar)
 
