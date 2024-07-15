@@ -95,6 +95,15 @@ func setOne*(a: var openArray[SecretWord]){.inline.} =
   for i in 1 ..< a.len:
     a[i] = Zero
 
+func secretLookup*[T](dst: var T, table: openArray[T], index: SecretWord) =
+  ## Load a table[index] into `dst`
+  ## This is constant-time, whatever the `index`, its value is not leaked
+  ## This is also protected against cache-timing attack by always scanning the whole table
+  mixin ccopy
+  for i in 0 ..< table.len:
+    let selector = SecretWord(i) == index
+    dst.ccopy(table[i], selector)
+
 debug: # Don't allow printing secret words by default
   func toHex*(a: SecretWord): string =
     const hexChars = "0123456789abcdef"

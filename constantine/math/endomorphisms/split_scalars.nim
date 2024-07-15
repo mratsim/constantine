@@ -13,15 +13,7 @@ import
   constantine/platforms/abstractions,
   constantine/named/algebras,
   constantine/named/zoo_endomorphisms,
-  constantine/math/arithmetic,
-  constantine/math/extension_fields,
-  ./ec_shortweierstrass_affine,
-  ./ec_shortweierstrass_projective,
-  ./ec_shortweierstrass_jacobian,
-  ./ec_twistededwards_affine,
-  ./ec_twistededwards_projective,
-  ./ec_shortweierstrass_batch_ops,
-  ./ec_twistededwards_batch_ops
+  constantine/math/arithmetic/bigints
 
 # ############################################################
 #
@@ -175,7 +167,7 @@ func decomposeEndo*[M, scalBits, L: static int](
 
 type
   Recoded[LengthInDigits: static int] = distinct array[LengthInDigits.ceilDiv_vartime(8), byte]
-  GLV_SAC[M, LengthInDigits: static int] = array[M, Recoded[LengthInDigits]]
+  GLV_SAC*[M, LengthInDigits: static int] = array[M, Recoded[LengthInDigits]]
     ## GLV-Based Sign-Aligned-Column representation
     ## see Faz-Hernandez, 2013
     ##
@@ -227,7 +219,7 @@ proc `[]=`(recoding: var Recoded,
   let shifted = byte((value and DigitMask) shl (BitSize*(digitIdx and WordMask)))
   slot[] = slot[] or shifted
 
-func nDimMultiScalarRecoding[M, L: static int](
+func nDimMultiScalarRecoding*[M, L: static int](
     dst: var GLV_SAC[M, L],
     src: MultiScalar[M, L]) =
   ## This recodes N scalar for GLV multi-scalar multiplication
@@ -264,12 +256,19 @@ func nDimMultiScalarRecoding[M, L: static int](
       k[j].div2()
       k[j] += SecretWord (bji and b[0][i])
 
-func buildLookupTable[M: static int, EC, ECaff](
-       P: EC,
-       endomorphisms: array[M-1, EC],
-       lut: var array[1 shl (M-1), ECaff]) =
-  ## Build the lookup table from the base point P
-  ## and the curve endomorphism
+template buildEndoLookupTable*[M: static int, Group](
+       P: Group,
+       endomorphisms: array[M-1, Group],
+       lut: var array[1 shl (M-1), Group],
+       groupLawAdd: untyped) =
+  ## Build the lookup table from the base element P
+  ## and the group endomorphism
+  ##
+  ## Note:
+  ##   The destination parameter is last so that the compiler can infer the value of M
+  ##   It fails with 1 shl (M-1)
+  #
+  # Assuming elliptic curves
   #
   # Algorithm
   # Compute P[u] = P0 + u0 P1 +...+ um−2 Pm−1 for all 0≤u<2^m−1, where
@@ -297,103 +296,24 @@ func buildLookupTable[M: static int, EC, ECaff](
   #   This scheme ensures 1 addition per table entry instead of a number
   #   of addition dependent on `u` Hamming Weight
 
-  # Step 1. Create the lookup-table in alternative coordinates
-  var tab {.noInit.}: array[1 shl (M-1), EC]
-  tab[0] = P
+  # Create the lookup-table in alternative coordinates
+  lut[0] = P
   for u in 1'u32 ..< 1 shl (M-1):
     # The recoding allows usage of 2^(n-1) table instead of the usual 2^n with NAF
     let msb = u.log2_vartime() # No undefined, u != 0
-    tab[u].sum(tab[u.clearBit(msb)], endomorphisms[msb])
+    lut[u].groupLawAdd(lut[u.clearBit(msb)], endomorphisms[msb])
 
-  # Step 2. Convert to affine coordinates to benefit from mixed-addition
-  lut.batchAffine(tab)
-
-func tableIndex(glv: GLV_SAC, bit: int): SecretWord =
+func getRecodedIndex*(glv: GLV_SAC, bit: int): SecretWord {.inline.} =
   ## Compose the secret table index from
   ## the GLV-SAC representation and the "bit" accessed
   staticFor i, 1, GLV_SAC.M:
     result = result or SecretWord((glv[i][bit] and 1) shl (i-1))
 
-func secretLookup[T](dst: var T, table: openArray[T], index: SecretWord) =
-  ## Load a table[index] into `dst`
-  ## This is constant-time, whatever the `index`, its value is not leaked
-  ## This is also protected against cache-timing attack by always scanning the whole table
-  for i in 0 ..< table.len:
-    let selector = SecretWord(i) == index
-    dst.ccopy(table[i], selector)
+func getRecodedNegate*(glv: GLV_SAC, bit: int): SecretBool {.inline.} =
+  SecretBool glv[0][bit]
 
-func scalarMulEndo*[scalBits; EC](
-       P: var EC,
-       scalar: BigInt[scalBits]) {.meter.} =
-  ## Elliptic Curve Scalar Multiplication
-  ##
-  ##   P <- [k] P
-  ##
-  ## This is a scalar multiplication accelerated by an endomorphism
-  ## - via the GLV (Gallant-lambert-Vanstone) decomposition on G1
-  ## - via the GLS (Galbraith-Lin-Scott) decomposition on G2
-  ##
-  ## Requires:
-  ## - Cofactor to be cleared
-  ## - 0 <= scalar < curve order
-  mixin affine
-  const C = P.F.Name # curve
-  static: doAssert scalBits <= EC.getScalarField().bits(), "Do not use endomorphism to multiply beyond the curve order"
-
-  # 1. Compute endomorphisms
-  const M = when P.F is Fp:  2
-            elif P.F is Fp2: 4
-            else: {.error: "Unconfigured".}
-  const G = when EC isnot EC_ShortW_Aff|EC_ShortW_Jac|EC_ShortW_Prj: G1
-            else: EC.G
-
-  var endos {.noInit.}: array[M-1, EC]
-  endos.computeEndomorphisms(P)
-
-  # 2. Decompose scalar into mini-scalars
-  const L = EC.getScalarField().bits().ceilDiv_vartime(M) + 1
-  var miniScalars {.noInit.}: array[M, BigInt[L]]
-  var negatePoints {.noInit.}: array[M, SecretBool]
-  miniScalars.decomposeEndo(negatePoints, scalar, EC.getScalarField().bits(), EC.getName(), G)
-
-  # 3. Handle negative mini-scalars
-  # A scalar decomposition might lead to negative miniscalar.
-  # For proper handling it requires either:
-  # 1. Negating it and then negating the corresponding curve point P
-  # 2. Adding an extra bit to L for the recoding, which will do the right thing™
-  block:
-    P.cneg(negatePoints[0])
-    staticFor i, 1, M:
-      endos[i-1].cneg(negatePoints[i])
-
-  # 4. Precompute lookup table
-  var lut {.noInit.}: array[1 shl (M-1), affine(EC)]
-  buildLookupTable(P, endos, lut)
-
-  # 5. Recode the miniscalars
-  #    we need the base miniscalar (that encodes the sign)
-  #    to be odd, and this in constant-time to protect the secret least-significant bit.
-  let k0isOdd = miniScalars[0].isOdd()
-  discard miniScalars[0].cadd(One, not k0isOdd)
-
-  var recoded: GLV_SAC[M, L] # zero-init required
-  recoded.nDimMultiScalarRecoding(miniScalars)
-
-  # 6. Proceed to GLV accelerated scalar multiplication
-  var Q {.noInit.}: EC
-  var tmp {.noInit.}: affine(EC)
-  tmp.secretLookup(lut, recoded.tableIndex(L-1))
-  Q.fromAffine(tmp)
-
-  for i in countdown(L-2, 0):
-    Q.double()
-    tmp.secretLookup(lut, recoded.tableIndex(i))
-    tmp.cneg(SecretBool recoded[0][i])
-    Q += tmp
-
-  # Now we need to correct if the sign miniscalar was not odd
-  P.diff(Q, P)
-  P.ccopy(Q, k0isOdd)
+func computeEndoRecodedLength*(bits, decomposition_dimension: int): int =
+  bits.ceilDiv_vartime(decomposition_dimension) + 1
 
 # Windowed GLV
 # ----------------------------------------------------------------
@@ -427,39 +347,34 @@ func scalarMulEndo*[scalBits; EC](
 #   -  0t10   ->  0b10  is  2
 #   -  0t11   ->  0b11  is  3
 
-func buildLookupTable_m2w2[EC, Ecaff](
-       P0: EC,
-       P1: EC,
-       lut: var array[8, Ecaff]) =
-  ## Build a lookup table for GLV with 2-dimensional decomposition
+template buildEndoLookupTable_m2w2*[Group](
+       lut: var array[8, Group],
+       P0, P1: Group,
+       groupLawAdd, groupLawSub, groupLawDouble: untyped) =
+  ## Build a lookup lutle for GLV with 2-dimensional decomposition
   ## and window of size 2
 
-  # Step 1. Create the lookup-table in alternative coordinates
-  var tab {.noInit.}: array[8, EC]
-
+  # Create the lookup-lutle in alternative coordinates
   # with [k0, k1] the mini-scalars with digits of size 2-bit
   #
   # 4 = 0b100 - encodes [0b01, 0b00] ≡ P0
-  tab[4] = P0
+  lut[4] = P0
   # 5 = 0b101 - encodes [0b01, 0b01] ≡ P0 - P1
-  tab[5].diff(tab[4], P1)
+  lut[5].groupLawSub(lut[4], P1)
   # 7 = 0b111 - encodes [0b01, 0b11] ≡ P0 + P1
-  tab[7].sum(tab[4], P1)
+  lut[7].groupLawAdd(lut[4], P1)
   # 6 = 0b110 - encodes [0b01, 0b10] ≡ P0 + 2P1
-  tab[6].sum(tab[7], P1)
+  lut[6].groupLawAdd(lut[7], P1)
 
   # 0 = 0b000 - encodes [0b00, 0b00] ≡ 3P0
-  tab[0].double(tab[4])
-  tab[0] += tab[4]
+  lut[0].groupLawDouble(lut[4])
+  lut[0].groupLawAdd(lut[0], lut[4])
   # 1 = 0b001 - encodes [0b00, 0b01] ≡ 3P0 + P1
-  tab[1].sum(tab[0], P1)
+  lut[1].groupLawAdd(lut[0], P1)
   # 2 = 0b010 - encodes [0b00, 0b10] ≡ 3P0 + 2P1
-  tab[2].sum(tab[1], P1)
+  lut[2].groupLawAdd(lut[1], P1)
   # 3 = 0b011 - encodes [0b00, 0b11] ≡ 3P0 + 3P1
-  tab[3].sum(tab[2], P1)
-
-  # Step 2. Convert to affine coordinates to benefit from mixed-addition
-  lut.batchAffine(tab)
+  lut[3].groupLawAdd(lut[2], P1)
 
 func w2Get(recoding: Recoded,
           digitIdx: int): uint8 {.inline.}=
@@ -481,7 +396,7 @@ func w2Get(recoding: Recoded,
   let recoded = slot shr (wBitSize*(digitIdx and wWordMask)) and wDigitMask
   return recoded
 
-func w2TableIndex(glv: GLV_SAC, bit2: int, isNeg: var SecretBool): SecretWord {.inline.} =
+func getRecodedIndexW2*(glv: GLV_SAC, bit2: int, isNeg: var SecretBool): SecretWord {.inline.} =
   ## Compose the secret table index from
   ## the windowed of size 2 GLV-SAC representation and the "bit" accessed
 
@@ -494,78 +409,9 @@ func w2TableIndex(glv: GLV_SAC, bit2: int, isNeg: var SecretBool): SecretWord {.
   let parity = (k0 shr 1) xor (k0 and 1)
   result = SecretWord((parity shl 2) or k1)
 
-func computeRecodedLength(bitWidth, window: int): int =
+func computeEndoWindowRecodedLength*(bitWidth, window: int): int =
   # Strangely in the paper this doesn't depend
   # "m", the GLV decomposition dimension.
   # lw = ⌈log2 r/w⌉+1 (optionally a second "+1" to handle negative mini scalars)
   let lw = bitWidth.ceilDiv_vartime(window) + 1
   result = (lw mod window) + lw
-
-func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) {.meter.} =
-  ## Elliptic Curve Scalar Multiplication
-  ##
-  ##   P <- [k] P
-  ##
-  ## This is a scalar multiplication accelerated by an endomorphism
-  ## via the GLV (Gallant-lambert-Vanstone) decomposition.
-  ##
-  ## For 2-dimensional decomposition with window 2
-  ##
-  ## Requires:
-  ## - Cofactor to be cleared
-  ## - 0 <= scalar < curve order
-  mixin affine
-  const C = P0.F.Name # curve
-  static: doAssert: scalBits <= EC.getScalarField().bits()
-  const G = when EC isnot EC_ShortW_Aff|EC_ShortW_Jac|EC_ShortW_Prj: G1
-            else: EC.G
-
-  # 1. Compute endomorphisms
-  var P1 {.noInit.}: EC
-  P1.computeEndomorphism(P0)
-
-  # 2. Decompose scalar into mini-scalars
-  const L = computeRecodedLength(EC.getScalarField().bits(), 2)
-  var miniScalars {.noInit.}: array[2, BigInt[L]]
-  var negatePoints {.noInit.}: array[2, SecretBool]
-  miniScalars.decomposeEndo(negatePoints, scalar, EC.getScalarField().bits(), EC.getName(), G)
-
-  # 3. Handle negative mini-scalars
-  #    Either negate the associated base and the scalar (in the `endomorphisms` array)
-  #    Or use Algorithm 3 from Faz et al which can encode the sign
-  #    in the GLV representation at the low low price of 1 bit
-  block:
-    P0.cneg(negatePoints[0])
-    P1.cneg(negatePoints[1])
-
-  # 4. Precompute lookup table
-  var lut {.noInit.}: array[8, affine(EC)]
-  buildLookupTable_m2w2(P0, P1, lut)
-
-  # 5. Recode the miniscalars
-  #    we need the base miniscalar (that encodes the sign)
-  #    to be odd, and this in constant-time to protect the secret least-significant bit.
-  let k0isOdd = miniScalars[0].isOdd()
-  discard miniScalars[0].cadd(One, not k0isOdd)
-
-  var recoded: GLV_SAC[2, L] # zero-init required
-  recoded.nDimMultiScalarRecoding(miniScalars)
-
-  # 6. Proceed to GLV accelerated scalar multiplication
-  var Q {.noInit.}: EC
-  var tmp {.noInit.}: affine(EC)
-  var isNeg: SecretBool
-
-  tmp.secretLookup(lut, recoded.w2TableIndex((L div 2) - 1, isNeg))
-  Q.fromAffine(tmp)
-
-  for i in countdown((L div 2) - 2, 0):
-    Q.double()
-    Q.double()
-    tmp.secretLookup(lut, recoded.w2TableIndex(i, isNeg))
-    tmp.cneg(isNeg)
-    Q += tmp
-
-  # Now we need to correct if the sign miniscalar was not odd
-  P0.diff(Q, P0)
-  P0.ccopy(Q, k0isOdd)

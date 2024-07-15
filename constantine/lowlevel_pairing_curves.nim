@@ -10,7 +10,7 @@ import
     ./platforms/abstractions,
     ./named/algebras,
     ./named/zoo_pairings,
-    ./math/isogenies/frobenius,
+    ./math/endomorphisms/frobenius,
     ./math/pairings/[
       cyclotomic_subgroups,
       lines_eval,

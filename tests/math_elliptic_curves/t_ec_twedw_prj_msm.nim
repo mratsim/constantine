@@ -9,7 +9,7 @@
 import
   # Internals
   constantine/named/algebras,
-  constantine/math/elliptic/ec_twistededwards_projective,
+  constantine/math/ec_twistededwards,
   constantine/math/arithmetic,
   # Test utilities
   ./t_ec_template

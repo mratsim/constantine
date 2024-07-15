@@ -8,9 +8,9 @@
 
 import
   # Internals
-  constantine/math/elliptic/ec_endomorphism_accel,
   constantine/math/arithmetic,
   constantine/math/extension_fields,
+  constantine/math/endomorphisms/split_scalars,
   constantine/math/io/io_bigints,
   constantine/platforms/abstractions,
   constantine/math_arbitrary_precision/arithmetic/limbs_views,
@@ -146,14 +146,17 @@ func gtExp_addchain_4bit_vartime[Gt: ExtensionField](r: var Gt, a: Gt, scalar: B
   else:
     unreachable()
 
-func gtExp_minHammingWeight_vartime*[Gt: ExtensionField](r: var Gt, a: Gt, scalar: BigInt) {.tags:[VarTime].}  =
+func gtExp_jy00_vartime*[Gt: ExtensionField](r: var Gt, a: Gt, scalar: BigInt) {.tags:[VarTime].}  =
   ## **Variable-time** Exponentiation in 𝔾ₜ
   ##
   ##   r <- aᵏ
   ##
   ## This uses an online recoding with minimum Hamming Weight
-  ## (which is not NAF, NAF is least-significant bit to most)
-  ## This MUST NOT be used with secret data.
+  ## bassed on Joye, Yen, 2000 recoding.
+  ##
+  ## ⚠️ While the recoding is constant-time,
+  ##   usage of this recoding is intended vartime
+  ##   This MUST NOT be used with secret data.
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks
   let a {.noInit.} = a # Avoid aliasing issues
@@ -199,7 +202,7 @@ func accumNAF[precompSize, NafMax: static int, Gt: ExtensionField](
       neg.cyclotomic_inv(tab[-digit shr 1])
       acc *= neg
 
-func gtExp_minHammingWeight_windowed_vartime*[Gt: ExtensionField](
+func gtExp_wNAF_vartime*[Gt: ExtensionField](
         r: var Gt, a: Gt, scalar: BigInt, window: static int) {.tags:[VarTime], meter.} =
   ## **Variable-time** Exponentiation in 𝔾ₜ
   ##
@@ -233,7 +236,7 @@ func gtExp_minHammingWeight_windowed_vartime*[Gt: ExtensionField](
     else:
       isInit = r.initNAF(tab, naf, nafLen, i)
 
-func gtExpEndo_minHammingWeight_windowed_vartime*[Gt: ExtensionField, scalBits: static int](
+func gtExpEndo_wNAF_vartime*[Gt: ExtensionField, scalBits: static int](
         r: var Gt, a: Gt, scalar: BigInt[scalBits], window: static int) {.tags:[VarTime], meter.} =
   ## Endomorphism accelerated **Variable-time** Exponentiation in 𝔾ₜ
   ##

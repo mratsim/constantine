@@ -120,7 +120,7 @@ func evalMultilinearExtensionAt_BE[F](
   # e ∈ {0,1}ˢ hence each factor is either:
   # (1-xᵢ) or xᵢ
   #
-  # See the algorithm in ec_endomorphism_accel to build
+  # See the algorithm in split_scalars to build
   # a binary lookup table for O(n) evaluations
   #
   # Algorithm:
@@ -231,7 +231,7 @@ func evalMultilinearExtensionAt_LE[F](
   # e ∈ {0,1}ˢ hence each factor is either:
   # (1-xᵢ) or xᵢ
   #
-  # See the algorithm in ec_endomorphism_accel to build
+  # See the algorithm in split_scalars to build
   # a binary lookup table for O(n) evaluations
   #
   # Algorithm:

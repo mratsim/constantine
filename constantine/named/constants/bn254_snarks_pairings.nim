@@ -12,7 +12,7 @@ import
   constantine/math/io/io_bigints,
   constantine/math/extension_fields,
   constantine/math/pairings/cyclotomic_subgroups,
-  constantine/math/isogenies/frobenius
+  constantine/math/endomorphisms/frobenius
 
 # Slow generic implementation
 # ------------------------------------------------------------

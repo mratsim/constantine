@@ -49,7 +49,7 @@ proc main() =
     powVartimeBench(Fp12[curve], window = 4, ExpIters)
     separator()
     gtExp_sqrmul_vartimeBench(Fp12[curve], ExpIters)
-    gtExp_minHammingWeight_vartimeBench(Fp12[curve], ExpIters)
+    gtExp_jy00_vartimeBench(Fp12[curve], ExpIters)
     separator()
     gtExp_wNAF_vartimeBench(Fp12[curve], window = 2, ExpIters)
     gtExp_wNAF_vartimeBench(Fp12[curve], window = 3, ExpIters)

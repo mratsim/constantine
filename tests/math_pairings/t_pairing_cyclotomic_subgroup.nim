@@ -16,7 +16,7 @@ import
   constantine/named/algebras,
   constantine/math/io/[io_bigints, io_extfields],
   constantine/math/pairings/cyclotomic_subgroups,
-  constantine/math/isogenies/frobenius,
+  constantine/math/endomorphisms/frobenius,
   # Test utilities
   helpers/prng_unsafe
 

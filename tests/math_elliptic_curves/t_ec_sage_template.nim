@@ -15,15 +15,8 @@ import
   constantine/platforms/abstractions,
   constantine/math/[arithmetic, extension_fields],
   constantine/math/io/[io_bigints, io_ec],
-  constantine/math/elliptic/[
-    ec_shortweierstrass_affine,
-    ec_shortweierstrass_projective,
-    ec_shortweierstrass_jacobian,
-    ec_scalar_mul,
-    ec_endomorphism_accel],
-  constantine/named/zoo_endomorphisms,
-  # Test utilities
-  constantine/math/elliptic/ec_scalar_mul_vartime
+  constantine/math/ec_shortweierstrass,
+  constantine/named/zoo_endomorphisms
 
 export unittest, abstractions, arithmetic # Generic sandwich
 
@@ -166,7 +159,7 @@ proc run_scalar_mul_test_vs_sage*(
 
         impl.scalarMulGeneric(vec.vectors[i].scalar)
         reference.scalarMul_doubleAdd_vartime(vec.vectors[i].scalar)
-        refMinWeight.scalarMul_minHammingWeight_vartime(vec.vectors[i].scalar)
+        refMinWeight.scalarMul_jy00_vartime(vec.vectors[i].scalar)
 
         doAssert: bool(Q == reference)
         doAssert: bool(Q == impl)
@@ -174,7 +167,7 @@ proc run_scalar_mul_test_vs_sage*(
 
         staticFor w, 2, 5:
           var refWNAF = P
-          refWNAF.scalarMul_minHammingWeight_windowed_vartime(vec.vectors[i].scalar, window = w)
+          refWNAF.scalarMul_wNAF_vartime(vec.vectors[i].scalar, window = w)
           check: bool(impl == refWNAF)
 
         when bits >= EndomorphismThreshold: # All endomorphisms constants are below this threshold
@@ -189,5 +182,5 @@ proc run_scalar_mul_test_vs_sage*(
 
           staticFor w, 2, 5:
             var endoWNAF = P
-            endoWNAF.scalarMulEndo_minHammingWeight_windowed_vartime(vec.vectors[i].scalar, window = w)
+            endoWNAF.scalarMulEndo_wNAF_vartime(vec.vectors[i].scalar, window = w)
             check: bool(impl == endoWNAF)

@@ -10,7 +10,7 @@ import
   std/macros,
   constantine/platforms/abstractions,
   constantine/math/extension_fields,
-  constantine/math/isogenies/frobenius,
+  constantine/math/endomorphisms/frobenius,
   constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
@@ -29,6 +29,8 @@ import
   ./constants/vesta_endomorphisms,
   ./constants/bandersnatch_endomorphisms,
   ./constants/banderwagon_endomorphisms
+
+export Subgroup
 
 {.experimental: "dynamicBindSym".}
 

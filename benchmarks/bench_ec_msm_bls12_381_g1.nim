@@ -10,9 +10,7 @@ import
   # Internals
   constantine/named/algebras,
   constantine/math/arithmetic,
-  constantine/math/elliptic/[
-    ec_shortweierstrass_projective,
-    ec_shortweierstrass_jacobian],
+  constantine/math/ec_shortweierstrass,
   # Helpers
   helpers/prng_unsafe,
   ./bench_elliptic_parallel_template

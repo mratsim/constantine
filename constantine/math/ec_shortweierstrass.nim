@@ -17,6 +17,7 @@ import
   elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,
+    ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_batch_ops,
     ec_scalar_mul, ec_scalar_mul_vartime,
@@ -25,6 +26,7 @@ import
   ../named/zoo_generators
 
 export ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_projective,
+       ec_shortweierstrass_jacobian_extended,
        ec_shortweierstrass_batch_ops, ec_scalar_mul, ec_scalar_mul_vartime,
        ec_multi_scalar_mul
 

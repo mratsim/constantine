@@ -10,8 +10,7 @@ import
   # Internals
   constantine/named/algebras,
   constantine/math/extension_fields,
-  constantine/math/elliptic/ec_shortweierstrass_jacobian,
-  constantine/math/elliptic/ec_shortweierstrass_projective,
+  constantine/math/ec_shortweierstrass,
   # Test utilities
   ./t_ec_sage_template
 

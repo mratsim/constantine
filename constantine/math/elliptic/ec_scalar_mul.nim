@@ -9,16 +9,18 @@
 import
   constantine/platforms/abstractions,
   constantine/named/algebras,
+  constantine/named/zoo_endomorphisms,
   constantine/math/arithmetic,
   constantine/math/extension_fields,
   constantine/math/io/io_bigints,
-  constantine/named/zoo_endomorphisms,
-  ./ec_endomorphism_accel,
+  constantine/math/endomorphisms/split_scalars,
   ./ec_shortweierstrass_affine,
   ./ec_shortweierstrass_projective,
   ./ec_shortweierstrass_jacobian,
   ./ec_twistededwards_affine,
-  ./ec_twistededwards_projective
+  ./ec_twistededwards_projective,
+  ./ec_shortweierstrass_batch_ops,
+  ./ec_twistededwards_batch_ops
 
 # ############################################################
 #                                                            #
@@ -54,6 +56,9 @@ import
 # - State-of-the-art of secure ECC implementations:a survey on known side-channel attacks and countermeasures\
 #   Junfeng Fan,XuGuo, Elke De Mulder, Patrick Schaumont, Bart Preneel and Ingrid Verbauwhede, 2010
 #   https://www.esat.kuleuven.be/cosic/publications/article-1461.pdf
+
+# Generic implementation
+# --------------------------------------------------------------------------------------
 
 template checkScalarMulScratchspaceLen(len: int) =
   ## CHeck that there is a minimum of scratchspace to hold the temporaries
@@ -131,7 +136,6 @@ func scalarMulDoubling[EC](
     P = tmp
 
   return (k, bits)
-
 
 func scalarMulGeneric[EC](
        P: var EC,
@@ -231,6 +235,194 @@ func scalarMulGeneric*[EC](P: var EC, scalar: BigInt, window: static int = 5) =
     scalarCanonicalBE: array[scalar.bits.ceilDiv_vartime(8), byte] # canonical big endian representation
   scalarCanonicalBE.marshal(scalar, bigEndian)                     # Export is constant-time
   P.scalarMulGeneric(scalarCanonicalBE, scratchSpace)
+
+# Endomorphism accelerated
+# --------------------------------------------------------------------------------------
+
+func buildEndoLookupTable[M: static int, EC, ECaff](
+       P: EC,
+       endomorphisms: array[M-1, EC],
+       lut: var array[1 shl (M-1), ECaff]) =
+  ## Build the lookup table from the base point P
+  ## and the curve endomorphism
+  ##
+  ## Note:
+  ##   The destination parameter is last so that the compiler can infer the value of M
+  ##   It fails with 1 shl (M-1)
+
+  # Step 1. Create the lookup-table in alternative coordinates
+  var tab {.noInit.}: array[1 shl (M-1), EC]
+  buildEndoLookupTable(
+    P, endomorphisms,
+    tab,
+    groupLawAdd = sum
+  )
+
+  # Step 2. Convert to affine coordinates to benefit from mixed-addition
+  lut.batchAffine(tab)
+
+func scalarMulEndo*[scalBits; EC](
+       P: var EC,
+       scalar: BigInt[scalBits]) {.meter.} =
+  ## Elliptic Curve Scalar Multiplication
+  ##
+  ##   P <- [k] P
+  ##
+  ## This is a scalar multiplication accelerated by an endomorphism
+  ## - via the GLV (Gallant-lambert-Vanstone) decomposition on G1
+  ## - via the GLS (Galbraith-Lin-Scott) decomposition on G2
+  ##
+  ## Requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  const C = P.F.Name # curve
+  static: doAssert scalBits <= EC.getScalarField().bits(), "Do not use endomorphism to multiply beyond the curve order"
+
+  # 1. Compute endomorphisms
+  const M = when P.F is Fp:  2
+            elif P.F is Fp2: 4
+            else: {.error: "Unconfigured".}
+  const G = when EC isnot EC_ShortW_Aff|EC_ShortW_Jac|EC_ShortW_Prj: G1
+            else: EC.G
+
+  var endos {.noInit.}: array[M-1, EC]
+  endos.computeEndomorphisms(P)
+
+  # 2. Decompose scalar into mini-scalars
+  const L = EC.getScalarField().bits().computeEndoRecodedLength(M)
+  var miniScalars {.noInit.}: array[M, BigInt[L]]
+  var negatePoints {.noInit.}: array[M, SecretBool]
+  miniScalars.decomposeEndo(negatePoints, scalar, EC.getScalarField().bits(), EC.getName(), G)
+
+  # 3. Handle negative mini-scalars
+  # A scalar decomposition might lead to negative miniscalar.
+  # For proper handling it requires either:
+  # 1. Negating it and then negating the corresponding curve point P
+  # 2. Adding an extra bit to L for the recoding, which will do the right thing™
+  block:
+    P.cneg(negatePoints[0])
+    staticFor i, 1, M:
+      endos[i-1].cneg(negatePoints[i])
+
+  # 4. Precompute lookup table
+  var lut {.noInit.}: array[1 shl (M-1), affine(EC)]
+  buildEndoLookupTable(P, endos, lut)
+
+  # 5. Recode the miniscalars
+  #    we need the base miniscalar (that encodes the sign)
+  #    to be odd, and this in constant-time to protect the secret least-significant bit.
+  let k0isOdd = miniScalars[0].isOdd()
+  discard miniScalars[0].cadd(One, not k0isOdd)
+
+  var recoded: GLV_SAC[M, L] # zero-init required
+  recoded.nDimMultiScalarRecoding(miniScalars)
+
+  # 6. Proceed to GLV accelerated scalar multiplication
+  var Q {.noInit.}: EC
+  var tmp {.noInit.}: affine(EC)
+  tmp.secretLookup(lut, recoded.getRecodedIndex(L-1))
+  Q.fromAffine(tmp)
+
+  for i in countdown(L-2, 0):
+    Q.double()
+    tmp.secretLookup(lut, recoded.getRecodedIndex(i))
+    tmp.cneg(SecretBool recoded.getRecodedNegate(i))
+    Q += tmp
+
+  # Now we need to correct if the sign miniscalar was not odd
+  P.diff(Q, P)
+  P.ccopy(Q, k0isOdd)
+
+# Endomorphism accelerated with window of size 2
+# --------------------------------------------------------------------------------------
+
+func buildEndoLookupTable_m2w2[EC, ECaff](
+       lut: var array[8, ECaff],
+       P0, P1: EC) =
+  ## Build a lookup lutle for GLV with 2-dimensional decomposition
+  ## and window of size 2
+  # Step 1. Create the lookup-table in alternative coordinates
+  var tab {.noInit.}: array[8, EC]
+  tab.buildEndoLookupTable_m2w2(
+    P0, P1,
+    groupLawAdd = sum,
+    groupLawSub = diff,
+    groupLawDouble = double,
+  )
+
+  # Step 2. Convert to affine coordinates to benefit from mixed-addition
+  lut.batchAffine(tab)
+
+func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) {.meter.} =
+  ## Elliptic Curve Scalar Multiplication
+  ##
+  ##   P <- [k] P
+  ##
+  ## This is a scalar multiplication accelerated by an endomorphism
+  ## via the GLV (Gallant-lambert-Vanstone) decomposition.
+  ##
+  ## For 2-dimensional decomposition with window 2
+  ##
+  ## Requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  const C = P0.F.Name # curve
+  static: doAssert: scalBits <= EC.getScalarField().bits()
+  const G = when EC isnot EC_ShortW_Aff|EC_ShortW_Jac|EC_ShortW_Prj: G1
+            else: EC.G
+
+  # 1. Compute endomorphisms
+  var P1 {.noInit.}: EC
+  P1.computeEndomorphism(P0)
+
+  # 2. Decompose scalar into mini-scalars
+  const L = computeEndoWindowRecodedLength(EC.getScalarField().bits(), window = 2)
+  var miniScalars {.noInit.}: array[2, BigInt[L]]
+  var negatePoints {.noInit.}: array[2, SecretBool]
+  miniScalars.decomposeEndo(negatePoints, scalar, EC.getScalarField().bits(), EC.getName(), G)
+
+  # 3. Handle negative mini-scalars
+  #    Either negate the associated base and the scalar (in the `endomorphisms` array)
+  #    Or use Algorithm 3 from Faz et al which can encode the sign
+  #    in the GLV representation at the low low price of 1 bit
+  block:
+    P0.cneg(negatePoints[0])
+    P1.cneg(negatePoints[1])
+
+  # 4. Precompute lookup table
+  var lut {.noInit.}: array[8, affine(EC)]
+  lut.buildEndoLookupTable_m2w2(P0, P1)
+
+  # 5. Recode the miniscalars
+  #    we need the base miniscalar (that encodes the sign)
+  #    to be odd, and this in constant-time to protect the secret least-significant bit.
+  let k0isOdd = miniScalars[0].isOdd()
+  discard miniScalars[0].cadd(One, not k0isOdd)
+
+  var recoded: GLV_SAC[2, L] # zero-init required
+  recoded.nDimMultiScalarRecoding(miniScalars)
+
+  # 6. Proceed to GLV accelerated scalar multiplication
+  var Q {.noInit.}: EC
+  var tmp {.noInit.}: affine(EC)
+  var isNeg: SecretBool
+
+  tmp.secretLookup(lut, recoded.getRecodedIndexW2((L div 2) - 1, isNeg))
+  Q.fromAffine(tmp)
+
+  for i in countdown((L div 2) - 2, 0):
+    Q.double()
+    Q.double()
+    tmp.secretLookup(lut, recoded.getRecodedIndexW2(i, isNeg))
+    tmp.cneg(isNeg)
+    Q += tmp
+
+  # Now we need to correct if the sign miniscalar was not odd
+  P0.diff(Q, P0)
+  P0.ccopy(Q, k0isOdd)
+
+# Public API
+# --------------------------------------------------------------------------------------
 
 func scalarMul*[EC](P: var EC, scalar: BigInt) {.inline, meter.} =
   ## Elliptic Curve Scalar Multiplication

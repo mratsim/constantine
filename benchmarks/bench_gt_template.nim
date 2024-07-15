@@ -145,23 +145,23 @@ proc gtExp_sqrmul_vartimeBench*(T: typedesc, iters: int) =
   bench("𝔾ₜ Exponentiation " & $exponent.bits & "-bit (cyclotomic square-multiply, vartime)", T, iters):
     r.gtExp_sqrmul_vartime(x, exponent)
 
-proc gtExp_minHammingWeight_vartimeBench*(T: typedesc, iters: int) =
+proc gtExp_jy00_vartimeBench*(T: typedesc, iters: int) =
   let x = rng.random_gt(T)
   let exponent = rng.random_unsafe(BigInt[Fr[T.Name].bits()])
   var r {.noInit.}: T
   bench("𝔾ₜ Exponentiation " & $exponent.bits & "-bit (signed recoding, vartime)", T, iters):
-    r.gtExp_minHammingWeight_vartime(x, exponent)
+    r.gtExp_jy00_vartime(x, exponent)
 
 proc gtExp_wNAF_vartimeBench*(T: typedesc, window: static int, iters: int) =
   let x = rng.random_gt(T)
   let exponent = rng.random_unsafe(BigInt[Fr[T.Name].bits()])
   var r {.noInit.}: T
   bench("𝔾ₜ Exponentiation " & $exponent.bits & "-bit (wNAF-" & $window & ", vartime)", T, iters):
-    r.gtExp_minHammingWeight_windowed_vartime(x, exponent, window)
+    r.gtExp_wNAF_vartime(x, exponent, window)
 
 proc gtExp_endo_wNAF_vartimeBench*(T: typedesc, window: static int, iters: int) =
   let x = rng.random_gt(T)
   let exponent = rng.random_unsafe(BigInt[Fr[T.Name].bits()])
   var r {.noInit.}: T
   bench("𝔾ₜ Exponentiation " & $exponent.bits & "-bit (endomorphism, wNAF-" & $window & ", vartime)", T, iters):
-    r.gtExpEndo_minHammingWeight_windowed_vartime(x, exponent, window)
+    r.gtExpEndo_wNAF_vartime(x, exponent, window)

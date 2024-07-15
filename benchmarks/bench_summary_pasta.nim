@@ -6,13 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import
-  # Internals
-  constantine/named/algebras,
-  constantine/math/arithmetic,
-  constantine/math/extension_fields,
-  # Helpers
-  ./bench_summary_template
+import ./bench_summary_template
 
 # ############################################################
 #

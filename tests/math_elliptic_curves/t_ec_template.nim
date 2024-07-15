@@ -28,8 +28,7 @@ import
     ec_twistededwards_affine,
     ec_twistededwards_projective,
     ec_scalar_mul,
-    ec_multi_scalar_mul,
-    ec_endomorphism_accel],
+    ec_multi_scalar_mul],
   constantine/math/io/[io_bigints, io_fields, io_ec],
   constantine/named/[zoo_subgroups, zoo_endomorphisms],
   # Test utilities
@@ -494,7 +493,7 @@ proc run_EC_mul_sanity_tests*(
 
           impl.scalarMulGeneric(BigInt[bits]())
           reference.scalarMul_doubleAdd_vartime(BigInt[bits]())
-          refMinWeight.scalarMul_minHammingWeight_vartime(BigInt[bits]())
+          refMinWeight.scalarMul_jy00_vartime(BigInt[bits]())
 
           check:
             bool(impl.isNeutral())
@@ -503,7 +502,7 @@ proc run_EC_mul_sanity_tests*(
 
           proc refWNaf(bits, w: static int) = # workaround staticFor symbol visibility
             var refWNAF = a
-            refWNAF.scalarMul_minHammingWeight_windowed_vartime(BigInt[bits](), window = w)
+            refWNAF.scalarMul_wNAF_vartime(BigInt[bits](), window = w)
             check: bool(refWNAF.isNeutral())
 
           refWNaf(bits, w = 2)
@@ -665,7 +664,7 @@ proc run_EC_mul_vs_ref_impl*(
 
           impl.scalarMulGeneric(scalar)
           reference.scalarMul_doubleAdd_vartime(scalar)
-          refMinWeight.scalarMul_minHammingWeight_vartime(scalar)
+          refMinWeight.scalarMul_jy00_vartime(scalar)
 
           check:
             bool(impl == reference)
@@ -673,7 +672,7 @@ proc run_EC_mul_vs_ref_impl*(
 
           proc refWNaf(w: static int) = # workaround staticFor symbol visibility
             var refWNAF = P
-            refWNAF.scalarMul_minHammingWeight_windowed_vartime(scalar, window = w)
+            refWNAF.scalarMul_wNAF_vartime(scalar, window = w)
             check: bool(impl == refWNAF)
 
           refWNaf(2)
@@ -757,7 +756,7 @@ proc run_EC_mul_endomorphism_impl*(
 
           impl.scalarMulGeneric(scalar)
           reference.scalarMul_doubleAdd_vartime(scalar)
-          refMinWeight.scalarMul_minHammingWeight_vartime(scalar)
+          refMinWeight.scalarMul_jy00_vartime(scalar)
 
           check:
             bool(impl == reference)
@@ -765,7 +764,7 @@ proc run_EC_mul_endomorphism_impl*(
 
           proc refWNaf(w: static int) = # workaround staticFor symbol visibility
             var refWNAF = P
-            refWNAF.scalarMul_minHammingWeight_windowed_vartime(scalar, window = w)
+            refWNAF.scalarMul_wNAF_vartime(scalar, window = w)
             check: bool(impl == refWNAF)
 
           refWNaf(2)
@@ -784,7 +783,7 @@ proc run_EC_mul_endomorphism_impl*(
 
             staticFor w, 2, 5:
               var endoWNAF = P
-              endoWNAF.scalarMulEndo_minHammingWeight_windowed_vartime(scalar, window = w)
+              endoWNAF.scalarMulEndo_wNAF_vartime(scalar, window = w)
               doAssert bool(impl == endoWNAF), diagnostic(impl, endoWNAF)
 
       test(ec, bits = ec.getScalarField().bits(), randZ = false, gen = Uniform)

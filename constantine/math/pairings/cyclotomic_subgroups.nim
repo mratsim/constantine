@@ -11,7 +11,7 @@ import
   constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/extension_fields,
-  constantine/math/isogenies/frobenius
+  constantine/math/endomorphisms/frobenius
 
 # No exceptions allowed
 {.push raises: [].}

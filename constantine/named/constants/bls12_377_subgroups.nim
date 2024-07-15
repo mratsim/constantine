@@ -15,7 +15,7 @@ import
   constantine/math/ec_shortweierstrass,
   constantine/math/elliptic/ec_scalar_mul,
   constantine/math/io/io_bigints,
-  constantine/math/isogenies/frobenius,
+  constantine/math/endomorphisms/frobenius,
   constantine/named/zoo_endomorphisms
 
 func pow_bls12_377_abs_x[ECP: EC_ShortW[Fp[BLS12_377], G1] or

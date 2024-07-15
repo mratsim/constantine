@@ -13,11 +13,11 @@ import
   ./ec_shortweierstrass_projective,
   ./ec_twistededwards_affine,
   ./ec_twistededwards_projective,
-  ./ec_endomorphism_accel,
   ./ec_shortweierstrass_batch_ops,
   ./ec_twistededwards_batch_ops,
   constantine/math/arithmetic,
   constantine/math/extension_fields,
+  constantine/math/endomorphisms/split_scalars,
   constantine/math/io/io_bigints,
   constantine/platforms/abstractions,
   constantine/math_arbitrary_precision/arithmetic/limbs_views,
@@ -148,14 +148,17 @@ func scalarMul_addchain_4bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarT
   else:
     unreachable()
 
-func scalarMul_minHammingWeight_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].}  =
+func scalarMul_jy00_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].}  =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
   ##
   ## This uses an online recoding with minimum Hamming Weight
-  ## (which is not NAF, NAF is least-significant bit to most)
-  ## This MUST NOT be used with secret data.
+  ## bassed on Joye, Yen, 2000 recoding.
+  ##
+  ## ⚠️ While the recoding is constant-time,
+  ##   usage of this recoding is intended vartime
+  ##   This MUST NOT be used with secret data.
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks
   var Paff {.noinit.}: affine(EC)
@@ -199,7 +202,7 @@ func accumNAF[precompSize, NafMax: static int, EC, ECaff](
     elif digit < 0:
       P ~-= tab[-digit shr 1]
 
-func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime, Alloca], meter.} =
+func scalarMul_wNAF_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime, Alloca], meter.} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
@@ -236,7 +239,7 @@ func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt,
     else:
       isInit = P.initNAF(tab, naf, nafLen, i)
 
-func scalarMulEndo_minHammingWeight_windowed_vartime*[scalBits: static int; EC](
+func scalarMulEndo_wNAF_vartime*[scalBits: static int; EC](
        P: var EC,
        scalar: BigInt[scalBits],
        window: static int) {.tags:[VarTime, Alloca], meter.} =
@@ -345,19 +348,19 @@ func scalarMul_vartime*[scalBits; EC](P: var EC, scalar: BigInt[scalBits]) {.met
     when scalBits >= EndomorphismThreshold: # Skip static: doAssert when multiplying by intentionally small scalars.
       if usedBits >= EndomorphismThreshold:
         when EC.F is Fp:
-          P.scalarMulEndo_minHammingWeight_windowed_vartime(scalar, window = 4)
+          P.scalarMulEndo_wNAF_vartime(scalar, window = 4)
         elif EC.F is Fp2:
-          P.scalarMulEndo_minHammingWeight_windowed_vartime(scalar, window = 3)
+          P.scalarMulEndo_wNAF_vartime(scalar, window = 3)
         else: # Curves defined on Fp^m with m > 2
           {.error: "Unreachable".}
         return
 
   if 64 < usedBits:
     # With a window of 4, we precompute 2^4 = 4 points
-    P.scalarMul_minHammingWeight_windowed_vartime(scalar, window = 4)
+    P.scalarMul_wNAF_vartime(scalar, window = 4)
   elif 16 < usedBits:
     # With a window of 3, we precompute 2^1 = 2 points
-    P.scalarMul_minHammingWeight_windowed_vartime(scalar, window = 3)
+    P.scalarMul_wNAF_vartime(scalar, window = 3)
   elif 4 < usedBits:
     P.scalarMul_doubleAdd_vartime(scalar)
   else:
