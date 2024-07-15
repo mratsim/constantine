@@ -6,7 +6,7 @@
 #   Armando Faz-Hernández, Patrick Longa, Ana H. Sánchez, 2013
 #   https://eprint.iacr.org/2013/158.pdf
 
-import constantine/math/elliptic/ec_endomorphism_accel {.all.},
+import constantine/math/endomorphisms/split_scalars {.all.},
        constantine/platforms/abstractions,
        constantine/math/io/io_bigints,
        constantine/math/arithmetic
@@ -218,7 +218,7 @@ proc mainFullMulWindowed() =
   const M = 2                # GLS-2 decomposition
   const miniBitwidth = 8     # Bitwidth of the miniscalars resulting from scalar decomposition
   const W = 2                # Window
-  const L = computeRecodedLength(miniBitwidth, W)
+  const L = computeEndoWindowRecodedLength(miniBitwidth, W)
 
   var k: MultiScalar[M, L]
   var kRecoded: GLV_SAC[M, L]

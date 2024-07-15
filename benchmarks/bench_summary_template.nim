@@ -17,11 +17,7 @@ import
   constantine/platforms/abstractions,
   constantine/named/algebras,
   constantine/math/[arithmetic, extension_fields],
-  constantine/math/elliptic/[
-    ec_shortweierstrass_affine,
-    ec_shortweierstrass_projective,
-    ec_shortweierstrass_jacobian,
-    ec_scalar_mul, ec_scalar_mul_vartime, ec_endomorphism_accel],
+  constantine/math/ec_shortweierstrass,
   constantine/named/zoo_subgroups,
   constantine/math/pairings/[
     cyclotomic_subgroups,
@@ -36,8 +32,9 @@ import
   ./bench_blueprint
 
 export
-  ec_shortweierstrass_projective,
-  ec_shortweierstrass_jacobian
+  algebras,
+  arithmetic, extension_fields,
+  ec_shortweierstrass
 
 export abstractions # generic sandwich on SecretBool and SecretBool in Jacobian sum
 export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225

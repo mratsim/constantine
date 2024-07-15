@@ -14,7 +14,7 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective
   ],
-  constantine/math/isogenies/frobenius,
+  constantine/math/endomorphisms/frobenius,
   constantine/named/zoo_pairings,
   ./cyclotomic_subgroups,
   ./miller_loops

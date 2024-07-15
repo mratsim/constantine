@@ -13,7 +13,7 @@ import
   constantine/math/extension_fields,
   constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   constantine/math/pairings/[cyclotomic_subgroups, miller_loops],
-  constantine/math/isogenies/frobenius
+  constantine/math/endomorphisms/frobenius
 
 # Slow generic implementation
 # ------------------------------------------------------------

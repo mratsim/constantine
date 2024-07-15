@@ -8,12 +8,10 @@
 
 import
   # Internals
-  constantine/named/algebras,
+  constantine/named/[algebras, zoo_endomorphisms],
   constantine/math/arithmetic,
   constantine/math/extension_fields,
-  constantine/math/elliptic/[
-    ec_shortweierstrass_projective,
-    ec_shortweierstrass_jacobian],
+  constantine/math/ec_shortweierstrass,
   # Helpers
   ./bench_elliptic_template
 
@@ -68,7 +66,7 @@ proc main() =
     scalarMulVartimeWNAFBench(EC_ShortW_Jac[Fp2[curve], G2], bits, window = 4, MulIters)
     scalarMulVartimeWNAFBench(EC_ShortW_Jac[Fp2[curve], G2], bits, window = 5, MulIters)
     separator()
-    when bits >= 196: # All endomorphisms constants are below this threshold
+    when bits >= EndomorphismThreshold: # All endomorphisms constants are below this threshold
       scalarMulVartimeEndoWNAFBench(EC_ShortW_Prj[Fp2[curve], G2], bits, window = 2, MulIters)
       scalarMulVartimeEndoWNAFBench(EC_ShortW_Prj[Fp2[curve], G2], bits, window = 3, MulIters)
       scalarMulVartimeEndoWNAFBench(EC_ShortW_Prj[Fp2[curve], G2], bits, window = 4, MulIters)

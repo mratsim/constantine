@@ -21,7 +21,7 @@ import
   constantine/math/extension_fields,
   constantine/named/algebras,
   constantine/math/arithmetic,
-  constantine/math/isogenies/frobenius,
+  constantine/math/endomorphisms/frobenius,
   # Test utilities
   helpers/prng_unsafe
 

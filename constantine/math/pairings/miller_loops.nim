@@ -14,7 +14,7 @@ import
     ec_shortweierstrass_projective
   ],
   constantine/math/arithmetic,
-  constantine/math/isogenies/frobenius,
+  constantine/math/endomorphisms/frobenius,
   ./lines_eval
 
 # No exceptions allowed

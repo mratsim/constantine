@@ -10,11 +10,13 @@ import
     ./platforms/abstractions,
     ./named/algebras,
     ./named/zoo_pairings,
-    ./math/isogenies/frobenius,
+    ./math/endomorphisms/frobenius,
     ./math/pairings/[
       cyclotomic_subgroups,
       lines_eval,
-      pairings_generic]
+      pairings_generic,
+      gt_exponentiations,
+      gt_exponentiations_vartime]
 # ############################################################
 #
 #       Low-level named Pairing-Friendly Curve API
@@ -64,3 +66,15 @@ export zoo_pairings.isInPairingSubgroup
 export pairings_generic.pairing
 export pairings_generic.millerLoop
 export pairings_generic.finalExp
+
+export gt_exponentiations.gtExp
+export gt_exponentiations_vartime.gtExp_vartime
+
+# Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+# tend to generate useless memory moves or have difficulties to minimize stack allocation
+# and our types might be large (Fp12 ...)
+# See: https://github.com/mratsim/constantine/issues/145
+#
+# They are intended for rapid prototyping, testing and debugging.
+export gt_exponentiations.`^`
+export gt_exponentiations_vartime.`~^`

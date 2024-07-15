@@ -8,7 +8,7 @@
 
 import constantine/named/algebras,
        ./ec_multi_scalar_mul_scheduler,
-       ./ec_endomorphism_accel,
+       constantine/math/endomorphisms/split_scalars,
        constantine/math/extension_fields,
        constantine/named/zoo_endomorphisms,
        constantine/platforms/abstractions

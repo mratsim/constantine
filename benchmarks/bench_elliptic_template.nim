@@ -24,7 +24,7 @@ import
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_batch_ops,
-    ec_scalar_mul, ec_endomorphism_accel],
+    ec_scalar_mul],
     constantine/named/zoo_subgroups,
   # Helpers
   helpers/prng_unsafe,
@@ -210,7 +210,7 @@ proc scalarMulVartimeMinHammingWeightRecodingBench*(EC: typedesc, bits: static i
 
   bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime min Hamming Weight recoding)", EC, iters):
     r = P
-    r.scalarMul_minHammingWeight_vartime(exponent)
+    r.scalarMul_jy00_vartime(exponent)
 
 proc scalarMulVartimeWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
   var r {.noInit.}: EC
@@ -221,7 +221,7 @@ proc scalarMulVartimeWNAFBench*(EC: typedesc, bits, window: static int, iters: i
 
   bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime wNAF-" & $window & ")", EC, iters):
     r = P
-    r.scalarMul_minHammingWeight_windowed_vartime(exponent, window)
+    r.scalarMul_wNAF_vartime(exponent, window)
 
 proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
   var r {.noInit.}: EC
@@ -232,7 +232,7 @@ proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iter
 
   bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime endomorphism + wNAF-" & $window & ")", EC, iters):
     r = P
-    r.scalarMulEndo_minHammingWeight_windowed_vartime(exponent, window)
+    r.scalarMulEndo_wNAF_vartime(exponent, window)
 
 proc subgroupCheckBench*(EC: typedesc, iters: int) =
   var P = rng.random_unsafe(EC)
@@ -251,7 +251,7 @@ proc subgroupCheckScalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: sta
   bench("EC subgroup check + ScalarMul " & $bits & "-bit " & $EC.G & " (vartime endo + wNAF-" & $window & ")", EC, iters):
     r = P
     discard r.isInSubgroup()
-    r.scalarMulEndo_minHammingWeight_windowed_vartime(exponent, window)
+    r.scalarMulEndo_wNAF_vartime(exponent, window)
 
 proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
   var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](numPoints)

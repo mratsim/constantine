@@ -11,7 +11,7 @@ import
   constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/extension_fields,
-  constantine/math/elliptic/ec_shortweierstrass_jacobian,
+  constantine/math/ec_shortweierstrass,
   # Helpers
   ./bench_elliptic_template
 

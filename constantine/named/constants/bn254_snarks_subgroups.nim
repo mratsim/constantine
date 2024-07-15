@@ -15,7 +15,7 @@ import
   constantine/math/ec_shortweierstrass,
   constantine/math/elliptic/ec_scalar_mul,
   constantine/math/io/io_bigints,
-  constantine/math/isogenies/frobenius
+  constantine/math/endomorphisms/frobenius
 
 func pow_bn254_snarks_abs_u*[ECP: EC_ShortW[Fp[BN254_Snarks], G1] or
        EC_ShortW[Fp2[BN254_Snarks], G2]](

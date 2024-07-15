@@ -55,6 +55,7 @@ type
     hash_G2: ZkalcBenchDetails
 
     mul_Gt: ZkalcBenchDetails
+    exp_Gt: ZkalcBenchDetails
     multiexp_Gt: ZkalcBenchDetails
 
     pairing: ZkalcBenchDetails
@@ -394,6 +395,57 @@ proc benchEcHashToCurve(rng: var RngState, EC: type): ZkalcBenchDetails =
   report(G & " Hash-to-Curve", curve, stats)
   stats.toZkalc()
 
+# 𝔾ₜ benches
+# -------------------------------------------------------------------------------------
+
+func random_gt*(rng: var RngState, F: typedesc): F {.inline, noInit.} =
+  result = rng.random_unsafe(F)
+  result.finalExp()
+
+proc benchGtMul(rng: var RngState, curve: static Algebra): ZkalcBenchDetails =
+  when curve in {BN254_Snarks, BLS12_377, BLS12_381}:
+    type Gt = Fp12[curve]
+  else:
+    {.error: "𝔾ₜ multiplication is not configured for " & $curve.}
+
+  var x = rng.random_gt(Gt)
+  let y = rng.random_gt(Gt)
+
+  preventOptimAway(x)
+  preventOptimAway(y)
+
+  let stats = bench():
+    x *= y
+
+  report("𝔾ₜ Multiplication", curve, stats)
+  stats.toZkalc()
+
+proc benchGtExp(rng: var RngState, curve: static Algebra, useVartime: bool): ZkalcBenchDetails =
+  when curve in {BN254_Snarks, BLS12_377, BLS12_381}:
+    type Gt = Fp12[curve]
+  else:
+    {.error: "𝔾ₜ exponentiation is not configured for " & $curve.}
+
+  var r {.noInit.}: Gt
+  let a = rng.random_gt(Gt)
+  let k = rng.random_unsafe(Fr[curve].getBigInt())
+
+  preventOptimAway(r)
+  preventOptimAway(a)
+
+  if useVartime:
+    let stats = bench():
+      r.gtExp_vartime(a, k)
+
+    report("𝔾ₜ exponentiation" & align("| vartime", 16), curve, stats)
+    stats.toZkalc()
+  else:
+    let stats = bench():
+      r.gtExp(a, k)
+
+    report("𝔾ₜ exponentiation" & align("| constant-time", 16), curve, stats)
+    stats.toZkalc()
+
 # Pairing benches
 # -------------------------------------------------------------------------------------
 
@@ -405,7 +457,7 @@ func clearCofactor[F; G: static Subgroup](
   t.clearCofactor()
   ec.affine(t)
 
-func random_point*(rng: var RngState, EC: typedesc): EC {.noInit.} =
+func random_point*(rng: var RngState, EC: typedesc): EC {.inline, noInit.} =
   result = rng.random_unsafe(EC)
   result.clearCofactor()
 
@@ -513,6 +565,11 @@ proc runBenches(curve: static Algebra, useVartime: bool): ZkalcBenchResult =
     separator()
     zkalc.multipairing = rng.benchMultiPairing(curve, maxNumInputs = 1024)
     separator()
+
+    # Target group 𝔾ₜ
+    # --------------------------------------------------------------------
+    zkalc.mul_Gt = rng.benchGtMul(curve)
+    zkalc.exp_Gt = rng.benchGtExp(curve, useVartime)
 
   return zkalc
 

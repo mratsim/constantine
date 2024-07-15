@@ -8,9 +8,9 @@
 
 import
   # Internals
-  constantine/math/elliptic/ec_endomorphism_accel,
   constantine/math/arithmetic,
   constantine/math/extension_fields,
+  constantine/math/endomorphisms/split_scalars,
   constantine/math/io/io_bigints,
   constantine/platforms/abstractions,
   constantine/math_arbitrary_precision/arithmetic/limbs_views,
@@ -22,6 +22,13 @@ from constantine/math/elliptic/ec_shortweierstrass_affine import G2
 
 {.push raises: [].} # No exceptions allowed in core cryptographic operations
 {.push checks: off.} # No defects due to array bound checking or signed integer overflow allowed
+
+# ############################################################
+#                                                            #
+#                 Exponentiation in 𝔾ₜ                       #
+#                     variable-time                          #
+#                                                            #
+# ############################################################
 
 iterator unpackBE(scalarByte: byte): bool =
   for i in countdown(7, 0):
@@ -62,7 +69,7 @@ func gtExp_addchain_4bit_vartime[Gt: ExtensionField](r: var Gt, a: Gt, scalar: B
 
   case s
   of 0:
-    r.setNeutral()
+    r.setOne()
   of 1:
     discard
   of 2:
@@ -146,14 +153,17 @@ func gtExp_addchain_4bit_vartime[Gt: ExtensionField](r: var Gt, a: Gt, scalar: B
   else:
     unreachable()
 
-func gtExp_minHammingWeight_vartime*[Gt: ExtensionField](r: var Gt, a: Gt, scalar: BigInt) {.tags:[VarTime].}  =
+func gtExp_jy00_vartime*[Gt: ExtensionField](r: var Gt, a: Gt, scalar: BigInt) {.tags:[VarTime].}  =
   ## **Variable-time** Exponentiation in 𝔾ₜ
   ##
   ##   r <- aᵏ
   ##
   ## This uses an online recoding with minimum Hamming Weight
-  ## (which is not NAF, NAF is least-significant bit to most)
-  ## This MUST NOT be used with secret data.
+  ## bassed on Joye, Yen, 2000 recoding.
+  ##
+  ## ⚠️ While the recoding is constant-time,
+  ##   usage of this recoding is intended vartime
+  ##   This MUST NOT be used with secret data.
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks
   let a {.noInit.} = a # Avoid aliasing issues
@@ -167,6 +177,9 @@ func gtExp_minHammingWeight_vartime*[Gt: ExtensionField](r: var Gt, a: Gt, scala
       r *= a
     elif bit == -1:
       r *= na
+
+# Non-Adjacent Form (NAF) recoding
+# ------------------------------------------------------------
 
 func initNAF[precompSize, NafMax: static int, Gt: ExtensionField](
        acc: var Gt,
@@ -199,7 +212,7 @@ func accumNAF[precompSize, NafMax: static int, Gt: ExtensionField](
       neg.cyclotomic_inv(tab[-digit shr 1])
       acc *= neg
 
-func gtExp_minHammingWeight_windowed_vartime*[Gt: ExtensionField](
+func gtExp_wNAF_vartime*[Gt: ExtensionField](
         r: var Gt, a: Gt, scalar: BigInt, window: static int) {.tags:[VarTime], meter.} =
   ## **Variable-time** Exponentiation in 𝔾ₜ
   ##
@@ -233,7 +246,7 @@ func gtExp_minHammingWeight_windowed_vartime*[Gt: ExtensionField](
     else:
       isInit = r.initNAF(tab, naf, nafLen, i)
 
-func gtExpEndo_minHammingWeight_windowed_vartime*[Gt: ExtensionField, scalBits: static int](
+func gtExpEndo_wNAF_vartime*[Gt: ExtensionField, scalBits: static int](
         r: var Gt, a: Gt, scalar: BigInt[scalBits], window: static int) {.tags:[VarTime], meter.} =
   ## Endomorphism accelerated **Variable-time** Exponentiation in 𝔾ₜ
   ##
@@ -258,7 +271,7 @@ func gtExpEndo_minHammingWeight_windowed_vartime*[Gt: ExtensionField, scalBits: 
   endos.computeEndomorphisms(a)
 
   # 2. Decompose scalar into mini-scalars
-  const L = Fr[Gt.Name].bits().ceilDiv_vartime(M) + 1
+  const L = Fr[Gt.Name].bits().computeEndoRecodedLength(M)
   var miniScalars {.noInit.}: array[M, BigInt[L]]
   var negateElems {.noInit.}: array[M, SecretBool]
   miniScalars.decomposeEndo(negateElems, scalar, Fr[Gt.Name].bits(), Gt.Name, G2) # 𝔾ₜ has same decomposition as 𝔾₂
@@ -310,3 +323,97 @@ func gtExpEndo_minHammingWeight_windowed_vartime*[Gt: ExtensionField, scalBits: 
         r.accumNAF(tab[m], tabNaf[m], NafLen, i)
       else:
         isInit = r.initNAF(tab[m], tabNaf[m], NafLen, i)
+
+# ############################################################
+#
+#                 Public API
+#
+# ############################################################
+
+func gtExp_vartime*[Gt: ExtensionField, scalBits: static int](
+      r: var Gt, a: Gt, scalar: BigInt[scalBits]) {.tags:[VarTime], meter.} =
+  ## Exponentiation in 𝔾ₜ
+  ##
+  ##   r <- aᵏ
+  ##
+  ## This selects the best algorithm depending on heuristics
+  ## and the scalar being multiplied.
+  ## The scalar MUST NOT be a secret as this does not use side-channel countermeasures
+  ##
+  ## This may use endomorphism acceleration.
+  ## As endomorphism acceleration requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  ## Those conditions will be assumed.
+
+  let usedBits = scalar.limbs.getBits_LE_vartime()
+
+  when Gt.Name.hasEndomorphismAcceleration():
+    when scalBits >= EndomorphismThreshold: # Skip static: doAssert when multiplying by intentionally small scalars.
+      if usedBits >= EndomorphismThreshold:
+        when Gt is Fp6:
+          r.gtExpEndo_wNAF_vartime(a, scalar, window = 4)
+        elif Gt is Fp12:
+          r.gtExpEndo_wNAF_vartime(a, scalar, window = 3)
+        else: # Curves defined on Fp^m with m > 2
+          {.error: "Unconfigured".}
+        return
+
+  if 64 < usedBits:
+    # With a window of 4, we precompute 2^4 = 4 elements
+    r.gtExp_wNAF_vartime(a, scalar, window = 4)
+  elif 16 < usedBits:
+    # With a window of 3, we precompute 2^1 = 2 elements
+    r.gtExp_wNAF_vartime(a, scalar, window = 3)
+  elif 4 < usedBits:
+    r.gtExp_jy00_vartime(a, scalar)
+  else:
+    r.gtExp_addchain_4bit_vartime(a, scalar)
+
+func gtExp_vartime*[Gt](r: var Gt, a: Gt, scalar: Fr) {.inline.} =
+  ## Exponentiation in 𝔾ₜ
+  ##
+  ##   r <- aᵏ
+  ##
+  ## This select the best algorithm depending on heuristics
+  ## and the scalar being multiplied.
+  ## The scalar MUST NOT be a secret as this does not use side-channel countermeasures
+  r.gtExp_vartime(a, scalar.toBig())
+
+func gtExp_vartime*[Gt](a: var Gt, scalar: Fr or BigInt) {.inline.} =
+  ## Exponentiation in 𝔾ₜ
+  ##
+  ##   r <- aᵏ
+  ##
+  ## This selects the best algorithm depending on heuristics
+  ## and the scalar being multiplied.
+  ## The scalar MUST NOT be a secret as this does not use side-channel countermeasures
+  ##
+  ## This may use endomorphism acceleration.
+  ## As endomorphism acceleration requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  ## Those conditions will be assumed.
+  a.gtExp_vartime(a, scalar)
+
+# ############################################################
+#
+#                 Out-of-Place functions
+#
+# ############################################################
+#
+# Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+# tend to generate useless memory moves or have difficulties to minimize stack allocation
+# and our types might be large (Fp12 ...)
+# See: https://github.com/mratsim/constantine/issues/145
+
+func `~^`*[Gt: ExtensionField](a: Gt, scalar: Fr or BigInt): Gt {.noInit, inline.} =
+  ## Elliptic Curve variable-time Scalar Multiplication
+  ##
+  ##   r <- aᵏ
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.gtExp_vartime(a, scalar)

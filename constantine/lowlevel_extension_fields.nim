@@ -9,7 +9,7 @@
 import
     ./platforms/abstractions,
     ./named/algebras,
-    ./math/isogenies/frobenius,
+    ./math/endomorphisms/frobenius,
     ./math/extension_fields,
     ./math/io/io_extfields
 

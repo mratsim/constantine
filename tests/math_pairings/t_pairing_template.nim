@@ -16,7 +16,11 @@ import
   constantine/named/algebras,
   constantine/named/zoo_subgroups,
   constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  constantine/math/pairings/[cyclotomic_subgroups, gt_exponentiations_vartime, pairings_generic],
+  constantine/math/pairings/[
+    cyclotomic_subgroups,
+    gt_exponentiations,
+    gt_exponentiations_vartime,
+    pairings_generic],
   constantine/math/io/io_extfields,
 
   # Test utilities
@@ -27,7 +31,8 @@ export
   ec_shortweierstrass_affine, ec_shortweierstrass_projective,
   arithmetic, extension_fields,
   io_extfields,
-  cyclotomic_subgroups, gt_exponentiations_vartime,
+  cyclotomic_subgroups,
+  gt_exponentiations, gt_exponentiations_vartime,
   abstractions, algebras
 
 type
@@ -181,26 +186,31 @@ template runGTexponentiationTests*(Iters: static int, GT: typedesc): untyped {.d
 
       # MSB->LSB min Hamming Weight signed recoding
       var r_l2r_recoding {.noInit.}: GT
-      r_l2r_recoding.gtExp_minHammingWeight_vartime(a, k)
+      r_l2r_recoding.gtExp_jy00_vartime(a, k)
       doAssert bool(r_ref == r_l2r_recoding)
 
       # Windowed NAF
       var r_wNAF {.noInit.}: GT
-      r_wNAF.gtExp_minHammingWeight_windowed_vartime(a, k, window = 2)
+      r_wNAF.gtExp_wNAF_vartime(a, k, window = 2)
       doAssert bool(r_ref == r_wNAF)
-      r_wNAF.gtExp_minHammingWeight_windowed_vartime(a, k, window = 3)
+      r_wNAF.gtExp_wNAF_vartime(a, k, window = 3)
       doAssert bool(r_ref == r_wNAF)
-      r_wNAF.gtExp_minHammingWeight_windowed_vartime(a, k, window = 4)
+      r_wNAF.gtExp_wNAF_vartime(a, k, window = 4)
       doAssert bool(r_ref == r_wNAF)
 
       # Windowed NAF + endomorphism acceleration
       var r_endoWNAF {.noInit.}: GT
-      r_endoWNAF.gtExpEndo_minHammingWeight_windowed_vartime(a, k, window = 2)
+      r_endoWNAF.gtExpEndo_wNAF_vartime(a, k, window = 2)
       doAssert bool(r_ref == r_endoWNAF)
-      r_endoWNAF.gtExpEndo_minHammingWeight_windowed_vartime(a, k, window = 3)
+      r_endoWNAF.gtExpEndo_wNAF_vartime(a, k, window = 3)
       doAssert bool(r_ref == r_endoWNAF)
-      r_endoWNAF.gtExpEndo_minHammingWeight_windowed_vartime(a, k, window = 4)
+      r_endoWNAF.gtExpEndo_wNAF_vartime(a, k, window = 4)
       doAssert bool(r_ref == r_endoWNAF)
+
+      # Constant-time 𝔾ₜ exponentiation with endomorphism
+      var r_ctEndo {.noInit.}: GT
+      r_ctEndo.gtExpEndo(a, k)
+      doAssert bool(r_ref == r_ctEndo)
 
       stdout.write '.'
 
