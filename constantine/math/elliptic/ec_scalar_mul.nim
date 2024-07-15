@@ -278,7 +278,10 @@ func scalarMulEndo*[scalBits; EC](
   ## Requires:
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
-  static: doAssert scalBits <= EC.getScalarField().bits(), "Do not use endomorphism to multiply beyond the curve order"
+  static: doAssert scalBits <= EC.getScalarField().bits(), block:
+      "Do not use endomorphism to multiply beyond the curve order:\n" &
+      "  scalar: " & $scalBits & "-bit\n" &
+      "  order:  " & $EC.getScalarField().bits() & "-bit\n"
 
   # 1. Compute endomorphisms
   const M = when P.F is Fp:  2
@@ -368,7 +371,11 @@ func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) {.me
   ## Requires:
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
-  static: doAssert: scalBits <= EC.getScalarField().bits()
+  static: doAssert scalBits <= EC.getScalarField().bits(), block:
+      "Do not use endomorphism to multiply beyond the curve order:\n" &
+      "  scalar: " & $scalBits & "-bit\n" &
+      "  order:  " & $EC.getScalarField().bits() & "-bit\n"
+
   const G = when EC isnot EC_ShortW_Aff|EC_ShortW_Jac|EC_ShortW_Prj: G1
             else: EC.G
 

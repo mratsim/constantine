@@ -34,9 +34,9 @@ template getBigInt*(Name: static Algebra, kind: static FieldKind): untyped =
   #
   # and `ptr UncheckedArray[BigInt[Fr[EC.F.Name].bits]]` gets undeclared field: 'Name'
   when kind == kBaseField:
-    BigInt[Fp[Name].bits()]
+    Name.baseFieldModulus().typeof()
   else:
-    BigInt[Fr[Name].bits()]
+    Name.scalarFieldModulus().typeof()
 
 template getField*(Name: static Algebra, kind: static FieldKind): untyped =
   when kind == kBaseField:

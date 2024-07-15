@@ -80,7 +80,8 @@ template allocStackUnchecked*(T: typedesc, size: int): ptr T =
   cast[ptr T](alloca(size))
 
 template allocStackArray*(T: typedesc, len: SomeInteger): ptr UncheckedArray[T] =
-  cast[ptr UncheckedArray[T]](alloca(sizeof(T) * cast[int](len)))
+  {.warning[CastSizes]:off.}:
+    cast[ptr UncheckedArray[T]](alloca(sizeof(T) * cast[int](len)))
 
 # Heap allocation
 # ----------------------------------------------------------------------------------
@@ -93,7 +94,8 @@ proc allocHeapUnchecked*(T: typedesc, size: int): ptr T {.inline.} =
   cast[type result](malloc(size))
 
 proc allocHeapArray*(T: typedesc, len: SomeInteger): ptr UncheckedArray[T] {.inline.} =
-  cast[type result](malloc(sizeof(T) * cast[int](len)))
+  {.warning[CastSizes]:off.}:
+    cast[type result](malloc(sizeof(T) * cast[int](len)))
 
 proc freeHeap*(p: pointer) {.inline.} =
   free(p)

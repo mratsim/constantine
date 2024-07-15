@@ -8,7 +8,8 @@
 
 import
     ./platforms/abstractions,
-    ./math/io/io_bigints
+    ./math/io/io_bigints,
+    ./math/arithmetic/bigints
 
 # ############################################################
 #
@@ -32,7 +33,7 @@ export
   abstractions.SecretWord,
   abstractions.BigInt
 
-# BigInt
+# BigInt serialization
 # ------------------------------------------------------------
 
 func unmarshalBE*(dst: var BigInt, src: openarray[byte]): bool =
@@ -44,3 +45,26 @@ func marshalBE*(dst: var openarray[byte], src: BigInt): bool =
   ## Return true on success
   ## Return false if destination is too small compared to source
   return dst.marshal(src, bigEndian)
+
+# BigInt
+# ------------------------------------------------------------
+
+export bigints.setZero
+export bigints.setOne
+
+export bigints.`<`
+export bigints.`<=`
+export bigints.isOdd
+export bigints.isEven
+
+export bigints.add
+export bigints.cadd
+export bigints.sub
+export bigints.csub
+
+export bigints.reduce
+export bigints.reduce_vartime
+export bigints.invmod
+export bigints.invmod_vartime
+
+export bigints.bit0

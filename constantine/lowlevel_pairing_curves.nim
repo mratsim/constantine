@@ -14,6 +14,7 @@ import
     ./math/pairings/[
       cyclotomic_subgroups,
       lines_eval,
+      miller_accumulators,
       pairings_generic,
       gt_exponentiations,
       gt_exponentiations_vartime]
@@ -50,6 +51,13 @@ export lines_eval.line_double
 export lines_eval.line_add
 export lines_eval.mul_by_line
 export lines_eval.mul_by_2_lines
+
+export miller_accumulators.MillerAccumulator
+export miller_accumulators.init
+export miller_accumulators.update
+export miller_accumulators.handover
+export miller_accumulators.merge
+export miller_accumulators.finish
 
 export cyclotomic_subgroups.finalExpEasy
 export cyclotomic_subgroups.cyclotomic_inv

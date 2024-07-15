@@ -529,6 +529,23 @@ func pow*(a: var FF, exponent: openarray[byte]) =
     FF.getSpareBits()
   )
 
+func pow*(a: var FF, exponent: FF) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a finite field element
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.pow(exponent.toBig())
+
+func pow*(r: var FF, a: FF, exponent: BigInt or openArray[byte] or FF) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a finite field element or big integer
+  r = a
+  a.pow(exponent)
+
+# Vartime exponentiation
+# -------------------------------------------------------------------
+
 func pow_vartime*(a: var FF, exponent: BigInt) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
@@ -566,6 +583,23 @@ func pow_vartime*(a: var FF, exponent: openarray[byte]) =
     FF.getNegInvModWord(), windowSize,
     FF.getSpareBits()
   )
+
+func pow_vartime*(a: var FF, exponent: FF) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a finite field element
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.pow_vartime(exponent.toBig())
+
+func pow_vartime*(r: var FF, a: FF, exponent: BigInt or openArray[byte] or FF) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a finite field element or big integer
+  r = a
+  a.pow_vartime(exponent)
+
+# Small vartime exponentiation
+# -------------------------------------------------------------------
 
 func pow_squareMultiply_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[VarTime], meter.} =
   ## **Variable-time** Exponentiation
@@ -905,7 +939,7 @@ func `+`*(a, b: FF): FF {.noInit, inline.} =
   result.sum(a, b)
 
 func `-`*(a, b: FF): FF {.noInit, inline.} =
-  ## Finite Field addition
+  ## Finite Field substraction
   ##
   ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
   ## tend to generate useless memory moves or have difficulties to minimize stack allocation
@@ -914,10 +948,28 @@ func `-`*(a, b: FF): FF {.noInit, inline.} =
   result.diff(a, b)
 
 func `*`*(a, b: FF): FF {.noInit, inline.} =
-  ## Finite Field substraction
+  ## Finite Field multiplication
   ##
   ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
   ## tend to generate useless memory moves or have difficulties to minimize stack allocation
   ## and our types might be large (Fp12 ...)
   ## See: https://github.com/mratsim/constantine/issues/145
   result.prod(a, b)
+
+func `^`*(a: FF, b: FF or BigInt or openArray[byte]): FF {.noInit, inline.} =
+  ## Finite Field exponentiation
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.pow(a, b)
+
+func `~^`*(a: FF, b: FF or BigInt or openArray[byte]): FF {.noInit, inline.} =
+  ## Finite Field vartime exponentiation
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.pow_vartime(a, b)
