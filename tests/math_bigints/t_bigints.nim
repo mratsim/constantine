@@ -10,6 +10,7 @@ import
   # Standard library
   std/unittest,
   # Internal
+  constantine/named/algebras,
   constantine/math/io/io_bigints,
   constantine/math/arithmetic,
   constantine/platforms/abstractions,
@@ -657,6 +658,22 @@ proc mainModularInverse() =
         check:
           bool(r == expected)
           bool(r2 == expected)
+
+    test "#433 -  CryptoFuzz / Oss-Fuzz bug with unit inversion":
+      block:
+        let a = BigInt[255].fromUint(1'u)
+        let M = BLS12_381.scalarFieldModulus()
+        let F = Fr[BLS12_381].getR2modP()
+
+        var r = canary(BigInt[255])
+        var r2 = canary(BigInt[255])
+
+        r.invmod(a, F, M)
+        r2.invmod_vartime(a, F, M)
+
+        check:
+          bool(r == F)
+          bool(r2 == F)
 
 mainArith()
 mainMul()
