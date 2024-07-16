@@ -213,6 +213,7 @@ func bestBucketBitSize*(inputSize: int, scalarBitwidth: static int, useSignedBuc
   # L1, L2 caches, TLB and 64 aliasing conflict
   # are not taken into account in previous formula.
   # Each increase in c doubles memory used.
+  # TODO: use the element size for thresholds.
   when useManualTuning:
     if 14 <= result:
       result -= 1

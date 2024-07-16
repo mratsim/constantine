@@ -225,9 +225,9 @@ func cyclotomic_square_cube_over_quad(r: var CubicExt, a: CubicExt) =
   # https://eprint.iacr.org/2009/565.pdf
 
   # Cubic extension field
-  # A = 3a² − 2 ̄a
-  # B = 3 √i c² + 2 ̄b
-  # C = 3b² − 2 ̄c
+  # A = 3a² − 2a̅
+  # B = 3 √i c² + 2b̅
+  # C = 3b² − 2c̅
   var v0{.noInit.}, v1{.noInit.}, v2{.noInit.}: typeof(a.c0)
 
   template a0: untyped = a.c0.c0
@@ -261,7 +261,7 @@ func cyclotomic_square_cube_over_quad(r: var CubicExt, a: CubicExt) =
   r.c2.c1.double()
   r.c2.c1 += v1.c1
 
-  # Now B = 3 √i c² + 2 ̄b
+  # Now B = 3 √i c² + 2b̅
   # beware of mul by non residue: √i v₂ = ξv₂₁ + v₂₀√i
 
   # 3 (√i c²)₀ + 2a₂
@@ -291,9 +291,9 @@ func cyclotomic_square_quad_over_cube[F](r: var QuadraticExt[F], a: QuadraticExt
   #    c₅     <=>        a₅            <=>            b₅
   #
   # Hence, this formula for a cubic extension field
-  #   A = 3a² − 2 ̄a
-  #   B = 3 √i c² + 2 ̄b
-  #   C = 3b² − 2 ̄c
+  #   A = 3a² − 2a̅
+  #   B = 3 √i c² + 2b̅
+  #   C = 3b² − 2c̅
   #
   # becomes
   #   A = (b₀, b₄) = 3(b₀, b₄)² - 2(b₀,-b₄)
