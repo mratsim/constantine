@@ -125,11 +125,11 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
 
 
   var r{.noInit.}: GT
-  var startNaive, stopNaive, startMultiExpBaseline, stopMultiExpBaseline: MonoTime
+  var startNaive, stopNaive, startMultiExpBaseline, stopMultiExpBaseline, startMultiExpOpt, stopMultiExpOpt: MonoTime
 
   if numInputs <= 100000:
     # startNaive = getMonotime()
-    bench("𝔾ₜ exponentiations                " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+    bench("𝔾ₜ exponentiations                 " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
       var tmp: GT
       r.setOne()
       for i in 0 ..< elems.len:
@@ -139,7 +139,7 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
 
   if numInputs <= 100000:
     startNaive = getMonotime()
-    bench("𝔾ₜ exponentiations vartime        " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+    bench("𝔾ₜ exponentiations vartime         " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
       var tmp: GT
       r.setOne()
       for i in 0 ..< elems.len:
@@ -149,14 +149,26 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
 
   if numInputs <= 100000:
     startMultiExpBaseline = getMonotime()
-    bench("𝔾ₜ multi-exponentiations baseline " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+    bench("𝔾ₜ multi-exponentiations baseline  " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
       r.multiExp_reference_vartime(elems, exponents)
     stopMultiExpBaseline = getMonotime()
 
+  block:
+    startMultiExpOpt = getMonotime()
+    bench("𝔾ₜ multi-exponentiations optimized " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+      r.multiExp_vartime(elems, exponents)
+    stopMultiExpOpt = getMonotime()
 
   let perfNaive = inNanoseconds((stopNaive-startNaive) div iters)
-  let perfMSMbaseline = inNanoseconds((stopMultiExpBaseline-startMultiExpBaseline) div iters)
+  let perfMultiExpBaseline = inNanoseconds((stopMultiExpBaseline-startMultiExpBaseline) div iters)
+  let perfMultiExpOpt = inNanoseconds((stopMultiExpOpt-startMultiExpOpt) div iters)
 
   if numInputs <= 100000:
-    let speedupBaseline = float(perfNaive) / float(perfMSMbaseline)
+    let speedupBaseline = float(perfNaive) / float(perfMultiExpBaseline)
     echo &"Speedup ratio baseline over naive linear combination: {speedupBaseline:>6.3f}x"
+
+    let speedupOpt = float(perfNaive) / float(perfMultiExpOpt)
+    echo &"Speedup ratio optimized over naive linear combination: {speedupOpt:>6.3f}x"
+
+    let speedupOptBaseline = float(perfMultiExpBaseline) / float(perfMultiExpOpt)
+    echo &"Speedup ratio optimized over baseline linear combination: {speedupOptBaseline:>6.3f}x"

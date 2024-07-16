@@ -253,7 +253,7 @@ func miniMSM[bits: static int, EC, ECaff](
     for _ in 0 ..< c:
       r.double()
 
-func multiScalarMul_vartime*[bits: static int, EC, ECaff](
+func msmImpl_vartime[bits: static int, EC, ECaff](
        r: var EC,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECaff],
        N: int, c: static int) {.tags:[VarTime, HeapAlloc], meter.} =
@@ -294,6 +294,9 @@ func multiScalarMul_vartime*[bits: static int, EC, ECaff](
   # Cleanup
   # -------
   buckets.freeHeap()
+
+# Multi scalar multiplication with batched affine additions
+# -----------------------------------------------------------------------------------------------------------------------
 
 func schedAccumulate*[NumBuckets, QueueLen, F, G; bits: static int](
        sched: ptr Scheduler[NumBuckets, QueueLen, F, G],
@@ -344,7 +347,7 @@ func miniMSM_affine[NumBuckets, QueueLen, EC, ECaff; bits: static int](
     for _ in 0 ..< c:
       r.double()
 
-func multiScalarMulAffine_vartime[bits: static int, EC, ECaff](
+func msmAffineImpl_vartime[bits: static int, EC, ECaff](
        r: var EC,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECaff],
        N: int, c: static int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
@@ -389,6 +392,9 @@ func multiScalarMulAffine_vartime[bits: static int, EC, ECaff](
   sched.freeHeap()
   buckets.freeHeap()
 
+# Endomorphism acceleration
+# -----------------------------------------------------------------------------------------------------------------------
+
 proc applyEndomorphism[bits: static int, ECaff](
        coefs: ptr UncheckedArray[BigInt[bits]],
        points: ptr UncheckedArray[ECaff],
@@ -403,7 +409,7 @@ proc applyEndomorphism[bits: static int, ECaff](
   const G = when ECaff isnot EC_ShortW_Aff: G1
             else: ECaff.G
 
-  const L = ECaff.getScalarField().bits().ceilDiv_vartime(M) + 1
+  const L = ECaff.getScalarField().bits().computeEndoRecodedLength(M)
   let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
   let endoBasis    = allocHeapArray(array[M, ECaff], N)
 
@@ -447,7 +453,10 @@ template withEndo[coefsBits: static int, EC, ECaff](
   else:
     msmProc(r, coefs, points, N, c)
 
-func multiScalarMul_dispatch_vartime[bits: static int, F, G](
+# Algorithm selection
+# -----------------------------------------------------------------------------------------------------------------------
+
+func msm_dispatch_vartime[bits: static int, F, G](
        r: var (EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G]),
        coefs: ptr UncheckedArray[BigInt[bits]],
        points: ptr UncheckedArray[EC_ShortW_Aff[F, G]], N: int) =
@@ -460,27 +469,27 @@ func multiScalarMul_dispatch_vartime[bits: static int, F, G](
   # but it has no significant impact on performance
 
   case c
-  of  2: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  2)
-  of  3: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  3)
-  of  4: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  4)
-  of  5: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  5)
-  of  6: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  6)
-  of  7: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  7)
-  of  8: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  8)
+  of  2: withEndo(msmImpl_vartime, r, coefs, points, N, c =  2)
+  of  3: withEndo(msmImpl_vartime, r, coefs, points, N, c =  3)
+  of  4: withEndo(msmImpl_vartime, r, coefs, points, N, c =  4)
+  of  5: withEndo(msmImpl_vartime, r, coefs, points, N, c =  5)
+  of  6: withEndo(msmImpl_vartime, r, coefs, points, N, c =  6)
+  of  7: withEndo(msmImpl_vartime, r, coefs, points, N, c =  7)
+  of  8: withEndo(msmImpl_vartime, r, coefs, points, N, c =  8)
 
-  of  9: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c =  9)
-  of 10: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 10)
-  of 11: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 11)
-  of 12: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 12)
-  of 13: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 13)
-  of 14: multiScalarMulAffine_vartime(r, coefs, points, N, c = 14)
-  of 15: multiScalarMulAffine_vartime(r, coefs, points, N, c = 15)
+  of  9: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c =  9)
+  of 10: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c = 10)
+  of 11: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c = 11)
+  of 12: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c = 12)
+  of 13: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c = 13)
+  of 14: msmAffineImpl_vartime(r, coefs, points, N, c = 14)
+  of 15: msmAffineImpl_vartime(r, coefs, points, N, c = 15)
 
-  of 16..17: multiScalarMulAffine_vartime(r, coefs, points, N, c = 16)
+  of 16..17: msmAffineImpl_vartime(r, coefs, points, N, c = 16)
   else:
     unreachable()
 
-func multiScalarMul_dispatch_vartime[bits: static int, F](
+func msm_dispatch_vartime[bits: static int, F](
        r: var EC_TwEdw_Prj[F], coefs: ptr UncheckedArray[BigInt[bits]],
        points: ptr UncheckedArray[EC_TwEdw_Aff[F]], N: int) =
   ## Multiscalar multiplication:
@@ -494,22 +503,22 @@ func multiScalarMul_dispatch_vartime[bits: static int, F](
   # but it has no significant impact on performance
 
   case c
-  of  2: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  2)
-  of  3: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  3)
-  of  4: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  4)
-  of  5: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  5)
-  of  6: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  6)
-  of  7: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  7)
-  of  8: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  8)
-  of  9: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  9)
-  of 10: withEndo(multiScalarMul_vartime, r, coefs, points, N, c = 10)
-  of 11: withEndo(multiScalarMul_vartime, r, coefs, points, N, c = 11)
-  of 12: withEndo(multiScalarMul_vartime, r, coefs, points, N, c = 12)
-  of 13: withEndo(multiScalarMul_vartime, r, coefs, points, N, c = 13)
-  of 14: multiScalarMul_vartime(r, coefs, points, N, c = 14)
-  of 15: multiScalarMul_vartime(r, coefs, points, N, c = 15)
+  of  2: withEndo(msmImpl_vartime, r, coefs, points, N, c =  2)
+  of  3: withEndo(msmImpl_vartime, r, coefs, points, N, c =  3)
+  of  4: withEndo(msmImpl_vartime, r, coefs, points, N, c =  4)
+  of  5: withEndo(msmImpl_vartime, r, coefs, points, N, c =  5)
+  of  6: withEndo(msmImpl_vartime, r, coefs, points, N, c =  6)
+  of  7: withEndo(msmImpl_vartime, r, coefs, points, N, c =  7)
+  of  8: withEndo(msmImpl_vartime, r, coefs, points, N, c =  8)
+  of  9: withEndo(msmImpl_vartime, r, coefs, points, N, c =  9)
+  of 10: withEndo(msmImpl_vartime, r, coefs, points, N, c = 10)
+  of 11: withEndo(msmImpl_vartime, r, coefs, points, N, c = 11)
+  of 12: withEndo(msmImpl_vartime, r, coefs, points, N, c = 12)
+  of 13: withEndo(msmImpl_vartime, r, coefs, points, N, c = 13)
+  of 14: msmImpl_vartime(r, coefs, points, N, c = 14)
+  of 15: msmImpl_vartime(r, coefs, points, N, c = 15)
 
-  of 16..17: multiScalarMul_vartime(r, coefs, points, N, c = 16)
+  of 16..17: msmImpl_vartime(r, coefs, points, N, c = 16)
   else:
     unreachable()
 
@@ -521,7 +530,7 @@ func multiScalarMul_vartime*[bits: static int, EC, ECaff](
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
 
-  multiScalarMul_dispatch_vartime(r, coefs, points, len)
+  msm_dispatch_vartime(r, coefs, points, len)
 
 func multiScalarMul_vartime*[bits: static int, EC, ECaff](
        r: var EC,
@@ -531,7 +540,7 @@ func multiScalarMul_vartime*[bits: static int, EC, ECaff](
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
   debug: doAssert coefs.len == points.len
   let N = points.len
-  multiScalarMul_dispatch_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N)
+  msm_dispatch_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N)
 
 func multiScalarMul_vartime*[F, EC, ECaff](
        r: var EC,
