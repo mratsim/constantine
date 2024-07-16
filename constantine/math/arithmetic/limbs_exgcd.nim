@@ -854,7 +854,7 @@ func invmod_vartime*(
     r.setZero()
     return
   if a.isOne().bool:
-    r.setOne()
+    r = F
     return
 
   const Excess = 2
@@ -888,7 +888,7 @@ func invmod_vartime*(
     r.setZero()
     return
   if a.isOne().bool:
-    r.setOne()
+    r = F
     return
 
   const Excess = 2

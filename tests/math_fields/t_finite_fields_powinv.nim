@@ -465,4 +465,14 @@ proc main_anti_regression =
 
       check: bool(a == expected)
 
+  suite "Bug highlighted by 24/7 fuzzing (Guido Vranken's CryptoFuzz / Google-OssFuzz)" & " [" & $WordBitWidth & "-bit words]":
+    test "#433 - Short-circuit when Montgomery a' = aR (mod p) == 1":
+      let a = BigInt[255].fromDecimal("12549076656233958353659347336803947287922716146853412054870763148006372261952")
+      let expected = BigInt[255].fromDecimal("10920338887063814464675503992315976177888879664585288394250266608035967270910")
+      var aa = Fr[BLS12_381].fromBig(a)
+
+      doAssert bool(aa.mres.isOne())
+      aa.inv_vartime()
+      check: bool(aa.toBig() == expected)
+
 main_anti_regression()
