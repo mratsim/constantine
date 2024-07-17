@@ -15,4 +15,4 @@ const numPoints = [1, 2, 8, 16, 128, 256, 1024]
 runGTmultiexpTests(
   GT = Fp12[BN254_Snarks],
   numPoints,
-  Iters = 4)
+  iters = 4)

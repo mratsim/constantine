@@ -23,7 +23,7 @@ import
     pairings_generic,
     gt_exponentiations,
     gt_exponentiations_vartime,
-    gt_multiexp
+    gt_multiexp, gt_multiexp_parallel,
   ],
   constantine/threadpool,
   # Helpers
@@ -125,7 +125,8 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
 
 
   var r{.noInit.}: GT
-  var startNaive, stopNaive, startMultiExpBaseline, stopMultiExpBaseline, startMultiExpOpt, stopMultiExpOpt: MonoTime
+  var startNaive, stopNaive, startMultiExpBaseline, stopMultiExpBaseline: MonoTime
+  var startMultiExpOpt, stopMultiExpOpt, startMultiExpPara, stopMultiExpPara: MonoTime
 
   if numInputs <= 100000:
     # startNaive = getMonotime()
@@ -159,9 +160,20 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
       r.multiExp_vartime(elems, exponents)
     stopMultiExpOpt = getMonotime()
 
+  block:
+    ctx.tp = Threadpool.new()
+
+    startMultiExpPara = getMonotime()
+    bench("𝔾ₜ multi-exponentiations" & align($ctx.tp.numThreads & " threads", 11) & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+      ctx.tp.multiExp_vartime_parallel(r, elems, exponents)
+    stopMultiExpPara = getMonotime()
+
+    ctx.tp.shutdown()
+
   let perfNaive = inNanoseconds((stopNaive-startNaive) div iters)
   let perfMultiExpBaseline = inNanoseconds((stopMultiExpBaseline-startMultiExpBaseline) div iters)
   let perfMultiExpOpt = inNanoseconds((stopMultiExpOpt-startMultiExpOpt) div iters)
+  let perfMultiExpPara = inNanoseconds((stopMultiExpPara-startMultiExpPara) div iters)
 
   if numInputs <= 100000:
     let speedupBaseline = float(perfNaive) / float(perfMultiExpBaseline)
@@ -172,3 +184,6 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
 
     let speedupOptBaseline = float(perfMultiExpBaseline) / float(perfMultiExpOpt)
     echo &"Speedup ratio optimized over baseline linear combination: {speedupOptBaseline:>6.3f}x"
+
+  let speedupParaOpt = float(perfMultiExpOpt) / float(perfMultiExpPara)
+  echo &"Speedup ratio parallel over optimized linear combination: {speedupParaOpt:>6.3f}x"

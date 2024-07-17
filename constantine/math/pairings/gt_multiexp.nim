@@ -6,14 +6,6 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-# Constantine
-# Copyright (c) 2018-2019    Status Research & Development GmbH
-# Copyright (c) 2020-Present Mamy André-Ratsimbazafy
-# Licensed and distributed under either of
-#   * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
-#   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
-# at your option. This file may not be copied, modified, or distributed except according to those terms.
-
 import constantine/named/algebras,
        constantine/math/endomorphisms/split_scalars,
        constantine/math/extension_fields,
@@ -35,7 +27,7 @@ import constantine/named/algebras,
 # General utilities
 # -------------------------------------------------------------
 
-func bestBucketBitSize*(inputSize: int, scalarBitwidth: static int, useSignedBuckets, useManualTuning: static bool): int {.inline.} =
+func bestBucketBitSize(inputSize: int, scalarBitwidth: static int, useSignedBuckets, useManualTuning: static bool): int {.inline.} =
   ## Evaluate the best bucket bit-size for the input size.
   ## That bucket size minimize group operations.
   ## This ignore cache effect. Computation can become memory-bound, especially with large buckets
@@ -86,7 +78,7 @@ func bestBucketBitSize*(inputSize: int, scalarBitwidth: static int, useSignedBuc
     if 13 <= result:
       result -= 1
 
-func `~*=`*[Gt: ExtensionField](a: var Gt, b: Gt) {.inline.} =
+func `~*=`[Gt: ExtensionField](a: var Gt, b: Gt) {.inline.} =
   # TODO: Analyze the inputs to see if there is avalue in more complex shortcuts (-1, or partial 0 coordinates)
   if a.isOne().bool():
     a = b
@@ -95,13 +87,13 @@ func `~*=`*[Gt: ExtensionField](a: var Gt, b: Gt) {.inline.} =
   else:
     a *= b
 
-func `~/=`*[Gt: ExtensionField](a: var Gt, b: Gt) {.inline.} =
+func `~/=`[Gt: ExtensionField](a: var Gt, b: Gt) {.inline.} =
   ## Cyclotomic division
   var t {.noInit.}: Gt
   t.cyclotomic_inv(b)
   a ~*= t
 
-func setNeutral*[Gt: ExtensionField](a: var Gt) {.inline.} =
+func setNeutral[Gt: ExtensionField](a: var Gt) {.inline.} =
   a.setOne()
 
 # Reference multi-exponentiation
@@ -269,7 +261,7 @@ type MiniMultiExpKind* = enum
   kFullWindow
   kBottomWindow
 
-func bucketAccumReduce*[bits: static int, GT](
+func bucketAccumReduce[bits: static int, GT](
        r: var GT,
        buckets: ptr UncheckedArray[GT],
        bitIndex: int, miniMultiExpKind: static MiniMultiExpKind, c: static int,
@@ -371,8 +363,8 @@ proc applyEndomorphism[bits: static int, GT](
        expos: ptr UncheckedArray[BigInt[bits]],
        N: int): auto =
   ## Decompose (elems, expos) into mini-scalars
-  ## Returns a new triplet (endoElems, endoexpos, N)
-  ## endoElems and endoexpos MUST be freed afterwards
+  ## Returns a new triplet (endoElems, endoExpos, N)
+  ## endoElems and endoExpos MUST be freed afterwards
 
   const M = when Gt is Fp6:  2
             elif Gt is Fp12: 4
@@ -383,16 +375,16 @@ proc applyEndomorphism[bits: static int, GT](
   let endoBasis    = allocHeapArray(array[M, GT], N)
 
   for i in 0 ..< N:
-    var negatePoints {.noinit.}: array[M, SecretBool]
-    splitExpos[i].decomposeEndo(negatePoints, expos[i], Fr[Gt.Name].bits(), Gt.Name, G2) # 𝔾ₜ has same decomposition as 𝔾₂
-    if negatePoints[0].bool:
+    var negateElems {.noinit.}: array[M, SecretBool]
+    splitExpos[i].decomposeEndo(negateElems, expos[i], Fr[Gt.Name].bits(), Gt.Name, G2) # 𝔾ₜ has same decomposition as 𝔾₂
+    if negateElems[0].bool:
       endoBasis[i][0].cyclotomic_inv(elems[i])
     else:
       endoBasis[i][0] = elems[i]
 
     cast[ptr array[M-1, GT]](endoBasis[i][1].addr)[].computeEndomorphisms(elems[i])
     for m in 1 ..< M:
-      if negatePoints[m].bool:
+      if negateElems[m].bool:
         endoBasis[i][m].cyclotomic_inv()
 
   let endoElems  = cast[ptr UncheckedArray[GT]](endoBasis)
@@ -457,7 +449,7 @@ func multiExp_vartime*[bits: static int, GT](
        r: var GT,
        elems: ptr UncheckedArray[GT],
        expos: ptr UncheckedArray[BigInt[bits]],
-       len: int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
+       len: int) {.tags:[VarTime, Alloca, HeapAlloc], meter, inline.} =
   ## Multiexponentiation:
   ##   r <- g₀^a₀ + g₁^a₁ + ... + gₙ^aₙ
   multiExp_dispatch_vartime(r, elems, expos, len)
@@ -465,7 +457,7 @@ func multiExp_vartime*[bits: static int, GT](
 func multiExp_vartime*[bits: static int, GT](
        r: var GT,
        elems: openArray[GT],
-       expos: openArray[BigInt[bits]]) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
+       expos: openArray[BigInt[bits]]) {.tags:[VarTime, Alloca, HeapAlloc], meter, inline.} =
   ## Multiexponentiation:
   ##   r <- g₀^a₀ + g₁^a₁ + ... + gₙ^aₙ
   debug: doAssert elems.len == expos.len

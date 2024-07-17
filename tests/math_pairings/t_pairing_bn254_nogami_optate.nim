@@ -6,14 +6,11 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import
-  constantine/math/pairings/pairings_bn,
-  # Test utilities
-  ./t_pairing_template
+import ./t_pairing_template
 
 runPairingTests(
-  4, BN254_Nogami,
+  BN254_Nogami,
   G1 = EC_ShortW_Prj[Fp[BN254_Nogami], G1],
   G2 = EC_ShortW_Prj[Fp2[BN254_Nogami], G2],
   GT = Fp12[BN254_Nogami],
-  pairing_bn)
+  iters = 4)

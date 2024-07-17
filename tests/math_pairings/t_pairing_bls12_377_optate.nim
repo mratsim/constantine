@@ -6,14 +6,11 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import
-  constantine/math/pairings/pairings_bls12,
-  # Test utilities
-  ./t_pairing_template
+import ./t_pairing_template
 
 runPairingTests(
-  4, BLS12_377,
+  BLS12_377,
   G1 = EC_ShortW_Prj[Fp[BLS12_377], G1],
   G2 = EC_ShortW_Prj[Fp2[BLS12_377], G2],
   GT = Fp12[BLS12_377],
-  pairing_bls12)
+  iters = 4)

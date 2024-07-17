@@ -6,12 +6,6 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import
-  constantine/math/pairings/pairings_bw6_761,
-  # Test utilities
-  ./t_pairing_template
+import ./t_pairing_template
 
-runGTsubgroupTests(
-  Iters = 4,
-  GT = Fp6[BW6_761],
-  finalExpHard_BW6_761)
+runGTsubgroupTests(GT = Fp6[BW6_761], iters = 4)

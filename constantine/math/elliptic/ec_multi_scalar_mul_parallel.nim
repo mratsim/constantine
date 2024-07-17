@@ -12,7 +12,7 @@ import constantine/named/algebras,
        constantine/math/endomorphisms/split_scalars,
        constantine/math/extension_fields,
        constantine/named/zoo_endomorphisms,
-       ../../threadpool/[threadpool, partitioners]
+       constantine/threadpool/[threadpool, partitioners]
 export bestBucketBitSize
 
 # No exceptions allowed in core cryptographic operations
@@ -145,7 +145,7 @@ proc bucketAccumReduce_withInit[bits: static int, EC, ECaff](
     buckets[i].setNeutral()
   bucketAccumReduce(windowSum[], buckets, bitIndex, miniMsmKind, c, coefs, points, N)
 
-proc msm_vartime_parallel[bits: static int, EC, ECaff](
+proc msmImpl_vartime_parallel[bits: static int, EC, ECaff](
        tp: Threadpool,
        r: ptr EC,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[EC_aff],
@@ -465,7 +465,7 @@ proc applyEndomorphism_parallel[bits: static int, ECaff](
   const G = when ECaff isnot EC_ShortW_Aff: G1
             else: ECaff.G
 
-  const L = ECaff.getScalarField().bits().ceilDiv_vartime(M) + 1
+  const L = ECaff.getScalarField().bits().computeEndoRecodedLength(M)
   let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
   let endoBasis    = allocHeapArray(array[M, ECaff], N)
 
@@ -544,14 +544,14 @@ proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F, G](
   # but it has no significant impact on performance
 
   case c
-  of  2: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  2)
-  of  3: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  3)
-  of  4: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  4)
-  of  5: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  5)
-  of  6: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  6)
+  of  2: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  2)
+  of  3: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  3)
+  of  4: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  4)
+  of  5: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  5)
+  of  6: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  6)
 
-  of  7: msm_vartime_parallel(tp, r, coefs, points, N, c =  7)
-  of  8: msm_vartime_parallel(tp, r, coefs, points, N, c =  8)
+  of  7: msmImpl_vartime_parallel(tp, r, coefs, points, N, c =  7)
+  of  8: msmImpl_vartime_parallel(tp, r, coefs, points, N, c =  8)
 
   of  9: withEndo(msmAffine_vartime_parallel_split, tp, r, coefs, points, N, c =  9, useParallelBuckets = true)
   of 10: withEndo(msmAffine_vartime_parallel_split, tp, r, coefs, points, N, c = 10, useParallelBuckets = true)
@@ -579,23 +579,23 @@ proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F](
   # but it has no significant impact on performance
 
   case c
-  of  2: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  2)
-  of  3: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  3)
-  of  4: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  4)
-  of  5: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  5)
-  of  6: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  6)
+  of  2: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  2)
+  of  3: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  3)
+  of  4: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  4)
+  of  5: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  5)
+  of  6: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  6)
 
-  of   7: msm_vartime_parallel(tp, r, coefs, points, N, c =  7)
-  of   8: msm_vartime_parallel(tp, r, coefs, points, N, c =  8)
-  of   9: msm_vartime_parallel(tp, r, coefs, points, N, c =  9)
-  of  10: msm_vartime_parallel(tp, r, coefs, points, N, c = 10)
-  of  11: msm_vartime_parallel(tp, r, coefs, points, N, c = 11)
-  of  12: msm_vartime_parallel(tp, r, coefs, points, N, c = 12)
-  of  13: msm_vartime_parallel(tp, r, coefs, points, N, c = 13)
-  of  14: msm_vartime_parallel(tp, r, coefs, points, N, c = 14)
-  of  15: msm_vartime_parallel(tp, r, coefs, points, N, c = 16)
+  of   7: msmImpl_vartime_parallel(tp, r, coefs, points, N, c =  7)
+  of   8: msmImpl_vartime_parallel(tp, r, coefs, points, N, c =  8)
+  of   9: msmImpl_vartime_parallel(tp, r, coefs, points, N, c =  9)
+  of  10: msmImpl_vartime_parallel(tp, r, coefs, points, N, c = 10)
+  of  11: msmImpl_vartime_parallel(tp, r, coefs, points, N, c = 11)
+  of  12: msmImpl_vartime_parallel(tp, r, coefs, points, N, c = 12)
+  of  13: msmImpl_vartime_parallel(tp, r, coefs, points, N, c = 13)
+  of  14: msmImpl_vartime_parallel(tp, r, coefs, points, N, c = 14)
+  of  15: msmImpl_vartime_parallel(tp, r, coefs, points, N, c = 16)
 
-  of  16..17: msm_vartime_parallel(tp, r, coefs, points, N, c = 16)
+  of  16..17: msmImpl_vartime_parallel(tp, r, coefs, points, N, c = 16)
   else:
     unreachable()
 
@@ -620,7 +620,6 @@ proc multiScalarMul_vartime_parallel*[bits: static int, EC, ECaff](
   ## This function can be nested in another parallel function
   debug: doAssert coefs.len == points.len
   let N = points.len
-
   tp.multiScalarMul_dispatch_vartime_parallel(r.addr, coefs.asUnchecked(), points.asUnchecked(), N)
 
 proc multiScalarMul_vartime_parallel*[F, EC, ECaff](
@@ -631,7 +630,6 @@ proc multiScalarMul_vartime_parallel*[F, EC, ECaff](
        len: int) {.meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
-
   let n = cast[int](len)
   let coefs_big = allocHeapArrayAligned(F.getBigInt(), n, alignment = 64)
 
@@ -650,8 +648,6 @@ proc multiScalarMul_vartime_parallel*[EC, ECaff](
        points: openArray[ECaff]) {.inline.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
-
   debug: doAssert coefs.len == points.len
   let N = points.len
-
   tp.multiScalarMul_vartime_parallel(r.addr, coefs.asUnchecked(), points.asUnchecked(), N)

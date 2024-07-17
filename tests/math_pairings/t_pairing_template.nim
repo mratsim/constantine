@@ -14,7 +14,7 @@ import
   constantine/math/arithmetic,
   constantine/math/extension_fields,
   constantine/named/algebras,
-  constantine/named/zoo_subgroups,
+  constantine/named/[zoo_subgroups, zoo_pairings],
   constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   constantine/math/pairings/[
     cyclotomic_subgroups,
@@ -28,13 +28,10 @@ import
   helpers/prng_unsafe
 
 export
-  prng_unsafe, times, unittest,
+  unittest, # Generic sandwich
   ec_shortweierstrass_affine, ec_shortweierstrass_projective,
-  arithmetic, extension_fields,
-  io_extfields,
-  cyclotomic_subgroups,
-  gt_exponentiations, gt_exponentiations_vartime,
-  abstractions, algebras
+  extension_fields,
+  algebras
 
 type
   RandomGen* = enum
@@ -65,7 +62,7 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
     result = rng.random_long01Seq(EC)
     result.clearCofactor()
 
-template runPairingTests*(Name: static Algebra, G1, G2, GT: typedesc, Iters: int) =
+proc runPairingTests*(Name: static Algebra, G1, G2, GT: typedesc, iters: int) =
   bind affineType
 
   var rng: RngState
@@ -107,11 +104,11 @@ template runPairingTests*(Name: static Algebra, G1, G2, GT: typedesc, Iters: int
 
   suite "Pairing - Optimal Ate on " & $Name & " [" & $WordBitWidth & "-bit words]":
     test "Bilinearity e([2]P, Q) = e(P, [2]Q) = e(P, Q)^2":
-      test_bilinearity_double_impl(randZ = false, gen = Uniform, Iters)
-      test_bilinearity_double_impl(randZ = false, gen = HighHammingWeight, Iters)
-      test_bilinearity_double_impl(randZ = false, gen = Long01Sequence, Iters)
+      test_bilinearity_double_impl(randZ = false, gen = Uniform, iters)
+      test_bilinearity_double_impl(randZ = false, gen = HighHammingWeight, iters)
+      test_bilinearity_double_impl(randZ = false, gen = Long01Sequence, iters)
 
-func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, noInit.} =
+func random_elem*(rng: var RngState, F: typedesc, gen: RandomGen): F {.noInit.} =
   if gen == Uniform:
     result = rng.random_unsafe(F)
   elif gen == HighHammingWeight:
@@ -119,7 +116,7 @@ func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, no
   else:
     result = rng.random_long01Seq(F)
 
-template runGTsubgroupTests*(GT: typedesc, Iters: int) =
+proc runGTsubgroupTests*(GT: typedesc, iters: int) =
   bind affineType, random_elem
 
   var rng: RngState
@@ -147,21 +144,15 @@ template runGTsubgroupTests*(GT: typedesc, Iters: int) =
 
   suite "Pairing - 𝔾ₜ subgroup " & $GT.Name & " [" & $WordBitWidth & "-bit words]":
     test "Final Exponentiation and 𝔾ₜ-subgroup membership":
-      test_gt_impl(gen = Uniform, Iters)
-      test_gt_impl(gen = HighHammingWeight, Iters)
-      test_gt_impl(gen = Long01Sequence, Iters)
+      test_gt_impl(gen = Uniform, iters)
+      test_gt_impl(gen = HighHammingWeight, iters)
+      test_gt_impl(gen = Long01Sequence, iters)
 
-func random_gt*(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, noInit.} =
-  if gen == Uniform:
-    result = rng.random_unsafe(F)
-  elif gen == HighHammingWeight:
-    result = rng.random_highHammingWeight(F)
-  else:
-    result = rng.random_long01Seq(F)
-
+func random_gt(rng: var RngState, F: typedesc, gen: RandomGen): F {.noInit.} =
+  result = rng.random_elem(F, gen)
   result.finalExp()
 
-template runGTexponentiationTests*(GT: typedesc, Iters: int) =
+proc runGTexponentiationTests*(GT: typedesc, iters: int) =
   var rng: RngState
   let timeseed = uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   seed(rng, timeseed)
@@ -220,11 +211,11 @@ template runGTexponentiationTests*(GT: typedesc, Iters: int) =
 
   suite "Pairing - Exponentiation for 𝔾ₜ " & $GT.Name & " [" & $WordBitWidth & "-bit words]":
     test "𝔾ₜ exponentiation consistency":
-      test_gt_exponentiation_impl(gen = Uniform, Iters)
-      test_gt_exponentiation_impl(gen = HighHammingWeight, Iters)
-      test_gt_exponentiation_impl(gen = Long01Sequence, Iters)
+      test_gt_exponentiation_impl(gen = Uniform, iters)
+      test_gt_exponentiation_impl(gen = HighHammingWeight, iters)
+      test_gt_exponentiation_impl(gen = Long01Sequence, iters)
 
-proc runGTmultiexpTests*[N: static int](GT: typedesc, num_points: array[N, int], Iters: int) =
+proc runGTmultiexpTests*[N: static int](GT: typedesc, num_points: array[N, int], iters: int) =
   var rng: RngState
   let timeseed = uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   seed(rng, timeseed)
@@ -262,4 +253,4 @@ proc runGTmultiexpTests*[N: static int](GT: typedesc, num_points: array[N, int],
 
   suite "Pairing - MultiExponentiation for 𝔾ₜ " & $GT.Name & " [" & $WordBitWidth & "-bit words]":
     test "𝔾ₜ multi-exponentiation consistency":
-      test_gt_multiexp_impl(GT, rng, num_points, gen = Long01Sequence, Iters)
+      test_gt_multiexp_impl(GT, rng, num_points, gen = Long01Sequence, iters)
