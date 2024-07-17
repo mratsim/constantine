@@ -48,11 +48,8 @@ template decomposeEndoImpl[scalBits: static int](
   static: doAssert L >= ceilDiv_vartime(frBits, M) + 1
   const w = frBits.wordsRequired()
 
-  # Upstream bug:
-  #   {.noInit.} variables must be {.inject.} as well
-  #   or they'll be mangled as foo`gensym12345 instead of fooX60gensym12345 in C codegen
-
   when M == 2:
+    # inject works around alphas'gensym codegen in Nim v2.0.8 (not necessary in Nim v2.2.x) - https://github.com/nim-lang/Nim/pull/23801#issue-2393452970
     var alphas{.noInit, inject.}: (
       BigInt[frBits + babai(Name, G)[0][0].bits],
       BigInt[frBits + babai(Name, G)[1][0].bits]
@@ -76,7 +73,8 @@ template decomposeEndoImpl[scalBits: static int](
   # We have k0 = s - 𝛼0 b00 - 𝛼1 b10 ... - 𝛼m bm0
   # and     kj = 0 - 𝛼j b0j - 𝛼1 b1j ... - 𝛼m bmj
   var
-    k {.inject.}: array[M, BigInt[frBits]] # zero-init required
+    k {.inject.}: array[M, BigInt[frBits]] # zero-init required, and inject for caller visibility
+    # inject works around alphas'gensym codegen in Nim v2.0.8 (not necessary in Nim v2.2.x) - https://github.com/nim-lang/Nim/pull/23801#issue-2393452970
     alphaB {.noInit, inject.}: BigInt[frBits]
   k[0].copyTruncatedFrom(scalar)
   staticFor miniScalarIdx, 0, M:
