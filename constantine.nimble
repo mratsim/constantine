@@ -255,7 +255,7 @@ proc genStaticLib(outdir, nimcache: string, extFlags = "") =
 
     let config = flags &
                  extFlags &
-                 releaseBuildOptions(bmDynamicLib)
+                 releaseBuildOptions(bmStaticLib)
 
     echo &"  compiler config: {config}"
 
