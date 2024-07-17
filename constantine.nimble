@@ -195,7 +195,7 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
                  " --passC:-Wno-stringop-overflow --passL:-Wno-stringop-overflow " &
                  " --passC:-Wno-alloc-size-larger-than --passL:-Wno-alloc-size-larger-than "
 
-  let apple = defined(macos) or defined(macox) or defined(ios)
+  let apple = defined(macos) or defined(macosx) or defined(ios)
   let ltoOptions = if useLtoDefault:
                      if apple: ""
                      elif buildMode == bmStaticLib: ""
@@ -223,9 +223,12 @@ proc genDynamicLib(outdir, nimcache: string) =
   proc compile(libName: string, flags = "") =
     echo &"Compiling dynamic library: {outdir}/" & libName
 
+    let config = flags &
+                 releaseBuildOptions(bmDynamicLib)
+    echo &"  compiler config: {config}"
+
     exec "nim c " &
-         flags &
-         releaseBuildOptions(bmDynamicLib) &
+         config &
          " --threads:on " &
          " --noMain --app:lib " &
          &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
@@ -250,10 +253,14 @@ proc genStaticLib(outdir, nimcache: string, extFlags = "") =
   proc compile(libName: string, flags = "") =
     echo &"Compiling static library:  {outdir}/" & libName
 
+    let config = flags &
+                 extFlags &
+                 releaseBuildOptions(bmDynamicLib)
+
+    echo &"  compiler config: {config}"
+
     exec "nim c " &
-         flags &
-         extFlags &
-         releaseBuildOptions(bmStaticLib) &
+         config &
          " --threads:on " &
          " --noMain --app:staticlib " &
          &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
