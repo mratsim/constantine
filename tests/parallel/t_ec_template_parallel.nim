@@ -33,7 +33,7 @@ import
   # Test utilities
   helpers/prng_unsafe
 
-export unittest, abstractions, arithmetic # Generic sandwich
+export unittest, abstractions, arithmetic, ec_twistededwards_affine # Generic sandwich
 
 type
   RandomGen* = enum

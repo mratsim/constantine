@@ -637,6 +637,8 @@ const testDescMultithreadedCrypto: seq[string] = @[
   "tests/parallel/t_ec_shortw_prj_g1_batch_add_parallel.nim",
   "tests/parallel/t_ec_shortw_jac_g1_msm_parallel.nim",
   "tests/parallel/t_ec_shortw_prj_g1_msm_parallel.nim",
+  "tests/parallel/t_ec_twedwards_prj_msm_parallel.nim",
+  "tests/parallel/t_pairing_bls12_381_gt_multiexp_parallel.nim",
 ]
 
 const benchDesc = [
