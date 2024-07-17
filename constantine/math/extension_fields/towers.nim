@@ -1436,15 +1436,14 @@ func mul_sparse_by_x0*(a: var QuadraticExt, sparseB: QuadraticExt) =
   ## Sparse in-place multiplication
   a.mul_sparse_by_x0(a, sparseB)
 
-func mulCheckSparse*(a: var QuadraticExt, b: static QuadraticExt) {.inline.} =
+template mulCheckSparse*(a: var QuadraticExt, b: QuadraticExt) =
   when isOne(b).bool:
     discard
   elif isMinusOne(b).bool:
     a.neg()
   elif isZero(c0(b)).bool and isOne(c1(b)).bool:
-    # TODO: raise upstream, in Nim v2 templates {.noInit.} temporaries use incorrect t`gensymXXXX
-    # hence we use an inline function with static argument
-    var t {.noInit.}: type(a.c0)
+    # inject works around t'gensym codegen in Nim v2.0.8 (not necessary in Nim v2.2.x) - https://github.com/nim-lang/Nim/pull/23801#issue-2393452970
+    var t {.noInit, inject.}: type(a.c0)
     when fromComplexExtension(b):
       t.neg(a.c1)
       a.c1 = a.c0
@@ -1454,9 +1453,8 @@ func mulCheckSparse*(a: var QuadraticExt, b: static QuadraticExt) {.inline.} =
       a.c1 = a.c0
       a.c0 = t
   elif isZero(c0(b)).bool and isMinusOne(c1(b)).bool:
-    # TODO: raise upstream, in Nim v2 templates {.noInit.} temporaries use incorrect t`gensymXXXX
-    # hence we use an inline function with static argument
-    var t {.noInit.}: type(a.c0)
+    # inject works around t'gensym codegen in Nim v2.0.8 (not necessary in Nim v2.2.x) - https://github.com/nim-lang/Nim/pull/23801#issue-2393452970
+    var t {.noInit, inject.}: type(a.c0)
     when fromComplexExtension(b):
       t = a.c1
       a.c1.neg(a.c0)
