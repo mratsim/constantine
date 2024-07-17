@@ -108,7 +108,7 @@ when X86:
     subborrow_u32(borrowIn, cast[culong](a), cast[culong](b), cast[ptr culong](sum.addr)[])
 
   template addcarry_u64(carryIn: Carry, a, b: Ct[uint64], sum: var Ct[uint64]): Carry =
-    addcarry_u64(carryIn, cast[culong](a), cast[culong](b), cast[ptr culonglong](sum.addr)[])
+    addcarry_u64(carryIn, cast[culonglong](a), cast[culonglong](b), cast[ptr culonglong](sum.addr)[])
 
   template subborrow_u64(borrowIn: Borrow, a, b: Ct[uint64], sum: var Ct[uint64]): Borrow =
     subborrow_u64(borrowIn, cast[culonglong](a), cast[culonglong](b), cast[ptr culonglong](sum.addr)[])
