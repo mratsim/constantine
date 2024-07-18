@@ -74,8 +74,8 @@ func random_gt*(rng: var RngState, F: typedesc): F {.inline, noInit.} =
 type BenchMultiexpContext*[GT] = object
   tp: Threadpool
   numInputs: int
+  exponents: seq[getBigInt(GT.Name(), kScalarField)]
   elems: seq[GT]
-  exponents: seq[getBigInt(GT.Name, kScalarField)]
 
 proc createBenchMultiExpContext*(GT: typedesc, inputSizes: openArray[int]): BenchMultiexpContext[GT] =
   result.tp = Threadpool.new()
