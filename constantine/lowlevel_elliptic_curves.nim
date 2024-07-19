@@ -54,7 +54,9 @@ export
   ec_shortweierstrass.EC_ShortW_Jac,
   ec_shortweierstrass.EC_ShortW_Prj,
   ec_shortweierstrass.EC_ShortW,
-  ec_shortweierstrass.getName
+  ec_shortweierstrass.getName,
+  affine, jacobian, projective,
+  projectiveFromJacobian
 
 export ec_shortweierstrass.`==`
 export ec_shortweierstrass.isNeutral
@@ -92,7 +94,9 @@ export zoo_subgroups.isInSubgroup
 # Hashing to Elliptic Curve
 # ------------------------------------------------------------
 
-export hash_to_curve.hash_to_curve
+export hash_to_curve.hashToCurve
+export hash_to_curve.hashToCurve_svdw
+export hash_to_curve.hashToCurve_sswu
 
 # Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
 # tend to generate useless memory moves or have difficulties to minimize stack allocation

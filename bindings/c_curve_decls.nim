@@ -12,10 +12,15 @@ import
     lowlevel_bigints,
     lowlevel_fields,
     lowlevel_extension_fields,
-    lowlevel_elliptic_curves
+    lowlevel_elliptic_curves,
+    hashes
   ]
 
-export algebras, lowlevel_bigints, lowlevel_fields, lowlevel_extension_fields, lowlevel_elliptic_curves
+export algebras,
+       lowlevel_bigints,
+       lowlevel_fields, lowlevel_extension_fields,
+       lowlevel_elliptic_curves,
+       hashes
 
 import constantine/math/extension_fields # generic sandwich
 export extension_fields
@@ -31,10 +36,10 @@ template genBindingsBig*(Big: untyped) =
   else:
     {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
-  func `ctt _ Big _ unmarshalBE`(dst: var Big, src: openarray[byte]): bool =
+  func `ctt _ Big _ unmarshalBE`(dst: var Big, src: openArray[byte]): bool =
     unmarshalBE(dst, src)
 
-  func `ctt _ Big _ marshalBE`(dst: var openarray[byte], src: Big): bool =
+  func `ctt _ Big _ marshalBE`(dst: var openArray[byte], src: Big): bool =
     marshalBE(dst, src)
 
   {.pop.}
@@ -57,10 +62,10 @@ template genBindingsField*(Big, Field: untyped) =
     fromBig(dst, src)
 
   # --------------------------------------------------------------------------------------
-  func `ctt _ Field _ unmarshalBE`(dst: var Field, src: openarray[byte]): bool =
+  func `ctt _ Field _ unmarshalBE`(dst: var Field, src: openArray[byte]): bool =
     unmarshalBE(dst, src)
 
-  func `ctt _ Field _ marshalBE`(dst: var openarray[byte], src: Field): bool =
+  func `ctt _ Field _ marshalBE`(dst: var openArray[byte], src: Field): bool =
     marshalBE(dst, src)
   # --------------------------------------------------------------------------------------
   func `ctt _ Field _ is_eq`(a, b: Field): SecretBool =
@@ -423,5 +428,34 @@ template genBindings_EC_ShortW_NonAffine*(EC, EcAff, ScalarBig, ScalarField: unt
           points: ptr UncheckedArray[EcAff],
           len: csize_t)=
     r.multiScalarMul_vartime(coefs, points, cast[int](len))
+
+  {.pop.}
+
+template genBindings_EC_hash_to_curve*(EC: untyped, mapping, hash: untyped, k: static int) =
+  when appType == "lib":
+    {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
+  else:
+    {.push noconv, exportc,  raises: [].} # No exceptions allowed
+
+  func `ctt _ EC _ mapping _ hash`(
+        r: var EC,
+        augmentation: openArray[byte],
+        message: openArray[byte],
+        domainSepTag: openArray[byte]) =
+    ## Hashing to Elliptic Curve for `EC`
+    ## with the hash function `hash`
+    ## using the mapping `mapping`
+    ##
+    ## The security parameter used is k = `k`-bit
+    when EC is EC_ShortW_Jac:
+      `hashToCurve _ mapping`(hash, k, r, augmentation, message, domainSepTag)
+    elif EC is EC_ShortW_Prj:
+      var jac {.noInit, inject.}: jacobian(affine(EC)) # inject to workaround jac'gensym codegen in Nim v2.0.8 (not necessary in Nim v2.2.x) - https://github.com/nim-lang/Nim/pull/23801#issue-2393452970
+      `hashToCurve _ mapping`(hash, k, jac, augmentation, message, domainSepTag)
+      r.projectiveFromJacobian(jac)
+    else:
+      var jac {.noInit, inject.}: jacobian(EC) # inject to workaround jac'gensym codegen in Nim v2.0.8 (not necessary in Nim v2.2.x) - https://github.com/nim-lang/Nim/pull/23801#issue-2393452970
+      `hashToCurve _ mapping`(hash, k, jac, augmentation, message, domainSepTag)
+      r.affine(jac)
 
   {.pop.}

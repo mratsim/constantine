@@ -232,6 +232,12 @@ void        ctt_bn254_snarks_g2_prj_scalar_mul_big_coef_vartime(bn254_snarks_g2_
 void        ctt_bn254_snarks_g2_prj_scalar_mul_fr_coef_vartime(bn254_snarks_g2_prj* P, const bn254_snarks_fr* scalar);
 void        ctt_bn254_snarks_g2_prj_multi_scalar_mul_big_coefs_vartime(bn254_snarks_g2_prj* r, const big254 coefs[], const bn254_snarks_g2_aff points[], size_t len);
 void        ctt_bn254_snarks_g2_prj_multi_scalar_mul_fr_coefs_vartime(bn254_snarks_g2_prj* r, const bn254_snarks_fr coefs[], const bn254_snarks_g2_aff points[], size_t len);
+void        ctt_bn254_snarks_g1_aff_svdw_sha256(bn254_snarks_g1_aff* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bn254_snarks_g1_jac_svdw_sha256(bn254_snarks_g1_jac* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bn254_snarks_g1_prj_svdw_sha256(bn254_snarks_g1_prj* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bn254_snarks_g2_aff_svdw_sha256(bn254_snarks_g2_aff* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bn254_snarks_g2_jac_svdw_sha256(bn254_snarks_g2_jac* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bn254_snarks_g2_prj_svdw_sha256(bn254_snarks_g2_prj* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
 
 #ifdef __cplusplus
 }
