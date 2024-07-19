@@ -33,7 +33,6 @@ proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    const bits = Fr[curve].bits()
     separator()
     mulBench(Fp12[curve], Iters)
     sqrBench(Fp12[curve], Iters)

@@ -115,7 +115,7 @@ proc msmParallelBench*[EC](ctx: var BenchMsmContext[EC], numInputs: int, iters: 
   var startNaive, stopNaive, startMSMbaseline, stopMSMbaseline, startMSMopt, stopMSMopt, startMSMpara, stopMSMpara: MonoTime
 
   if numInputs <= 100000:
-    startNaive = getMonotime()
+    # startNaive = getMonotime()
     bench("EC scalar muls                " & align($numInputs, 10) & " (" & $bits & "-bit coefs, points)", EC, iters):
       var tmp: EC
       r.setNeutral()
@@ -123,7 +123,7 @@ proc msmParallelBench*[EC](ctx: var BenchMsmContext[EC], numInputs: int, iters: 
         tmp.fromAffine(points[i])
         tmp.scalarMul(coefs[i])
         r += tmp
-    stopNaive = getMonotime()
+    # stopNaive = getMonotime()
 
   if numInputs <= 100000:
     startNaive = getMonotime()

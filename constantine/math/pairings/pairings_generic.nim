@@ -27,11 +27,16 @@ func millerLoop*[Name: static Algebra](gt: var Fp12[Name], Q, P: auto, n: int) {
   else:
     gt.millerLoopAddchain(Q, P, n)
 
-func finalExp*[Name: static Algebra](gt: var Fp12[Name]){.inline.} =
-  gt.finalExpEasy()
+export finalExpEasy
+
+func finalExpHard*[Name: static Algebra](gt: var Fp12[Name]) {.inline.} =
   when family(Name) == BarretoNaehrig:
     gt.finalExpHard_BN()
   elif family(Name) == BarretoLynnScott:
     gt.finalExpHard_BLS12()
   else:
     {.error: "Final Exponentiation not implemented for " & $Name.}
+
+func finalExp*[Name: static Algebra](gt: var Fp12[Name]){.inline.} =
+  gt.finalExpEasy()
+  gt.finalExpHard()

@@ -14,12 +14,13 @@ import
   constantine/math/arithmetic,
   constantine/math/extension_fields,
   constantine/named/algebras,
-  constantine/named/zoo_subgroups,
+  constantine/named/[zoo_subgroups, zoo_pairings],
   constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   constantine/math/pairings/[
     cyclotomic_subgroups,
     gt_exponentiations,
     gt_exponentiations_vartime,
+    gt_multiexp,
     pairings_generic],
   constantine/math/io/io_extfields,
 
@@ -27,13 +28,10 @@ import
   helpers/prng_unsafe
 
 export
-  prng_unsafe, times, unittest,
+  unittest, # Generic sandwich
   ec_shortweierstrass_affine, ec_shortweierstrass_projective,
-  arithmetic, extension_fields,
-  io_extfields,
-  cyclotomic_subgroups,
-  gt_exponentiations, gt_exponentiations_vartime,
-  abstractions, algebras
+  extension_fields,
+  algebras
 
 type
   RandomGen* = enum
@@ -64,7 +62,7 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
     result = rng.random_long01Seq(EC)
     result.clearCofactor()
 
-template runPairingTests*(Iters: static int, Name: static Algebra, G1, G2, GT: typedesc, pairing_fn: untyped): untyped {.dirty.}=
+proc runPairingTests*(Name: static Algebra, G1, G2, GT: typedesc, iters: int) =
   bind affineType
 
   var rng: RngState
@@ -73,8 +71,8 @@ template runPairingTests*(Iters: static int, Name: static Algebra, G1, G2, GT: t
   echo "\n------------------------------------------------------\n"
   echo "test_pairing_",$Name,"_optate xoshiro512** seed: ", timeseed
 
-  proc test_bilinearity_double_impl(randZ: bool, gen: RandomGen) =
-    for _ in 0 ..< Iters:
+  proc test_bilinearity_double_impl(randZ: bool, gen: RandomGen, iters: int) =
+    for _ in 0 ..< iters:
       let P = rng.random_point(G1, randZ, gen)
       let Q = rng.random_point(G2, randZ, gen)
       var P2: typeof(P)
@@ -93,10 +91,10 @@ template runPairingTests*(Iters: static int, Name: static Algebra, G1, G2, GT: t
       Qa.affine(Q)
       Qa2.affine(Q2)
 
-      r.pairing_fn(Pa, Qa)
+      r.pairing(Pa, Qa)
       r.square()
-      r2.pairing_fn(Pa2, Qa)
-      r3.pairing_fn(Pa, Qa2)
+      r2.pairing(Pa2, Qa)
+      r3.pairing(Pa, Qa2)
 
       doAssert bool(not r.isZero())
       doAssert bool(not r.isOne())
@@ -106,11 +104,11 @@ template runPairingTests*(Iters: static int, Name: static Algebra, G1, G2, GT: t
 
   suite "Pairing - Optimal Ate on " & $Name & " [" & $WordBitWidth & "-bit words]":
     test "Bilinearity e([2]P, Q) = e(P, [2]Q) = e(P, Q)^2":
-      test_bilinearity_double_impl(randZ = false, gen = Uniform)
-      test_bilinearity_double_impl(randZ = false, gen = HighHammingWeight)
-      test_bilinearity_double_impl(randZ = false, gen = Long01Sequence)
+      test_bilinearity_double_impl(randZ = false, gen = Uniform, iters)
+      test_bilinearity_double_impl(randZ = false, gen = HighHammingWeight, iters)
+      test_bilinearity_double_impl(randZ = false, gen = Long01Sequence, iters)
 
-func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, noInit.} =
+func random_elem*(rng: var RngState, F: typedesc, gen: RandomGen): F {.noInit.} =
   if gen == Uniform:
     result = rng.random_unsafe(F)
   elif gen == HighHammingWeight:
@@ -118,7 +116,7 @@ func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, no
   else:
     result = rng.random_long01Seq(F)
 
-template runGTsubgroupTests*(Iters: static int, GT: typedesc, finalExpHard_fn: untyped): untyped {.dirty.}=
+proc runGTsubgroupTests*(GT: typedesc, iters: int) =
   bind affineType, random_elem
 
   var rng: RngState
@@ -127,9 +125,9 @@ template runGTsubgroupTests*(Iters: static int, GT: typedesc, finalExpHard_fn: u
   echo "\n------------------------------------------------------\n"
   echo "test_pairing_",$GT.Name,"_gt xoshiro512** seed: ", timeseed
 
-  proc test_gt_impl(gen: RandomGen) =
+  proc test_gt_impl(gen: RandomGen, iters: int) =
     stdout.write "    "
-    for _ in 0 ..< Iters:
+    for _ in 0 ..< iters:
       let a = rng.random_elem(GT, gen)
       doAssert not bool a.isInCyclotomicSubgroup(), "The odds of generating randomly such an element are too low a: " & a.toHex()
       var a2 = a
@@ -137,7 +135,7 @@ template runGTsubgroupTests*(Iters: static int, GT: typedesc, finalExpHard_fn: u
       doAssert bool a2.isInCyclotomicSubgroup()
       doAssert not bool a2.isInPairingSubgroup(), "The odds of generating randomly such an element are too low a2: " & a.toHex()
       var a3 = a2
-      finalExpHard_fn(a3)
+      finalExpHard(a3)
       doAssert bool a3.isInCyclotomicSubgroup()
       doAssert bool a3.isInPairingSubgroup()
       stdout.write '.'
@@ -146,30 +144,24 @@ template runGTsubgroupTests*(Iters: static int, GT: typedesc, finalExpHard_fn: u
 
   suite "Pairing - 𝔾ₜ subgroup " & $GT.Name & " [" & $WordBitWidth & "-bit words]":
     test "Final Exponentiation and 𝔾ₜ-subgroup membership":
-      test_gt_impl(gen = Uniform)
-      test_gt_impl(gen = HighHammingWeight)
-      test_gt_impl(gen = Long01Sequence)
+      test_gt_impl(gen = Uniform, iters)
+      test_gt_impl(gen = HighHammingWeight, iters)
+      test_gt_impl(gen = Long01Sequence, iters)
 
-func random_gt*(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, noInit.} =
-  if gen == Uniform:
-    result = rng.random_unsafe(F)
-  elif gen == HighHammingWeight:
-    result = rng.random_highHammingWeight(F)
-  else:
-    result = rng.random_long01Seq(F)
-
+func random_gt(rng: var RngState, F: typedesc, gen: RandomGen): F {.noInit.} =
+  result = rng.random_elem(F, gen)
   result.finalExp()
 
-template runGTexponentiationTests*(Iters: static int, GT: typedesc): untyped {.dirty.} =
+proc runGTexponentiationTests*(GT: typedesc, iters: int) =
   var rng: RngState
   let timeseed = uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   seed(rng, timeseed)
   echo "\n------------------------------------------------------\n"
   echo "test_pairing_",$GT.Name,"_gt_exponentiation xoshiro512** seed: ", timeseed
 
-  proc test_gt_exponentiation_impl(gen: RandomGen) =
+  proc test_gt_exponentiation_impl(gen: RandomGen, iters: int) =
     stdout.write "    "
-    for _ in 0 ..< Iters:
+    for _ in 0 ..< iters:
       let a = rng.random_gt(GT, gen)
       let kUnred = rng.random_long01seq(GT.Name.getBigInt(kScalarField))
       var k {.noInit.}: GT.Name.getBigInt(kScalarField)
@@ -219,6 +211,46 @@ template runGTexponentiationTests*(Iters: static int, GT: typedesc): untyped {.d
 
   suite "Pairing - Exponentiation for 𝔾ₜ " & $GT.Name & " [" & $WordBitWidth & "-bit words]":
     test "𝔾ₜ exponentiation consistency":
-      test_gt_exponentiation_impl(gen = Uniform)
-      test_gt_exponentiation_impl(gen = HighHammingWeight)
-      test_gt_exponentiation_impl(gen = Long01Sequence)
+      test_gt_exponentiation_impl(gen = Uniform, iters)
+      test_gt_exponentiation_impl(gen = HighHammingWeight, iters)
+      test_gt_exponentiation_impl(gen = Long01Sequence, iters)
+
+proc runGTmultiexpTests*[N: static int](GT: typedesc, num_points: array[N, int], iters: int) =
+  var rng: RngState
+  let timeseed = uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  seed(rng, timeseed)
+  echo "\n------------------------------------------------------\n"
+  echo "test_pairing_",$GT.Name,"_gt_multiexp xoshiro512** seed: ", timeseed
+
+  proc test_gt_multiexp_impl[N](GT: typedesc, rng: var RngState, num_points: array[N, int], gen: RandomGen, iters: int) =
+    for N in num_points:
+      stdout.write "    "
+      for _ in 0 ..< iters:
+        var elems = newSeq[GT](N)
+        var exponents = newSeq[Fr[GT.Name]](N)
+
+        for i in 0 ..< N:
+          elems[i] = rng.random_gt(GT, gen)
+          exponents[i] = rng.random_elem(Fr[GT.Name], gen)
+
+        var naive: GT
+        naive.setOne()
+        for i in 0 ..< N:
+          var t {.noInit.}: GT
+          t.gtExp_vartime(elems[i], exponents[i])
+          naive *= t
+
+        var mexp_ref, mexp_opt: GT
+        mexp_ref.multiExp_reference_vartime(elems, exponents)
+        mexp_opt.multiExp_vartime(elems, exponents)
+
+        doAssert bool(naive == mexp_ref)
+        doAssert bool(naive == mexp_opt)
+
+        stdout.write '.'
+
+      stdout.write '\n'
+
+  suite "Pairing - MultiExponentiation for 𝔾ₜ " & $GT.Name & " [" & $WordBitWidth & "-bit words]":
+    test "𝔾ₜ multi-exponentiation consistency":
+      test_gt_multiexp_impl(GT, rng, num_points, gen = Long01Sequence, iters)

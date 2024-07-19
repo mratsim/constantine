@@ -27,7 +27,6 @@ import
   helpers/prng_unsafe,
   ./bench_blueprint
 
-
 export notes
 export abstractions
 proc separator*() = separator(168)

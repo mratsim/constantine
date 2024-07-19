@@ -10,6 +10,4 @@ import
   # Test utilities
   ./t_pairing_template
 
-runGTexponentiationTests(
-  Iters = 4,
-  GT = Fp12[BN254_Nogami])
+runGTexponentiationTests(GT = Fp12[BN254_Nogami], iters = 4)

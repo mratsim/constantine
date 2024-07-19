@@ -637,6 +637,8 @@ const testDescMultithreadedCrypto: seq[string] = @[
   "tests/parallel/t_ec_shortw_prj_g1_batch_add_parallel.nim",
   "tests/parallel/t_ec_shortw_jac_g1_msm_parallel.nim",
   "tests/parallel/t_ec_shortw_prj_g1_msm_parallel.nim",
+  "tests/parallel/t_ec_twedwards_prj_msm_parallel.nim",
+  "tests/parallel/t_pairing_bls12_381_gt_multiexp_parallel.nim",
 ]
 
 const benchDesc = [
@@ -661,6 +663,7 @@ const benchDesc = [
   "bench_pairing_bn254_nogami",
   "bench_pairing_bn254_snarks",
   "bench_gt",
+  "bench_gt_multiexp_bls12_381",
   "bench_summary_bls12_377",
   "bench_summary_bls12_381",
   "bench_summary_bn254_nogami",
@@ -1042,6 +1045,12 @@ task bench_ec_g2_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾2 (Multi
 
 task bench_gt, "Run 𝔾ₜ benchmarks - CC compiler":
   runBench("bench_gt")
+
+# 𝔾ₜ - multi-exponentiation
+# ------------------------------------------
+
+task bench_gt_multiexp_bls12_381, "Run 𝔾ₜ multiexponentiation benchmarks for BLS12-381 - CC compiler":
+  runBench("bench_gt_multiexp_bls12_381")
 
 # Pairings
 # ------------------------------------------
