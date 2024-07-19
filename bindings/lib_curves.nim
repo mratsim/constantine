@@ -53,6 +53,12 @@ collectBindings(cBindings_bls12_381):
   genBindings_EC_ShortW_Affine(bls12_381_g2_aff, bls12_381_fp2)
   genBindings_EC_ShortW_NonAffine(bls12_381_g2_jac, bls12_381_g2_aff, big255, bls12_381_fr)
   genBindings_EC_ShortW_NonAffine(bls12_381_g2_prj, bls12_381_g2_aff, big255, bls12_381_fr)
+  genBindings_EC_hash_to_curve(bls12_381_g1_aff, sswu, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bls12_381_g1_jac, sswu, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bls12_381_g1_prj, sswu, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bls12_381_g2_aff, sswu, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bls12_381_g2_jac, sswu, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bls12_381_g2_prj, sswu, sha256, k = 128)
 
 collectBindings(cBindings_bls12_381_parallel):
   genParallelBindings_EC_ShortW_NonAffine(bls12_381_g1_jac, bls12_381_g1_aff, bls12_381_fr)
@@ -82,6 +88,12 @@ collectBindings(cBindings_bn254_snarks):
   genBindings_EC_ShortW_Affine(bn254_snarks_g2_aff, bn254_snarks_fp2)
   genBindings_EC_ShortW_NonAffine(bn254_snarks_g2_jac, bn254_snarks_g2_aff, big254, bn254_snarks_fr)
   genBindings_EC_ShortW_NonAffine(bn254_snarks_g2_prj, bn254_snarks_g2_aff, big254, bn254_snarks_fr)
+  genBindings_EC_hash_to_curve(bn254_snarks_g1_aff, svdw, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bn254_snarks_g1_jac, svdw, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bn254_snarks_g1_prj, svdw, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bn254_snarks_g2_aff, svdw, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bn254_snarks_g2_jac, svdw, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bn254_snarks_g2_prj, svdw, sha256, k = 128)
 
 collectBindings(cBindings_bn254_snarks_parallel):
   genParallelBindings_EC_ShortW_NonAffine(bn254_snarks_g1_jac, bn254_snarks_g1_aff, bn254_snarks_fr)

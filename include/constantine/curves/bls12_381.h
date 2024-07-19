@@ -232,6 +232,12 @@ void        ctt_bls12_381_g2_prj_scalar_mul_big_coef_vartime(bls12_381_g2_prj* P
 void        ctt_bls12_381_g2_prj_scalar_mul_fr_coef_vartime(bls12_381_g2_prj* P, const bls12_381_fr* scalar);
 void        ctt_bls12_381_g2_prj_multi_scalar_mul_big_coefs_vartime(bls12_381_g2_prj* r, const big255 coefs[], const bls12_381_g2_aff points[], size_t len);
 void        ctt_bls12_381_g2_prj_multi_scalar_mul_fr_coefs_vartime(bls12_381_g2_prj* r, const bls12_381_fr coefs[], const bls12_381_g2_aff points[], size_t len);
+void        ctt_bls12_381_g1_aff_sswu_sha256(bls12_381_g1_aff* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bls12_381_g1_jac_sswu_sha256(bls12_381_g1_jac* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bls12_381_g1_prj_sswu_sha256(bls12_381_g1_prj* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bls12_381_g2_aff_sswu_sha256(bls12_381_g2_aff* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bls12_381_g2_jac_sswu_sha256(bls12_381_g2_jac* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bls12_381_g2_prj_sswu_sha256(bls12_381_g2_prj* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
 
 #ifdef __cplusplus
 }
