@@ -169,7 +169,6 @@ proc codegenNvidiaPTX*(asy: Assembler_LLVM, sm: tuple[major, minor: int32]): str
   ## - https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compute-capabilities
   ##
   ## This requires the following function to be called beforehand:
-  ## - initializePasses()
   ## - initializeFullNVPTXTarget()
 
   debug: doAssert asy.backend == bkNvidiaPTX

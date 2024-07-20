@@ -46,7 +46,6 @@ type
   PassManagerRef* = distinct pointer
   PassManagerBuilderRef* = distinct pointer
   PassBuilderOptionsRef* = distinct pointer
-  PassRegistryRef* = distinct pointer
   TypeRef* = distinct pointer
   ValueRef* = distinct pointer
   MetadataRef = distinct pointer
@@ -238,31 +237,6 @@ proc populateModulePassManager*(pmb: PassManagerBuilderRef, legacyPM: PassManage
 proc createPassBuilderOptions*(): PassBuilderOptionsRef {.importc: "LLVMCreatePassBuilderOptions".}
 proc dispose*(pbo: PassBuilderOptionsRef) {.importc: "LLVMDisposePassBuilderOptions".}
 proc runPasses(module: ModuleRef, passes: cstring, machine: TargetMachineRef, pbo: PassBuilderOptionsRef): ErrorRef {.used, importc: "LLVMRunPasses".}
-
-# https://llvm.org/docs/doxygen/group__LLVMCInitialization.html
-# header: "<llvm-c/Initialization.h>"
-
-{.push used.}
-proc getGlobalPassRegistry(): PassRegistryRef {.importc: "LLVMGetGlobalPassRegistry".}
-
-proc initializeCore(registry: PassRegistryRef) {.importc: "LLVMInitializeCore".}
-proc initializeTransformUtils(registry: PassRegistryRef) {.importc: "LLVMInitializeTransformUtils".}
-proc initializeScalarOpts(registry: PassRegistryRef) {.importc: "LLVMInitializeScalarOpts".}
-proc initializeVectorization(registry: PassRegistryRef) {.importc: "LLVMInitializeVectorization".}
-proc initializeInstCombine(registry: PassRegistryRef) {.importc: "LLVMInitializeInstCombine".}
-proc initializeIPO(registry: PassRegistryRef) {.importc: "LLVMInitializeIPO".}
-proc initializeAnalysis(registry: PassRegistryRef) {.importc: "LLVMInitializeAnalysis".}
-proc initializeIPA(registry: PassRegistryRef) {.importc: "LLVMInitializeIPA".}
-proc initializeCodeGen(registry: PassRegistryRef) {.importc: "LLVMInitializeCodeGen".}
-proc initializeTarget(registry: PassRegistryRef) {.importc: "LLVMInitializeTarget".}
-
-# Removed in LLVM 16
-# ------------------
-# proc initializeObjCARCOpts(registry: PassRegistryRef) {.importc: "LLVMInitializeObjCARCOpts".}
-# proc initializeAggressiveInstCombiner(registry: PassRegistryRef) {.importc: "LLVMInitializeAggressiveInstCombiner".}
-# proc initializeInstrumentation(registry: PassRegistryRef) {.importc: "LLVMInitializeInstrumentation".}
-
-{.pop.}
 
 # https://llvm.org/doxygen/group__LLVMCTarget.html
 proc addTargetLibraryInfo*(tli: TargetLibraryInfoRef, pm: PassManagerRef) {.importc: "LLVMAddTargetLibraryInfo".}
