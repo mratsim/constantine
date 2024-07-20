@@ -39,7 +39,7 @@ export
 #   This will impact benchmarks that do not need it, such as the threadpool.
 
 when X86 and GCC_Compatible:
-  import isa/[cpudetect_x86, macro_assembler_x86]
+  import x86/[cpudetect_x86, macro_assembler_x86]
   export cpudetect_x86, macro_assembler_x86
 
 # No exceptions allowed in core cryptographic operations

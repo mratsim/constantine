@@ -7,7 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../platforms/code_generator/[llvm, nvidia, ir]
+  ../platforms/llvm/llvm,
+  ./ir, ./codegen_nvidia
 
 # ############################################################
 #

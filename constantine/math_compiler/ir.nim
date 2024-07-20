@@ -9,9 +9,9 @@
 import
   constantine/math/config/[curves, precompute],
   constantine/math/io/io_bigints,
-  ../primitives, ../bithacks,
-  ../../serialization/[endians, codecs, io_limbs],
-  ./llvm
+  constantine/platforms/[primitives, bithacks],
+  constantine/platforms/llvm/llvm,
+  constantine/serialization/[endians, codecs, io_limbs]
 
 # ############################################################
 #

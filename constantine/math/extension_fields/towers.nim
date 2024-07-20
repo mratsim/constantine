@@ -57,8 +57,8 @@ type
     CubicExt[Fp2[Name]]
 
   Fp12*[Name: static Algebra] =
-    CubicExt[Fp4[Name]]
-    # QuadraticExt[Fp6[Name]]
+    # CubicExt[Fp4[Name]]
+    QuadraticExt[Fp6[Name]]
 
 template c0*(a: ExtensionField): auto =
   a.coords[0]
