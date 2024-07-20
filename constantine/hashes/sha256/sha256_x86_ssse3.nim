@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  constantine/platforms/isa/simd_x86,
+  constantine/platforms/x86/simd_x86,
   constantine/platforms/primitives,
   ./sha256_generic
 

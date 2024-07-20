@@ -1,6 +1,6 @@
 # GPU compilation targets
 
-For CPUs, Constantine JIT-compiles the cryptographic kernels via LLVM.
+For GPUs, Constantine JIT-compiles the cryptographic kernels via LLVM.
 
 This allows targeting several devices with a single frontend, the LLVM IR.
 
