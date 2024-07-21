@@ -187,30 +187,20 @@ proc codegenNvidiaPTX*(asy: Assembler_LLVM, sm: tuple[major, minor: int32]): str
     codeModel = CodeModelDefault
   )
 
-  # https://www.llvm.org/docs/Passes.html
-  let pm = createPassManager()
-
-  machine.addAnalysisPasses(pm)
-  pm.addDeduceFunctionAttributesPass()
-  pm.addMemCpyOptPass()
-  pm.addScalarReplacementOfAggregatesPass()
-  pm.addPromoteMemoryToRegisterPass()
-  pm.addGlobalValueNumberingPass()
-  pm.addDeadStoreEliminationPass()
-  pm.addInstructionCombiningPass()
-  pm.addFunctionInliningPass()
-  pm.addAggressiveDeadCodeEliminationPass()
-
-  when false:
-    # As most (all?) of our code is straightline, unoptimizable inline assembly, no loop and no branches
-    # most optimizations, even at -O3, are not applicable
-    let pmb = createPassManagerBuilder()
-    pmb.setOptLevel(3)
-    pmb.populateModulePassManager(pm)
-    pmb.dispose()
-
-  pm.run(asy.module)
-  pm.dispose()
+  let pbo = createPassBuilderOptions()
+  pbo.setMergeFunctions()
+  let err = asy.module.runPasses(
+    "default<O3>,function-attrs,memcpyopt,sroa,mem2reg,gvn,dse,instcombine,inline,adce",
+    machine,
+    pbo
+  )
+  if not err.pointer().isNil():
+    writeStackTrace()
+    let errMsg = err.getErrorMessage()
+    stderr.write("\"codegenNvidiaPTX\" for module '" & astToStr(module) & "' " & $instantiationInfo() &
+                 " exited with error: " & $cstring(errMsg) & '\n')
+    errMsg.dispose()
+    quit 1
 
   return machine.emitToString(asy.module, AssemblyFile)
 

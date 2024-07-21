@@ -43,8 +43,6 @@ type
   TargetRef* = distinct pointer
   ExecutionEngineRef* = distinct pointer
   TargetMachineRef* = distinct pointer
-  PassManagerRef* = distinct pointer
-  PassManagerBuilderRef* = distinct pointer
   PassBuilderOptionsRef* = distinct pointer
   TypeRef* = distinct pointer
   ValueRef* = distinct pointer
@@ -215,53 +213,13 @@ proc targetMachineEmitToMemoryBuffer*(t: TargetMachineRef, m: ModuleRef,
 # - https://blog.llvm.org/posts/2021-03-26-the-new-pass-manager/
 # - https://llvm.org/docs/NewPassManager.html
 
-# https://llvm.org/doxygen/group__LLVMCCorePassManagers.html
-# # header: "<llvm-c/Core.h>"
-
-proc createPassManager*(): PassManagerRef {.importc: "LLVMCreatePassManager".}
-proc dispose*(pm: PassManagerRef) {.importc: "LLVMDisposePassManager".}
-proc run*(pm: PassManagerRef, module: ModuleRef) {. importc: "LLVMRunPassManager".}
-
-# https://llvm.org/doxygen/group__LLVMCTransformsPassManagerBuilder.html
-# header: "<llvm-c/Transforms/PassManagerBuilder.h>"
-
-proc createPassManagerBuilder*(): PassManagerBuilderRef {.importc: "LLVMPassManagerBuilderCreate".}
-proc dispose*(pmb: PassManagerBuilderRef) {.importc: "LLVMPassManagerBuilderDispose".}
-proc setOptLevel*(pmb: PassManagerBuilderRef, level: uint32) {.importc: "LLVMPassManagerBuilderSetOptLevel".}
-proc setSizeLevel*(pmb: PassManagerBuilderRef, level: uint32) {.importc: "LLVMPassManagerBuilderSetSizeLevel".}
-proc populateModulePassManager*(pmb: PassManagerBuilderRef, legacyPM: PassManagerRef) {. importc: "LLVMPassManagerBuilderPopulateModulePassManager".}
-
 # https://llvm.org/doxygen/group__LLVMCCoreNewPM.html
 # header: "<llvm-c/Transforms/PassBuilder.h>"
 
 proc createPassBuilderOptions*(): PassBuilderOptionsRef {.importc: "LLVMCreatePassBuilderOptions".}
 proc dispose*(pbo: PassBuilderOptionsRef) {.importc: "LLVMDisposePassBuilderOptions".}
-proc runPasses(module: ModuleRef, passes: cstring, machine: TargetMachineRef, pbo: PassBuilderOptionsRef): ErrorRef {.used, importc: "LLVMRunPasses".}
-
-# https://llvm.org/doxygen/group__LLVMCTarget.html
-proc addTargetLibraryInfo*(tli: TargetLibraryInfoRef, pm: PassManagerRef) {.importc: "LLVMAddTargetLibraryInfo".}
-  # There doesn't seem to be a way to instantiate TargetLibraryInfoRef :/
-proc addAnalysisPasses*(machine: TargetMachineRef, pm: PassManagerRef) {.importc: "LLVMAddAnalysisPasses".}
-
-# https://www.llvm.org/docs/Passes.html
-# -------------------------------------
-
-# https://llvm.org/doxygen/group__LLVMCTransformsInstCombine.html
-proc addInstructionCombiningPass*(pm: PassManagerRef) {.importc: "LLVMAddInstructionCombiningPass".}
-
-# https://llvm.org/doxygen/group__LLVMCTransformsUtils.html
-proc addPromoteMemoryToRegisterPass*(pm: PassManagerRef) {.importc: "LLVMAddPromoteMemoryToRegisterPass".}
-
-# https://llvm.org/doxygen/group__LLVMCTransformsScalar.html
-proc addAggressiveDeadCodeEliminationPass*(pm: PassManagerRef) {.importc: "LLVMAddAggressiveDCEPass".}
-proc addDeadStoreEliminationPass*(pm: PassManagerRef) {.importc: "LLVMAddDeadStoreEliminationPass".}
-proc addGlobalValueNumberingPass*(pm: PassManagerRef) {.importc: "LLVMAddNewGVNPass".}
-proc addMemCpyOptPass*(pm: PassManagerRef) {.importc: "LLVMAddMemCpyOptPass".}
-proc addScalarReplacementOfAggregatesPass*(pm: PassManagerRef) {.importc: "LLVMAddScalarReplAggregatesPass".}
-
-# https://llvm.org/doxygen/group__LLVMCTransformsIPO.html
-proc addDeduceFunctionAttributesPass*(pm: PassManagerRef) {.importc: "LLVMAddFunctionAttrsPass".}
-proc addFunctionInliningPass*(pm: PassManagerRef) {.importc: "LLVMAddFunctionInliningPass".}
+proc runPasses*(module: ModuleRef, passes: cstring, machine: TargetMachineRef, pbo: PassBuilderOptionsRef): ErrorRef {.used, importc: "LLVMRunPasses".}
+proc setMergeFunctions*(pbo: PassBuilderOptionsRef, mergeFunctions = LlvmBool(1)) {.importc: "LLVMPassBuilderOptionsSetMergeFunctions".}
 
 # ############################################################
 #
