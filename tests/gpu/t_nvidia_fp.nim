@@ -58,7 +58,6 @@ proc genFieldMulPTX(asy: Assembler_LLVM, cm: CurveMetadata) =
 # Init LLVM
 # -------------------------
 initializeFullNVPTXTarget()
-initializePasses()
 
 # Init GPU
 # -------------------------

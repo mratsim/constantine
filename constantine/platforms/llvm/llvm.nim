@@ -138,29 +138,6 @@ template emitToString*(t: TargetMachineRef, m: ModuleRef, codegen: CodeGenFileTy
   mb.dispose()
   emitted
 
-# Target Machine
-# ------------------------------------------------------------
-
-proc initializePasses* =
-  let registry = getGlobalPassRegistry()
-
-  registry.initializeCore()
-  registry.initializeTransformUtils()
-  registry.initializeScalarOpts()
-  registry.initializeVectorization()
-  registry.initializeInstCombine()
-  registry.initializeIPO()
-  registry.initializeAnalysis()
-  registry.initializeIPA()
-  registry.initializeCodeGen()
-  registry.initializeTarget()
-
-  # Removed in LLVM 16
-  # --------------------------------
-  # registry.initializeObjCARCOpts()
-  # registry.initializeAggressiveInstCombiner()
-  # registry.initializeInstrumentation()
-
 # Builder
 # ------------------------------------------------------------
 
