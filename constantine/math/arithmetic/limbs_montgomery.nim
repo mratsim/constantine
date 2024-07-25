@@ -309,7 +309,7 @@ func sumprodMont_CIOS_spare2bits[K: static int](
        r: var Limbs, a, b: array[K, Limbs],
        M: Limbs, m0ninv: BaseType,
        lazyReduce: static bool = false) =
-  ## Compute r = ⅀aᵢ.bᵢ (mod M) (suim of products)
+  ## Compute r = ⅀aᵢ.bᵢ (mod M) (sum of products)
   ## This requires 2 unused bits in the field element representation
   ##
   ## This maps

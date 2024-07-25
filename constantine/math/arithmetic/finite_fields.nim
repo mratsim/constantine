@@ -30,8 +30,9 @@ import
   constantine/platforms/abstractions,
   constantine/serialization/endians,
   constantine/named/properties_fields,
-  ./bigints, ./bigints_montgomery,
-  ./limbs_crandall, ./limbs_extmul
+  ./bigints,
+  ./bigints_montgomery,
+  ./bigints_crandall
 
 when UseASM_X86_64:
   import ./assembly/limbs_asm_modular_x86
@@ -257,22 +258,14 @@ func prod*(r: var FF, a, b: FF, lazyReduce: static bool = false) {.meter.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
   when FF.isCrandallPrimeField():
-    var r2 {.noInit.}: FF.Name.getLimbs2x()
-    r2.prod(a.mres.limbs, b.mres.limbs)
-    r.mres.limbs.reduce_crandall_partial(r2, FF.bits(), FF.getCrandallPrimeSubterm())
-    when not lazyReduce:
-      r.mres.limbs.reduce_crandall_final(FF.bits(), FF.getCrandallPrimeSubterm())
+    r.mres.mulCran(a.mres, b.mres, FF.getCrandallPrimeSubterm(), lazyReduce)
   else:
     r.mres.mulMont(a.mres, b.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), lazyReduce)
 
 func square*(r: var FF, a: FF, lazyReduce: static bool = false) {.meter.} =
   ## Squaring modulo p
   when FF.isCrandallPrimeField():
-    var r2 {.noInit.}: FF.Name.getLimbs2x()
-    r2.square(a.mres.limbs)
-    r.mres.limbs.reduce_crandall_partial(r2, FF.bits(), FF.getCrandallPrimeSubterm())
-    when not lazyReduce:
-      r.mres.limbs.reduce_crandall_final(FF.bits(), FF.getCrandallPrimeSubterm())
+    r.mres.squareCran(a.mres, FF.getCrandallPrimeSubterm(), lazyReduce)
   else:
     r.mres.squareMont(a.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), lazyReduce)
 
@@ -561,7 +554,12 @@ func pow*(a: var FF, exponent: BigInt) =
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer
   when FF.isCrandallPrimeField():
-    {.error: "Not implemented".}
+    const windowSize = 5 # TODO: find best window size for each curves
+    a.mres.powCran(
+      exponent,
+      windowSize,
+      FF.getCrandallPrimeSubterm()
+    )
   else:
     const windowSize = 5 # TODO: find best window size for each curves
     a.mres.powMont(
@@ -576,7 +574,12 @@ func pow*(a: var FF, exponent: openarray[byte]) =
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer in canonical big endian representation
   when FF.isCrandallPrimeField():
-    {.error: "Not implemented".}
+    const windowSize = 5 # TODO: find best window size for each curves
+    a.mres.powCran(
+      exponent,
+      windowSize,
+      FF.getCrandallPrimeSubterm()
+    )
   else:
     const windowSize = 5 # TODO: find best window size for each curves
     a.mres.powMont(
@@ -590,7 +593,6 @@ func pow*(a: var FF, exponent: FF) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a finite field element
-  const windowSize = 5 # TODO: find best window size for each curves
   a.pow(exponent.toBig())
 
 func pow*(r: var FF, a: FF, exponent: BigInt or openArray[byte] or FF) =
@@ -616,7 +618,12 @@ func pow_vartime*(a: var FF, exponent: BigInt) =
   ## - timing analysis
 
   when FF.isCrandallPrimeField():
-    {.error: "Not implemented".}
+    const windowSize = 5 # TODO: find best window size for each curves
+    a.mres.powCran_vartime(
+      exponent,
+      windowSize,
+      FF.getCrandallPrimeSubterm()
+    )
   else:
     const windowSize = 5 # TODO: find best window size for each curves
     a.mres.powMont_vartime(
@@ -639,7 +646,12 @@ func pow_vartime*(a: var FF, exponent: openarray[byte]) =
   ## - timing analysis
 
   when FF.isCrandallPrimeField():
-    {.error: "Not implemented".}
+    const windowSize = 5 # TODO: find best window size for each curves
+    a.mres.powCran_vartime(
+      exponent,
+      windowSize,
+      FF.getCrandallPrimeSubterm()
+    )
   else:
     const windowSize = 5 # TODO: find best window size for each curves
     a.mres.powMont_vartime(

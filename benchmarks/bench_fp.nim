@@ -64,15 +64,14 @@ proc main() =
     invBench(Fp[curve], ExponentIters)
     invVartimeBench(Fp[curve], ExponentIters)
     isSquareBench(Fp[curve], ExponentIters)
-    when not Fp[curve].isCrandallPrimeField(): # TODO implement
-      sqrtBench(Fp[curve], ExponentIters)
-      sqrtRatioBench(Fp[curve], ExponentIters)
-      when curve == Bandersnatch:
-        sqrtVartimeBench(Fp[curve], ExponentIters)
-        sqrtRatioVartimeBench(Fp[curve], ExponentIters)
-      # Exponentiation by a "secret" of size ~the curve order
-      powBench(Fp[curve], ExponentIters)
-      powVartimeBench(Fp[curve], ExponentIters)
+    sqrtBench(Fp[curve], ExponentIters)
+    sqrtRatioBench(Fp[curve], ExponentIters)
+    when curve == Bandersnatch:
+      sqrtVartimeBench(Fp[curve], ExponentIters)
+      sqrtRatioVartimeBench(Fp[curve], ExponentIters)
+    # Exponentiation by a "secret" of size ~the curve order
+    powBench(Fp[curve], ExponentIters)
+    powVartimeBench(Fp[curve], ExponentIters)
     separator()
 
 main()

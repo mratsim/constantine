@@ -83,32 +83,26 @@ func sumprodMont*[N: static int](
 func powMont*[mBits: static int](
        a: var BigInt[mBits], exponent: openarray[byte],
        M, one: BigInt[mBits], negInvModWord: BaseType, windowSize: static int,
-       spareBits: static int
-      ) =
+       spareBits: static int) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
   ## ``exponent`` is a BigInt in canonical big-endian representation
   ##
-  ## Warning ⚠️ :
-  ## This is an optimization for public exponent
-  ## Otherwise bits of the exponent can be retrieved with:
-  ## - memory access analysis
-  ## - power analysis
-  ## - timing analysis
-  ##
   ## This uses fixed window optimization
   ## A window size in the range [1, 5] must be chosen
+  ##
+  ## This is constant-time: the window optimization does
+  ## not reveal the exponent bits or hamming weight
 
   const scratchLen = if windowSize == 1: 2
                      else: (1 shl windowSize) + 1
-  var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
+  var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired()]]
   powMont(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, spareBits)
 
 func powMont_vartime*[mBits: static int](
        a: var BigInt[mBits], exponent: openarray[byte],
        M, one: BigInt[mBits], negInvModWord: BaseType, windowSize: static int,
-       spareBits: static int
-      ) =
+       spareBits: static int) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
   ## ``exponent`` is a BigInt in canonical big-endian representation
@@ -125,14 +119,13 @@ func powMont_vartime*[mBits: static int](
 
   const scratchLen = if windowSize == 1: 2
                      else: (1 shl windowSize) + 1
-  var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
+  var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired()]]
   powMont_vartime(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, spareBits)
 
 func powMont*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
        M, one: BigInt[mBits], negInvModWord: BaseType, windowSize: static int,
-       spareBits: static int
-      ) =
+       spareBits: static int) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
   ## ``exponent`` is any BigInt, in the canonical domain
@@ -150,8 +143,7 @@ func powMont*[mBits, eBits: static int](
 func powMont_vartime*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
        M, one: BigInt[mBits], negInvModWord: BaseType, windowSize: static int,
-       spareBits: static int
-      ) =
+       spareBits: static int) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
   ## ``exponent`` is any BigInt, in the canonical domain
