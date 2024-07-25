@@ -10,7 +10,8 @@ import  std/unittest,
         constantine/math/arithmetic,
         constantine/math/arithmetic/limbs_montgomery,
         constantine/math/io/[io_bigints, io_fields],
-        constantine/named/algebras
+        constantine/named/algebras,
+        constantine/platforms/abstractions
 
 static: doAssert defined(CTT_TEST_CURVES), "This modules requires the -d:CTT_TEST_CURVES compile option"
 
@@ -280,7 +281,7 @@ proc main() =
           # Check equality in the Montgomery domain
           bool(z == r)
           # Check equality when converting back to natural domain
-          cast[uint64](r_bytes) == 100'u64
+          new_r == 100'u64
 
       block:
         var x, y, z, r: Fp[Mersenne61]
@@ -320,7 +321,7 @@ proc largeField() =
 
     test "fromMont doesn't need a final substraction with 256-bit prime (full word used)":
       block:
-        let a = Fp[Secp256k1].getOne()
+        let a = Fp[Secp256k1].getMinusOne()
         let expected = BigInt[256].fromHex"0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E"
 
         var r: BigInt[256]
@@ -338,13 +339,13 @@ proc largeField() =
         var r, expected: BigInt[256]
 
         r.fromField(a)
-        expected.limbs.redc2xMont(d.limbs2x, Secp256k1.Mod().limbs, Fp[Secp256k1].getNegInvModWord(), Fp[Secp256k1].getSpareBits())
+        expected.limbs.redc2xMont(d.limbs2x, Fp[Secp256k1].getModulus().limbs, Fp[Secp256k1].getNegInvModWord(), Fp[Secp256k1].getSpareBits())
 
         check: bool(r == expected)
 
     test "fromMont doesn't need a final substraction with 255-bit prime (1 spare bit)":
       block:
-        let a = Fp[Edwards25519].getOne()
+        let a = Fp[Edwards25519].getMinusOne()
         let expected = BigInt[255].fromHex"0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"
 
         var r: BigInt[255]
@@ -362,7 +363,7 @@ proc largeField() =
         var r, expected: BigInt[255]
 
         r.fromField(a)
-        expected.limbs.redc2xMont(d.limbs2x, Edwards25519.Mod().limbs, Fp[Edwards25519].getNegInvModWord(), Fp[Edwards25519].getSpareBits())
+        expected.limbs.redc2xMont(d.limbs2x, Fp[Edwards25519].getModulus().limbs, Fp[Edwards25519].getNegInvModWord(), Fp[Edwards25519].getSpareBits())
 
         check: bool(r == expected)
 

@@ -531,8 +531,17 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
       return $(op.offset * a.wordSize) & "%" & op.desc.asmId
     else:
       error "Unconfigured compiler"
-  elif op.desc.rm == PointerInReg or
-       op.desc.rm in SpecificRegisters or
+  elif op.desc.rm == PointerInReg:
+    if sizeof(int) == 8: # We might compile in 32-bit mode on a 64-bit machine
+                         # in that case the pointer will be 64-bit, not 32
+      if op.offset == 0:
+        return "0(%q" & op.desc.asmId & ')'
+      return $(op.offset * a.wordSize) & "(%q" & op.desc.asmId & ')'
+    else:
+      if op.offset == 0:
+        return "0(%k" & op.desc.asmId & ')'
+      return $(op.offset * a.wordSize) & "(%k" & op.desc.asmId & ')'
+  elif op.desc.rm in SpecificRegisters or
        (op.desc.rm == ElemsInReg and op.kind == kFromArray):
     if a.wordBitWidth == 64:
       if op.offset == 0:

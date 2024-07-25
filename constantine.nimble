@@ -86,7 +86,7 @@ proc getEnvVars(): tuple[useAsmIfAble, force32, forceLto, useLtoDefault: bool] =
   else:
     result.useAsmIfAble = true
   if existsEnv"CTT_32":
-    result.force32 = parseBool(getEnv"CTT_ASM")
+    result.force32 = parseBool(getEnv"CTT_32")
   else:
     result.force32 = false
   if existsEnv"CTT_LTO":
@@ -190,7 +190,7 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
   #   "-s -flinker-output=nolto-rel"
   #   with an extra C compiler call
   #   to consolidate all objects into one.
-  let ltoFlags = " -d:lto " & # " --UseAsmSyntaxIntel --passC:-flto=auto --passL:-flto=auto "
+  let ltoFlags = " -d:lto " & # " -d:UseAsmSyntaxIntel --passC:-flto=auto --passL:-flto=auto "
                  # With LTO, the GCC linker produces lots of spurious warnings when copying into openArrays/strings
                  " --passC:-Wno-stringop-overflow --passL:-Wno-stringop-overflow " &
                  " --passC:-Wno-alloc-size-larger-than --passL:-Wno-alloc-size-larger-than "

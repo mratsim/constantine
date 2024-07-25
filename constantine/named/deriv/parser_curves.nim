@@ -26,7 +26,6 @@ template getCoef(c: CurveCoef, curveName: untyped): untyped {.dirty.}=
   case c.kind
   of NoCoef:
     error "Unreachable"
-    nnkDiscardStmt.newTree(newLit "Dummy")
   of Small:
     newLit c.coef
   of Large:
