@@ -25,7 +25,9 @@ export Algebra, CurveFamily, SexticTwist
 template getCoef(c: CurveCoef, curveName: untyped): untyped {.dirty.}=
   case c.kind
   of NoCoef:
-    error "Unreachable"
+    {.warning[UnreachableCode]: off.}: # we need to keep the discard for 1.6.x compat
+      error "Unreachable"
+      nnkDiscardStmt.newTree(newLit "Dummy")
   of Small:
     newLit c.coef
   of Large:
