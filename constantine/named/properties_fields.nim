@@ -97,6 +97,14 @@ template getBigInt*[Name: static Algebra](T: type FF[Name]): untyped =
   ## Get the underlying BigInt type.
   typeof(default(T).mres)
 
+template isCrandallPrimeField*(F: type Fr): static bool = false
+
+macro isCrandallPrimeField*[Name: static Algebra](F: type Fp[Name]): static bool =
+  result = bindSym($Name & "_fp_isCrandall")
+
+macro getCrandallPrimeSubterm*[Name: static Algebra](F: type Fp[Name]): static SecretWord =
+  result = newcall(bindSym"SecretWord", bindSym($Name & "_fp_CrandallSubTerm"))
+
 func bits*[Name: static Algebra](T: type FF[Name]): static int =
   T.getBigInt().bits
 

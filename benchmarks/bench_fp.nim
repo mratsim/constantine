@@ -55,22 +55,24 @@ proc main() =
     sqr2xUnrBench(Fp[curve], Iters)
     rdc2xBench(Fp[curve], Iters)
     smallSeparator()
-    sumprodBench(Fp[curve], Iters)
-    smallSeparator()
+    when not Fp[curve].isCrandallPrimeField():
+      sumprodBench(Fp[curve], Iters)
+      smallSeparator()
     toBigBench(Fp[curve], Iters)
     toFieldBench(Fp[curve], Iters)
     smallSeparator()
     invBench(Fp[curve], ExponentIters)
     invVartimeBench(Fp[curve], ExponentIters)
     isSquareBench(Fp[curve], ExponentIters)
-    sqrtBench(Fp[curve], ExponentIters)
-    sqrtRatioBench(Fp[curve], ExponentIters)
-    when curve == Bandersnatch:
-      sqrtVartimeBench(Fp[curve], ExponentIters)
-      sqrtRatioVartimeBench(Fp[curve], ExponentIters)
-    # Exponentiation by a "secret" of size ~the curve order
-    powBench(Fp[curve], ExponentIters)
-    powVartimeBench(Fp[curve], ExponentIters)
+    when not Fp[curve].isCrandallPrimeField(): # TODO implement
+      sqrtBench(Fp[curve], ExponentIters)
+      sqrtRatioBench(Fp[curve], ExponentIters)
+      when curve == Bandersnatch:
+        sqrtVartimeBench(Fp[curve], ExponentIters)
+        sqrtRatioVartimeBench(Fp[curve], ExponentIters)
+      # Exponentiation by a "secret" of size ~the curve order
+      powBench(Fp[curve], ExponentIters)
+      powVartimeBench(Fp[curve], ExponentIters)
     separator()
 
 main()

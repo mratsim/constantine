@@ -183,6 +183,7 @@ declareCurves:
   curve Edwards25519: # Bernstein curve
     bitwidth: 255
     modulus: "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"
+    modulusKind: Crandall(19)
 
     # Montgomery form:            y² = x³ + 486662x² + x
     # Edwards form:          x² + y² = 1+dx²y²           with d = 121665/121666
@@ -221,6 +222,8 @@ declareCurves:
   curve Secp256k1: # Bitcoin curve
     bitwidth: 256
     modulus: "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"
+    modulusKind: Crandall(0x1000003D1'u64)
+
     order: "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"
     orderBitwidth: 256
     eq_form: ShortWeierstrass

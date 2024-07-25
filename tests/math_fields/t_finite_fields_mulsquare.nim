@@ -28,7 +28,7 @@ echo "test_finite_fields_mulsquare xoshiro512** seed: ", seed
 static: doAssert defined(CTT_TEST_CURVES), "This modules requires the -d:CTT_TEST_CURVES compile option"
 
 proc sanity(Name: static Algebra) =
-  test "Squaring 0,1,2 with " & $Name & " [FastSquaring = " & $(Fp[Name].getSpareBits() >= 2) & "]":
+  test "Squaring 0,1,2 with " & $Algebra(C) & " [FastSquaring = " & $(Fp[Name].getSpareBits() >= 2) & "]":
         block: # 0² mod
           var n: Fp[Name]
 

@@ -24,6 +24,10 @@ import
 #   for example when using the `r2modP` constant in multiple overloads in the same module
 
 type
+  PrimeKind* = enum
+    kGeneric
+    kCrandall # Crandall Prime are in the form 2ᵐ-c (also called pseudo-Mersenne primes)
+
   CurveFamily* = enum
     NoFamily
     BarretoNaehrig   # BN curve
@@ -95,6 +99,8 @@ type
     # Field parameters
     bitWidth*: NimNode # nnkIntLit
     modulus*: NimNode  # nnkStrLit (hex)
+    modulusKind*: PrimeKind
+    modulusKindAssociatedValue*: BiggestInt
 
     # Towering
     nonresidue_fp*: NimNode # nnkIntLit
@@ -170,13 +176,20 @@ proc parseCurveDecls*(defs: var seq[CurveParams], curves: NimNode) =
       curveParams[i][1].expectKind(nnkStmtList)
       let sectionVal = curveParams[i][1][0]
 
+      # Field
       if sectionId.eqIdent"bitwidth":
         params.bitWidth = sectionVal
       elif sectionId.eqident"modulus":
         params.modulus = sectionVal
+      elif sectionId.eqIdent"modulusKind":
+        sectionVal.expectKind(nnkCall)
+        sectionVal[0].expectIdent"Crandall"
+        params.modulusKind = kCrandall
+        params.modulusKindAssociatedValue = sectionVal[1].intVal
+
+      # Curve
       elif sectionId.eqIdent"family":
         params.family = parseEnum[CurveFamily]($sectionVal)
-
       elif sectionId.eqIdent"eq_form":
         params.eq_form = parseEnum[CurveEquationForm]($sectionVal)
       elif sectionId.eqIdent"coef_a":
@@ -217,6 +230,7 @@ proc parseCurveDecls*(defs: var seq[CurveParams], curves: NimNode) =
       elif sectionId.eqIdent"nonresidue_fp2":
         params.nonresidue_fp2 = sectionVal
 
+      # Pairings
       elif sectionId.eqIdent"embedding_degree":
         params.embedding_degree = sectionVal.intVal.int
       elif sectionId.eqIdent"sexticTwist":
@@ -242,6 +256,7 @@ proc genFieldsConstants(defs: seq[CurveParams]): NimNode =
   var MapCurveBitWidth = nnkBracket.newTree()
   var MapCurveOrderBitWidth = nnkBracket.newTree()
   var curveModStmts = newStmtList()
+  var crandallStmts = newStmtList()
 
   for curveDef in defs:
 
@@ -271,6 +286,15 @@ proc genFieldsConstants(defs: seq[CurveParams]): NimNode =
       )
     )
 
+    crandallStmts.add newConstStmt(
+      exported($curve & "_fp_isCrandall"),
+      newLit(curveDef.modulusKind == kCrandall)
+    )
+    if curveDef.modulusKind == kCrandall:
+      crandallStmts.add newConstStmt(
+        exported($curve & "_fp_CrandallSubTerm"),
+        newCall(bindsym"uint64", newLit(curveDef.modulusKindAssociatedValue))
+      )
     # Field Fr
     if not curveDef.order.isNil:
       curveDef.orderBitwidth.expectKind(nnkIntLit)
@@ -316,6 +340,7 @@ proc genFieldsConstants(defs: seq[CurveParams]): NimNode =
     exported("CurveBitWidth"), MapCurveBitWidth
   )
   result.add curveModStmts
+  result.add crandallStmts
   # const CurveOrderBitSize: array[Curve, int] = ...
   result.add newConstStmt(
     exported("CurveOrderBitWidth"), MapCurveOrderBitWidth
