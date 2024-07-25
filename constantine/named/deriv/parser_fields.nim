@@ -290,11 +290,10 @@ proc genFieldsConstants(defs: seq[CurveParams]): NimNode =
       exported($curve & "_fp_isCrandall"),
       newLit(curveDef.modulusKind == kCrandall)
     )
-    if curveDef.modulusKind == kCrandall:
-      crandallStmts.add newConstStmt(
-        exported($curve & "_fp_CrandallSubTerm"),
-        newCall(bindsym"uint64", newLit(curveDef.modulusKindAssociatedValue))
-      )
+    crandallStmts.add newConstStmt(
+      exported($curve & "_fp_CrandallSubTerm"),
+      newCall(bindsym"uint64", newLit(curveDef.modulusKindAssociatedValue))
+    )
     # Field Fr
     if not curveDef.order.isNil:
       curveDef.orderBitwidth.expectKind(nnkIntLit)

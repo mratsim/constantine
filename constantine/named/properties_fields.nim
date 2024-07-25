@@ -99,11 +99,18 @@ template getBigInt*[Name: static Algebra](T: type FF[Name]): untyped =
 
 template isCrandallPrimeField*(F: type Fr): static bool = false
 
-macro isCrandallPrimeField*[Name: static Algebra](F: type Fp[Name]): static bool =
-  result = bindSym($Name & "_fp_isCrandall")
-
 macro getCrandallPrimeSubterm*[Name: static Algebra](F: type Fp[Name]): static SecretWord =
   result = newcall(bindSym"SecretWord", bindSym($Name & "_fp_CrandallSubTerm"))
+
+macro isCrandallPrimeField*[Name: static Algebra](F: type Fp[Name]): static bool =
+  let rawCrandall = bindSym($Name & "_fp_isCrandall")
+  let subTerm = bindSym($Name & "_fp_CrandallSubTerm")
+  result = quote do:
+    when `rawCrandall`:
+      when `subTerm` < (1'u64 shl (WordBitWidth shr 1)) - 1:
+        true
+      else: false
+    else: false
 
 func bits*[Name: static Algebra](T: type FF[Name]): static int =
   T.getBigInt().bits

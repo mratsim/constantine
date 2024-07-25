@@ -128,7 +128,9 @@ func reduce_crandall_partial_impl[N: static int](
     addC(carry, r[0], r[0], t0, Carry(0))
     addC(carry, r[1], r[1], t1, carry)
 
-  elif BaseType(cs*cs) < BaseType(MaxWord):
+  # We want to ensure that cs² < 2³² on 64-bit or 2¹⁶ on 32-bit
+  # But doing unsigned cs² may overflow, so we sqrt the rhs instead
+  elif uint64(cs) < (1'u64 shl (WordBitWidth shr 1)) - 1:
     var carry: Carry
 
     # Second pass
@@ -145,16 +147,16 @@ func reduce_crandall_partial_impl[N: static int](
 
 func reduce_crandall_final_impl[N: static int](
         a: var Limbs[N],
-        bits: int,
-        c: SecretWord) =
+        bits: static int,
+        c: static SecretWord) =
   ## Final Reduction modulo p
   ## with p with special form 2ᵐ-c
   ## called "Crandall prime" or Pseudo-Mersenne Prime in the litterature
   ##
   ## This reduces `a` from [0, 2ᵐ) to [0, 2ᵐ-c)
-  let S = (N*WordBitWidth - bits)
-  let top = MaxWord shr S
-  debug: doAssert 0 <= S and S < WordBitWidth
+  const S = (N*WordBitWidth - bits)
+  const top = MaxWord shr S
+  static: doAssert 0 <= S and S < WordBitWidth
 
   # 1. Substract p = 2ᵐ-c
   #    p is in the form 0x7FFF...FFFF`c` (7FFF or 3FFF or ... depending of 255-bit 254-bit ...)
