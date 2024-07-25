@@ -31,13 +31,13 @@ echo "\n------------------------------------------------------\n"
 
 template ExtField(degree: static int, name: static Algebra): untyped =
   when degree == 2:
-    Fp2[curve]
+    Fp2[name]
   elif degree == 4:
-    Fp4[curve]
+    Fp4[name]
   elif degree == 6:
-    Fp6[curve]
+    Fp6[name]
   elif degree == 12:
-    Fp12[curve]
+    Fp12[name]
   else:
     {.error: "Unconfigured extension degree".}
 
@@ -58,7 +58,7 @@ func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, no
 proc runTowerTests*[N](
       ExtDegree: static int,
       Iters: static int,
-      TestCurves: static array[N, Curve],
+      TestCurves: static array[N, Algebra],
       moduleName: string,
       testSuiteDesc: string
     ) =
