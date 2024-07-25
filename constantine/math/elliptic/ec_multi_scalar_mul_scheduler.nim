@@ -490,7 +490,7 @@ func sparseVectorAddition[ECaff](
     elif i == numScheduled-1:
       accumDen[i].prod(accumDen[i-1], lambdas[i].den)
     else:
-      accumDen[i].prod(accumDen[i-1], lambdas[i].den, skipFinalReduction = true)
+      accumDen[i].prod(accumDen[i-1], lambdas[i].den, lazyReduce = true)
 
   # Step 3: Batch invert
   var accInv {.noInit.}: F
@@ -516,8 +516,8 @@ func sparseVectorAddition[ECaff](
       continue
 
     # Compute lambda - destroys accumDen[i]
-    accumDen[i].prod(accInv, accumDen[i-1], skipFinalReduction = true)
-    accumDen[i].prod(accumDen[i], lambdas[i].num, skipFinalReduction = true)
+    accumDen[i].prod(accInv, accumDen[i-1], lazyReduce = true)
+    accumDen[i].prod(accumDen[i], lambdas[i].num, lazyReduce = true)
 
     # Compute EC addition
     var r{.noInit.}: ECaff
@@ -527,7 +527,7 @@ func sparseVectorAddition[ECaff](
     buckets[sps[i].bucket] = r
 
     # Next iteration
-    accInv.prod(accInv, lambdas[i].den, skipFinalReduction = true)
+    accInv.prod(accInv, lambdas[i].den, lazyReduce = true)
 
   block: # tail
     if specialCases[0] == kInfLhs:
@@ -543,7 +543,7 @@ func sparseVectorAddition[ECaff](
       bucketStatuses[sps[0].bucket].excl(kAffine)
     else:
       # Compute lambda
-      accumDen[0].prod(lambdas[0].num, accInv, skipFinalReduction = true)
+      accumDen[0].prod(lambdas[0].num, accInv, lazyReduce = true)
 
       # Compute EC addition
       var r{.noInit.}: ECaff

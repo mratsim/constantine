@@ -72,15 +72,15 @@ func `==`*(P, Q: EC_ShortW_Jac): SecretBool {.meter.} =
   var z1z1 {.noInit.}, z2z2 {.noInit.}: F
   var a{.noInit.}, b{.noInit.}: F
 
-  z1z1.square(P.z, skipFinalReduction = true)
-  z2z2.square(Q.z, skipFinalReduction = true)
+  z1z1.square(P.z, lazyReduce = true)
+  z2z2.square(Q.z, lazyReduce = true)
 
   a.prod(P.x, z2z2)
   b.prod(Q.x, z1z1)
   result = a == b
 
-  a.prod(P.y, Q.z, skipFinalReduction = true)
-  b.prod(Q.y, P.z, skipFinalReduction = true)
+  a.prod(P.y, Q.z, lazyReduce = true)
+  b.prod(Q.y, P.z, lazyReduce = true)
   a *= z2z2
   b *= z1z1
   result = result and a == b
@@ -120,9 +120,9 @@ func trySetFromCoordsXandZ*[F; G](
   result = sqrt_if_square(P.y)
 
   var z2 {.noInit.}: F
-  z2.square(z, skipFinalReduction = true)
+  z2.square(z, lazyReduce = true)
   P.x.prod(x, z2)
-  P.y.prod(P.y, z2, skipFinalReduction = true)
+  P.y.prod(P.y, z2, lazyReduce = true)
   P.y *= z
   P.z = z
 
@@ -231,13 +231,13 @@ template sumImpl[F; G: static Subgroup](
 
   block: # Addition-only, check for exceptional cases
     var Z2Z2 {.noInit.}, U2 {.noInit.}, S2 {.noInit.}: F
-    Z2Z2.square(Q.z, skipFinalReduction = true)
-    S1.prod(Q.z, Z2Z2, skipFinalReduction = true)
+    Z2Z2.square(Q.z, lazyReduce = true)
+    S1.prod(Q.z, Z2Z2, lazyReduce = true)
     S1 *= P.y           # S₁ = Y₁*Z₂³
     U1.prod(P.x, Z2Z2)  # U₁ = X₁*Z₂²
 
-    Z1Z1.square(P.z, skipFinalReduction = not CoefA_eq_minus3)
-    S2.prod(P.z, Z1Z1, skipFinalReduction = true)
+    Z1Z1.square(P.z, lazyReduce = not CoefA_eq_minus3)
+    S2.prod(P.z, Z1Z1, lazyReduce = true)
     S2 *= Q.y           # S₂ = Y₂*Z₁³
     U2.prod(Q.x, Z1Z1)  # U₂ = X₂*Z₁²
 
@@ -301,7 +301,7 @@ template sumImpl[F; G: static Subgroup](
       HHH_or_Mpre.prod(a, b)  # HHH or X₁²
 
       # Assuming doubling path
-      a.square(HHH_or_Mpre, skipFinalReduction = true)
+      a.square(HHH_or_Mpre, lazyReduce = true)
       a *= HHH_or_Mpre              # a = 3X₁²
       b.square(Z1Z1)
       b.mulCheckSparse(CoefA)       # b = αZZ, with α the "a" coefficient of the curve
@@ -453,8 +453,8 @@ func mixedSum*[F; G: static Subgroup](
     U1 = P.x
     S1 = P.y
 
-    Z1Z1.square(P.z, skipFinalReduction = not CoefA_eq_minus3)
-    S2.prod(P.z, Z1Z1, skipFinalReduction = true)
+    Z1Z1.square(P.z, lazyReduce = not CoefA_eq_minus3)
+    S2.prod(P.z, Z1Z1, lazyReduce = true)
     S2 *= Q.y           # S₂ = Y₂*Z₁³
     U2.prod(Q.x, Z1Z1)  # U₂ = X₂*Z₁²
 
@@ -518,7 +518,7 @@ func mixedSum*[F; G: static Subgroup](
       HHH_or_Mpre.prod(a, b)        # HHH or X₁²
 
       # Assuming doubling path
-      a.square(HHH_or_Mpre, skipFinalReduction = true)
+      a.square(HHH_or_Mpre, lazyReduce = true)
       a *= HHH_or_Mpre              # a = 3X₁²
       b.square(Z1Z1)
       b.mulCheckSparse(CoefA)       # b = αZZ, with α the "a" coefficient of the curve
@@ -669,10 +669,10 @@ func affine*[F; G](
        jac: EC_ShortW_Jac[F, G]) {.meter.} =
   var invZ {.noInit.}, invZ2{.noInit.}: F
   invZ.inv(jac.z)
-  invZ2.square(invZ, skipFinalReduction = true)
+  invZ2.square(invZ, lazyReduce = true)
 
   aff.x.prod(jac.x, invZ2)
-  invZ.prod(invZ, invZ2, skipFinalReduction = true)
+  invZ.prod(invZ, invZ2, lazyReduce = true)
   aff.y.prod(jac.y, invZ)
 
 func fromAffine*[F; G](
@@ -741,7 +741,7 @@ func sum_vartime*[F; G: static Subgroup](
   var U {.noInit.}, S{.noInit.}, H{.noInit.}, R{.noInit.}: F
 
   if not isPz1:                            # case Z₁ != 1
-    R.square(p.z, skipFinalReduction = true)     #   Z₁Z₁ = Z₁²
+    R.square(p.z, lazyReduce = true)     #   Z₁Z₁ = Z₁²
   if isQz1:                                # case Z₂ = 1
     U = p.x                                #   U₁ = X₁*Z₂Z₂
     if isPz1:                              #   case Z₁ = Z₂ = 1
@@ -751,19 +751,19 @@ func sum_vartime*[F; G: static Subgroup](
     H -= U                                 #   H  = U₂-U₁
     S = p.y                                #   S₁ = Y₁*Z₂*Z₂Z₂
   else:                                    # case Z₂ != 1
-    S.square(q.z, skipFinalReduction = true)
+    S.square(q.z, lazyReduce = true)
     U.prod(p.x, S)                         #   U₁ = X₁*Z₂Z₂
     if isPz1:
       H = q.x
     else:
       H.prod(q.x, R)
     H -= U                                 #   H  = U₂-U₁
-    S.prod(S, q.z, skipFinalReduction = true)
+    S.prod(S, q.z, lazyReduce = true)
     S *= p.y                               #   S₁ = Y₁*Z₂*Z₂Z₂
   if isPz1:
     R = q.y
   else:
-    R.prod(R, p.z, skipFinalReduction = true)
+    R.prod(R, p.z, lazyReduce = true)
     R *= q.y                               #   S₂ = Y₂*Z₁*Z₁Z₁
   R -= S                                   # R  = S₂-S₁
 
@@ -778,7 +778,7 @@ func sum_vartime*[F; G: static Subgroup](
   var HHH{.noInit.}: F
   template V: untyped = U
 
-  HHH.square(H, skipFinalReduction = true)
+  HHH.square(H, lazyReduce = true)
   V *= HHH                                # V   = U₁*HH
   HHH *= H                                # HHH = H*HH
 
@@ -804,7 +804,7 @@ func sum_vartime*[F; G: static Subgroup](
     if isQz1:
       r.z.prod(H, p.z)
     else:
-      r.z.prod(p.z, q.z, skipFinalReduction = true)
+      r.z.prod(p.z, q.z, lazyReduce = true)
       r.z *= H
 
 func mixedSum_vartime*[F; G: static Subgroup](
@@ -857,7 +857,7 @@ func mixedSum_vartime*[F; G: static Subgroup](
   var U {.noInit.}, S{.noInit.}, H{.noInit.}, R{.noInit.}: F
 
   if not isPz1:                            # case Z₁ != 1
-    R.square(p.z, skipFinalReduction = true)     #   Z₁Z₁ = Z₁²
+    R.square(p.z, lazyReduce = true)     #   Z₁Z₁ = Z₁²
 
   U = p.x                                  #   U₁ = X₁*Z₂Z₂
   if isPz1:                                #   case Z₁ = Z₂ = 1
@@ -870,7 +870,7 @@ func mixedSum_vartime*[F; G: static Subgroup](
   if isPz1:
     R = q.y
   else:
-    R.prod(R, p.z, skipFinalReduction = true)
+    R.prod(R, p.z, lazyReduce = true)
     R *= q.y                               #   S₂ = Y₂*Z₁*Z₁Z₁
   R -= S                                   # R  = S₂-S₁
 
@@ -885,7 +885,7 @@ func mixedSum_vartime*[F; G: static Subgroup](
   var HHH{.noInit.}: F
   template V: untyped = U
 
-  HHH.square(H, skipFinalReduction = true)
+  HHH.square(H, lazyReduce = true)
   V *= HHH                                # V   = U₁*HH
   HHH *= H                                # HHH = H*HH
 

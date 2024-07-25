@@ -253,30 +253,30 @@ func double*(r: var FF, a: FF) {.meter.} =
     overflowed = overflowed or not(r.mres < FF.getModulus())
     discard csub(r.mres, FF.getModulus(), overflowed)
 
-func prod*(r: var FF, a, b: FF, skipFinalReduction: static bool = false) {.meter.} =
+func prod*(r: var FF, a, b: FF, lazyReduce: static bool = false) {.meter.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
   when FF.isCrandallPrimeField():
     var r2 {.noInit.}: FF.Name.getLimbs2x()
     r2.prod(a.mres.limbs, b.mres.limbs)
     r.mres.limbs.reduce_crandall_partial(r2, FF.bits(), FF.getCrandallPrimeSubterm())
-    when not skipFinalReduction:
+    when not lazyReduce:
       r.mres.limbs.reduce_crandall_final(FF.bits(), FF.getCrandallPrimeSubterm())
   else:
-    r.mres.mulMont(a.mres, b.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalReduction)
+    r.mres.mulMont(a.mres, b.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), lazyReduce)
 
-func square*(r: var FF, a: FF, skipFinalReduction: static bool = false) {.meter.} =
+func square*(r: var FF, a: FF, lazyReduce: static bool = false) {.meter.} =
   ## Squaring modulo p
   when FF.isCrandallPrimeField():
     var r2 {.noInit.}: FF.Name.getLimbs2x()
     r2.square(a.mres.limbs)
     r.mres.limbs.reduce_crandall_partial(r2, FF.bits(), FF.getCrandallPrimeSubterm())
-    when not skipFinalReduction:
+    when not lazyReduce:
       r.mres.limbs.reduce_crandall_final(FF.bits(), FF.getCrandallPrimeSubterm())
   else:
-    r.mres.squareMont(a.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalReduction)
+    r.mres.squareMont(a.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), lazyReduce)
 
-func sumprod*[N: static int](r: var FF, a, b: array[N, FF], skipFinalReduction: static bool = false) {.meter.} =
+func sumprod*[N: static int](r: var FF, a, b: array[N, FF], lazyReduce: static bool = false) {.meter.} =
   ## Compute r <- ⅀aᵢ.bᵢ (mod M) (sum of products)
   # We rely on FF and Bigints having the same repr to avoid array copies
   when FF.isCrandallPrimeField():
@@ -285,7 +285,7 @@ func sumprod*[N: static int](r: var FF, a, b: array[N, FF], skipFinalReduction: 
     r.mres.sumprodMont(
       cast[ptr array[N, typeof(a[0].mres)]](a.unsafeAddr)[],
       cast[ptr array[N, typeof(b[0].mres)]](b.unsafeAddr)[],
-      FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalReduction)
+      FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), lazyReduce)
 
 # ############################################################
 #
@@ -412,23 +412,23 @@ func `*=`*(a: var FF, b: FF) {.meter.} =
   ## Multiplication modulo p
   a.prod(a, b)
 
-func square*(a: var FF, skipFinalReduction: static bool = false) {.meter.} =
+func square*(a: var FF, lazyReduce: static bool = false) {.meter.} =
   ## Squaring modulo p
-  a.square(a, skipFinalReduction)
+  a.square(a, lazyReduce)
 
-func square_repeated*(a: var FF, num: int, skipFinalReduction: static bool = false) {.meter.} =
+func square_repeated*(a: var FF, num: int, lazyReduce: static bool = false) {.meter.} =
   ## Repeated squarings
   ## Assumes at least 1 squaring
   for _ in 0 ..< num-1:
-    a.square(skipFinalReduction = true)
-  a.square(skipFinalReduction)
+    a.square(lazyReduce = true)
+  a.square(lazyReduce)
 
-func square_repeated*(r: var FF, a: FF, num: int, skipFinalReduction: static bool = false) {.meter.} =
+func square_repeated*(r: var FF, a: FF, num: int, lazyReduce: static bool = false) {.meter.} =
   ## Repeated squarings
-  r.square(a, skipFinalReduction = true)
+  r.square(a, lazyReduce = true)
   for _ in 1 ..< num-1:
-    r.square(skipFinalReduction = true)
-  r.square(skipFinalReduction)
+    r.square(lazyReduce = true)
+  r.square(lazyReduce)
 
 func `*=`*(a: var FF, b: static int) =
   ## Multiplication by a small integer known at compile-time
@@ -692,27 +692,27 @@ func pow_squareMultiply_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[Va
   for e in 0 ..< eBytes.len-1:
     let e = eBytes[e]
     for i in countdown(7, 0):
-      a.square(skipFinalReduction = true)
+      a.square(lazyReduce = true)
       let bit = bool((e shr i) and 1)
       if bit:
-        a.prod(a, aa, skipFinalReduction = true)
+        a.prod(a, aa, lazyReduce = true)
 
   let e = eBytes[eBytes.len-1]
   block: # Epilogue, byte-level
     for i in countdown(7, 1):
-          a.square(skipFinalReduction = true)
+          a.square(lazyReduce = true)
           let bit = bool((e shr i) and 1)
           if bit:
-            a.prod(a, aa, skipFinalReduction = true)
+            a.prod(a, aa, lazyReduce = true)
 
   block: # Epilogue, bit-level
     # for the very last bit we can't skip final substraction
     let bit = bool(e and 1)
     if bit:
-      a.square(skipFinalReduction = true)
-      a.prod(a, aa, skipFinalReduction = false)
+      a.square(lazyReduce = true)
+      a.prod(a, aa, lazyReduce = false)
     else:
-      a.square(skipFinalReduction = false)
+      a.square(lazyReduce = false)
 
 func pow_addchain_4bit_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[VarTime], meter.} =
   ## **Variable-time** Exponentiation
@@ -726,69 +726,69 @@ func pow_addchain_4bit_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[Var
     a.square()
   of 3:
     var t {.noInit.}: typeof(a)
-    t.square(a, skipFinalReduction = true)
+    t.square(a, lazyReduce = true)
     a *= t
   of 4:
     a.square_repeated(2)
   of 5:
     var t {.noInit.}: typeof(a)
-    t.square_repeated(a, 2, skipFinalReduction = true)
+    t.square_repeated(a, 2, lazyReduce = true)
     a *= t
   of 6:
     var t {.noInit.}: typeof(a)
-    t.square(a, skipFinalReduction = true)
-    t.prod(t, a, skipFinalReduction = true) # 3
+    t.square(a, lazyReduce = true)
+    t.prod(t, a, lazyReduce = true) # 3
     a.square(t)
   of 7:
     var t {.noInit.}: typeof(a)
-    t.square(a, skipFinalReduction = true)
-    a.prod(a, t, skipFinalReduction = true) # 3
-    t.square(skipFinalReduction = true)  # 4
+    t.square(a, lazyReduce = true)
+    a.prod(a, t, lazyReduce = true) # 3
+    t.square(lazyReduce = true)  # 4
     a *= t
   of 8:
     a.square_repeated(3)
   of 9:
     var t {.noInit.}: typeof(a)
-    t.square_repeated(a, 3, skipFinalReduction = true)
+    t.square_repeated(a, 3, lazyReduce = true)
     a *= t
   of 10:
     var t {.noInit.}: typeof(a)
-    t.square_repeated(a, 2, skipFinalReduction = true)  # 4
-    a.prod(a, t, skipFinalReduction = true)             # 5
+    t.square_repeated(a, 2, lazyReduce = true)  # 4
+    a.prod(a, t, lazyReduce = true)             # 5
     a.square()
   of 11:
     var t {.noInit.}: typeof(a)
-    t.square_repeated(a, 2, skipFinalReduction = true)  # 4
-    t.prod(t, a, skipFinalReduction = true)             # 5
-    t.square(skipFinalReduction = true)                 # 10
+    t.square_repeated(a, 2, lazyReduce = true)  # 4
+    t.prod(t, a, lazyReduce = true)             # 5
+    t.square(lazyReduce = true)                 # 10
     a *= t
   of 12:
     var t {.noInit.}: typeof(a)
-    t.square(a, skipFinalReduction = true)
-    t.prod(t, a, skipFinalReduction = true)  # 3
-    t.square(skipFinalReduction = true)      # 6
+    t.square(a, lazyReduce = true)
+    t.prod(t, a, lazyReduce = true)  # 3
+    t.square(lazyReduce = true)      # 6
     a.square(t)                        # 12
   of 13:
     var t1 {.noInit.}, t2 {.noInit.}: typeof(a)
-    t1.square_repeated(a, 2, skipFinalReduction = true) # 4
-    t2.square(t1, skipFinalReduction = true)            # 8
-    t1.prod(t1, t2, skipFinalReduction = true)          # 12
+    t1.square_repeated(a, 2, lazyReduce = true) # 4
+    t2.square(t1, lazyReduce = true)            # 8
+    t1.prod(t1, t2, lazyReduce = true)          # 12
     a *= t1                                       # 13
   of 14:
     var t {.noInit.}: typeof(a)
-    t.square(a, skipFinalReduction = true)   # 2
+    t.square(a, lazyReduce = true)   # 2
     a *= t                             # 3
-    t.square_repeated(2, skipFinalReduction = true) # 8
-    a.square(skipFinalReduction = true)      # 6
+    t.square_repeated(2, lazyReduce = true) # 8
+    a.square(lazyReduce = true)      # 6
     a *= t                             # 14
   of 15:
     var t {.noInit.}: typeof(a)
-    t.square(a, skipFinalReduction = true)
-    t.prod(t, a, skipFinalReduction = true)            # 3
-    a.square_repeated(t, 2, skipFinalReduction = true) # 12
+    t.square(a, lazyReduce = true)
+    t.prod(t, a, lazyReduce = true)            # 3
+    a.square_repeated(t, 2, lazyReduce = true) # 12
     a *= t                                       # 15
   of 16:
-    a.square_repeated(4, skipFinalReduction = true)
+    a.square_repeated(4, lazyReduce = true)
   else:
     doAssert false, "exponentiation by this small int '" & $exponent & "' is not implemented"
 
@@ -837,7 +837,7 @@ import std/macros
 
 macro addchain*(fn: untyped): untyped =
   ## Modify all prod, `*=`, square, square_repeated calls
-  ## to skipFinalReduction except the very last call.
+  ## to lazyReduce except the very last call.
   ## This assumes straight-line code.
   fn.expectKind(nnkFuncDef)
 
@@ -902,9 +902,9 @@ func batchInv*[F](
 
     dst[i] = acc
     if i != N-1:
-      acc.prod(acc, z, skipFinalReduction = true)
+      acc.prod(acc, z, lazyReduce = true)
     else:
-      acc.prod(acc, z, skipFinalReduction = false)
+      acc.prod(acc, z, lazyReduce = false)
 
   acc.inv()
 
@@ -916,7 +916,7 @@ func batchInv*[F](
     # next iteration
     var eli = elements[i]
     eli.csetOne(zeros[i])
-    acc.prod(acc, eli, skipFinalReduction = true)
+    acc.prod(acc, eli, lazyReduce = true)
 
 func batchInv_vartime*[F](
         dst: ptr UncheckedArray[F],
@@ -945,9 +945,9 @@ func batchInv_vartime*[F](
 
     dst[i] = acc
     if i != N-1:
-      acc.prod(acc, elements[i], skipFinalReduction = true)
+      acc.prod(acc, elements[i], lazyReduce = true)
     else:
-      acc.prod(acc, elements[i], skipFinalReduction = false)
+      acc.prod(acc, elements[i], lazyReduce = false)
 
   acc.inv_vartime()
 
@@ -955,7 +955,7 @@ func batchInv_vartime*[F](
     if zeros[i] == true:
       continue
     dst[i] *= acc
-    acc.prod(acc, elements[i], skipFinalReduction = true)
+    acc.prod(acc, elements[i], lazyReduce = true)
 
 func batchInv*[F](dst: var openArray[F], source: openArray[F]) {.inline.} =
   debug: doAssert dst.len == source.len

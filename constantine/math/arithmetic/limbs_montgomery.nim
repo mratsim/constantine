@@ -54,14 +54,14 @@ func redc2xMont_CIOS[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
-       m0ninv: BaseType, skipFinalReduction: static bool = false) =
+       m0ninv: BaseType, lazyReduce: static bool = false) =
   ## Montgomery reduce a double-precision bigint modulo M
   ##
   ## This maps
-  ## - [0, 4p²) -> [0, 2p) with skipFinalReduction
+  ## - [0, 4p²) -> [0, 2p) with lazyReduce
   ## - [0, 4p²) -> [0, p) without
   ##
-  ## skipFinalReduction skips the final substraction step.
+  ## lazyReduce skips the final substraction step.
   # - Analyzing and Comparing Montgomery Multiplication Algorithms
   #   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.
   #   http://pdfs.semanticscholar.org/5e39/41ff482ec3ee41dc53c3298f0be085c69483.pdf
@@ -115,7 +115,7 @@ func redc2xMont_CIOS[N: static int](
     addC(carry, res[i], a[i+N], res[i], carry)
 
   # Final substraction
-  when not skipFinalReduction:
+  when not lazyReduce:
     discard res.csub(M, SecretWord(carry).isNonZero() or not(res < M))
   r = res
 
@@ -123,14 +123,14 @@ func redc2xMont_Comba[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
-       m0ninv: BaseType, skipFinalReduction: static bool = false) {.used.} =
+       m0ninv: BaseType, lazyReduce: static bool = false) {.used.} =
   ## Montgomery reduce a double-precision bigint modulo M
   ##
   ## This maps
-  ## - [0, 4p²) -> [0, 2p) with skipFinalReduction
+  ## - [0, 4p²) -> [0, 2p) with lazyReduce
   ## - [0, 4p²) -> [0, p) without
   ##
-  ## skipFinalReduction skips the final substraction step.
+  ## lazyReduce skips the final substraction step.
   # We use Product Scanning / Comba multiplication
   var t, u, v = Zero
   var carry: Carry
@@ -166,14 +166,14 @@ func redc2xMont_Comba[N: static int](
   addC(carry, z[N-1], v, a[2*N-1], Carry(0))
 
   # Final substraction
-  when not skipFinalReduction:
+  when not lazyReduce:
     discard z.csub(M, SecretBool(carry) or not(z < M))
   r = z
 
 # Montgomery Multiplication
 # ------------------------------------------------------------
 
-func mulMont_CIOS_sparebit(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalReduction: static bool = false) =
+func mulMont_CIOS_sparebit(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, lazyReduce: static bool = false) =
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   ## and no-carry optimization.
   ## This requires the most significant word of the Modulus
@@ -181,10 +181,10 @@ func mulMont_CIOS_sparebit(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipF
   ## https://hackmd.io/@gnark/modular_multiplication
   ##
   ## This maps
-  ## - [0, 2p) -> [0, 2p) with skipFinalReduction
+  ## - [0, 2p) -> [0, 2p) with lazyReduce
   ## - [0, 2p) -> [0, p) without
   ##
-  ## skipFinalReduction skips the final substraction step.
+  ## lazyReduce skips the final substraction step.
 
   # We want all the computation to be kept in registers
   # hence we use a temporary `t`, hoping that the compiler does it.
@@ -208,11 +208,11 @@ func mulMont_CIOS_sparebit(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipF
 
     t[N-1] = C + A
 
-  when not skipFinalReduction:
+  when not lazyReduce:
     discard t.csub(M, not(t < M))
   r = t
 
-func mulMont_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalReduction: static bool = false) {.used.} =
+func mulMont_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, lazyReduce: static bool = false) {.used.} =
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   # - Analyzing and Comparing Montgomery Multiplication Algorithms
   #   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.
@@ -257,18 +257,18 @@ func mulMont_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalReduc
   # t[N+1] can only be non-zero in the intermediate computation
   # since it is immediately reduce to t[N] at the end of each "i" iteration
   # However if t[N] is non-zero we have t > M
-  when not skipFinalReduction:
+  when not lazyReduce:
     discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)ʷ
   r = t
 
-func mulMont_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalReduction: static bool = false) =
+func mulMont_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, lazyReduce: static bool = false) =
   ## Montgomery Multiplication using Finely Integrated Product Scanning (FIPS)
   ##
   ## This maps
-  ## - [0, 2p) -> [0, 2p) with skipFinalReduction
+  ## - [0, 2p) -> [0, 2p) with lazyReduce
   ## - [0, 2p) -> [0, p) without
   ##
-  ## skipFinalReduction skips the final substraction step.
+  ## lazyReduce skips the final substraction step.
   # - Architectural Enhancements for Montgomery
   #   Multiplication on Embedded RISC Processors
   #   Johann Großschädl and Guy-Armand Kamendje, 2003
@@ -301,22 +301,22 @@ func mulMont_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalReduc
     u = t
     t = Zero
 
-  when not skipFinalReduction:
+  when not lazyReduce:
     discard z.csub(M, v.isNonZero() or not(z < M))
   r = z
 
 func sumprodMont_CIOS_spare2bits[K: static int](
        r: var Limbs, a, b: array[K, Limbs],
        M: Limbs, m0ninv: BaseType,
-       skipFinalReduction: static bool = false) =
+       lazyReduce: static bool = false) =
   ## Compute r = ⅀aᵢ.bᵢ (mod M) (suim of products)
   ## This requires 2 unused bits in the field element representation
   ##
   ## This maps
-  ## - [0, 2p) -> [0, 2p) with skipFinalReduction
+  ## - [0, 2p) -> [0, 2p) with lazyReduce
   ## - [0, 2p) -> [0, p) without
   ##
-  ## skipFinalReduction skips the final substraction step.
+  ## lazyReduce skips the final substraction step.
 
   # We want all the computation to be kept in registers
   # hence we use a temporary `t`, hoping that the compiler does the right thing™.
@@ -358,7 +358,7 @@ func sumprodMont_CIOS_spare2bits[K: static int](
     #  (_,t[N-1]) <- t[N] + C
     t[N-1] = tN + C
 
-  when not skipFinalReduction:
+  when not lazyReduce:
     discard t.csub(M, not(t < M))
   r = t
 
@@ -452,33 +452,33 @@ func redc2xMont*[N: static int](
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType,
-       spareBits: static int, skipFinalReduction: static bool = false) {.inline.} =
+       spareBits: static int, lazyReduce: static bool = false) {.inline.} =
   ## Montgomery reduce a double-precision bigint modulo M
 
-  const skipFinalReduction = skipFinalReduction and spareBits >= 2
+  const lazyReduce = lazyReduce and spareBits >= 2
 
   when UseASM_X86_64 and r.len <= 6:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
-      redcMont_asm_adx(r, a, M, m0ninv, spareBits, skipFinalReduction)
+      redcMont_asm_adx(r, a, M, m0ninv, spareBits, lazyReduce)
     else:
       when r.len in {3..6}:
-        redcMont_asm(r, a, M, m0ninv, spareBits, skipFinalReduction)
+        redcMont_asm(r, a, M, m0ninv, spareBits, lazyReduce)
       else:
-        redc2xMont_CIOS(r, a, M, m0ninv, skipFinalReduction)
+        redc2xMont_CIOS(r, a, M, m0ninv, lazyReduce)
         # redc2xMont_Comba(r, a, M, m0ninv)
   elif UseASM_X86_64 and r.len in {3..6}:
     # TODO: Assembly faster than GCC but slower than Clang
-    redcMont_asm(r, a, M, m0ninv, spareBits, skipFinalReduction)
+    redcMont_asm(r, a, M, m0ninv, spareBits, lazyReduce)
   else:
-    redc2xMont_CIOS(r, a, M, m0ninv, skipFinalReduction)
-    # redc2xMont_Comba(r, a, M, m0ninv, skipFinalReduction)
+    redc2xMont_CIOS(r, a, M, m0ninv, lazyReduce)
+    # redc2xMont_Comba(r, a, M, m0ninv, lazyReduce)
 
 func mulMont*(
         r: var Limbs, a, b, M: Limbs,
         m0ninv: BaseType,
         spareBits: static int,
-        skipFinalReduction: static bool = false) {.inline.} =
+        lazyReduce: static bool = false) {.inline.} =
   ## Compute r <- a*b (mod M) in the Montgomery domain
   ## `m0ninv` = -1/M (mod SecretWord). Our words are 2^32 or 2^64
   ##
@@ -498,28 +498,28 @@ func mulMont*(
   # i.e. c'R <- a'R b'R * R^-1 (mod M) in the natural domain
   # as in the Montgomery domain all numbers are scaled by R
 
-  const skipFinalReduction = skipFinalReduction and spareBits >= 2
+  const lazyReduce = lazyReduce and spareBits >= 2
 
   when spareBits >= 1:
     when UseASM_X86_64 and a.len in {2 .. 6}: # TODO: handle spilling
       # ADX implies BMI2
       if ({.noSideEffect.}: hasAdx()):
-        mulMont_CIOS_sparebit_asm_adx(r, a, b, M, m0ninv, skipFinalReduction)
+        mulMont_CIOS_sparebit_asm_adx(r, a, b, M, m0ninv, lazyReduce)
       else:
-        mulMont_CIOS_sparebit_asm(r, a, b, M, m0ninv, skipFinalReduction)
+        mulMont_CIOS_sparebit_asm(r, a, b, M, m0ninv, lazyReduce)
     else:
-      mulMont_CIOS_sparebit(r, a, b, M, m0ninv, skipFinalReduction)
+      mulMont_CIOS_sparebit(r, a, b, M, m0ninv, lazyReduce)
   else:
-    mulMont_FIPS(r, a, b, M, m0ninv, skipFinalReduction)
+    mulMont_FIPS(r, a, b, M, m0ninv, lazyReduce)
 
 func squareMont*[N](r: var Limbs[N], a, M: Limbs[N],
                   m0ninv: BaseType,
                   spareBits: static int,
-                  skipFinalReduction: static bool = false) {.inline.} =
+                  lazyReduce: static bool = false) {.inline.} =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ## `m0ninv` = -1/M (mod SecretWord). Our words are 2^31 or 2^63
 
-  const skipFinalReduction = skipFinalReduction and spareBits >= 2
+  const lazyReduce = lazyReduce and spareBits >= 2
 
   when UseASM_X86_64 and a.len in {4, 6}:
     # ADX implies BMI2
@@ -528,37 +528,37 @@ func squareMont*[N](r: var Limbs[N], a, M: Limbs[N],
       # which uses unfused squaring then Montgomery reduction
       # is slightly slower than fused Montgomery multiplication
       when spareBits >= 1:
-        mulMont_CIOS_sparebit_asm_adx(r, a, a, M, m0ninv, skipFinalReduction)
+        mulMont_CIOS_sparebit_asm_adx(r, a, a, M, m0ninv, lazyReduce)
       else:
-        squareMont_CIOS_asm_adx(r, a, M, m0ninv, spareBits, skipFinalReduction)
+        squareMont_CIOS_asm_adx(r, a, M, m0ninv, spareBits, lazyReduce)
     else:
-      squareMont_CIOS_asm(r, a, M, m0ninv, spareBits, skipFinalReduction)
+      squareMont_CIOS_asm(r, a, M, m0ninv, spareBits, lazyReduce)
   elif UseASM_X86_64:
     var r2x {.noInit.}: Limbs[2*N]
     r2x.square(a)
-    r.redc2xMont(r2x, M, m0ninv, spareBits, skipFinalReduction)
+    r.redc2xMont(r2x, M, m0ninv, spareBits, lazyReduce)
   else:
-    mulMont(r, a, a, M, m0ninv, spareBits, skipFinalReduction)
+    mulMont(r, a, a, M, m0ninv, spareBits, lazyReduce)
 
 func sumprodMont*[N: static int](
         r: var Limbs, a, b: array[N, Limbs],
         M: Limbs, m0ninv: BaseType,
         spareBits: static int,
-        skipFinalReduction: static bool = false) =
+        lazyReduce: static bool = false) =
   ## Compute r <- ⅀aᵢ.bᵢ (mod M) (sum of products)
   when spareBits >= 2:
     when UseASM_X86_64 and r.len in {2 .. 6}:
       if ({.noSideEffect.}: hasAdx()):
-        r.sumprodMont_CIOS_spare2bits_asm_adx(a, b, M, m0ninv, skipFinalReduction)
+        r.sumprodMont_CIOS_spare2bits_asm_adx(a, b, M, m0ninv, lazyReduce)
       else:
-        r.sumprodMont_CIOS_spare2bits_asm(a, b, M, m0ninv, skipFinalReduction)
+        r.sumprodMont_CIOS_spare2bits_asm(a, b, M, m0ninv, lazyReduce)
     else:
-      r.sumprodMont_CIOS_spare2bits(a, b, M, m0ninv, skipFinalReduction)
+      r.sumprodMont_CIOS_spare2bits(a, b, M, m0ninv, lazyReduce)
   else:
-    r.mulMont(a[0], b[0], M, m0ninv, spareBits, skipFinalReduction = false)
+    r.mulMont(a[0], b[0], M, m0ninv, spareBits, lazyReduce = false)
     var ri {.noInit.}: Limbs
     for i in 1 ..< N:
-      ri.mulMont(a[i], b[i], M, m0ninv, spareBits, skipFinalReduction = false)
+      ri.mulMont(a[i], b[i], M, m0ninv, spareBits, lazyReduce = false)
       var overflowed = SecretBool r.add(ri)
       overflowed = overflowed or not(r < M)
       discard r.csub(M, overflowed)
@@ -616,7 +616,7 @@ func getMont*(r: var Limbs, a, M, r2modM: Limbs,
   #    that range is not valid with the no-carry optimization,
   #    hence an unreduced input that uses 256-bit while prime is 254-bit
   #    can have an incorrect representation.
-  mulMont_FIPS(r, a, r2ModM, M, m0ninv, skipFinalReduction = false)
+  mulMont_FIPS(r, a, r2ModM, M, m0ninv, lazyReduce = false)
 
 # Montgomery Modular Exponentiation
 # ------------------------------------------
@@ -726,7 +726,7 @@ func powMontSquarings(
 
   # We have k bits and can do k squaring, skip final substraction for first k-1 ones.
   for i in 0 ..< k:
-    a.squareMont(a, M, m0ninv, spareBits) # TODO: skipFinalReduction
+    a.squareMont(a, M, m0ninv, spareBits) # TODO: lazyReduce
 
   return (k, bits)
 

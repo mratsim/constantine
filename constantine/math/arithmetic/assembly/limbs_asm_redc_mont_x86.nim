@@ -33,7 +33,7 @@ macro redc2xMont_gen*[N: static int](
        a_PIR: array[N*2, SecretWord],
        M_MEM: array[N, SecretWord],
        m0ninv_REG: BaseType,
-       spareBits: static int, skipFinalReduction: static bool) =
+       spareBits: static int, lazyReduce: static bool) =
   # No register spilling handling
   doAssert N > 2, "The Assembly-optimized montgomery reduction requires a minimum of 2 limbs."
   doAssert N <= 6, "The Assembly-optimized montgomery reduction requires at most 6 limbs."
@@ -134,7 +134,7 @@ macro redc2xMont_gen*[N: static int](
   # Second part - Final substraction
   # ---------------------------------------------
 
-  if not(spareBits >= 2 and skipFinalReduction):
+  if not(spareBits >= 2 and lazyReduce):
     ctx.mov rdx, r_temp
   let r = rdx.asArrayAddr(r_PIR, len = N, memIndirect = memWrite)
 
@@ -150,7 +150,7 @@ macro redc2xMont_gen*[N: static int](
   # v is invalidated from now on
   let t = repackRegisters(v, u[N], u[N+1])
 
-  if spareBits >= 2 and skipFinalReduction:
+  if spareBits >= 2 and lazyReduce:
     for i in 0 ..< N:
       ctx.mov r_temp[i], u[i]
   elif spareBits >= 1:
@@ -167,10 +167,10 @@ func redcMont_asm*[N: static int](
        M: array[N, SecretWord],
        m0ninv: BaseType,
        spareBits: static int,
-       skipFinalReduction: static bool) =
+       lazyReduce: static bool) =
   ## Constant-time Montgomery reduction
   static: doAssert UseASM_X86_64, "This requires x86-64."
-  redc2xMont_gen(r, a, M, m0ninv, spareBits, skipFinalReduction)
+  redc2xMont_gen(r, a, M, m0ninv, spareBits, lazyReduce)
 
 # Montgomery conversion
 # ----------------------------------------------------------

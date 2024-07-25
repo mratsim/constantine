@@ -544,7 +544,7 @@ func sum_vartime*[F; G: static Subgroup](
 
   var VVV{.noInit.}: F
 
-  VVV.square(V, skipFinalReduction = true)
+  VVV.square(V, lazyReduce = true)
   R *= VVV
   VVV *= V
 
@@ -564,7 +564,7 @@ func sum_vartime*[F; G: static Subgroup](
       A.prod(U, q.z)
       r.z.prod(VVV, q.z)
     else:
-      r.z.prod(p.z, q.z, skipFinalReduction = true)
+      r.z.prod(p.z, q.z, lazyReduce = true)
       A.prod(U, r.z)
       r.z *= VVV
 
@@ -642,7 +642,7 @@ func mixedSum_vartime*[F; G: static Subgroup](
 
   var VVV{.noInit.}: F
 
-  VVV.square(V, skipFinalReduction = true)
+  VVV.square(V, lazyReduce = true)
   R *= VVV
   VVV *= V
 

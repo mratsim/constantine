@@ -50,9 +50,9 @@ func batchAffine*[F](
     z.csetOne(zeroes[i])
 
     if i != N-1:
-      affs[i].x.prod(affs[i-1].x, z, skipFinalReduction = true)
+      affs[i].x.prod(affs[i-1].x, z, lazyReduce = true)
     else:
-      affs[i].x.prod(affs[i-1].x, z, skipFinalReduction = false)
+      affs[i].x.prod(affs[i-1].x, z, lazyReduce = false)
 
   var accInv {.noInit.}: F
   accInv.inv(affs[N-1].x)
@@ -60,7 +60,7 @@ func batchAffine*[F](
   for i in countdown(N-1, 1):
     # Extract 1/Pᵢ
     var invi {.noInit.}: F
-    invi.prod(accInv, affs[i-1].x, skipFinalReduction = true)
+    invi.prod(accInv, affs[i-1].x, lazyReduce = true)
     invi.csetZero(zeroes[i])
 
     # Now convert Pᵢ to affine
@@ -70,7 +70,7 @@ func batchAffine*[F](
     # next iteration
     invi = projs[i].z
     invi.csetOne(zeroes[i])
-    accInv.prod(accInv, invi, skipFinalReduction = true)
+    accInv.prod(accInv, invi, lazyReduce = true)
 
   block: # tail
     accInv.csetZero(zeroes[0])

@@ -54,9 +54,9 @@ func batchAffine*[F, G](
     z.csetOne(zeroes[i])
 
     if i != N-1:
-      affs[i].x.prod(affs[i-1].x, z, skipFinalReduction = true)
+      affs[i].x.prod(affs[i-1].x, z, lazyReduce = true)
     else:
-      affs[i].x.prod(affs[i-1].x, z, skipFinalReduction = false)
+      affs[i].x.prod(affs[i-1].x, z, lazyReduce = false)
 
   var accInv {.noInit.}: F
   accInv.inv(affs[N-1].x)
@@ -64,7 +64,7 @@ func batchAffine*[F, G](
   for i in countdown(N-1, 1):
     # Extract 1/Pᵢ
     var invi {.noInit.}: F
-    invi.prod(accInv, affs[i-1].x, skipFinalReduction = true)
+    invi.prod(accInv, affs[i-1].x, lazyReduce = true)
     invi.csetZero(zeroes[i])
 
     # Now convert Pᵢ to affine
@@ -74,7 +74,7 @@ func batchAffine*[F, G](
     # next iteration
     invi = projs[i].z
     invi.csetOne(zeroes[i])
-    accInv.prod(accInv, invi, skipFinalReduction = true)
+    accInv.prod(accInv, invi, lazyReduce = true)
 
   block: # tail
     accInv.csetZero(zeroes[0])
@@ -114,9 +114,9 @@ func batchAffine*[F, G](
     z.csetOne(zeroes[i])
 
     if i != N-1:
-      affs[i].x.prod(affs[i-1].x, z, skipFinalReduction = true)
+      affs[i].x.prod(affs[i-1].x, z, lazyReduce = true)
     else:
-      affs[i].x.prod(affs[i-1].x, z, skipFinalReduction = false)
+      affs[i].x.prod(affs[i-1].x, z, lazyReduce = false)
 
   var accInv {.noInit.}: F
   accInv.inv(affs[N-1].x)
@@ -124,27 +124,27 @@ func batchAffine*[F, G](
   for i in countdown(N-1, 1):
     # Extract 1/Pᵢ
     var invi {.noInit.}: F
-    invi.prod(accInv, affs[i-1].x, skipFinalReduction = true)
+    invi.prod(accInv, affs[i-1].x, lazyReduce = true)
     invi.csetZero(zeroes[i])
 
     # Now convert Pᵢ to affine
     var invi2 {.noinit.}: F
-    invi2.square(invi, skipFinalReduction = true)
+    invi2.square(invi, lazyReduce = true)
     affs[i].x.prod(jacs[i].x, invi2)
-    invi.prod(invi, invi2, skipFinalReduction = true)
+    invi.prod(invi, invi2, lazyReduce = true)
     affs[i].y.prod(jacs[i].y, invi)
 
     # next iteration
     invi = jacs[i].z
     invi.csetOne(zeroes[i])
-    accInv.prod(accInv, invi, skipFinalReduction = true)
+    accInv.prod(accInv, invi, lazyReduce = true)
 
   block: # tail
     var invi2 {.noinit.}: F
     accInv.csetZero(zeroes[0])
-    invi2.square(accInv, skipFinalReduction = true)
+    invi2.square(accInv, lazyReduce = true)
     affs[0].x.prod(jacs[0].x, invi2)
-    accInv.prod(accInv, invi2, skipFinalReduction = true)
+    accInv.prod(accInv, invi2, lazyReduce = true)
     affs[0].y.prod(jacs[0].y, accInv)
 
 func batchAffine*[N: static int, F, G](
@@ -309,7 +309,7 @@ func accum_half_vartime[F; G: static Subgroup](
     elif i == N-1:
       points[q].y.prod(points[q_prev].y, lambdas[i].den)
     else:
-      points[q].y.prod(points[q_prev].y, lambdas[i].den, skipFinalReduction = true)
+      points[q].y.prod(points[q_prev].y, lambdas[i].den, lazyReduce = true)
 
   # Step 3: batch invert
   var accInv {.noInit.}: F
@@ -338,8 +338,8 @@ func accum_half_vartime[F; G: static Subgroup](
       continue
 
     # Compute lambda
-    points[q].y.prod(accInv, points[q_prev].y, skipFinalReduction = true)
-    points[q].y.prod(points[q].y, lambdas[i].num, skipFinalReduction = true)
+    points[q].y.prod(accInv, points[q_prev].y, lazyReduce = true)
+    points[q].y.prod(points[q].y, lambdas[i].num, lazyReduce = true)
 
     # Compute EC addition
     var r{.noInit.}: EC_ShortW_Aff[F, G]
@@ -349,7 +349,7 @@ func accum_half_vartime[F; G: static Subgroup](
     points[i] = r
 
     # Next iteration
-    accInv.prod(accInv, lambdas[i].den, skipFinalReduction = true)
+    accInv.prod(accInv, lambdas[i].den, lazyReduce = true)
 
   block: # Tail
     let i = 0
@@ -360,7 +360,7 @@ func accum_half_vartime[F; G: static Subgroup](
       recallSpecialCase(i, p, q)
     else:
       # Compute lambda
-      points[q].y.prod(lambdas[0].num, accInv, skipFinalReduction = true)
+      points[q].y.prod(lambdas[0].num, accInv, lazyReduce = true)
 
       # Compute EC addition
       var r{.noInit.}: EC_ShortW_Aff[F, G]
