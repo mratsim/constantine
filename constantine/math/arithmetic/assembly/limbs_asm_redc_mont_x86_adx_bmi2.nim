@@ -37,7 +37,7 @@ macro redc2xMont_adx_gen[N: static int](
        a_PIR: array[N*2, SecretWord],
        M_MEM: array[N, SecretWord],
        m0ninv_REG: BaseType,
-       spareBits: static int, skipFinalSub: static bool) =
+       spareBits: static int, skipFinalReduction: static bool) =
 
   # No register spilling handling
   doAssert N <= 6, "The Assembly-optimized montgomery multiplication requires at most 6 limbs."
@@ -127,7 +127,7 @@ macro redc2xMont_adx_gen[N: static int](
 
   let t = repackRegisters(v, u[N])
 
-  if spareBits >= 2 and skipFinalSub:
+  if spareBits >= 2 and skipFinalReduction:
     for i in 0 ..< N:
       ctx.mov r[i], t[i]
   elif spareBits >= 1:
@@ -144,12 +144,12 @@ func redcMont_asm_adx*[N: static int](
        M: array[N, SecretWord],
        m0ninv: BaseType,
        spareBits: static int,
-       skipFinalSub: static bool = false) =
+       skipFinalReduction: static bool = false) =
   ## Constant-time Montgomery reduction
   # Inlining redcMont_asm_adx twice in mul_fp2_complex_asm_adx
   # causes GCC to miscompile with -Os (--opt:size)
   # see https://github.com/mratsim/constantine/issues/229
-  redc2xMont_adx_gen(r, a, M, m0ninv, spareBits, skipFinalSub)
+  redc2xMont_adx_gen(r, a, M, m0ninv, spareBits, skipFinalReduction)
 
 # Montgomery conversion
 # ----------------------------------------------------------

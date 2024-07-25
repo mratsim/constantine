@@ -21,12 +21,6 @@ import
 # ############################################################
 #
 # Crandall primes have the form p = 2ᵐ-c
-# We use special lazily reduced arithmetic
-# where reduction is only done when we overflow 2ʷⁿ
-# with w the word bitwidth and n the number of words
-# to represent p.
-# For example for Curve25519, p = 2²⁵⁵-19 and 2ʷⁿ=2²⁵⁶
-# Hence reduction will only happen when overflowing 2²⁵⁶ bits
 
 # Fast reduction
 # ------------------------------------------------------------
@@ -102,32 +96,52 @@ func reduce_crandall_partial_impl[N: static int](
   # Note: there might be up to `c` not reduced.
   r[N-1] = r[N-1] and (MaxWord shr S)
 
-  # hi*cs (mod p),
-  # hi has already been shifted so we use `c` instead of `cs`
+  # Partially reduce to up to `bits`
+  # We need to fold what's beyond `bits`
+  # by repeatedly multiplying it by cs
+  # We distinguish 2 cases:
+  # 1. Folding (N..2N)*cs onto 0..N
+  #    may overflow and a 3rd folding is necessary
+  # 2. Folding (N..2N)*cs onto 0..N
+  #    may not overflow and 2 foldings are all we need.
+  #    This is possible:
+  #    - if we don't use the full 2ʷⁿ
+  #      for example we use 255 bits out of 256 available
+  #    - And (2ʷⁿ⁻ᵐ*c)² < 2ʷ
+  #
+  # There is a 3rd case that we don't handle
+  # c > 2ʷ, for example secp256k1 on 32-bit
+
   when N*WordBitWidth == bits: # Secp256k1 only according to eprint/iacr 2018/985
     var t0, t1: SecretWord
-    mul(t1, t0, hi, c)
+    var carry: Carry
 
     # Second pass
-    var carry: Carry
+    mul(t1, t0, hi, c)
     addC(carry, r[0], r[0], t0, Carry(0))
     addC(carry, r[1], r[1], t1, carry)
     staticFor i, 2, N:
       addC(carry, r[i], r[i], Zero, carry)
 
-    # Third pass
+    # Third pass - the high-word to fold can only be bits+1
     mul(t1, t0, SecretWord(carry), c)
     addC(carry, r[0], r[0], t0, Carry(0))
     addC(carry, r[1], r[1], t1, carry)
 
-  else:
-    hi *= c # Cannot overflow
+  elif BaseType(cs*cs) < BaseType(MaxWord):
+    var carry: Carry
 
     # Second pass
-    var carry: Carry
+
+    # hi < cs, and cs² < 2ʷ (2³² on 32-bit or 2⁶⁴ on 64-bit)
+    # hence hi *= c cannot overflow
+    hi *= c
     addC(carry, r[0], r[0], hi, Carry(0))
     staticFor i, 1, N:
       addC(carry, r[i], r[i], Zero, carry)
+
+  else:
+    {.error: "Not implemented".}
 
 func reduce_crandall_final_impl[N: static int](
         a: var Limbs[N],
@@ -190,15 +204,37 @@ func reduce_crandall_final*[N: static int](
   static: doAssert N*WordBitWidth >= bits
   reduce_crandall_final_impl(a, bits, c)
 
-# lazily reduced arithmetic
+# Lazily reduced arithmetic
 # ------------------------------------------------------------
 
+# We can use special lazily reduced arithmetic
+# where reduction is only done when we overflow 2ʷⁿ
+# with w the word bitwidth and n the number of words
+# to represent p.
+# For example for Curve25519, p = 2²⁵⁵-19 and 2ʷⁿ=2²⁵⁶
+# Hence reduction will only happen when overflowing 2²⁵⁶ bits
+#
+# However:
+# - Restricting it to mul/squaring in addchain
+#   makes it consistent with generic Montgomery representation
+# - We don't really gain something for addition and substraction
+#   as modular addition needs:
+#   1. One pass of add-with-carry
+#   2. One pass of sub-with-borrow
+#   3. One pass of conditional mov
+#   And lazily reduced needs
+#   the same first 2 pass and replace the third with
+#   masking + single addition
+#   Total number of instruction doesn't seem to change
+#   and conditional moves can be issued 2 per cycle
+#   so we save ~1 clock cycle
 
 func sum_crandall_impl[N: static int](
         r: var Limbs[N], a, b: Limbs[N],
         bits: int,
-        c: SecretWord) =
-
+        c: SecretWord) {.used.} =
+  ## Lazily reduced addition
+  ## Proof-of-concept. Currently unused.
   let S = (N*WordBitWidth - bits)
   let cs = c shl S
   debug: doAssert 0 <= S and S < WordBitWidth
@@ -218,4 +254,5 @@ func sum_crandall_impl[N: static int](
 
   # We may carry again, but we just did -2ˢc
   # so adding back 2ˢc for the extra 2ʷⁿ bit cannot carry
+  # to higher limbs
   r[0] += mask2 and cs

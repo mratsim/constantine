@@ -172,7 +172,7 @@ proc partialRedx(
 macro mulMont_CIOS_sparebit_adx_gen[N: static int](
         r_PIR: var Limbs[N], a_PIR, b_PIR,
         M_MEM: Limbs[N], m0ninv_REG: BaseType,
-        skipFinalSub: static bool): untyped =
+        skipFinalReduction: static bool): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method
   ## This requires the most significant word of the Modulus
@@ -258,7 +258,7 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
       M, m0ninv,
       lo, C)
 
-  if skipFinalSub:
+  if skipFinalReduction:
     for i in 0 ..< N:
       ctx.mov r[i], t[i]
   else:
@@ -268,14 +268,14 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
 
   result.add ctx.generate()
 
-func mulMont_CIOS_sparebit_asm_adx*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) =
+func mulMont_CIOS_sparebit_asm_adx*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalReduction: static bool = false) =
   ## Constant-time Montgomery multiplication
-  ## If "skipFinalSub" is set
+  ## If "skipFinalReduction" is set
   ## the result is in the range [0, 2M)
   ## otherwise the result is in the range [0, M)
   ##
   ## This procedure can only be called if the modulus doesn't use the full bitwidth of its underlying representation
-  r.mulMont_CIOS_sparebit_adx_gen(a, b, M, m0ninv, skipFinalSub)
+  r.mulMont_CIOS_sparebit_adx_gen(a, b, M, m0ninv, skipFinalReduction)
 
 # Montgomery Squaring
 # ------------------------------------------------------------
@@ -284,11 +284,11 @@ func squareMont_CIOS_asm_adx*[N](
        r: var Limbs[N],
        a, M: Limbs[N],
        m0ninv: BaseType,
-       spareBits: static int, skipFinalSub: static bool) =
+       spareBits: static int, skipFinalReduction: static bool) =
   ## Constant-time modular squaring
   var r2x {.noInit.}: Limbs[2*N]
   r2x.square_asm_adx(a)
-  r.redcMont_asm_adx(r2x, M, m0ninv, spareBits, skipFinalSub)
+  r.redcMont_asm_adx(r2x, M, m0ninv, spareBits, skipFinalReduction)
 
 # Montgomery Sum of Products
 # ------------------------------------------------------------
@@ -296,7 +296,7 @@ func squareMont_CIOS_asm_adx*[N](
 macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
         r_PIR: var Limbs[N], a_PIR, b_PIR: array[K, Limbs[N]],
         M_MEM: Limbs[N], m0ninv_REG: BaseType,
-        skipFinalSub: static bool): untyped =
+        skipFinalReduction: static bool): untyped =
   ## Generate an optimized Montgomery merged sum of products ⅀aᵢ.bᵢ kernel
   ## using the CIOS method
   ##
@@ -440,7 +440,7 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
   ctx.mov rax, r # move r away from scratchspace that will be used for final substraction
   let r2 = rax.asArrayAddr(r_PIR, len = N, memIndirect = memWrite)
 
-  if skipFinalSub:
+  if skipFinalReduction:
     ctx.comment "  Copy result"
     for i in 0 ..< N:
       ctx.mov r2[i], t[i]
@@ -452,11 +452,11 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
 func sumprodMont_CIOS_spare2bits_asm_adx*[N, K: static int](
         r: var Limbs[N], a, b: array[K, Limbs[N]],
         M: Limbs[N], m0ninv: BaseType,
-        skipFinalSub: static bool) =
+        skipFinalReduction: static bool) =
   ## Sum of products ⅀aᵢ.bᵢ in the Montgomery domain
-  ## If "skipFinalSub" is set
+  ## If "skipFinalReduction" is set
   ## the result is in the range [0, 2M)
   ## otherwise the result is in the range [0, M)
   ##
   ## This procedure can only be called if the modulus doesn't use the full bitwidth of its underlying representation
-  r.sumprodMont_CIOS_spare2bits_adx_gen(a, b, M, m0ninv, skipFinalSub)
+  r.sumprodMont_CIOS_spare2bits_adx_gen(a, b, M, m0ninv, skipFinalReduction)

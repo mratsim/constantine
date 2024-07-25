@@ -66,7 +66,7 @@ macro genDerivedConstants*(mode: static DerivedConstantMode): untyped =
         M
       )
     )
-    # const MyCurve_R4modP = r4mod(MyCurve_Modulus)
+    # const MyCurve_R3modP = r3mod(MyCurve_Modulus)
     result.add newConstStmt(
       used(curve & ff & "_R3modP"), newCall(
         bindSym"r3mod",
@@ -99,6 +99,13 @@ macro genDerivedConstants*(mode: static DerivedConstantMode): untyped =
     result.add newConstStmt(
       used(curve & ff & "_PrimePlus1div2"), newCall(
         bindSym"primePlus1div2",
+        M
+      )
+    )
+    # const MyCurve_PrimeMinus1 = primeMinus1(MyCurve_Modulus)
+    result.add newConstStmt(
+      used(curve & ff & "_PrimeMinus1"), newCall(
+        bindSym"primeMinus1",
         M
       )
     )

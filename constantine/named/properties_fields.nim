@@ -212,6 +212,11 @@ macro getPrimePlus1div2*(ff: type FF): untyped =
   ## Warning ⚠️: Result in canonical domain (not Montgomery)
   result = bindConstant(ff, "PrimePlus1div2")
 
+macro getPrimeMinus1*(ff: type FF): untyped =
+  ## Get P-1
+  ## Warning ⚠️: Result in canonical domain (not Montgomery)
+  result = bindConstant(ff, "PrimeMinus1")
+
 macro getPrimeMinus1div2*(ff: type FF): untyped =
   ## Get (P-1) / 2 for an odd prime
   ## Warning ⚠️: Result in canonical domain (not Montgomery)

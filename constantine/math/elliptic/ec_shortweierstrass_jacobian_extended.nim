@@ -333,8 +333,8 @@ func affine*[F; G](
        jacext: EC_ShortW_JacExt[F, G]) {.meter.} =
   var invZZ {.noInit.}, invZZZ{.noInit.}: F
   invZZZ.inv(jacext.zzz)
-  invZZ.prod(jacext.zz, invZZZ, skipFinalSub = true)
-  invZZ.square(skipFinalSub = true)
+  invZZ.prod(jacext.zz, invZZZ, skipFinalReduction = true)
+  invZZ.square(skipFinalReduction = true)
   aff.x.prod(jacext.x, invZZ)
   aff.y.prod(jacext.y, invZZZ)
 

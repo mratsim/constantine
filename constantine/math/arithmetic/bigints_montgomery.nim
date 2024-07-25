@@ -51,33 +51,33 @@ func fromMont*(r: var BigInt, a, M: BigInt, m0ninv: BaseType, spareBits: static 
   fromMont(r.limbs, a.limbs, M.limbs, m0ninv, spareBits)
 
 func mulMont*(r: var BigInt, a, b, M: BigInt, negInvModWord: BaseType,
-              spareBits: static int, skipFinalSub: static bool = false) =
+              spareBits: static int, skipFinalReduction: static bool = false) =
   ## Compute r <- a*b (mod M) in the Montgomery domain
   ##
   ## This resets r to zero before processing. Use {.noInit.}
   ## to avoid duplicating with Nim zero-init policy
-  mulMont(r.limbs, a.limbs, b.limbs, M.limbs, negInvModWord, spareBits, skipFinalSub)
+  mulMont(r.limbs, a.limbs, b.limbs, M.limbs, negInvModWord, spareBits, skipFinalReduction)
 
 func squareMont*(r: var BigInt, a, M: BigInt, negInvModWord: BaseType,
-                 spareBits: static int, skipFinalSub: static bool = false) =
+                 spareBits: static int, skipFinalReduction: static bool = false) =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ##
   ## This resets r to zero before processing. Use {.noInit.}
   ## to avoid duplicating with Nim zero-init policy
-  squareMont(r.limbs, a.limbs, M.limbs, negInvModWord, spareBits, skipFinalSub)
+  squareMont(r.limbs, a.limbs, M.limbs, negInvModWord, spareBits, skipFinalReduction)
 
 func sumprodMont*[N: static int](
       r: var BigInt,
       a, b: array[N, BigInt],
       M: BigInt, negInvModWord: BaseType,
-      spareBits: static int, skipFinalSub: static bool = false) =
+      spareBits: static int, skipFinalReduction: static bool = false) =
   ## Compute r <- ⅀aᵢ.bᵢ (mod M) (sum of products) in the Montgomery domain
   # We rely on BigInt and Limbs having the same repr to avoid array copies
   sumprodMont(
     r.limbs,
     cast[ptr array[N, typeof(a[0].limbs)]](a.unsafeAddr)[],
     cast[ptr array[N, typeof(b[0].limbs)]](b.unsafeAddr)[],
-    M.limbs, negInvModWord, spareBits, skipFinalSub
+    M.limbs, negInvModWord, spareBits, skipFinalReduction
   )
 
 func powMont*[mBits: static int](

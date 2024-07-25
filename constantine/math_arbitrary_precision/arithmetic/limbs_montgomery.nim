@@ -44,14 +44,14 @@ func mulMont_FIPS*(
        M: LimbsViewConst,
        m0ninv: SecretWord,
        mBits: int,
-       skipFinalSub: static bool = false) {.noInline, tags:[Alloca], meter.} =
+       skipFinalReduction: static bool = false) {.noInline, tags:[Alloca], meter.} =
   ## Montgomery Multiplication using Finely Integrated Product Scanning (FIPS)
   ##
   ## This maps
-  ## - [0, 2p) -> [0, 2p) with skipFinalSub
+  ## - [0, 2p) -> [0, 2p) with skipFinalReduction
   ## - [0, 2p) -> [0, p) without
   ##
-  ## skipFinalSub skips the final substraction step.
+  ## skipFinalReduction skips the final substraction step.
   # - Architectural Enhancements for Montgomery
   #   Multiplication on Embedded RISC Processors
   #   Johann Großschädl and Guy-Armand Kamendje, 2003
@@ -86,7 +86,7 @@ func mulMont_FIPS*(
     u = t
     t = Zero
 
-  when not skipFinalSub:
+  when not skipFinalReduction:
     discard z.csub(M, v.isNonZero() or not(z.lt(M, L)), L)
   r.copyWords(0, z, 0, L)
 
