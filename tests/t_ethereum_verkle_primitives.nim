@@ -115,69 +115,49 @@ proc testDeserialize(hexString: string, status: CttCodecEccStatus) : bool =
 # ############################################################
 suite "Banderwagon Serialization Tests":
 
-  # ## Check encoding if it is as expected or not
-  # test "Test Encoding from Fixed Vectors":
-  #   proc testSerialize(len: int) =
-  #     # First the point is set to generator P
-  #     # then with each iteration 2P, 4P, . . . doubling
-  #     var points: seq[EC_TwEdw_Aff[Fp[Banderwagon]]]
-  #     var point {.noInit.}: EC_TwEdw_Aff[Fp[Banderwagon]]
-  #     point.setGenerator()
+  var points: seq[EC_TwEdw_Prj[Fp[Banderwagon]]]
 
-  #     for i in 0 ..< len:
-  #       var arr: array[32, byte]
-  #       let stat = arr.serialize(point)
+  ## Check encoding if it is as expected or not
+  test "Test Encoding from Fixed Vectors":
+    proc testSerialize(len: int) =
+      # First the point is set to generator P
+      # then with each iteration 2P, 4P, . . . doubling
+      var point {.noInit.}: EC_TwEdw_Prj[Fp[Banderwagon]]
+      point.setGenerator()
 
-  #       # Check if the serialization took place and in expected way
-  #       doAssert stat == cttCodecEcc_Success, "Serialization Failed"
-  #       doAssert expected_bit_strings[i] == arr.toHex(), "bit string does not match expected"
-  #       points.add(point)
+      for i in 0 ..< len:
+        var arr: array[32, byte]
+        let stat = arr.serialize(point)
 
-  #       point.double() #doubling the point
+        # Check if the serialization took place and in expected way
+        doAssert stat == cttCodecEcc_Success, "Serialization Failed"
+        doAssert expected_bit_strings[i] == arr.toHex(), "bit string does not match expected"
+        points.add(point)
 
-  #   testSerialize(expected_bit_strings.len)
+        point.double() #doubling the point
 
-  # ## Check decoding if it is as expected or not
-  # test "Decoding Each bit string":
-  #   proc testDeserialization(len: int) =
-  #     # Checks if the point serialized in the previous
-  #     # tests matches with the deserialization of expected strings
-  #     for i, bit_string in expected_bit_strings:
+    testSerialize(expected_bit_strings.len)
 
-  #       # converts serialized value in hex to byte array
-  #       var arr: array[32, byte]
-  #       discard arr.parseHex(bit_string)
+  ## Check decoding if it is as expected or not ( vartime impl )
+  test "Decoding Each bit string":
+    proc testDeserialization(len: int) =
+      # Checks if the point serialized in the previous
+      # tests matches with the deserialization of expected strings
+      for i, bit_string in expected_bit_strings:
 
-  #       # deserialization from expected bits
-  #       var point{.noInit.}: EC_TwEdw_Aff[Fp[Banderwagon]]
-  #       let stat = point.deserialize(arr)
+        # converts serialized value in hex to byte array
+        var arr: array[32, byte]
+        discard arr.parseHex(bit_string)
 
-  #       # Assertion check for the Deserialization Success & correctness
-  #       doAssert stat == cttCodecEcc_Success, "Deserialization Failed"
-  #       doAssert (point == points[i]).bool(), "Decoded Element is different from expected element"
+        # deserialization from expected bits
+        var point{.noInit.}: EC_TwEdw_Aff[Fp[Banderwagon]]
+        let stat = point.deserialize_vartime(arr)
 
-  #   testDeserialization(expected_bit_strings.len)
+        # Assertion check for the Deserialization Success & correctness
+        doAssert stat == cttCodecEcc_Success, "Deserialization Failed"
+        doAssert (point == points[i].getAffine()).bool(), "Decoded Element is different from expected element"
 
-  # ## Check decoding if it is as expected or not ( vartime impl )
-  # test "vartime - Decoding Each bit string":
-  #   proc testDeserialization_vartime(len: int) =
-  #     # Checks if the point serialized in the previous
-  #     # tests matches with the deserialization of expected strings
-  #     for i, bit_string in expected_bit_strings:
-
-  #       # converts serialized value in hex to byte array
-  #       var arr: array[32, byte]
-  #       discard arr.parseHex(bit_string)
-
-  #       # deserialization from expected bits
-  #       var point{.noInit.}: EC_TwEdw_Prj[Fp[Banderwagon]]
-  #       let stat = point.deserialize_vartime(arr)
-
-  #       # Assertion check for the Deserialization Success & correctness
-  #       doAssert stat == cttCodecEcc_Success, "Deserialization Failed"
-  #       doAssert (point == points[i]).bool(), "Decoded Element is different from expected element"
-
-  #   testDeserialization_vartime(expected_bit_strings.len)
+    testDeserialization(expected_bit_strings.len)
 
   # Check if the subgroup check is working on eliminating
   # points which don't lie on banderwagon, while
