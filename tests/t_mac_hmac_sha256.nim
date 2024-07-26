@@ -8,9 +8,9 @@
 
 import
   std/unittest,
-  ../constantine/mac/mac_hmac,
-  ../constantine/hashes,
-  ../constantine/serialization/codecs
+  constantine/mac/mac_hmac,
+  constantine/hashes,
+  constantine/serialization/codecs
 
 type TestVector = object
   key: seq[byte]

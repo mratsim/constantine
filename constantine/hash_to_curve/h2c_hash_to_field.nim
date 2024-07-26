@@ -12,7 +12,7 @@ import
   ../serialization/endians,
   ../hashes,
   ../math/io/[io_bigints, io_fields],
-  ../math/config/curves,
+  constantine/named/algebras,
   ../math/arithmetic/limbs_montgomery,
   ../math/extension_fields/towers
 
@@ -151,7 +151,7 @@ func expandMessageXMD*[len_in_bytes: static int](
 func redc2x[FF](r: var FF, big2x: BigInt) {.inline.} =
   r.mres.limbs.redc2xMont(
     big2x.limbs,
-    FF.fieldMod().limbs,
+    FF.getModulus().limbs,
     FF.getNegInvModWord(),
     FF.getSpareBits()
   )
@@ -159,7 +159,7 @@ func redc2x[FF](r: var FF, big2x: BigInt) {.inline.} =
 func mulMont(r: var BigInt, a, b: BigInt, FF: type) {.inline.} =
   r.limbs.mulMont(
     a.limbs, b.limbs,
-    FF.fieldMod().limbs,
+    FF.getModulus().limbs,
     FF.getNegInvModWord(),
     FF.getSpareBits()
   )
@@ -195,14 +195,18 @@ func hashToField*[Field; count: static int](
   ##   If a domainSepTag larger than 255-bit is required,
   ##   it is recommended to cache the reduced DST.
 
-  const
-    L = ceilDiv_vartime(Field.C.getCurveBitwidth() + k, 8)
-    m = block:
-      when Field is Fp: 1
-      elif Field is Fp2: 2
-      else: {.error: "Unconfigured".}
+  when Field is Fp:
+    const L = ceilDiv_vartime(Field.bits() + k, 8)
+    const m = 1
+    type Big2x = BigInt[2 * Field.bits()]
+  elif Field is Fp2:
+    const L = ceilDiv_vartime(Fp[Field.Name].bits() + k, 8)
+    const m = 2
+    type Big2x = BigInt[2 * Fp[Field.Name].bits()]
+  else:
+    {.error: "Unconfigured".}
 
-    len_in_bytes = count * m * L
+  const len_in_bytes = count * m * L
 
   var uniform_bytes{.noInit.}: array[len_in_bytes, byte]
   H.expandMessageXMD(
@@ -217,7 +221,7 @@ func hashToField*[Field; count: static int](
       let elm_offset = L * (j + i * m)
       template tv: untyped = uniform_bytes.toOpenArray(elm_offset, elm_offset + L-1)
 
-      var big2x {.noInit.}: BigInt[2 * getCurveBitwidth(Field.C)]
+      var big2x {.noInit.}: Big2x
       big2x.unmarshal(tv, bigEndian)
 
       # Reduces modulo p and output in Montgomery domain
@@ -225,12 +229,12 @@ func hashToField*[Field; count: static int](
         output[i].redc2x(big2x)
         output[i].mres.mulMont(
           output[i].mres,
-          Fp[Field.C].getR3ModP(),
-          Fp[Field.C])
+          Fp[Field.Name].getR3ModP(),
+          Fp[Field.Name])
 
       else:
         output[i].coords[j].redc2x(big2x)
         output[i].coords[j].mres.mulMont(
           output[i].coords[j].mres,
-          Fp[Field.C].getR3ModP(),
-          Fp[Field.C])
+          Fp[Field.Name].getR3ModP(),
+          Fp[Field.Name])

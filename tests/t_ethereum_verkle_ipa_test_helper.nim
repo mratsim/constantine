@@ -6,29 +6,36 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import 
-  ../constantine/eth_verkle_ipa/[multiproof, barycentric_form, eth_verkle_constants],
-  ../constantine/math/config/[type_ff, curves],
-  ../constantine/math/elliptic/[
+# TODO
+# Refactor: https://github.com/mratsim/constantine/issues/396
+# The constants should be json files from  https://github.com/jsign/verkle-test-vectors
+# or hardcoded in test files to prevent variable name confusion.
+# Lagrange interpolation should be in polynomials.nim
+# and the whole file should be deleted
+
+import
+  constantine/named/algebras,
+  constantine/math/elliptic/[
     ec_twistededwards_affine,
     ec_twistededwards_projective
   ],
-  ../constantine/serialization/[
+  constantine/serialization/[
     codecs_status_codes,
     codecs_banderwagon,
     codecs
   ],
-  ../constantine/math/arithmetic
+  constantine/math/arithmetic
 
 # ############################################################
 #
-#       All the helper functions required for testing
+#       Inner Product Argument for Ethereum Verkle Tries
+#                     Support functions
 #
 # ############################################################
 
-func ipaEvaluate* [Fr] (res: var Fr, poly: openArray[Fr], point: Fr,  n: static int) = 
+func ipaEvaluate* [Fr] (res: var Fr, poly: openArray[Fr], point: Fr,  n: static int) =
   var powers {.noInit.}: array[n,Fr]
-  powers.computePowersOfElem(point, poly.len)
+  powers.asUnchecked().computePowers(point, poly.len)
 
   res.setZero()
 
@@ -44,27 +51,16 @@ func ipaEvaluate* [Fr] (res: var Fr, poly: openArray[Fr], point: Fr,  n: static 
     tmp.prod(powers[i], poly[i])
     res.sum(res,tmp)
 
-func evalFunc* (res: var Fr[Banderwagon], x: Fr[Banderwagon])=
-  var tmpa {.noInit.}: Fr[Banderwagon]
-  var one {.noInit.}: Fr[Banderwagon]
-  one.setOne()
-  tmpa.diff(x, one)
-
-  var tmpb {.noInit.}: Fr[Banderwagon]
-  tmpb.sum(x, one)
-
-  var tmpc = one
-  for i in 0 ..< 253:
-    tmpc *= x
-
-  res.prod(tmpa, tmpb)
-  res *= tmpc
-  
 func truncate* [Fr] (res: var openArray[Fr], s: openArray[Fr], to: int, n: static int)=
   for i in 0 ..< to:
     res[i] = s[i]
 
-func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: static int) = 
+type
+  Coord* = object
+    x*: Fr[Banderwagon]
+    y*: Fr[Banderwagon]
+
+func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: static int) =
   var one : Fr
   one.setOne()
 
@@ -78,9 +74,9 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
     var point: Coord
     point = points[k]
 
-    var x_k: Fr 
+    var x_k: Fr
     x_k = point.x
-    var y_k: Fr 
+    var y_k: Fr
     y_k = point.y
 
     var contribution: array[n,Fr]
@@ -89,12 +85,12 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
     var max_contribution_degree = 0
 
     for j in 0 ..< points.len:
-      var point: Coord 
+      var point: Coord
       point = points[j]
-      var x_j: Fr 
+      var x_j: Fr
       x_j = point.x
 
-      if j == k: 
+      if j == k:
         continue
 
       var differ: Fr
@@ -118,7 +114,7 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
 
         for i in 1 ..< contribution.len:
           contribution[i] = contribution[i-1]
-                  
+
         contribution[0] = zero
         # contribution.truncate(contribution, max_degree_plus_one, n)
 
@@ -129,7 +125,7 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
           other = mul_by_minus_x_j[i]
           contribution[i] += other
 
-    var denominator_inv {.noInit.}: Fr       
+    var denominator_inv {.noInit.}: Fr
     denominator_inv.inv(denominator)
 
     discard denominator
@@ -138,14 +134,14 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
     doAssert (stat).bool == false, "Denominator should not be zero!"
 
     for i in 0 ..< contribution.len:
-      var tmp {.noInit.}: Fr 
+      var tmp {.noInit.}: Fr
       tmp = contribution[i]
       tmp *= denominator
       tmp *= y_k
       res[i] += tmp
 
-        
-#Initiating evaluation points z in the FiniteField (253)
+
+# Initiating evaluation points z in the FiniteField (253)
 func setEval* [Fr] (res: var Fr, x : Fr)=
 
   var tmp_a {.noInit.}: Fr
@@ -161,7 +157,7 @@ func setEval* [Fr] (res: var Fr, x : Fr)=
   var tmp_c: Fr = one
 
   for i in 0 ..< 253:
-    tmp_c.prod(tmp_c,x) 
+    tmp_c.prod(tmp_c,x)
 
   res.prod(tmp_a, tmp_b)
   res.prod(res,tmp_c)
@@ -172,28 +168,28 @@ func testPoly256* [Fr] (res: var openArray[Fr], polynomialUint: openArray[int])=
 
   for i in 0 ..< polynomialUint.len:
     res[i].fromInt(polynomialUint[i])
-  
+
   var pad = 256 - polynomialUint.len
   for i in polynomialUint.len ..< pad:
     res[i].setZero()
 
-func isPointEqHex*(point: EC_P, expected: string): bool {.discardable.} =
+func isPointEqHex*(point: EC_TwEdw_Prj[Fp[Banderwagon]], expected: string): bool {.discardable.} =
 
-  var point_bytes {.noInit.}: Bytes
+  var point_bytes {.noInit.}: array[32, byte]
   if point_bytes.serialize(point) == cttCodecEcc_Success:
     doAssert (point_bytes.toHex() == expected).bool() == true, "Point does not equal to the expected hex value!"
 
-func isScalarEqHex*(scalar: matchingOrderBigInt(Banderwagon), expected: string) : bool {.discardable.} =
+func isScalarEqHex*(scalar: Fr[Banderwagon].getBigInt(), expected: string) : bool {.discardable.} =
 
-  var scalar_bytes {.noInit.}: Bytes
+  var scalar_bytes {.noInit.}: array[32, byte]
   if scalar_bytes.serialize_scalar(scalar) == cttCodecScalar_Success:
     doAssert (scalar_bytes.toHex() == expected).bool() == true, "Scalar does not equal to the expected hex value!"
 
-func getDegreeOfPoly*(res: var int, p: openArray[Fr]) = 
+func getDegreeOfPoly*(res: var int, p: openArray[Fr]) =
   for d in countdown(p.len - 1, 0):
     if not(p[d].isZero().bool()):
       res = d
-    
+
     else:
       res = -1
 
@@ -201,55 +197,69 @@ func getDegreeOfPoly*(res: var int, p: openArray[Fr]) =
 ##
 ##
 ##  Test Vector for Verifying Multiproof in all Domain Ranges but one
-## 
+##
 ##
 #######################################################################
+
 const MultiProofPedersenCommitment*: string = "0x5532395cf72b9d6b2252d968cf7fd8923262d3d17fce836a93144a1dc1b59e31"
 const MultiProofEvaluationPoint*: int = 8
 const MultiProofEvaluationResult*: string = "0x0000000000000000000000000000000000000000000000000000000000000009"
 const MultiProofSerializedVec*: string = "0x61f191c5ad8217b10318ad49f6c43b08a78f4f2788738b5c0fe11eac1878868667750c4fecfbf562628deed76a86982a5bbc3884b92017f71352e976fc5724502513b175a9d55787d58a18e8d21b3f7f7f41f7a0773bf81c957377c5a1de261635d11fe5ff83e8cca5d15aec75683fa1140755066b3972e0d9145e18a4bca26d3490dd54ae955df0caa17e93a788a42cb653ecb5a04c766328c457fe473e5365362dfff36827ced93127cd489364e6884dfc8a8f9ce9e15e27de49ac0827c00e6999c18d4b6966951eec028dc8d74b9a0057e51e97535cd43368f714b2c284c22c3ee5fc99d2ea22115444e0ee543283fbab1e6da03bc3ec7fe1a3dc4cd05d5c515cf783163a9a9ede3878d8f21187cbd2935b75893a2e5611a47ba11b5c69a417c24319b7ccbe43c71c12db43400816b22c749b48d5df0e9fd599801aa515277039062d9987d6ad2e91f96fd261b5f6bf6abf1e1905eb414ad91d17a234809750646e029b2e3ead9c22bd859fb9087ee77d37f3db6663136e81ef971782b99f30a05daa505542ce074b9ba1772b41b3c789a454f726455b95b8fb21af14e4da1262a48536037c0f7b8e9320f83d4cf144b22329e463ceaaf234c51f469965c54463f51dbce440583deca338451b981e9f4534da4e4f417a5844d71be57fa89748440255d9a76a2350cde4f454a8325d348522e81649e9980a204a2435ad0de5566ed7afd2aa250bf5ee0dc56e416a6a84876d979aa52753d9eec97137482113c9e5e42ee6365896f671e6932b1e5bf66b70001f1fef440d730a2844071b8b14"
-###################################################################
+
+#######################################################################
 ##
 ##
 ##     Test Vector for Verifying IPA Proof inside the Domain
-## 
 ##
-###################################################################
+##
+#######################################################################
+
 const IPAPedersenCommitment*: string = "0x68a798550a3e2ea3a2a91e1307e4ef06fb35d8df543f903ce9ea4edd75de7706"
 const IPAEvaluationPoint*: int = 13
 const IPAEvaluationResultFr*: string = "0x000000000000000000000000000000000000000000000000000000000000000e"
 const IPASerializedProofVec*: string = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002d3e383cf2ca36482707617daf4230f2261cff2abeb98a7d1e139cf386970f7a67cea4e0dcf8c437e5cd9852d95613a255ef625412a3ac7fb1a0d27227a32a7c1292f14b7c189f033c91217f02b34c7832958afc7ae3bb498b29ca08277dc60d1c53bb5f07280c16238a7f99c059cbbdbbc933bef4b74d604721a09b526aac1751a4bdf0df2d303418e7e5642ac4aacc730625514c87a4bcce5369cc4c1e1d2a1ee9125e09db763e7d99fa857928fabeb94ba822d5cf1cc8f5be372683ee7089082c0ca302a243f0124cc25319d069e0c689f03e4cb32e266fffd4b8c9a5e1cb2c708dc7960531ecea4331e376d7f6604228fc0606a08bda95ee3350c8bca83f37b23160af7bae3db95f0c66ed4535fc5397b43dcdc1d09c1e3a0376a6705d916d96cb64feb47d00ebf1ddbad7eaf3b5d8c381d31098c5c8a909793bd6063c2f0450320af78de387938261eba3e984271f31c3f71a55b33631b90505f8209b384aa55feb1c1c72a5e2abce15f24eb18715a309f5517ac3079c64c8ff157d3e35d5bad17b86f9599b1e34f1f4b7c6600a83913261645a0811fba0ad1ed104fe0c"
-###################################################################
+
+#######################################################################
+##
+##
+##        Test Vector for Valid IPAProof Hex
+##
+##
+#######################################################################
+
+const validIPAProof*: string = "0x273395a8febdaed38e94c3d874e99c911a47dd84616d54c55021d5c4131b507e46a4ec2c7e82b77ec2f533994c91ca7edaef212c666a1169b29c323eabb0cf690e0146638d0e2d543f81da4bd597bf3013e1663f340a8f87b845495598d0a3951590b6417f868edaeb3424ff174901d1185a53a3ee127fb7be0af42dda44bf992885bde279ef821a298087717ef3f2b78b2ede7f5d2ea1b60a4195de86a530eb247fd7e456012ae9a070c61635e55d1b7a340dfab8dae991d6273d099d9552815434cc1ba7bcdae341cf7928c6f25102370bdf4b26aad3af654d9dff4b3735661db3177342de5aad774a59d3e1b12754aee641d5f9cd1ecd2751471b308d2d8410add1c9fcc5a2b7371259f0538270832a98d18151f653efbc60895fab8be9650510449081626b5cd24671d1a3253487d44f589c2ff0da3557e307e520cf4e0054bbf8bdffaa24b7e4cce5092ccae5a08281ee24758374f4e65f126cacce64051905b5e2038060ad399c69ca6cb1d596d7c9cb5e161c7dcddc1a7ad62660dd4a5f69b31229b80e6b3df520714e4ea2b5896ebd48d14c7455e91c1ecf4acc5ffb36937c49413b7d1005dd6efbd526f5af5d61131ca3fcdae1218ce81c75e62b39100ec7f474b48a2bee6cef453fa1bc3db95c7c6575bc2d5927cbf7413181ac905766a4038a7b422a8ef2bf7b5059b5c546c19a33c1049482b9a9093f864913ca82290decf6e9a65bf3f66bc3ba4a8ed17b56d890a83bcbe74435a42499dec115"
+
+#######################################################################
 ##
 ##
 ##        Test Vector for Valid Multiproof Hex
-## 
 ##
-###################################################################
+##
+#######################################################################
 
 const validMultiproof* : string = "0x4f53588244efaf07a370ee3f9c467f933eed360d4fbf7a19dfc8bc49b67df4711bf1d0a720717cd6a8c75f1a668cb7cbdd63b48c676b89a7aee4298e71bd7f4013d7657146aa9736817da47051ed6a45fc7b5a61d00eb23e5df82a7f285cc10e67d444e91618465ca68d8ae4f2c916d1942201b7e2aae491ef0f809867d00e83468fb7f9af9b42ede76c1e90d89dd789ff22eb09e8b1d062d8a58b6f88b3cbe80136fc68331178cd45a1df9496ded092d976911b5244b85bc3de41e844ec194256b39aeee4ea55538a36139211e9910ad6b7a74e75d45b869d0a67aa4bf600930a5f760dfb8e4df9938d1f47b743d71c78ba8585e3b80aba26d24b1f50b36fa1458e79d54c05f58049245392bc3e2b5c5f9a1b99d43ed112ca82b201fb143d401741713188e47f1d6682b0bf496a5d4182836121efff0fd3b030fc6bfb5e21d6314a200963fe75cb856d444a813426b2084dfdc49dca2e649cb9da8bcb47859a4c629e97898e3547c591e39764110a224150d579c33fb74fa5eb96427036899c04154feab5344873d36a53a5baefd78c132be419f3f3a8dd8f60f72eb78dd5f43c53226f5ceb68947da3e19a750d760fb31fa8d4c7f53bfef11c4b89158aa56b1f4395430e16a3128f88e234ce1df7ef865f2d2c4975e8c82225f578310c31fd41d265fd530cbfa2b8895b228a510b806c31dff3b1fa5c08bffad443d567ed0e628febdd22775776e0cc9cebcaea9c6df9279a5d91dd0ee5e7a0434e989a160005321c97026cb559f71db23360105460d959bcdf74bee22c4ad8805a1d497507"
 
-###################################################################
+#######################################################################
 ##
 ##
 ##    Test Vector for Incorrect Deserialization 1
-## 
+##
 ##      (Length is bigger than the Field Size)
 ##
 ##
-###################################################################
+#######################################################################
 
 const serializedProof1* : string = "0x323041383230303130623231376132423730416230313038373843383130393732304138323030313062323137613242373041623031303837384338313039373230413832303031306232313761324237304162303130383738433831303937323041383230303130623231376132423730416230313038373843383130393732304138323030313062323137613242373041623031303837384338313039373230413832303031306232313761324237304162303130383738433831303937323041383230303130623231376132423730416230313038373843383130393732304138323030313062323137613242373041623031303837384338313039373230413832303031306232313761324237304162303130383738433831303937323041383230303130623231376132423730416230313038373843383130393732304138323030313062323137613242373041623031303837384338313039373230413832303031306232313761324237304162303130383738433831303937323041383230303130623231376132423730416230313038373843383130393732304138323030313062323137613242373041623031303837384338313039373230413832303031306232313761324237304162303130383738433831303937323041383230303130623231376132423730416230313038373843383130393730323031303031313131303230423031303032303131303032323232303030303030303030303030303030303030303030303030303030303030303030303030"
 
-###################################################################
+#######################################################################
 ##
 ##
 ##    Test Vector for Incorrect Deserialization 2
-## 
+##
 ##       (Scalars that are of invalid length)
 ##
 ##
-###################################################################
+#######################################################################
 
 const serializedProofs2*: array[3, string] = [
   "0x",
@@ -257,13 +267,13 @@ const serializedProofs2*: array[3, string] = [
   "0x4f53588244efaf07a370ee3f9c467f933eed360d4fbf7a19dfc8bc49b67df4711bf1d0a720717cd6a8c75f1a668cb7cbdd63b48c676b89a7aee4298e71bd7f4013d7657146aa9736817da47051ed6a45fc7b5a61d00eb23e5df82a7f285cc10e67d444e91618465ca68d8ae4f2c916d1942201b7e2aae491ef0f809867d00e83468fb7f9af9b42ede76c1e90d89dd789ff22eb09e8b1d062d8a58b6f88b3cbe80136fc68331178cd45a1df9496ded092d976911b5244b85bc3de41e844ec194256b39aeee4ea55538a36139211e9910ad6b7a74e75d45b869d0a67aa4bf600930a5f760dfb8e4df9938d1f47b743d71c78ba8585e3b80aba26d24b1f50b36fa1458e79d54c05f58049245392bc3e2b5c5f9a1b99d43ed112ca82b201fb143d401741713188e47f1d6682b0bf496a5d4182836121efff0fd3b030fc6bfb5e21d6314a200963fe75cb856d444a813426b2084dfdc49dca2e649cb9da8bcb47859a4c629e97898e3547c591e39764110a224150d579c33fb74fa5eb96427036899c04154feab5344873d36a53a5baefd78c132be419f3f3a8dd8f60f72eb78dd5f43c53226f5ceb68947da3e19a750d760fb31fa8d4c7f53bfef11c4b89158aa56b1f4395430e16a3128f88e234ce1df7ef865f2d2c4975e8c82225f578310c31fd41d265fd530cbfa2b8895b228a510b806c31dff3b1fa5c08bffad443d567ed0e628febdd22775776e0cc9cebcaea9c6df9279a5d91dd0ee5e7a0434e989a160005321c97026cb559f71db23360105460d959bcdf74bee22c4ad8805a1d497507FF"
   ]
 
-###################################################################
+#######################################################################
 ##
 ##
 ##    Test Vectors for Computing the correct Pedersen Commitment
 ##
 ##
-###################################################################
+#######################################################################
 
 const testScalarsHex* : array[256, string] = [
  "0x4995e0394bfbb0d9f0e03cc3bace2e59a2586f489366de73a619c3065d1f453",
@@ -522,4 +532,3 @@ const testScalarsHex* : array[256, string] = [
 "0xf6efc0c898593e455d1eb64cf235bc5738497f0042e862329b275acb60b8834",
 "0x1766a671c6f443bb248ca226789b7afbcc39b51219e248a630baa28a57be31ff",
 "0xf9f17f85bc58b51265fd01c595cd6200d21e273e1aa38f55b7804186cb43c1d",]
-

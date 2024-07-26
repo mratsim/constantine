@@ -11,14 +11,14 @@ import
   # Standard library
   std/[unittest, times],
   # Internal
-  ../../constantine/platforms/code_generator/[llvm, nvidia, ir],
-  ../../constantine/platforms/static_for,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/io/io_bigints,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math_codegen/fields_nvidia,
+  constantine/platforms/llvm/llvm,
+  constantine/platforms/static_for,
+  constantine/named/algebras,
+  constantine/math/io/io_bigints,
+  constantine/math/arithmetic,
+  constantine/math_compiler/[ir, impl_fields_nvidia, codegen_nvidia],
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -28,14 +28,14 @@ echo "test_nvidia_fp xoshiro512** seed: ", seed
 
 const Iters = 10
 
-proc init(T: type CurveMetadata, asy: Assembler_LLVM, curve: static Curve, wordSize: WordSize): T =
+proc init(T: type CurveMetadata, asy: Assembler_LLVM, curve: static Algebra, wordSize: WordSize): T =
   CurveMetadata.init(
       asy.ctx,
       $curve & "_", wordSize,
-      fpBits = uint32 curve.getCurveBitwidth(),
-      fpMod = curve.Mod().toHex(),
-      frBits = uint32 curve.getCurveOrderBitwidth(),
-      frMod = curve.getCurveOrder().toHex())
+      fpBits = uint32 Fp[curve].bits(),
+      fpMod = Fp[curve].getModulus().toHex(),
+      frBits = uint32 Fr[curve].bits(),
+      frMod = Fr[curve].getModulus().toHex())
 
 proc genFieldAddPTX(asy: Assembler_LLVM, cm: CurveMetadata) =
   let fpAdd = asy.field_add_gen(cm, fp)
@@ -58,7 +58,6 @@ proc genFieldMulPTX(asy: Assembler_LLVM, cm: CurveMetadata) =
 # Init LLVM
 # -------------------------
 initializeFullNVPTXTarget()
-initializePasses()
 
 # Init GPU
 # -------------------------
@@ -67,7 +66,7 @@ var sm: tuple[major, minor: int32]
 check cuDeviceGetAttribute(sm.major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, cudaDevice)
 check cuDeviceGetAttribute(sm.minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, cudaDevice)
 
-proc t_field_add(curve: static Curve) =
+proc t_field_add(curve: static Algebra) =
   # Codegen
   # -------------------------
   let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & $curve))
@@ -121,7 +120,7 @@ proc t_field_add(curve: static Curve) =
     doAssert bool(rCPU == rGPU_32)
     doAssert bool(rCPU == rGPU_64)
 
-proc t_field_sub(curve: static Curve) =
+proc t_field_sub(curve: static Algebra) =
   # Codegen
   # -------------------------
   let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & $curve))
@@ -175,7 +174,7 @@ proc t_field_sub(curve: static Curve) =
     doAssert bool(rCPU == rGPU_32)
     doAssert bool(rCPU == rGPU_64)
 
-proc t_field_mul(curve: static Curve) =
+proc t_field_mul(curve: static Algebra) =
   # Codegen
   # -------------------------
   let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & $curve))

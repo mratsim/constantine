@@ -27,6 +27,11 @@ typedef struct { byte raw[32]; } ctt_eth_bls_seckey;
 typedef struct { struct ctt_eth_bls_fp  x, y; } ctt_eth_bls_pubkey;
 typedef struct { struct ctt_eth_bls_fp2 x, y; } ctt_eth_bls_signature;
 
+// We keep the batch sig accumulator as an incomplete struct. For that to work
+// we also need an alloc/dealloc function below, which takes care of allocating
+// the right amount of storage for the struct on the Go side.
+typedef struct ctt_eth_bls_batch_sig_accumulator ctt_eth_bls_batch_sig_accumulator;
+
 typedef enum __attribute__((__packed__)) {
     cttEthBls_Success,
     cttEthBls_VerificationFailure,
@@ -49,6 +54,14 @@ static const char* ctt_eth_bls_status_to_string(ctt_eth_bls_status status) {
   }
   return "cttEthBls_InvalidStatusCode";
 }
+
+// Wrapper of the View[T] Nim type for the common case of View[byte]
+//
+// type View*[byte] = object # with T = byte
+//  data: ptr UncheckedArray[byte] # 8 bytes
+//  len*: int                      # 8 bytes (Nim `int` is a 64bit int type)
+// `span` naming following C++20 std::span<T>
+typedef struct { byte* data; size_t len; } ctt_span;
 
 // Comparisons
 // ------------------------------------------------------------------------------------------------
@@ -182,7 +195,7 @@ void ctt_eth_bls_derive_pubkey(ctt_eth_bls_pubkey* pubkey, const ctt_eth_bls_sec
  */
 void ctt_eth_bls_sign(ctt_eth_bls_signature* sig,
                       const ctt_eth_bls_seckey* seckey,
-                      const byte* message, ptrdiff_t message_len);
+                      const byte* message, size_t message_len);
 
 /** Check that a signature is valid for a message
  *  under the provided public key.
@@ -204,7 +217,7 @@ void ctt_eth_bls_sign(ctt_eth_bls_signature* sig,
  *  In particular, the public key and signature are assumed to be on curve and subgroup-checked.
  */
 ctt_eth_bls_status ctt_eth_bls_verify(const ctt_eth_bls_pubkey* pubkey,
-                                      const byte* message, ptrdiff_t message_len,
+                                      const byte* message, size_t message_len,
                                       const ctt_eth_bls_signature* sig) __attribute__((warn_unused_result));
 
 // TODO: API for pubkeys and signature aggregation. Return a bool or a status code or nothing?
@@ -224,9 +237,127 @@ ctt_eth_bls_status ctt_eth_bls_verify(const ctt_eth_bls_pubkey* pubkey,
  *
  *  In particular, the public keys and signature are assumed to be on curve subgroup checked.
  */
-ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pubkeys[], ptrdiff_t pubkeys_len,
-                                                     const byte* message, ptrdiff_t message_len,
+ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pubkeys[], size_t pubkeys_len,
+                                                     const byte* message, size_t message_len,
                                                      const ctt_eth_bls_signature* aggregate_sig) __attribute__((warn_unused_result));
+
+
+/** Verify the aggregated signature of multiple (pubkey, message) pairs
+ *  returns `true` if the signature is valid, `false` otherwise.
+ *
+ *  For message domain separation purpose, the tag is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`
+ *
+ *  Input:
+ *  - Public keys initialized by one of the key derivation or deserialization procedure.
+ *    Or validated via validate_pubkey
+ *  - Messages
+ *  - `len`: Number of elements in the `pubkeys` and `messages` arrays.
+ *  - a signature initialized by one of the key derivation or deserialization procedure.
+ *    Or validated via validate_signature
+ *
+ *  In particular, the public keys and signature are assumed to be on curve subgroup checked.
+ *
+ *  To avoid splitting zeros and rogue keys attack:
+ *  1. Public keys signing the same message MUST be aggregated and checked for 0 before calling this function.
+ *  2. Augmentation or Proof of possessions must used for each public keys.
+ */
+ctt_eth_bls_status ctt_eth_bls_aggregate_verify(const ctt_eth_bls_pubkey* pubkeys,
+						const ctt_span messages[],
+						size_t len,
+						const ctt_eth_bls_signature* aggregate_sig) __attribute__((warn_unused_result));
+
+
+/** Verify that all (pubkey, message, signature) triplets are valid
+ *  returns `true` if all signatures are valid, `false` if at least one is invalid.
+ *
+ *  For message domain separation purpose, the tag is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`
+ *
+ *  Input:
+ *  - Public keys initialized by one of the key derivation or deserialization procedure.
+ *    Or validated via validate_pubkey
+ *  - Messages
+ *  - Signatures initialized by one of the key derivation or deserialization procedure.
+ *    Or validated via validate_signature
+ *
+ *  In particular, the public keys and signature are assumed to be on curve subgroup checked.
+ *
+ *  To avoid splitting zeros and rogue keys attack:
+ *  1. Cryptographically-secure random bytes must be provided.
+ *  2. Augmentation or Proof of possessions must used for each public keys.
+ *
+ *  The secureRandomBytes will serve as input not under the attacker control to foil potential splitting zeros inputs.
+ *  The scheme assumes that the attacker cannot
+ *  resubmit 2^64 times forged (publickey, message, signature) triplets
+ *  against the same `secureRandomBytes`
+ */
+
+ctt_eth_bls_status ctt_eth_bls_batch_verify(const ctt_eth_bls_pubkey pubkeys[],
+					    const ctt_span messages[],
+					    const ctt_eth_bls_signature signatures[],
+					    size_t len,
+					    const byte secure_random_bytes[32]
+    ) __attribute__((warn_unused_result));
+
+
+/**
+ * Allocator function for the incomplete struct of the batch sig accumulator.
+ * Users of the C API *must* use this.
+ */
+ctt_eth_bls_batch_sig_accumulator* ctt_eth_bls_alloc_batch_sig_accumulator();
+
+/**
+ * Function to free the storage allocated by the above.
+ * Users of the C API *must* use this.
+ */
+void ctt_eth_bls_free_batch_sig_accumulator(ctt_eth_bls_batch_sig_accumulator *ptr);
+
+/**
+ *  Initializes a Batch BLS Signature accumulator context.
+ *
+ *  This requires cryptographically secure random bytes
+ *  to defend against forged signatures that would not
+ *  verify individually but would verify while aggregated
+ *  https://ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407/14
+ *
+ *  An optional accumulator separation tag can be added
+ *  so that from a single source of randomness
+ *  each accumulatpr is seeded with a different state.
+ *  This is useful in multithreaded context.
+ */
+void ctt_eth_bls_init_batch_sig_accumulator(
+    ctt_eth_bls_batch_sig_accumulator* ctx,
+    //const byte domain_sep_tag[],
+    //size_t domain_sep_tag_len,
+    const byte secure_random_bytes[32],
+    const byte accum_sep_tag[],
+    size_t accum_sep_tag_len
+    );
+
+/**
+ *  Add a (public key, message, signature) triplet
+ *  to a BLS signature accumulator
+ *
+ *  Assumes that the public key and signature
+ *  have been group checked
+ *
+ *  Returns false if pubkey or signatures are the infinity points
+ *
+ */
+ctt_bool ctt_eth_bls_update_batch_sig_accumulator(
+    ctt_eth_bls_batch_sig_accumulator* ctx,
+    const ctt_eth_bls_pubkey* pubkey,
+    const byte* message, size_t message_len,
+    const ctt_eth_bls_signature* signature
+    ) __attribute__((warn_unused_result));
+
+/**
+ *  Finish batch and/or aggregate signature verification and returns the final result.
+ *
+ *  Returns false if nothing was accumulated
+ *  Rteturns false on verification failure
+ */
+ctt_bool ctt_eth_bls_final_verify_batch_sig_accumulator(ctt_eth_bls_batch_sig_accumulator* ctx) __attribute__((warn_unused_result));
+
 
 #ifdef __cplusplus
 }

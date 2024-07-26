@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../io/io_bigints,
+  constantine/platforms/abstractions,
+  constantine/math/io/io_bigints,
   ./limbs,
   ./limbs_montgomery,
   ./bigints

@@ -8,14 +8,14 @@
 
 import
   std/times,
-  ../constantine/platforms/metering/[reports, tracer],
-  ../constantine/math/config/curves,
-  ../constantine/math/[arithmetic, extension_fields, ec_shortweierstrass],
-  ../constantine/math/constants/zoo_subgroups,
-  ../constantine/math/elliptic/ec_multi_scalar_mul,
-  ../constantine/platforms/abstractions,
+  constantine/platforms/metering/[reports, tracer],
+  constantine/named/algebras,
+  constantine/math/[arithmetic, extension_fields, ec_shortweierstrass],
+  constantine/named/zoo_subgroups,
+  constantine/math/elliptic/ec_multi_scalar_mul,
+  constantine/platforms/abstractions,
   # Helpers
-  ../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 var rng*: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -23,8 +23,8 @@ rng.seed(seed)
 echo "bench xoshiro512** seed: ", seed
 
 proc msmMeter*(EC: typedesc, numPoints: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
-  var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
+  const bits = EC.getScalarField().bits()
+  var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](numPoints)
   var scalars = newSeq[BigInt[bits]](numPoints)
 
   for i in 0 ..< numPoints:
@@ -39,6 +39,6 @@ proc msmMeter*(EC: typedesc, numPoints: int) =
   r.multiScalarMul_vartime(scalars, points)
 
 resetMetering()
-msmMeter(ECP_ShortW_Jac[Fp[BLS12_381], G1], 10000)
+msmMeter(EC_ShortW_Jac[Fp[BLS12_381], G1], 10000)
 const flags = if UseASM_X86_64 or UseASM_X86_32: "UseAssembly" else: "NoAssembly"
 reportCli(Metrics, flags)

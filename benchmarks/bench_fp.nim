@@ -8,10 +8,10 @@
 
 import
   # Internals
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/io/io_bigints,
-  ../constantine/math/constants/zoo_square_roots,
+  constantine/named/algebras,
+  constantine/math/arithmetic,
+  constantine/math/io/io_bigints,
+  constantine/named/zoo_square_roots,
   # Helpers
   ./bench_fields_template
 
@@ -70,7 +70,7 @@ proc main() =
       sqrtRatioVartimeBench(Fp[curve], ExponentIters)
     # Exponentiation by a "secret" of size ~the curve order
     powBench(Fp[curve], ExponentIters)
-    powUnsafeBench(Fp[curve], ExponentIters)
+    powVartimeBench(Fp[curve], ExponentIters)
     separator()
 
 main()

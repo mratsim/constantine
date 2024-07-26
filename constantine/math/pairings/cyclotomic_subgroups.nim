@@ -7,11 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../config/curves,
-  ../arithmetic,
-  ../extension_fields,
-  ../isogenies/frobenius
+  constantine/platforms/abstractions,
+  constantine/named/algebras,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/math/endomorphisms/frobenius
 
 # No exceptions allowed
 {.push raises: [].}
@@ -35,7 +35,7 @@ import
 # 𝔽pⁿ -> Gϕₙ - Mapping to Cyclotomic group
 # ----------------------------------------------------------------
 
-func finalExpEasy*[C: static Curve](f: var Fp6[C]) {.meter.} =
+func finalExpEasy*[Name: static Algebra](f: var Fp6[Name]) {.meter.} =
   ## Easy part of the final exponentiation
   ##
   ## This maps the result of the Miller loop into the cyclotomic subgroup Gϕ₆
@@ -115,7 +115,7 @@ func finalExpEasy*[C: static Curve](f: var Fp6[C]) {.meter.} =
   f.frobenius_map(g)    # f = f^((p³-1) p)
   f *= g                # f = f^((p³-1) (p+1))
 
-func finalExpEasy*[C: static Curve](f: var Fp12[C]) {.meter.} =
+func finalExpEasy*[Name: static Algebra](f: var Fp12[Name]) {.meter.} =
   ## Easy part of the final exponentiation
   ##
   ## This maps the result of the Miller loop into the cyclotomic subgroup Gϕ₁₂
@@ -225,9 +225,9 @@ func cyclotomic_square_cube_over_quad(r: var CubicExt, a: CubicExt) =
   # https://eprint.iacr.org/2009/565.pdf
 
   # Cubic extension field
-  # A = 3a² − 2 ̄a
-  # B = 3 √i c² + 2 ̄b
-  # C = 3b² − 2 ̄c
+  # A = 3a² − 2a̅
+  # B = 3 √i c² + 2b̅
+  # C = 3b² − 2c̅
   var v0{.noInit.}, v1{.noInit.}, v2{.noInit.}: typeof(a.c0)
 
   template a0: untyped = a.c0.c0
@@ -261,7 +261,7 @@ func cyclotomic_square_cube_over_quad(r: var CubicExt, a: CubicExt) =
   r.c2.c1.double()
   r.c2.c1 += v1.c1
 
-  # Now B = 3 √i c² + 2 ̄b
+  # Now B = 3 √i c² + 2b̅
   # beware of mul by non residue: √i v₂ = ξv₂₁ + v₂₀√i
 
   # 3 (√i c²)₀ + 2a₂
@@ -291,9 +291,9 @@ func cyclotomic_square_quad_over_cube[F](r: var QuadraticExt[F], a: QuadraticExt
   #    c₅     <=>        a₅            <=>            b₅
   #
   # Hence, this formula for a cubic extension field
-  #   A = 3a² − 2 ̄a
-  #   B = 3 √i c² + 2 ̄b
-  #   C = 3b² − 2 ̄c
+  #   A = 3a² − 2a̅
+  #   B = 3 √i c² + 2b̅
+  #   C = 3b² − 2c̅
   #
   # becomes
   #   A = (b₀, b₄) = 3(b₀, b₄)² - 2(b₀,-b₄)
@@ -411,10 +411,10 @@ func cyclotomic_exp*[FT](r: var FT, a: FT, exponent: static BigInt, invert: bool
   if invert:
     r.cyclotomic_inv()
 
-func isInCyclotomicSubgroup*[C](a: Fp6[C]): SecretBool =
+func isInCyclotomicSubgroup*[Name](a: Fp6[Name]): SecretBool =
   ## Check if a ∈ Fpⁿ: a^Φₙ(p) = 1
   ## Φ₆(p) = p²-p+1
-  var t{.noInit.}, p{.noInit.}: Fp6[C]
+  var t{.noInit.}, p{.noInit.}: Fp6[Name]
 
   t.frobenius_map(a, 2)  # a^(p²)
   t *= a                 # a^(p²+1)
@@ -422,10 +422,10 @@ func isInCyclotomicSubgroup*[C](a: Fp6[C]): SecretBool =
 
   return t == p and not a.isZero()
 
-func isInCyclotomicSubgroup*[C](a: Fp12[C]): SecretBool =
+func isInCyclotomicSubgroup*[Name](a: Fp12[Name]): SecretBool =
   ## Check if a ∈ Fpⁿ: a^Φₙ(p) = 1
   ## Φ₁₂(p) = p⁴-p²+1
-  var t{.noInit.}, p2{.noInit.}: Fp12[C]
+  var t{.noInit.}, p2{.noInit.}: Fp12[Name]
 
   p2.frobenius_map(a, 2) # a^(p²)
   t.frobenius_map(p2, 2) # a^(p⁴)
@@ -779,10 +779,8 @@ func cyclotomic_exp_compressed*[N: static int, Fpk](
     g0s[i].recover_g0(g1s[i], gs[i])
 
   r.asFpk(g0s[0], g1s[0], gs[0])
+  var t {.noInit.}: Fpk
   for i in 1 ..< N:
-    var t {.noInit.}: Fpk
     t.asFpk(g0s[i], g1s[i], gs[i])
     r *= t
-
-    if i+1 == N:
-      accumSquarings = t
+  accumSquarings = t

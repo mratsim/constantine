@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/isa/simd_x86,
-  ../../platforms/primitives,
+  constantine/platforms/x86/simd_x86,
+  constantine/platforms/primitives,
   ./sha256_generic
 
 {.localpassC:"-mssse3".}
@@ -47,7 +47,7 @@ import
 # ------------------------------------------------
 
 const VecNum = BlockSize div 16      # BlockSize / sizeof(m128i)
-const VecWords = 16 div sizeof(Word) # sizeof(m128i) / sizeof(Word) 
+const VecWords = 16 div sizeof(Word) # sizeof(m128i) / sizeof(Word)
 
 func initMessageSchedule(
        msnext: var array[VecNum, m128i],
@@ -56,7 +56,7 @@ func initMessageSchedule(
   ## Initial state, from data
   ## - Precompute steps for the future message schedule `msnext`
   ## - compute the current message schedule `ms`
-  
+
   let mask = setr_u32x4(0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f)
   let pK256 = K256.unsafeAddr()
 
@@ -115,7 +115,7 @@ func updateMessageSchedule(
   v[2] = xor_u128(v[2], v[3])
   v[3] = shr_u64x2(v[3], rot1[1] - rot1[0])
 
-  W[0] = add_u32x4(W[0], shuf_u8x16(xor_u128(v[2], v[3]), hi_mask)) 
+  W[0] = add_u32x4(W[0], shuf_u8x16(xor_u128(v[2], v[3]), hi_mask))
 
   W.rotateLeft()
 
@@ -127,7 +127,7 @@ func sha256_rounds_0_47(
        ms: var Sha256_MessageSchedule,
        msnext: var array[VecNum, m128i]) {.inline.} =
   ## Process Sha256 rounds 0 to 47
-  
+
   let loMask = setr_u32x4(0x03020100, 0x0b0a0908, -1, -1)
   let hiMask = setr_u32x4(-1, -1, 0x03020100, 0x0b0a0908)
 

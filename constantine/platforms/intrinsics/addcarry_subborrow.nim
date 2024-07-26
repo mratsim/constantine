@@ -94,11 +94,24 @@ when X86:
   else:
     {.pragma: intrinsics, header:"<x86intrin.h>", nodecl.}
 
-  func addcarry_u32(carryIn: Carry, a, b: Ct[uint32], sum: var Ct[uint32]): Carry {.importc: "_addcarry_u32", intrinsics.}
-  func subborrow_u32(borrowIn: Borrow, a, b: Ct[uint32], diff: var Ct[uint32]): Borrow {.importc: "_subborrow_u32", intrinsics.}
+  func addcarry_u32(carryIn: Carry, a, b: cuint, sum: var cuint): Carry {.importc: "_addcarry_u32", intrinsics.}
+  func subborrow_u32(borrowIn: Borrow, a, b: cuint, diff: var cuint): Borrow {.importc: "_subborrow_u32", intrinsics.}
 
-  func addcarry_u64(carryIn: Carry, a, b: Ct[uint64], sum: var Ct[uint64]): Carry {.importc: "_addcarry_u64", intrinsics.}
-  func subborrow_u64(borrowIn: Borrow, a, b: Ct[uint64], diff: var Ct[uint64]): Borrow {.importc: "_subborrow_u64", intrinsics.}
+  # Note, Nim uint64 maps to uint64_t which maps to long unsigned int on 64-bit instead of long long unsigned int
+  func addcarry_u64(carryIn: Carry, a, b: culonglong, sum: var culonglong): Carry {.importc: "_addcarry_u64", intrinsics.}
+  func subborrow_u64(borrowIn: Borrow, a, b: culonglong, diff: var culonglong): Borrow {.importc: "_subborrow_u64", intrinsics.}
+
+  template addcarry_u32(carryIn: Carry, a, b: Ct[uint32], sum: var Ct[uint32]): Carry =
+    addcarry_u32(carryIn, cast[cuint](a), cast[cuint](b), cast[ptr cuint](sum.addr)[])
+
+  template subborrow_u32(borrowIn: Borrow, a, b: Ct[uint32], sum: var Ct[uint32]): Borrow =
+    subborrow_u32(borrowIn, cast[cuint](a), cast[cuint](b), cast[ptr cuint](sum.addr)[])
+
+  template addcarry_u64(carryIn: Carry, a, b: Ct[uint64], sum: var Ct[uint64]): Carry =
+    addcarry_u64(carryIn, cast[culonglong](a), cast[culonglong](b), cast[ptr culonglong](sum.addr)[])
+
+  template subborrow_u64(borrowIn: Borrow, a, b: Ct[uint64], sum: var Ct[uint64]): Borrow =
+    subborrow_u64(borrowIn, cast[culonglong](a), cast[culonglong](b), cast[ptr culonglong](sum.addr)[])
 
 # ############################################################
 #

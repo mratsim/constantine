@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  std/[unittest,times],
-        ../../constantine/math/io/io_bigints,
-        ../../constantine/platforms/abstractions,
-        ../../constantine/math/arithmetic,
-        ../../helpers/prng_unsafe
+        constantine/math/io/io_bigints,
+        constantine/platforms/abstractions,
+        constantine/math/arithmetic,
+        helpers/prng_unsafe
 
 # Random seed for reproducibility
 var rng: RngState

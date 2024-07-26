@@ -7,15 +7,20 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../arithmetic,
-  ../ec_shortweierstrass,
+  constantine/platforms/abstractions,
+  constantine/math/[arithmetic, extension_fields],
+  ./ec_shortweierstrass_affine,
+  ./ec_shortweierstrass_jacobian,
+  ./ec_shortweierstrass_projective,
   ./ec_shortweierstrass_batch_ops,
   ./ec_twistededwards_projective,
   ./ec_twistededwards_affine
 
-export abstractions, arithmetic,
-       ec_shortweierstrass,
+export abstractions, arithmetic, extension_fields,
+       ec_shortweierstrass_affine,
+       ec_shortweierstrass_jacobian,
+       ec_shortweierstrass_projective,
+       ec_shortweierstrass_batch_ops,
        ec_twistededwards_projective,
        ec_twistededwards_affine
 
@@ -208,6 +213,7 @@ func bestBucketBitSize*(inputSize: int, scalarBitwidth: static int, useSignedBuc
   # L1, L2 caches, TLB and 64 aliasing conflict
   # are not taken into account in previous formula.
   # Each increase in c doubles memory used.
+  # TODO: use the element size for thresholds.
   when useManualTuning:
     if 14 <= result:
       result -= 1
@@ -449,10 +455,10 @@ func sparseVectorAddition[ECaff](
 
     # Special cases 1: infinity points have affine coordinates (0, 0) by convention
     #                  it doesn't match the y²=x³+ax+b equation so slope formula need special handling
-    if (kAffine notin bucketStatuses[sps[i].bucket]) or buckets[sps[i].bucket].isInf().bool:
+    if (kAffine notin bucketStatuses[sps[i].bucket]) or buckets[sps[i].bucket].isNeutral().bool:
       specialCases[i] = kInfLhs
       skipSpecialCase()
-    elif points[sps[i].pointID].isInf().bool:
+    elif points[sps[i].pointID].isNeutral().bool:
       specialCases[i] = kInfRhs
       skipSpecialCase()
 
@@ -505,7 +511,7 @@ func sparseVectorAddition[ECaff](
     elif specialCases[i] == kInfRhs:
       continue
     elif specialCases[i] == kOpposite:
-      buckets[sps[i].bucket].setInf()
+      buckets[sps[i].bucket].setNeutral()
       bucketStatuses[sps[i].bucket].excl(kAffine)
       continue
 
@@ -533,7 +539,7 @@ func sparseVectorAddition[ECaff](
     elif specialCases[0] == kInfRhs:
       discard
     elif specialCases[0] == kOpposite:
-      buckets[sps[0].bucket].setInf()
+      buckets[sps[0].bucket].setNeutral()
       bucketStatuses[sps[0].bucket].excl(kAffine)
     else:
       # Compute lambda
@@ -554,13 +560,13 @@ func bucketReduce*[N, EC, ECaff](
 
   if kAffine in buckets.status[N-1]:
     if kNonAffine in buckets.status[N-1]:
-      accumBuckets.madd_vartime(buckets.pt[N-1], buckets.ptAff[N-1])
+      accumBuckets.mixedSum_vartime(buckets.pt[N-1], buckets.ptAff[N-1])
     else:
       accumBuckets.fromAffine(buckets.ptAff[N-1])
   elif kNonAffine in buckets.status[N-1]:
     accumBuckets = buckets.pt[N-1]
   else:
-    accumBuckets.setInf()
+    accumBuckets.setNeutral()
   r = accumBuckets
   buckets.reset(N-1)
 
@@ -568,7 +574,7 @@ func bucketReduce*[N, EC, ECaff](
     if kAffine in buckets.status[k]:
       if kNonAffine in buckets.status[k]:
         var t{.noInit.}: EC
-        t.madd_vartime(buckets.pt[k], buckets.ptAff[k])
+        t.mixedSum_vartime(buckets.pt[k], buckets.ptAff[k])
         accumBuckets ~+= t
       else:
         accumBuckets ~+= buckets.ptAff[k]

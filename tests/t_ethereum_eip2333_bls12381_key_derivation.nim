@@ -9,14 +9,14 @@
 
 import
   std/unittest,
-  ../constantine/ethereum_eip2333_bls12381_key_derivation,
-  ../constantine/math/io/io_bigints,
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic/bigints,
-  ../constantine/platforms/abstractions,
-  ../constantine/serialization/codecs
+  constantine/named/algebras,
+  constantine/ethereum_eip2333_bls12381_key_derivation,
+  constantine/math/io/io_bigints,
+  constantine/math/arithmetic/bigints,
+  constantine/platforms/abstractions,
+  constantine/serialization/codecs
 
-type SecretKey = matchingOrderBigInt(BLS12_381)
+type SecretKey = Fr[BLS12_381].getBigInt()
 
 proc toBytes(hex: string): seq[byte] =
   doAssert (hex.len and 1) == 0, "Input hex must have an even number of characters"

@@ -17,25 +17,36 @@ import
   elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,
+    ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_batch_ops,
-    ec_scalar_mul, ec_scalar_mul_vartime
-  ]
+    ec_scalar_mul, ec_scalar_mul_vartime,
+    ec_multi_scalar_mul,
+  ],
+  ../named/zoo_generators
 
 export ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_projective,
-       ec_shortweierstrass_batch_ops, ec_scalar_mul, ec_scalar_mul_vartime
+       ec_shortweierstrass_jacobian_extended,
+       ec_shortweierstrass_batch_ops, ec_scalar_mul, ec_scalar_mul_vartime,
+       ec_multi_scalar_mul
 
-type ECP_ShortW*[F; G: static Subgroup] = ECP_ShortW_Aff[F, G] | ECP_ShortW_Jac[F, G] | ECP_ShortW_Prj[F, G]
+type EC_ShortW*[F; G: static Subgroup] = EC_ShortW_Aff[F, G] | EC_ShortW_Jac[F, G] | EC_ShortW_Prj[F, G]
 
 func projectiveFromJacobian*[F; G](
-       prj: var ECP_ShortW_Prj[F, G],
-       jac: ECP_ShortW_Jac[F, G]) {.inline.} =
+       prj: var EC_ShortW_Prj[F, G],
+       jac: EC_ShortW_Jac[F, G]) {.inline.} =
   prj.x.prod(jac.x, jac.z)
   prj.y = jac.y
   prj.z.square(jac.z)
   prj.z *= jac.z
 
-func double_repeated*(P: var ECP_ShortW, num: int) {.inline.} =
+func double_repeated*(P: var EC_ShortW, num: int) {.inline.} =
   ## Repeated doublings
   for _ in 0 ..< num:
     P.double()
+
+func setGenerator*[F, G](g: var EC_ShortW[F, G]) {.inline.} =
+  when g is EC_ShortW_Aff:
+    g = F.Name.getGenerator($G)
+  else:
+    g.fromAffine(F.Name.getGenerator($G))

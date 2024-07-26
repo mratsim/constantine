@@ -6,13 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import
-  # Internals
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/extension_fields,
-  # Helpers
-  ./bench_summary_template
+import ./bench_summary_template
 
 # ############################################################
 #
@@ -50,30 +44,34 @@ proc main() =
     sqrBench(Fp12[curve], Iters)
     invBench(Fp12[curve], Iters)
     separator()
-    addBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
-    mixedAddBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
-    doublingBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
+    addBench(EC_ShortW_Prj[Fp[curve], G1], Iters)
+    mixedAddBench(EC_ShortW_Prj[Fp[curve], G1], Iters)
+    doublingBench(EC_ShortW_Prj[Fp[curve], G1], Iters)
     separator()
-    addBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
-    mixedAddBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
-    doublingBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
+    addBench(EC_ShortW_Jac[Fp[curve], G1], Iters)
+    mixedAddBench(EC_ShortW_Jac[Fp[curve], G1], Iters)
+    doublingBench(EC_ShortW_Jac[Fp[curve], G1], Iters)
     separator()
-    addBench(ECP_ShortW_Prj[Fp2[curve], G2], Iters)
-    mixedAddBench(ECP_ShortW_Prj[Fp2[curve], G2], Iters)
-    doublingBench(ECP_ShortW_Prj[Fp2[curve], G2], Iters)
+    addBench(EC_ShortW_Prj[Fp2[curve], G2], Iters)
+    mixedAddBench(EC_ShortW_Prj[Fp2[curve], G2], Iters)
+    doublingBench(EC_ShortW_Prj[Fp2[curve], G2], Iters)
     separator()
-    addBench(ECP_ShortW_Jac[Fp2[curve], G2], Iters)
-    mixedAddBench(ECP_ShortW_Jac[Fp2[curve], G2], Iters)
-    doublingBench(ECP_ShortW_Jac[Fp2[curve], G2], Iters)
+    addBench(EC_ShortW_Jac[Fp2[curve], G2], Iters)
+    mixedAddBench(EC_ShortW_Jac[Fp2[curve], G2], Iters)
+    doublingBench(EC_ShortW_Jac[Fp2[curve], G2], Iters)
     separator()
-    scalarMulBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
-    scalarMulBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
-    scalarMulBench(ECP_ShortW_Prj[Fp2[curve], G2], Iters)
-    scalarMulBench(ECP_ShortW_Jac[Fp2[curve], G2], Iters)
+    scalarMulBench(EC_ShortW_Prj[Fp[curve], G1], Iters)
+    scalarMulBench(EC_ShortW_Jac[Fp[curve], G1], Iters)
+    separator()
+    scalarMulBench(EC_ShortW_Prj[Fp2[curve], G2], Iters)
+    scalarMulBench(EC_ShortW_Jac[Fp2[curve], G2], Iters)
     separator()
     millerLoopBLS12Bench(curve, Iters)
     finalExpBLS12Bench(curve, Iters)
     pairingBLS12Bench(curve, Iters)
+    separator()
+    subgroupCheckBench(EC_ShortW_Jac[Fp[curve], G1], Iters)
+    subgroupCheckBench(EC_ShortW_Jac[Fp2[curve], G2], Iters)
     separator()
 
 main()

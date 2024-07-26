@@ -1,8 +1,8 @@
 import
   # Internals
-  ../constantine/mac/mac_poly1305,
+  constantine/mac/mac_poly1305,
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./bench_blueprint
 
 proc separator*() = separator(69)

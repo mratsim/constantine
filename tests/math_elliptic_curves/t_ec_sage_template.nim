@@ -12,18 +12,11 @@ import
   # 3rd party
   pkg/jsony,
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/[arithmetic, extension_fields],
-  ../../constantine/math/io/[io_bigints, io_ec],
-  ../../constantine/math/elliptic/[
-    ec_shortweierstrass_affine,
-    ec_shortweierstrass_projective,
-    ec_shortweierstrass_jacobian,
-    ec_scalar_mul,
-    ec_endomorphism_accel],
-  ../../constantine/math/constants/zoo_endomorphisms,
-  # Test utilities
-  ../../constantine/math/elliptic/ec_scalar_mul_vartime
+  constantine/platforms/abstractions,
+  constantine/math/[arithmetic, extension_fields],
+  constantine/math/io/[io_bigints, io_ec],
+  constantine/math/ec_shortweierstrass,
+  constantine/named/zoo_endomorphisms
 
 export unittest, abstractions, arithmetic # Generic sandwich
 
@@ -31,7 +24,7 @@ export unittest, abstractions, arithmetic # Generic sandwich
 # --------------------------------------------------------------------------
 
 type
-  TestVector*[EC: ECP_ShortW_Aff, bits: static int] = object
+  TestVector*[EC: EC_ShortW_Aff, bits: static int] = object
     id: int
     P: EC
     scalarBits: int
@@ -50,7 +43,7 @@ type
     x: Fp2_hex
     y: Fp2_hex
 
-  ScalarMulTestG1[EC: ECP_ShortW_Aff, bits: static int] = object
+  ScalarMulTestG1[EC: EC_ShortW_Aff, bits: static int] = object
     curve: string
     group: string
     modulus: string
@@ -62,7 +55,7 @@ type
     # vectors ------------------
     vectors: seq[TestVector[EC, bits]]
 
-  ScalarMulTestG2[EC: ECP_ShortW_Aff, bits: static int] = object
+  ScalarMulTestG2[EC: EC_ShortW_Aff, bits: static int] = object
     curve: string
     group: string
     modulus: string
@@ -92,21 +85,21 @@ proc parseHook*(src: string, pos: var int, value: var BigInt) =
   parseHook(src, pos, str)
   value.fromHex(str)
 
-proc parseHook*(src: string, pos: var int, value: var ECP_ShortW_Aff) =
+proc parseHook*(src: string, pos: var int, value: var EC_ShortW_Aff) =
   # Note when nim-serialization was used:
-  #   When ECP_ShortW_Aff[Fp[Foo], G1]
-  #   and ECP_ShortW_Aff[Fp[Foo], G2]
+  #   When EC_ShortW_Aff[Fp[Foo], G1]
+  #   and EC_ShortW_Aff[Fp[Foo], G2]
   #   are generated in the same file (i.e. twists and base curve are both on Fp)
   #   this creates bad codegen, in the C code, the `value`parameter gets the wrong type
   #   TODO: upstream
-  when ECP_ShortW_Aff.F is Fp:
+  when EC_ShortW_Aff.F is Fp:
     var P: EC_G1_hex
     parseHook(src, pos, P)
     let ok = value.fromHex(P.x, P.y)
     doAssert ok, "\nDeserialization error on G1 for\n" &
       "  P.x: " & P.x & "\n" &
       "  P.y: " & P.x & "\n"
-  elif ECP_ShortW_Aff.F is Fp2:
+  elif EC_ShortW_Aff.F is Fp2:
     var P: EC_G2_hex
     parseHook(src, pos, P)
     let ok = value.fromHex(P.x.c0, P.x.c1, P.y.c0, P.y.c1)
@@ -121,7 +114,7 @@ proc parseHook*(src: string, pos: var int, value: var ECP_ShortW_Aff) =
 proc loadVectors(TestType: typedesc): TestType =
   const group = when TestType.EC.G == G1: "G1"
                 else: "G2"
-  const filename = "tv_" & $TestType.EC.F.C & "_scalar_mul_" & group & "_" & $TestType.bits & "bit.json"
+  const filename = "tv_" & $TestType.EC.F.Name & "_scalar_mul_" & group & "_" & $TestType.bits & "bit.json"
   echo "Loading: ", filename
   let content = readFile(TestVectorsDir/filename)
   result = content.fromJson(TestType)
@@ -138,15 +131,15 @@ proc run_scalar_mul_test_vs_sage*(
 
   when EC.G == G1:
     const G1_or_G2 = "G1"
-    let vec = loadVectors(ScalarMulTestG1[ECP_ShortW_Aff[EC.F, EC.G], bits])
+    let vec = loadVectors(ScalarMulTestG1[EC_ShortW_Aff[EC.F, EC.G], bits])
   else:
     const G1_or_G2 = "G2"
-    let vec = loadVectors(ScalarMulTestG2[ECP_ShortW_Aff[EC.F, EC.G], bits])
+    let vec = loadVectors(ScalarMulTestG2[EC_ShortW_Aff[EC.F, EC.G], bits])
 
-  const coord = when EC is ECP_ShortW_Prj: " Projective coordinates "
-                elif EC is ECP_ShortW_Jac: " Jacobian coordinates "
+  const coord = when EC is EC_ShortW_Prj: " Projective coordinates "
+                elif EC is EC_ShortW_Jac: " Jacobian coordinates "
 
-  const testSuiteDesc = "Scalar Multiplication " & $EC.F.C & " " & G1_or_G2 & " " & coord & " vs SageMath - " & $bits & "-bit scalar"
+  const testSuiteDesc = "Scalar Multiplication " & $EC.getName() & " " & G1_or_G2 & " " & coord & " vs SageMath - " & $bits & "-bit scalar"
 
   suite testSuiteDesc & " [" & $WordBitWidth & "-bit words]":
     for i in 0 ..< vec.vectors.len:
@@ -166,7 +159,7 @@ proc run_scalar_mul_test_vs_sage*(
 
         impl.scalarMulGeneric(vec.vectors[i].scalar)
         reference.scalarMul_doubleAdd_vartime(vec.vectors[i].scalar)
-        refMinWeight.scalarMul_minHammingWeight_vartime(vec.vectors[i].scalar)
+        refMinWeight.scalarMul_jy00_vartime(vec.vectors[i].scalar)
 
         doAssert: bool(Q == reference)
         doAssert: bool(Q == impl)
@@ -174,7 +167,7 @@ proc run_scalar_mul_test_vs_sage*(
 
         staticFor w, 2, 5:
           var refWNAF = P
-          refWNAF.scalarMul_minHammingWeight_windowed_vartime(vec.vectors[i].scalar, window = w)
+          refWNAF.scalarMul_wNAF_vartime(vec.vectors[i].scalar, window = w)
           check: bool(impl == refWNAF)
 
         when bits >= EndomorphismThreshold: # All endomorphisms constants are below this threshold
@@ -189,5 +182,5 @@ proc run_scalar_mul_test_vs_sage*(
 
           staticFor w, 2, 5:
             var endoWNAF = P
-            endoWNAF.scalarMulEndo_minHammingWeight_windowed_vartime(vec.vectors[i].scalar, window = w)
+            endoWNAF.scalarMulEndo_wNAF_vartime(vec.vectors[i].scalar, window = w)
             check: bool(impl == endoWNAF)

@@ -12,9 +12,9 @@ import
   std/typetraits,
   # Internal
   ./io_bigints, ./io_fields,
-  ../../platforms/primitives,
-  ../arithmetic/finite_fields,
-  ../extension_fields/towers
+  constantine/platforms/primitives,
+  constantine/math/arithmetic/finite_fields,
+  constantine/math/extension_fields/towers
 
 export towers
 
@@ -27,11 +27,6 @@ export towers
 #   Parsing from canonical inputs to internal representation
 #
 # ############################################################
-
-proc spaces*(num: int): string =
-  result = newString(num)
-  for i in 0 ..< num:
-    result[i] = ' '
 
 func appendHex*(accum: var string, f: ExtensionField, indent = 0, order: static Endianness = bigEndian) =
   ## Hex accumulator

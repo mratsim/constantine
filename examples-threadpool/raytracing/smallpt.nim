@@ -209,7 +209,7 @@ proc tracer_single(C: var seq[Vec], w, h: static int, samples: int) =
           C[i] = C[i] + vec(r.x.clamp(), r.y.clamp(), r.z.clamp()) * 0.25 # / num subpixels
 
 when compileOption("threads"):
-  import ../../constantine/threadpool
+  import constantine/threadpool
 
   proc tracer_threaded(C: var seq[Vec], w, h: static int, samples: int) =
     # This gives the exact same result as single threaded and GCC OpenMP

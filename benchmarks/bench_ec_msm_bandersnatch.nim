@@ -8,11 +8,11 @@
 
 import
   # Internals
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/elliptic/ec_twistededwards_projective,
+  constantine/named/algebras,
+  constantine/math/arithmetic,
+  constantine/math/ec_twistededwards,
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./bench_elliptic_parallel_template
 
 # ############################################################
@@ -30,14 +30,13 @@ const AvailableCurves = [
 ]
 
 # const testNumPoints = [10, 100, 1000, 10000, 100000]
-# const testNumPoints = [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
-const testNumPoints = [1 shl 8, 1 shl 9, 1 shl 10, 1 shl 11, 1 shl 12, 1 shl 13, 1 shl 14, 1 shl 15, 1 shl 16, 1 shl 17, 1 shl 22]
+const testNumPoints = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
 
 proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    var ctx = createBenchMsmContext(ECP_TwEdwards_Prj[Fp[curve]], testNumPoints)
+    var ctx = createBenchMsmContext(EC_TwEdw_Prj[Fp[curve]], testNumPoints)
     separator()
     for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)

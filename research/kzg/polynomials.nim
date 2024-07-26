@@ -1,24 +1,24 @@
 import
-  ../../constantine/platforms/primitives,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/[arithmetic, extension_fields],
-  ../../constantine/math/elliptic/[
+  constantine/platforms/primitives,
+  constantine/named/algebras,
+  constantine/math/[arithmetic, extension_fields],
+  constantine/math/elliptic/[
     ec_scalar_mul,
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
   ],
-  ../../constantine/math/io/[io_fields, io_ec],
-  ../../constantine/math/pairings/[
+  constantine/math/io/[io_fields, io_ec],
+  constantine/math/pairings/[
     pairing_bls12,
     miller_loops,
     cyclotomic_subgroups
   ]
 
 type
-  G1 = ECP_ShortW_Prj[Fp[BLS12_381], G1]
-  G2 = ECP_ShortW_Prj[Fp2[BLS12_381], G2]
-  G1aff = ECP_ShortW_Aff[Fp[BLS12_381], G1]
-  G2aff = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  G1 = EC_ShortW_Prj[Fp[BLS12_381], G1]
+  G2 = EC_ShortW_Prj[Fp2[BLS12_381], G2]
+  G1aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+  G2aff = EC_ShortW_Aff[Fp2[BLS12_381], G2]
   GT = Fp12[BLS12_381]
 
 func linear_combination*(
@@ -30,10 +30,10 @@ func linear_combination*(
   ## TODO: multi scalar mul
   doAssert points.len == coefs.len
 
-  r.setInf()
+  r.setNeutral()
   for i in 0 ..< points.len:
     var tmp = points[i]
-    tmp.scalarMul(coefs[i].toBig())
+    tmp.scalarMul(coefs[i])
     r += tmp
 
 func pair_verify*(

@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../../constantine/math/config/curves,
-  ../../constantine/math/elliptic/ec_shortweierstrass_projective,
-  ../../constantine/math/extension_fields,
+  constantine/named/algebras,
+  constantine/math/elliptic/ec_shortweierstrass_projective,
+  constantine/math/extension_fields,
   # Test utilities
   ./t_ec_template
 
@@ -19,7 +19,7 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_distributive_tests(
-    ec = ECP_ShortW_Prj[Fp2[BN254_Snarks], G2],
+    ec = EC_ShortW_Prj[Fp2[BN254_Snarks], G2],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g2_mul_distributive_" & $BN254_Snarks
   )

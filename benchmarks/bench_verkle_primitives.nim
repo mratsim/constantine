@@ -14,25 +14,16 @@
 
 import
   # Internals
-  ../constantine/platforms/abstractions,
-  ../constantine/math/config/curves,
-  ../constantine/math/[arithmetic, extension_fields],
-  ../constantine/math/elliptic/[
-    ec_shortweierstrass_affine,
-    ec_shortweierstrass_projective,
-    ec_shortweierstrass_jacobian,
-    ec_twistededwards_affine,
-    ec_twistededwards_projective],
-  ../constantine/math/constants/zoo_generators,
-  ../constantine/math/io/io_fields,
-  ../constantine/hash_to_curve/hash_to_curve,
-  ../constantine/serialization/codecs_banderwagon,
+  constantine/platforms/abstractions,
+  constantine/named/algebras,
+  constantine/math/[arithmetic, extension_fields],
+  constantine/math/ec_twistededwards,
+  constantine/named/zoo_generators,
+  constantine/math/io/io_fields,
+  constantine/hash_to_curve/hash_to_curve,
+  constantine/serialization/codecs_banderwagon,
   # Helpers
   ./bench_blueprint
-
-type
-  Prj* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  Aff* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
 
 const Iters = 10000
 
@@ -52,7 +43,7 @@ macro fixEllipticDisplay(T: typedesc): untyped =
   let instantiated = T.getTypeInst()
   var name = $instantiated[1][0] # EllipticEquationFormCoordinates
   let fieldName = $instantiated[1][1][0]
-  let curveName = $Curve(instantiated[1][1][1].intVal)
+  let curveName = $Algebra(instantiated[1][1][1].intVal)
   name.add "[" & fieldName & "[" & curveName & "]]"
   result = newLit name
 
@@ -61,18 +52,18 @@ macro fixFieldDisplay(T: typedesc): untyped =
   # we get the Curve ID instead of the curve name.
   let instantiated = T.getTypeInst()
   var name = $instantiated[1][0] # Fp
-  name.add "[" & $Curve(instantiated[1][1].intVal) & "]"
+  name.add "[" & $Algebra(instantiated[1][1].intVal) & "]"
   result = newLit name
 
 func fixDisplay(T: typedesc): string =
-  when T is (ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff):
+  when T is (EC_TwEdw_Prj or EC_TwEdw_Aff):
     fixEllipticDisplay(T)
   elif T is (Fp or Fp2 or Fp4 or Fp6 or Fp12):
     fixFieldDisplay(T)
   else:
     $T
 
-func fixDisplay(T: Curve): string =
+func fixDisplay(T: Algebra): string =
   $T
 
 template bench(op: string, T: typed, iters: int, body: untyped): untyped =
@@ -80,109 +71,100 @@ template bench(op: string, T: typed, iters: int, body: untyped): untyped =
   report(op, fixDisplay(T), startTime, stopTime, startClk, stopClk, iters)
 
 proc equalityBench*(T: typedesc, iters: int) =
-  when T is Aff:
+  when T is EC_TwEdw_Prj[Fp[Banderwagon]]:
     let P = Banderwagon.getGenerator()
     let Q = Banderwagon.getGenerator()
   else:
-    var P, Q: Prj
-    P.fromAffine(Banderwagon.getGenerator())
-    Q.fromAffine(Banderwagon.getGenerator())
+    var P, Q: EC_TwEdw_Prj[Fp[Banderwagon]]
+    P.setGenerator()
+    Q.setGenerator()
   bench("Banderwagon Equality ", T, iters):
     assert (P == Q).bool()
 
 
 proc serializeBench*(T: typedesc, iters: int) =
   var bytes: array[32, byte]
-  var P: Prj
-  P.fromAffine(Banderwagon.getGenerator())
+  var P: EC_TwEdw_Prj[Fp[Banderwagon]]
+  P.setGenerator()
   for i in 0 ..< 9:
     P.double()
   bench("Banderwagon Serialization", T, iters):
     discard bytes.serialize(P)
 
-proc deserializeBench*(T: typedesc, iters: int) =
-  var bytes: array[32, byte]
-  var P: Prj
-  P.fromAffine(Banderwagon.getGenerator())
-  for i in 0 ..< 6:
-    P.double()
-  discard bytes.serialize(P)
-  bench("Banderwagon Deserialization", T, iters):
-    discard P.deserialize(bytes)
-
-proc deserializeBenchUnchecked*(T: typedesc, iters: int) =
-  var bytes: array[32, byte]
-  var P: Prj
-  P.fromAffine(Banderwagon.getGenerator())
-  for i in 0 ..< 6:
-    P.double()
-  discard bytes.serialize(P)
-  bench("Banderwagon Deserialization Unchecked", T, iters):
-    discard P.deserialize_unchecked(bytes)
-
 proc deserializeBench_vartime*(T: typedesc, iters: int) =
   var bytes: array[32, byte]
-  var P: Prj
-  P.fromAffine(Banderwagon.getGenerator())
+  var P: EC_TwEdw_Prj[Fp[Banderwagon]]
+  P.setGenerator()
   for i in 0 ..< 6:
     P.double()
   discard bytes.serialize(P)
-  bench("Banderwagon Deserialization Vartime (Precomp)", T, iters):
-    discard P.deserialize_vartime(bytes)
+
+  var Q: EC_TwEdw_Aff[Fp[Banderwagon]]
+  bench("Banderwagon Deserialization (vartime)", T, iters):
+    discard Q.deserialize_vartime(bytes)
 
 proc deserializeBenchUnchecked_vartime*(T: typedesc, iters: int) =
   var bytes: array[32, byte]
-  var P: Prj
-  P.fromAffine(Banderwagon.getGenerator())
+  var P: EC_TwEdw_Prj[Fp[Banderwagon]]
+  P.setGenerator()
   for i in 0 ..< 6:
     P.double()
   discard bytes.serialize(P)
-  bench("Banderwagon Deserialization Unchecked Vartime (Precomp)", T, iters):
-    discard P.deserialize_unchecked_vartime(bytes)
+
+  var Q: EC_TwEdw_Aff[Fp[Banderwagon]]
+  bench("Banderwagon Deserialization Unchecked (vartime)", T, iters):
+    discard Q.deserialize_unchecked_vartime(bytes)
 
 proc serializeUncompressedBench*(T: typedesc, iters: int) =
   var bytes: array[64, byte]
-  var P: Prj
-  P.fromAffine(Banderwagon.getGenerator())
+  var P: EC_TwEdw_Prj[Fp[Banderwagon]]
+  P.setGenerator()
   for i in 0 ..< 6:
     P.double()
-  bench("Banderwagon Serialization Uncompressed", T, iters):
-    discard bytes.serializeUncompressed(P)
+
+  var Q: EC_TwEdw_Aff[Fp[Banderwagon]]
+  Q.affine(P)
+  bench("Banderwagon Serialization Uncompressed from affine point", T, iters):
+    discard bytes.serializeUncompressed(Q)
 
 proc deserializeUncompressedBench*(T: typedesc, iters: int) =
   var bytes: array[64, byte]
-  var P: Prj
-  P.fromAffine(Banderwagon.getGenerator())
+  var P: EC_TwEdw_Prj[Fp[Banderwagon]]
+  P.setGenerator()
   for i in 0 ..< 6:
     P.double()
-  discard bytes.serializeUncompressed(P)
+
+  var Q: EC_TwEdw_Aff[Fp[Banderwagon]]
+  Q.affine(P)
+  discard bytes.serializeUncompressed(Q)
   bench("Banderwagon Deserialization Uncompressed", T, iters):
-    discard P.deserializeUncompressed(bytes)
+    discard Q.deserializeUncompressed(bytes)
 
 proc deserializeUncompressedBenchUnchecked*(T: typedesc, iters: int) =
   var bytes: array[64, byte]
-  var P: Prj
-  P.fromAffine(Banderwagon.getGenerator())
+  var P: EC_TwEdw_Prj[Fp[Banderwagon]]
+  P.setGenerator()
   for i in 0 ..< 6:
     P.double()
-  discard bytes.serializeUncompressed(P)
+
+  var Q: EC_TwEdw_Aff[Fp[Banderwagon]]
+  Q.affine(P)
+  discard bytes.serializeUncompressed(Q)
   bench("Banderwagon Deserialization Uncompressed Unchecked", T, iters):
-    discard P.deserializeUncompressed_unchecked(bytes)
+    discard Q.deserializeUncompressed_unchecked(bytes)
 
 
 proc main() =
-  equalityBench(Prj, Iters)
+  equalityBench(EC_TwEdw_Prj[Fp[Banderwagon]], Iters)
   separator()
-  serializeBench(Prj, Iters)
-  deserializeBench(Prj, Iters)
-  deserializeBenchUnchecked(Prj, Iters)
+  serializeBench(EC_TwEdw_Prj[Fp[Banderwagon]], Iters)
   separator()
-  deserializeBench_vartime(Prj, Iters)
-  deserializeBenchUnchecked_vartime(Prj, Iters)
+  deserializeBench_vartime(EC_TwEdw_Prj[Fp[Banderwagon]], Iters)
+  deserializeBenchUnchecked_vartime(EC_TwEdw_Prj[Fp[Banderwagon]], Iters)
   separator()
-  serializeUncompressedBench(Prj, Iters)
-  deserializeUncompressedBench(Prj, Iters)
-  deserializeUncompressedBenchUnchecked(Prj, Iters)
+  serializeUncompressedBench(EC_TwEdw_Prj[Fp[Banderwagon]], Iters)
+  deserializeUncompressedBench(EC_TwEdw_Prj[Fp[Banderwagon]], Iters)
+  deserializeUncompressedBenchUnchecked(EC_TwEdw_Prj[Fp[Banderwagon]], Iters)
 
 main()
 notes()

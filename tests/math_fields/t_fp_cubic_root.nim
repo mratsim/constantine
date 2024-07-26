@@ -7,14 +7,14 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  std/unittest,
-        ../../constantine/platforms/abstractions,
-        ../../constantine/math/arithmetic,
-        ../../constantine/math/config/curves,
-        ../../constantine/math/constants/zoo_endomorphisms
+        constantine/platforms/abstractions,
+        constantine/math/arithmetic,
+        constantine/named/algebras,
+        constantine/named/zoo_endomorphisms
 
 echo "\n------------------------------------------------------\n"
 
-proc checkCubeRootOfUnity(curve: static Curve) =
+proc checkCubeRootOfUnity(name: static Algebra) =
   test $curve & " cube root of unity (mod p)":
     var cru = curve.getCubicRootOfUnity_mod_p()
     cru.square()

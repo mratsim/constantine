@@ -8,8 +8,8 @@
 
 import
   # Internal
-  ../../platforms/[abstractions, allocs],
-  ../../math/config/precompute,
+  constantine/platforms/[abstractions, allocs],
+  constantine/named/deriv/precompute,
   ./limbs_views,
   ./limbs_montgomery,
   ./limbs_mod2k,

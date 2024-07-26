@@ -12,14 +12,14 @@
 #
 # ############################################################
 
-import ../constantine/zoo_exports
+import constantine/zoo_exports
 
 # Modify per-module prefix if needed
 # ----------------------------------------
 # static:
 #   prefix_sha256 = prefix_ffi & "sha256_"
 
-import ../constantine/hashes
+import constantine/hashes
 
 func sha256_hash(digest: var array[32, byte], message: openArray[byte], clearMem: bool) {.libPrefix: "ctt_".} =
   ## Compute the SHA-256 hash of message

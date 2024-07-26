@@ -8,8 +8,8 @@
 
 import
   # Internals
-  ../../constantine/math/config/[type_ff, curves],
-  ../../constantine/math/elliptic/ec_shortweierstrass_jacobian,
+  constantine/named/algebras,
+  constantine/math/elliptic/ec_shortweierstrass_jacobian,
   # Test utilities
   ./t_ec_template
 
@@ -18,7 +18,7 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_distributive_tests(
-    ec = ECP_ShortW_Jac[Fp[BW6_761], G2],
+    ec = EC_ShortW_Jac[Fp[BW6_761], G2],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_jacobian_g2_mul_distributive_" & $BW6_761
   )

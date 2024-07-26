@@ -34,7 +34,7 @@
 
 import
   std/atomics,
-  ../../platforms/allocs,
+  constantine/platforms/allocs,
   ../instrumentation,
   ./tasks_flowvars
 

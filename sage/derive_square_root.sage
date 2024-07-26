@@ -138,8 +138,8 @@ if __name__ == "__main__":
 
       f.write(inspect.cleandoc("""
           import
-            ../config/curves,
-            ../io/io_extfields
+            constantine/named/algebra,
+            constantine/math/io/io_extfields
       """))
 
       f.write('\n\n')

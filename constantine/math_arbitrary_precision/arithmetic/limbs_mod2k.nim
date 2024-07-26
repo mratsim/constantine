@@ -8,8 +8,8 @@
 
 import
   # Internal
-  ../../platforms/abstractions,
-  ../../math/arithmetic/limbs_exgcd,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic/limbs_exgcd,
   ./limbs_views,
   ./limbs_extmul,
   ./limbs_multiprec

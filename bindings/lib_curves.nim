@@ -34,12 +34,12 @@ type
   bls12_381_fr = Fr[BLS12_381]
   bls12_381_fp = Fp[BLS12_381]
   bls12_381_fp2 = Fp2[BLS12_381]
-  bls12_381_g1_aff = ECP_ShortW_Aff[Fp[BLS12_381], G1]
-  bls12_381_g1_jac = ECP_ShortW_Jac[Fp[BLS12_381], G1]
-  bls12_381_g1_prj = ECP_ShortW_Prj[Fp[BLS12_381], G1]
-  bls12_381_g2_aff = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
-  bls12_381_g2_jac = ECP_ShortW_Jac[Fp2[BLS12_381], G2]
-  bls12_381_g2_prj = ECP_ShortW_Prj[Fp2[BLS12_381], G2]
+  bls12_381_g1_aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+  bls12_381_g1_jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
+  bls12_381_g1_prj = EC_ShortW_Prj[Fp[BLS12_381], G1]
+  bls12_381_g2_aff = EC_ShortW_Aff[Fp2[BLS12_381], G2]
+  bls12_381_g2_jac = EC_ShortW_Jac[Fp2[BLS12_381], G2]
+  bls12_381_g2_prj = EC_ShortW_Prj[Fp2[BLS12_381], G2]
 
 collectBindings(cBindings_bls12_381):
   genBindingsField(big255, bls12_381_fr)
@@ -53,6 +53,12 @@ collectBindings(cBindings_bls12_381):
   genBindings_EC_ShortW_Affine(bls12_381_g2_aff, bls12_381_fp2)
   genBindings_EC_ShortW_NonAffine(bls12_381_g2_jac, bls12_381_g2_aff, big255, bls12_381_fr)
   genBindings_EC_ShortW_NonAffine(bls12_381_g2_prj, bls12_381_g2_aff, big255, bls12_381_fr)
+  genBindings_EC_hash_to_curve(bls12_381_g1_aff, sswu, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bls12_381_g1_jac, sswu, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bls12_381_g1_prj, sswu, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bls12_381_g2_aff, sswu, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bls12_381_g2_jac, sswu, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bls12_381_g2_prj, sswu, sha256, k = 128)
 
 collectBindings(cBindings_bls12_381_parallel):
   genParallelBindings_EC_ShortW_NonAffine(bls12_381_g1_jac, bls12_381_g1_aff, bls12_381_fr)
@@ -63,12 +69,12 @@ type
   bn254_snarks_fr = Fr[BN254_Snarks]
   bn254_snarks_fp = Fp[BN254_Snarks]
   bn254_snarks_fp2 = Fp2[BN254_Snarks]
-  bn254_snarks_g1_aff = ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
-  bn254_snarks_g1_jac = ECP_ShortW_Jac[Fp[BN254_Snarks], G1]
-  bn254_snarks_g1_prj = ECP_ShortW_Prj[Fp[BN254_Snarks], G1]
-  bn254_snarks_g2_aff = ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]
-  bn254_snarks_g2_jac = ECP_ShortW_Jac[Fp2[BN254_Snarks], G2]
-  bn254_snarks_g2_prj = ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]
+  bn254_snarks_g1_aff = EC_ShortW_Aff[Fp[BN254_Snarks], G1]
+  bn254_snarks_g1_jac = EC_ShortW_Jac[Fp[BN254_Snarks], G1]
+  bn254_snarks_g1_prj = EC_ShortW_Prj[Fp[BN254_Snarks], G1]
+  bn254_snarks_g2_aff = EC_ShortW_Aff[Fp2[BN254_Snarks], G2]
+  bn254_snarks_g2_jac = EC_ShortW_Jac[Fp2[BN254_Snarks], G2]
+  bn254_snarks_g2_prj = EC_ShortW_Prj[Fp2[BN254_Snarks], G2]
 
 collectBindings(cBindings_bn254_snarks):
   genBindingsField(big254, bn254_snarks_fr)
@@ -82,6 +88,12 @@ collectBindings(cBindings_bn254_snarks):
   genBindings_EC_ShortW_Affine(bn254_snarks_g2_aff, bn254_snarks_fp2)
   genBindings_EC_ShortW_NonAffine(bn254_snarks_g2_jac, bn254_snarks_g2_aff, big254, bn254_snarks_fr)
   genBindings_EC_ShortW_NonAffine(bn254_snarks_g2_prj, bn254_snarks_g2_aff, big254, bn254_snarks_fr)
+  genBindings_EC_hash_to_curve(bn254_snarks_g1_aff, svdw, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bn254_snarks_g1_jac, svdw, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bn254_snarks_g1_prj, svdw, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bn254_snarks_g2_aff, svdw, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bn254_snarks_g2_jac, svdw, sha256, k = 128)
+  genBindings_EC_hash_to_curve(bn254_snarks_g2_prj, svdw, sha256, k = 128)
 
 collectBindings(cBindings_bn254_snarks_parallel):
   genParallelBindings_EC_ShortW_NonAffine(bn254_snarks_g1_jac, bn254_snarks_g1_aff, bn254_snarks_fr)
@@ -92,9 +104,9 @@ collectBindings(cBindings_bn254_snarks_parallel):
 type
   pallas_fr = Fr[Pallas]
   pallas_fp = Fp[Pallas]
-  pallas_ec_aff = ECP_ShortW_Aff[Fp[Pallas], G1]
-  pallas_ec_jac = ECP_ShortW_Jac[Fp[Pallas], G1]
-  pallas_ec_prj = ECP_ShortW_Prj[Fp[Pallas], G1]
+  pallas_ec_aff = EC_ShortW_Aff[Fp[Pallas], G1]
+  pallas_ec_jac = EC_ShortW_Jac[Fp[Pallas], G1]
+  pallas_ec_prj = EC_ShortW_Prj[Fp[Pallas], G1]
 
 collectBindings(cBindings_pallas):
   genBindingsField(big255, pallas_fr)
@@ -111,9 +123,9 @@ collectBindings(cBindings_pallas_parallel):
 type
   vesta_fr = Fr[Vesta]
   vesta_fp = Fp[Vesta]
-  vesta_ec_aff = ECP_ShortW_Aff[Fp[Vesta], G1]
-  vesta_ec_jac = ECP_ShortW_Jac[Fp[Vesta], G1]
-  vesta_ec_prj = ECP_ShortW_Prj[Fp[Vesta], G1]
+  vesta_ec_aff = EC_ShortW_Aff[Fp[Vesta], G1]
+  vesta_ec_jac = EC_ShortW_Jac[Fp[Vesta], G1]
+  vesta_ec_prj = EC_ShortW_Prj[Fp[Vesta], G1]
 
 collectBindings(cBindings_vesta):
   genBindingsField(big255, vesta_fr)

@@ -7,11 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../config/curves,
-  ../arithmetic,
-  ../extension_fields,
-  ../io/[io_fields, io_extfields]
+  constantine/platforms/abstractions,
+  constantine/named/algebras,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/math/io/[io_fields, io_extfields]
 
 # ############################################################
 #
@@ -20,7 +20,7 @@ import
 #
 # ############################################################
 
-type ECP_TwEdwards_Aff*[F] = object
+type EC_TwEdw_Aff*[F] = object
   ## Elliptic curve point for a curve in Twisted Edwards form
   ##   ax²+y²=1+dx²y²
   ## with a, d ≠ 0 and a ≠ d
@@ -28,22 +28,42 @@ type ECP_TwEdwards_Aff*[F] = object
   ## over a field F
   x*, y*: F
 
-func `==`*(P, Q: ECP_TwEdwards_Aff): SecretBool =
+template getName*(EC: type EC_TwEdw_Aff): untyped =
+  EC.F.Name
+
+template getScalarField*(EC: type EC_TwEdw_Aff): untyped =
+  Fr[EC.F.Name]
+
+func `==`*(P, Q: EC_TwEdw_Aff): SecretBool =
   ## Constant-time equality check
+  # Isogeny-based constructions to create
+  # prime order curves overload this generic equality check.
   result = P.x == Q.x
   result = result and (P.y == Q.y)
 
 
-func isInf*(P: ECP_TwEdwards_Aff): SecretBool =
-  ## Returns true if P is an infinity point
-  ## and false otherwise
+func isNeutral*(P: EC_TwEdw_Aff): SecretBool =
+  ## Returns true if P is the neutral element / identity element
+  ## and false otherwise, i.e. ∀Q, P+Q == Q
+  ## Contrary to Short Weierstrass curve, the neutral element is on the curve
+  # Isogeny-based constructions to create
+  # prime order curves overload this generic identity check.
   result = P.x.isZero() and P.y.isOne()
 
-func setInf*(P: var ECP_TwEdwards_Aff) {.inline.} =
-  ## Set ``P`` to infinity
+func setNeutral*(P: var EC_TwEdw_Aff) {.inline.} =
+  ## Set P to the neutral element / identity element
+  ## i.e. ∀Q, P+Q == Q.
+  ## Contrary to Short Weierstrass curve, the neutral element is on the curve
   P.x.setZero()
   P.y.setOne()
 
+func ccopy*(P: var EC_TwEdw_Aff, Q: EC_TwEdw_Aff, ctl: SecretBool) {.inline.} =
+  ## Constant-time conditional copy
+  ## If ctl is true: Q is copied into P
+  ## if ctl is false: Q is not copied and P is unmodified
+  ## Time and memory accesses are the same whether a copy occurs or not
+  for fP, fQ in fields(P, Q):
+    ccopy(fP, fQ, ctl)
 
 func isOnCurve*[F](x, y: F): SecretBool =
   ## Returns true if the (x, y) coordinates
@@ -52,42 +72,42 @@ func isOnCurve*[F](x, y: F): SecretBool =
   var t0{.noInit.}, t1{.noInit.}, t2{.noInit.}: F
   t0.square(x)
   t1.square(y)
-  
+
   # ax²+y²
-  when F.C.getCoefA() is int:
-    when F.C.getCoefA() == -1:
+  when F.Name.getCoefA() is int:
+    when F.Name.getCoefA() == -1:
       t2.diff(t1, t0)
     else:
-      t2.prod(t0, F.C.getCoefA())
+      t2.prod(t0, F.Name.getCoefA())
       t2 += t1
   else:
-    t2.prod(F.C.getCoefA(), t0)
+    t2.prod(F.Name.getCoefA(), t0)
     t2 += t1
 
   # dx²y²
   t0 *= t1
-  when F.C.getCoefD() is int:
-    when F.C.getCoefD >= 0:
-      t1.fromUint uint F.C.getCoefD()
+  when F.Name.getCoefD() is int:
+    when F.Name.getCoefD >= 0:
+      t1.fromUint uint F.Name.getCoefD()
       t0 *= t1
     else:
-      t1.fromUint uint F.C.getCoefD()
+      t1.fromUint uint F.Name.getCoefD()
       t0 *= t1
       t0.neg()
   else:
-    t0 *= F.C.getCoefD()
+    t0 *= F.Name.getCoefD()
 
   # ax²+y² - dx²y² =? 1
   t2 -= t0
   return t2.isOne()
 
-func trySetFromCoordX*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool =
+func trySetFromCoordX*[F](P: var EC_TwEdw_Aff[F], x: F): SecretBool =
   ## Try to create a point on the elliptic curve from X co-ordinate
   ##   ax²+y²=1+dx²y²    (affine coordinate)
-  ## 
+  ##
   ## return true and update `P` if `y` leads to a valid point
   ## return false otherwise, in that case `P` is undefined.
-  
+
   # y² = (1 - ax²)/(1 - dx²)
   var t {.noInit.}: F
   var one {.noInit.}: F
@@ -95,27 +115,27 @@ func trySetFromCoordX*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool =
 
   # (1 - dx²)
   t.square(x)
-  when F.C.getCoefD() is int:
-    when F.C.getCoefD() >= 0:
-      P.y.fromUint uint F.C.getCoefD()
+  when F.Name.getCoefD() is int:
+    when F.Name.getCoefD() >= 0:
+      P.y.fromUint uint F.Name.getCoefD()
     else:
-      P.y.fromUint uint -F.C.getCoefD()
+      P.y.fromUint uint -F.Name.getCoefD()
       P.y.neg()
   else:
-    P.y = F.C.getCoefD()
+    P.y = F.Name.getCoefD()
   P.y *= t
   P.y.neg()
   P.y += one
 
   # (1 - ax²)
-  when F.C.getCoefA() is int:
-    when F.C.getCoefA() >= 0:
-      P.x.fromUint uint F.C.getCoefA()
+  when F.Name.getCoefA() is int:
+    when F.Name.getCoefA() >= 0:
+      P.x.fromUint uint F.Name.getCoefA()
     else:
-      P.x.fromUint uint -F.C.getCoefA()
+      P.x.fromUint uint -F.Name.getCoefA()
       P.x.neg()
   else:
-    P.x = F.C.getCoefA()
+    P.x = F.Name.getCoefA()
   P.x *= t
   P.x.neg()
   P.x += one
@@ -125,14 +145,14 @@ func trySetFromCoordX*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool =
   P.y = t
   P.x = x
 
-func trySetFromCoordX_vartime*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool =
+func trySetFromCoordX_vartime*[F](P: var EC_TwEdw_Aff[F], x: F): SecretBool =
   ## This is not in constant time
   ## Try to create a point on the elliptic curve from X co-ordinate
   ##   ax²+y²=1+dx²y²    (affine coordinate)
-  ## 
+  ##
   ## return true and update `P` if `y` leads to a valid point
   ## return false otherwise, in that case `P` is undefined.
-  
+
   # y² = (1 - ax²)/(1 - dx²)
   var t {.noInit.}: F
   var one {.noInit.}: F
@@ -140,27 +160,27 @@ func trySetFromCoordX_vartime*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool
 
   # (1 - dx²)
   t.square(x)
-  when F.C.getCoefD() is int:
-    when F.C.getCoefD() >= 0:
-      P.y.fromUint uint F.C.getCoefD()
+  when F.Name.getCoefD() is int:
+    when F.Name.getCoefD() >= 0:
+      P.y.fromUint uint F.Name.getCoefD()
     else:
-      P.y.fromUint uint -F.C.getCoefD()
+      P.y.fromUint uint -F.Name.getCoefD()
       P.y.neg()
   else:
-    P.y = F.C.getCoefD()
+    P.y = F.Name.getCoefD()
   P.y *= t
   P.y.neg()
   P.y += one
 
   # (1 - ax²)
-  when F.C.getCoefA() is int:
-    when F.C.getCoefA() >= 0:
-      P.x.fromUint uint F.C.getCoefA()
+  when F.Name.getCoefA() is int:
+    when F.Name.getCoefA() >= 0:
+      P.x.fromUint uint F.Name.getCoefA()
     else:
-      P.x.fromUint uint -F.C.getCoefA()
+      P.x.fromUint uint -F.Name.getCoefA()
       P.x.neg()
   else:
-    P.x = F.C.getCoefA()
+    P.x = F.Name.getCoefA()
   P.x *= t
   P.x.neg()
   P.x += one
@@ -170,7 +190,7 @@ func trySetFromCoordX_vartime*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool
   P.y = t
   P.x = x
 
-func trySetFromCoordY*[F](P: var ECP_TwEdwards_Aff[F], y: F): SecretBool =
+func trySetFromCoordY*[F](P: var EC_TwEdw_Aff[F], y: F): SecretBool =
   ## Try to create a point the elliptic curve
   ##   ax²+y²=1+dx²y²    (affine coordinate)
   ##
@@ -180,7 +200,7 @@ func trySetFromCoordY*[F](P: var ECP_TwEdwards_Aff[F], y: F): SecretBool =
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
-  ## 
+  ##
   ##       For **test case generation only**,
   ##       this is preferred to generating random point
   ##       via random scalar multiplication of the curve generator
@@ -197,27 +217,27 @@ func trySetFromCoordY*[F](P: var ECP_TwEdwards_Aff[F], y: F): SecretBool =
   t.square(y)
 
   # (dy² − a)
-  when F.C.getCoefD() is int:
-    when F.C.getCoefD() >= 0:
-      P.y.fromUint uint F.C.getCoefD()
+  when F.Name.getCoefD() is int:
+    when F.Name.getCoefD() >= 0:
+      P.y.fromUint uint F.Name.getCoefD()
     else:
-      P.y.fromUint uint -F.C.getCoefD()
+      P.y.fromUint uint -F.Name.getCoefD()
       P.y.neg()
   else:
-    P.y = F.C.getCoefD()
+    P.y = F.Name.getCoefD()
   P.y *= t
-  when F.C.getCoefA() is int:
-    when F.C.getCoefA == -1:
+  when F.Name.getCoefA() is int:
+    when F.Name.getCoefA == -1:
       P.x.setOne()
       P.y += P.x
-    elif F.C.getCoefA >= 0:
-      P.x.fromUint uint F.C.getCoefA()
+    elif F.Name.getCoefA >= 0:
+      P.x.fromUint uint F.Name.getCoefA()
       P.y -= P.x
     else:
-      P.x.fromUint uint -F.C.getCoefA()
+      P.x.fromUint uint -F.Name.getCoefA()
       P.y += P.x
   else:
-    P.y -= F.C.getCoefA()
+    P.y -= F.Name.getCoefA()
 
   # y² − 1
   P.x.setMinusOne()
@@ -228,16 +248,16 @@ func trySetFromCoordY*[F](P: var ECP_TwEdwards_Aff[F], y: F): SecretBool =
   P.x = t
   P.y = y
 
-func neg*(P: var ECP_TwEdwards_Aff, Q: ECP_TwEdwards_Aff) =
+func neg*(P: var EC_TwEdw_Aff, Q: EC_TwEdw_Aff) =
   ## Negate ``P``
   P.x.neg(Q.x)
   P.y = Q.y
 
-func neg*(P: var ECP_TwEdwards_Aff) =
+func neg*(P: var EC_TwEdw_Aff) =
   ## Negate ``P``
   P.x.neg()
 
-func cneg*(P: var ECP_TwEdwards_Aff, ctl: CTBool) =
+func cneg*(P: var EC_TwEdw_Aff, ctl: CTBool) =
   ## Conditional negation.
   ## Negate if ``ctl`` is true
   P.x.cneg(ctl)
@@ -248,15 +268,11 @@ func cneg*(P: var ECP_TwEdwards_Aff, ctl: CTBool) =
 #
 # ############################################################
 
-func `==`*(P, Q: ECP_TwEdwards_Aff[Fp[Banderwagon]]): SecretBool =
+func `==`*(P, Q: EC_TwEdw_Aff[Fp[Banderwagon]]): SecretBool =
   ## Equality check for points in the Banderwagon Group
   ## The equality check is optimized for the quotient group
-  ## see: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Equality-check
-  ## 
-  ## Check for the (0,0) point, which is possible
-  ## 
   ## This is a costly operation
-
+  # see: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Equality-check
   var lhs{.noInit.}, rhs{.noInit.}: typeof(P).F
 
   # Check for the zero points
@@ -268,3 +284,14 @@ func `==`*(P, Q: ECP_TwEdwards_Aff[Fp[Banderwagon]]): SecretBool =
   lhs.prod(P.x, Q.y)
   rhs.prod(Q.x, P.y)
   result = result and lhs == rhs
+
+func isNeutral*(P: EC_TwEdw_Aff[Fp[Banderwagon]]): SecretBool {.inline.} =
+  ## Returns true if P is the neutral/identity element
+  ## in the Banderwagon group
+  ## and false otherwise
+  # Isogeny-based constructions to create
+  # prime order curves overload this generic identity check.
+  # see: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Equality-check
+
+  # TODO: Rename the function
+  result = P.x.isZero()

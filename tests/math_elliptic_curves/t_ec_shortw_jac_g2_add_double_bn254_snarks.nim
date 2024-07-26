@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../../constantine/math/config/curves,
-  ../../constantine/math/elliptic/ec_shortweierstrass_jacobian,
-  ../../constantine/math/extension_fields,
+  constantine/named/algebras,
+  constantine/math/elliptic/ec_shortweierstrass_jacobian,
+  constantine/math/extension_fields,
   # Test utilities
   ./t_ec_template
 
@@ -18,7 +18,7 @@ const
   Iters = 8
 
 run_EC_addition_tests(
-    ec = ECP_ShortW_Jac[Fp2[BN254_Snarks], G2],
+    ec = EC_ShortW_Jac[Fp2[BN254_Snarks], G2],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_jacobian_g2_add_double_" & $BN254_Snarks
   )

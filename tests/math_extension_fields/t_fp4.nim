@@ -8,8 +8,8 @@
 
 import
   # Internals
-  ../../constantine/math/io/io_extfields,
-  ../../constantine/math/config/curves,
+  constantine/math/io/io_extfields,
+  constantine/named/algebras,
   # Test utilities
   ./t_fp_tower_template
 

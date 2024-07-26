@@ -7,7 +7,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        nim_version: [version-1-6, version-2-0] # devel
+        nim_version: [version-1-6, version-2-0]
         rust_toolchain: [stable] # [beta, nightly]
         go_toolchain: [stable]
         target:
@@ -38,21 +38,22 @@ jobs:
             TEST_LANG: c
             BACKEND: ASM
 
-          - os: macos
-            cpu: amd64
-            TEST_LANG: c
-            BACKEND: NO_ASM
-          - os: macos
-            cpu: amd64
-            TEST_LANG: c
-            BACKEND: ASM
+          # MacOS Github agents are now using ARM and we need Nim ARM nightlies: https://github.com/mratsim/constantine/issues/372
+          # - os: macos
+          #   cpu: amd64
+          #   TEST_LANG: c
+          #   BACKEND: NO_ASM
+          # - os: macos
+          #   cpu: amd64
+          #   TEST_LANG: c
+          #   BACKEND: ASM
         include:
           - target:
               os: linux
             builder: ubuntu-latest
-          - target:
-              os: macos
-            builder: macos-latest
+          # - target:
+          #     os: macos
+          #   builder: macos-latest
           - target:
               os: windows
             builder: windows-latest
@@ -232,7 +233,7 @@ jobs:
 
       - name: Install Rust [${{ matrix.rust_toolchain }}]
         shell: bash
-        run: rustup update ${{ matrix.rust_toolchain }} && rustup default ${{ matrix.rust_toolchain }}
+        run: rustup default ${{ matrix.rust_toolchain }}
 
       - name: Print Nim, Go Rust, LLVM versions and CPU specs.
         shell: bash
@@ -261,7 +262,7 @@ jobs:
         run: |
           pacman -S --needed --noconfirm mingw-w64-x86_64-gmp mingw-w64-x86_64-llvm
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp@#head jsony asynctools yaml@1.1.0
+          nimble install --verbose -y gmp@#head jsony asynctools yaml@1.1.0 cliche
 
           cd constantine
           go mod download -modfile=go_test.mod
@@ -271,7 +272,7 @@ jobs:
         shell: bash
         run: |
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp@#head jsony asynctools yaml@1.1.0
+          nimble install --verbose -y gmp@#head jsony asynctools yaml@1.1.0 cliche
 
           cd constantine
           go mod download -modfile=go_test.mod
@@ -335,6 +336,24 @@ jobs:
         run: |
           cd constantine
           CTT_ASM=0 cargo test -- --nocapture
+
+      - name: Compile Constantine Zkalc benchmark (no assembly)
+        # Skip 32-bit as that would need clang-multilib or -m32
+        # Skip Windows as clang throws fatal error LNK1107
+        if: matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu != 'i386' && runner.os != 'Windows'
+        shell: bash
+        run: |
+          cd constantine
+          CTT_ASM=0 nimble make_zkalc
+
+      - name: Compile Constantine Zkalc benchmark (with assembly)
+        # Skip 32-bit as that would need clang-multilib or -m32
+        # Skip Windows as clang throws fatal error LNK1107
+        if: matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386' && runner.os != 'Windows'
+        shell: bash
+        run: |
+          cd constantine
+          nimble make_zkalc
 
       - name: Run Constantine in-depth tests (Unix - with GMP, with Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'

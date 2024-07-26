@@ -8,30 +8,29 @@
 
 import
   # Internals
-  ../../constantine/math/config/curves,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/elliptic/ec_shortweierstrass_jacobian,
-  ../../constantine/math/elliptic/ec_shortweierstrass_projective,
+  constantine/named/algebras,
+  constantine/math/extension_fields,
+  constantine/math/ec_shortweierstrass,
   # Test utilities
   ./t_ec_sage_template
 
-staticFor(bits, [BN254_Nogami.getCurveOrderBitwidth()]):
+staticFor(bits, [Fr[BN254_Nogami].bits()]):
   run_scalar_mul_test_vs_sage(
-    ECP_ShortW_Prj[Fp[BN254_Nogami], G1], bits,
+    EC_ShortW_Prj[Fp[BN254_Nogami], G1], bits,
     "t_ec_sage_bn254_nogami_g1_projective"
   )
 
   run_scalar_mul_test_vs_sage(
-    ECP_ShortW_Jac[Fp[BN254_Nogami], G1], bits,
+    EC_ShortW_Jac[Fp[BN254_Nogami], G1], bits,
     "t_ec_sage_bn254_nogami_g1_jacobian"
   )
 
   run_scalar_mul_test_vs_sage(
-    ECP_ShortW_Prj[Fp2[BN254_Nogami], G2], bits,
+    EC_ShortW_Prj[Fp2[BN254_Nogami], G2], bits,
     "t_ec_sage_bn254_nogami_g2_projective"
   )
 
   run_scalar_mul_test_vs_sage(
-    ECP_ShortW_Jac[Fp2[BN254_Nogami], G2], bits,
+    EC_ShortW_Jac[Fp2[BN254_Nogami], G2], bits,
     "t_ec_sage_bn254_nogami_g2_jacobian"
   )

@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../constantine/math_arbitrary_precision/arithmetic/[bigints_views, limbs_views],
-  ../../constantine/platforms/abstractions,
-  ../../constantine/serialization/codecs,
-  ../../helpers/prng_unsafe,
+  constantine/math_arbitrary_precision/arithmetic/[bigints_views, limbs_views],
+  constantine/platforms/abstractions,
+  constantine/serialization/codecs,
+  helpers/prng_unsafe,
 
   std/[times, strformat],
   gmp

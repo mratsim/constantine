@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../../constantine/platforms/abstractions,
-  ../../../constantine/math/arithmetic/bigints,
-  ../../../constantine/math/config/curves,
-  ../../../constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective]
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic/bigints,
+  constantine/named/algebras,
+  constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective]
 
 # Canaries
 # --------------------------------------------------------------

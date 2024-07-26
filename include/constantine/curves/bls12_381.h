@@ -28,8 +28,8 @@ typedef struct { bls12_381_fp2 x, y, z; } bls12_381_g2_prj;
 
 void        ctt_big255_from_bls12_381_fr(big255* dst, const bls12_381_fr* src);
 void        ctt_bls12_381_fr_from_big255(bls12_381_fr* dst, const big255* src);
-ctt_bool    ctt_bls12_381_fr_unmarshalBE(bls12_381_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
-ctt_bool    ctt_bls12_381_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12_381_fr* src) __attribute__((warn_unused_result));
+ctt_bool    ctt_bls12_381_fr_unmarshalBE(bls12_381_fr* dst, const byte src[], size_t src_len) __attribute__((warn_unused_result));
+ctt_bool    ctt_bls12_381_fr_marshalBE(byte dst[], size_t dst_len, const bls12_381_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_bls12_381_fr_is_eq(const bls12_381_fr* a, const bls12_381_fr* b);
 secret_bool ctt_bls12_381_fr_is_zero(const bls12_381_fr* a);
 secret_bool ctt_bls12_381_fr_is_one(const bls12_381_fr* a);
@@ -61,8 +61,8 @@ void        ctt_bls12_381_fr_cadd_in_place(bls12_381_fr* a, const bls12_381_fr* 
 void        ctt_bls12_381_fr_csub_in_place(bls12_381_fr* a, const bls12_381_fr* b, secret_bool ctl);
 void        ctt_big381_from_bls12_381_fp(big381* dst, const bls12_381_fp* src);
 void        ctt_bls12_381_fp_from_big381(bls12_381_fp* dst, const big381* src);
-ctt_bool    ctt_bls12_381_fp_unmarshalBE(bls12_381_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
-ctt_bool    ctt_bls12_381_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12_381_fp* src) __attribute__((warn_unused_result));
+ctt_bool    ctt_bls12_381_fp_unmarshalBE(bls12_381_fp* dst, const byte src[], size_t src_len) __attribute__((warn_unused_result));
+ctt_bool    ctt_bls12_381_fp_marshalBE(byte dst[], size_t dst_len, const bls12_381_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_bls12_381_fp_is_eq(const bls12_381_fp* a, const bls12_381_fp* b);
 secret_bool ctt_bls12_381_fp_is_zero(const bls12_381_fp* a);
 secret_bool ctt_bls12_381_fp_is_one(const bls12_381_fp* a);
@@ -135,15 +135,15 @@ secret_bool ctt_bls12_381_fp2_is_square(const bls12_381_fp2* a);
 void        ctt_bls12_381_fp2_sqrt_in_place(bls12_381_fp2* a);
 secret_bool ctt_bls12_381_fp2_sqrt_if_square_in_place(bls12_381_fp2* a);
 secret_bool ctt_bls12_381_g1_aff_is_eq(const bls12_381_g1_aff* P, const bls12_381_g1_aff* Q);
-secret_bool ctt_bls12_381_g1_aff_is_inf(const bls12_381_g1_aff* P);
-void        ctt_bls12_381_g1_aff_set_inf(bls12_381_g1_aff* P);
+secret_bool ctt_bls12_381_g1_aff_is_neutral(const bls12_381_g1_aff* P);
+void        ctt_bls12_381_g1_aff_set_neutral(bls12_381_g1_aff* P);
 void        ctt_bls12_381_g1_aff_ccopy(bls12_381_g1_aff* P, const bls12_381_g1_aff* Q, secret_bool ctl);
 secret_bool ctt_bls12_381_g1_aff_is_on_curve(const bls12_381_fp* x, const bls12_381_fp* y);
 void        ctt_bls12_381_g1_aff_neg(bls12_381_g1_aff* P, const bls12_381_g1_aff* Q);
 void        ctt_bls12_381_g1_aff_neg_in_place(bls12_381_g1_aff* P);
 secret_bool ctt_bls12_381_g1_jac_is_eq(const bls12_381_g1_jac* P, const bls12_381_g1_jac* Q);
-secret_bool ctt_bls12_381_g1_jac_is_inf(const bls12_381_g1_jac* P);
-void        ctt_bls12_381_g1_jac_set_inf(bls12_381_g1_jac* P);
+secret_bool ctt_bls12_381_g1_jac_is_neutral(const bls12_381_g1_jac* P);
+void        ctt_bls12_381_g1_jac_set_neutral(bls12_381_g1_jac* P);
 void        ctt_bls12_381_g1_jac_ccopy(bls12_381_g1_jac* P, const bls12_381_g1_jac* Q, secret_bool ctl);
 void        ctt_bls12_381_g1_jac_neg(bls12_381_g1_jac* P, const bls12_381_g1_jac* Q);
 void        ctt_bls12_381_g1_jac_neg_in_place(bls12_381_g1_jac* P);
@@ -163,8 +163,8 @@ void        ctt_bls12_381_g1_jac_scalar_mul_fr_coef_vartime(bls12_381_g1_jac* P,
 void        ctt_bls12_381_g1_jac_multi_scalar_mul_big_coefs_vartime(bls12_381_g1_jac* r, const big255 coefs[], const bls12_381_g1_aff points[], size_t len);
 void        ctt_bls12_381_g1_jac_multi_scalar_mul_fr_coefs_vartime(bls12_381_g1_jac* r, const bls12_381_fr coefs[], const bls12_381_g1_aff points[], size_t len);
 secret_bool ctt_bls12_381_g1_prj_is_eq(const bls12_381_g1_prj* P, const bls12_381_g1_prj* Q);
-secret_bool ctt_bls12_381_g1_prj_is_inf(const bls12_381_g1_prj* P);
-void        ctt_bls12_381_g1_prj_set_inf(bls12_381_g1_prj* P);
+secret_bool ctt_bls12_381_g1_prj_is_neutral(const bls12_381_g1_prj* P);
+void        ctt_bls12_381_g1_prj_set_neutral(bls12_381_g1_prj* P);
 void        ctt_bls12_381_g1_prj_ccopy(bls12_381_g1_prj* P, const bls12_381_g1_prj* Q, secret_bool ctl);
 void        ctt_bls12_381_g1_prj_neg(bls12_381_g1_prj* P, const bls12_381_g1_prj* Q);
 void        ctt_bls12_381_g1_prj_neg_in_place(bls12_381_g1_prj* P);
@@ -184,15 +184,15 @@ void        ctt_bls12_381_g1_prj_scalar_mul_fr_coef_vartime(bls12_381_g1_prj* P,
 void        ctt_bls12_381_g1_prj_multi_scalar_mul_big_coefs_vartime(bls12_381_g1_prj* r, const big255 coefs[], const bls12_381_g1_aff points[], size_t len);
 void        ctt_bls12_381_g1_prj_multi_scalar_mul_fr_coefs_vartime(bls12_381_g1_prj* r, const bls12_381_fr coefs[], const bls12_381_g1_aff points[], size_t len);
 secret_bool ctt_bls12_381_g2_aff_is_eq(const bls12_381_g2_aff* P, const bls12_381_g2_aff* Q);
-secret_bool ctt_bls12_381_g2_aff_is_inf(const bls12_381_g2_aff* P);
-void        ctt_bls12_381_g2_aff_set_inf(bls12_381_g2_aff* P);
+secret_bool ctt_bls12_381_g2_aff_is_neutral(const bls12_381_g2_aff* P);
+void        ctt_bls12_381_g2_aff_set_neutral(bls12_381_g2_aff* P);
 void        ctt_bls12_381_g2_aff_ccopy(bls12_381_g2_aff* P, const bls12_381_g2_aff* Q, secret_bool ctl);
 secret_bool ctt_bls12_381_g2_aff_is_on_curve(const bls12_381_fp2* x, const bls12_381_fp2* y);
 void        ctt_bls12_381_g2_aff_neg(bls12_381_g2_aff* P, const bls12_381_g2_aff* Q);
 void        ctt_bls12_381_g2_aff_neg_in_place(bls12_381_g2_aff* P);
 secret_bool ctt_bls12_381_g2_jac_is_eq(const bls12_381_g2_jac* P, const bls12_381_g2_jac* Q);
-secret_bool ctt_bls12_381_g2_jac_is_inf(const bls12_381_g2_jac* P);
-void        ctt_bls12_381_g2_jac_set_inf(bls12_381_g2_jac* P);
+secret_bool ctt_bls12_381_g2_jac_is_neutral(const bls12_381_g2_jac* P);
+void        ctt_bls12_381_g2_jac_set_neutral(bls12_381_g2_jac* P);
 void        ctt_bls12_381_g2_jac_ccopy(bls12_381_g2_jac* P, const bls12_381_g2_jac* Q, secret_bool ctl);
 void        ctt_bls12_381_g2_jac_neg(bls12_381_g2_jac* P, const bls12_381_g2_jac* Q);
 void        ctt_bls12_381_g2_jac_neg_in_place(bls12_381_g2_jac* P);
@@ -212,8 +212,8 @@ void        ctt_bls12_381_g2_jac_scalar_mul_fr_coef_vartime(bls12_381_g2_jac* P,
 void        ctt_bls12_381_g2_jac_multi_scalar_mul_big_coefs_vartime(bls12_381_g2_jac* r, const big255 coefs[], const bls12_381_g2_aff points[], size_t len);
 void        ctt_bls12_381_g2_jac_multi_scalar_mul_fr_coefs_vartime(bls12_381_g2_jac* r, const bls12_381_fr coefs[], const bls12_381_g2_aff points[], size_t len);
 secret_bool ctt_bls12_381_g2_prj_is_eq(const bls12_381_g2_prj* P, const bls12_381_g2_prj* Q);
-secret_bool ctt_bls12_381_g2_prj_is_inf(const bls12_381_g2_prj* P);
-void        ctt_bls12_381_g2_prj_set_inf(bls12_381_g2_prj* P);
+secret_bool ctt_bls12_381_g2_prj_is_neutral(const bls12_381_g2_prj* P);
+void        ctt_bls12_381_g2_prj_set_neutral(bls12_381_g2_prj* P);
 void        ctt_bls12_381_g2_prj_ccopy(bls12_381_g2_prj* P, const bls12_381_g2_prj* Q, secret_bool ctl);
 void        ctt_bls12_381_g2_prj_neg(bls12_381_g2_prj* P, const bls12_381_g2_prj* Q);
 void        ctt_bls12_381_g2_prj_neg_in_place(bls12_381_g2_prj* P);
@@ -232,6 +232,12 @@ void        ctt_bls12_381_g2_prj_scalar_mul_big_coef_vartime(bls12_381_g2_prj* P
 void        ctt_bls12_381_g2_prj_scalar_mul_fr_coef_vartime(bls12_381_g2_prj* P, const bls12_381_fr* scalar);
 void        ctt_bls12_381_g2_prj_multi_scalar_mul_big_coefs_vartime(bls12_381_g2_prj* r, const big255 coefs[], const bls12_381_g2_aff points[], size_t len);
 void        ctt_bls12_381_g2_prj_multi_scalar_mul_fr_coefs_vartime(bls12_381_g2_prj* r, const bls12_381_fr coefs[], const bls12_381_g2_aff points[], size_t len);
+void        ctt_bls12_381_g1_aff_sswu_sha256(bls12_381_g1_aff* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bls12_381_g1_jac_sswu_sha256(bls12_381_g1_jac* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bls12_381_g1_prj_sswu_sha256(bls12_381_g1_prj* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bls12_381_g2_aff_sswu_sha256(bls12_381_g2_aff* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bls12_381_g2_jac_sswu_sha256(bls12_381_g2_jac* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
+void        ctt_bls12_381_g2_prj_sswu_sha256(bls12_381_g2_prj* r, const byte augmentation[], size_t augmentation_len, const byte message[], size_t message_len, const byte domainSepTag[], size_t domainSepTag_len);
 
 #ifdef __cplusplus
 }

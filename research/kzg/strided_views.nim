@@ -38,7 +38,10 @@ func `[]=`*[T](v: var View[T], idx: int, val: T) {.inline.} =
   cast[ptr UncheckedArray[T]](v.data)[v.offset + idx*v.stride] = val
 
 template toOpenArray*[T](v: View[T]): openArray[T] =
-  v.data.toOpenArray(0, v.len-1)
+  ## This casts the view to a linear openArray.
+  ## This is an error of the stride is not 1.
+  doAssert v.stride == 1, "Cannot cast to an openArray if the view does not have an unit stride."
+  v.data.toOpenArray(v.offset, v.offset+v.len-1)
 
 func toView*[T](oa: openArray[T]): View[T] {.inline.} =
   result.len = oa.len
@@ -99,7 +102,7 @@ func splitAlternate*(t: View): tuple[even, odd: View] {.inline.} =
   result.odd.offset = t.offset + t.stride
   result.odd.data = t.data
 
-func splitMiddle*(t: View): tuple[left, right: View] {.inline.} =
+func splitHalf*(t: View): tuple[left, right: View] {.inline.} =
   ## Split the tensor into 2
   ## partitioning into left and right halves.
   ## left:  indices [0, 1, 2, 3]
@@ -226,11 +229,11 @@ when isMainModule:
     echo "\nSplit middle"
     echo "----------------"
     block:
-      let (left, right) = v.splitMiddle()
+      let (left, right) = v.splitHalf()
       echo "left:  ", left
       echo "right: ", right
       block:
-        let (ll, lr) = left.splitMiddle()
+        let (ll, lr) = left.splitHalf()
         echo ""
         echo "left-left:  ", ll
         echo "left-right: ", lr
@@ -238,7 +241,7 @@ when isMainModule:
         echo "left-right rev: ", lr.reversed()
 
       block:
-        let (rl, rr) = right.splitMiddle()
+        let (rl, rr) = right.splitHalf()
         echo ""
         echo "right-left:  ", rl
         echo "right-right: ", rr

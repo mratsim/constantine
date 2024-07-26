@@ -21,7 +21,7 @@ import
   # Stdlib
   system/ansi_c, std/[strformat, os, strutils, math, cpuinfo, streams, strscans],
   # Constantine
-  ../../constantine/threadpool
+  constantine/threadpool
 
 when defined(linux):
   # bench

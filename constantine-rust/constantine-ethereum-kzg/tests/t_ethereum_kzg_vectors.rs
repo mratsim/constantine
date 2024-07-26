@@ -20,7 +20,7 @@ use serde_yaml;
 #[test]
 fn t_smoke_load_trusted_setup() {
     let _ctx = EthKzgContext::load_trusted_setup(Path::new(
-        "../../constantine/trusted_setups/trusted_setup_ethereum_kzg4844_reference.dat",
+        "../../constantine/commitments_setups/trusted_setup_ethereum_kzg4844_reference.dat",
     ))
     .expect("Trusted setup should be loaded without error.");
 }
@@ -46,7 +46,7 @@ const VERIFY_BLOB_KZG_PROOF_BATCH_TESTS: &str =
     concat!(test_dir!(), "verify_blob_kzg_proof_batch/*/*/*");
 
 const SRS_PATH: &str =
-    "../../constantine/trusted_setups/trusted_setup_ethereum_kzg4844_reference.dat";
+    "../../constantine/commitments_setups/trusted_setup_ethereum_kzg4844_reference.dat";
 
 struct OptRawBytes<const N: usize>(Option<Box<[u8; N]>>);
 
@@ -163,14 +163,14 @@ fn t_compute_kzg_proof() {
             &test_name
         ));
 
-        let (Some(blob), Some(challenge)) = (test.input.blob.opt_bytes.0, test.input.z.opt_bytes.0)
+        let (Some(blob), Some(opening_challenge)) = (test.input.blob.opt_bytes.0, test.input.z.opt_bytes.0)
         else {
             assert!(test.output.is_none());
             println!("{}=> SUCCESS - expected deserialization failure", tv);
             continue;
         };
 
-        match ctx.compute_kzg_proof(&*blob, &*challenge) {
+        match ctx.compute_kzg_proof(&*blob, &*opening_challenge) {
             Ok((proof, eval)) => {
                 let (true_proof, true_eval) = test.output.unwrap();
                 assert_eq!(proof, *true_proof.opt_bytes.0.unwrap());
@@ -480,10 +480,13 @@ fn t_blob_to_kzg_commitment_parallel() {
         output: OptBytes<48>,
     }
 
-    let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
-        .expect("Trusted setup should be loaded without error.");
-
     let tp = Threadpool::new(hardware::get_num_threads_os());
+    let ctx = EthKzgContext::builder()
+                .load_trusted_setup(Path::new(SRS_PATH))
+                .expect("Trusted setup loaded successfully")
+                .set_threadpool(&tp)
+                .build()
+                .expect("EthKzgContext initialized successfully");
 
     let test_files: Vec<PathBuf> = glob(BLOB_TO_KZG_COMMITMENT_TESTS)
         .unwrap()
@@ -512,7 +515,7 @@ fn t_blob_to_kzg_commitment_parallel() {
             continue;
         };
 
-        match ctx.blob_to_kzg_commitment_parallel(&tp, &*blob) {
+        match ctx.blob_to_kzg_commitment_parallel(&*blob) {
             Ok(commitment) => {
                 assert_eq!(commitment, *test.output.opt_bytes.0.unwrap());
                 println!("{}=> SUCCESS", tv);
@@ -540,10 +543,13 @@ fn t_compute_kzg_proof_parallel() {
         output: Option<(OptBytes<48>, OptBytes<32>)>,
     }
 
-    let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
-        .expect("Trusted setup should be loaded without error.");
-
     let tp = Threadpool::new(hardware::get_num_threads_os());
+    let ctx = EthKzgContext::builder()
+                .load_trusted_setup(Path::new(SRS_PATH))
+                .expect("Trusted setup loaded successfully")
+                .set_threadpool(&tp)
+                .build()
+                .expect("EthKzgContext initialized successfully");
 
     let test_files: Vec<PathBuf> = glob(COMPUTE_KZG_PROOF_TESTS)
         .unwrap()
@@ -566,14 +572,14 @@ fn t_compute_kzg_proof_parallel() {
             &test_name
         ));
 
-        let (Some(blob), Some(challenge)) = (test.input.blob.opt_bytes.0, test.input.z.opt_bytes.0)
+        let (Some(blob), Some(opening_challenge)) = (test.input.blob.opt_bytes.0, test.input.z.opt_bytes.0)
         else {
             assert!(test.output.is_none());
             println!("{}=> SUCCESS - expected deserialization failure", tv);
             continue;
         };
 
-        match ctx.compute_kzg_proof_parallel(&tp, &*blob, &*challenge) {
+        match ctx.compute_kzg_proof_parallel(&*blob, &*opening_challenge) {
             Ok((proof, eval)) => {
                 let (true_proof, true_eval) = test.output.unwrap();
                 assert_eq!(proof, *true_proof.opt_bytes.0.unwrap());
@@ -602,10 +608,13 @@ fn t_compute_blob_kzg_proof_parallel() {
         output: OptBytes<48>,
     }
 
-    let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
-        .expect("Trusted setup should be loaded without error.");
-
     let tp = Threadpool::new(hardware::get_num_threads_os());
+    let ctx = EthKzgContext::builder()
+                .load_trusted_setup(Path::new(SRS_PATH))
+                .expect("Trusted setup loaded successfully")
+                .set_threadpool(&tp)
+                .build()
+                .expect("EthKzgContext initialized successfully");
 
     let test_files: Vec<PathBuf> = glob(COMPUTE_BLOB_KZG_PROOF_TESTS)
         .unwrap()
@@ -637,7 +646,7 @@ fn t_compute_blob_kzg_proof_parallel() {
             continue;
         };
 
-        match ctx.compute_blob_kzg_proof_parallel(&tp, &*blob, &*commitment) {
+        match ctx.compute_blob_kzg_proof_parallel(&*blob, &*commitment) {
             Ok(proof) => {
                 assert_eq!(proof, *test.output.opt_bytes.0.unwrap());
                 println!("{}=> SUCCESS", tv);
@@ -666,10 +675,13 @@ fn t_verify_blob_kzg_proof_parallel() {
         output: Option<bool>,
     }
 
-    let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
-        .expect("Trusted setup should be loaded without error.");
-
     let tp = Threadpool::new(hardware::get_num_threads_os());
+    let ctx = EthKzgContext::builder()
+                .load_trusted_setup(Path::new(SRS_PATH))
+                .expect("Trusted setup loaded successfully")
+                .set_threadpool(&tp)
+                .build()
+                .expect("EthKzgContext initialized successfully");
 
     let test_files: Vec<PathBuf> = glob(VERIFY_BLOB_KZG_PROOF_TESTS)
         .unwrap()
@@ -702,7 +714,7 @@ fn t_verify_blob_kzg_proof_parallel() {
             continue;
         };
 
-        match ctx.verify_blob_kzg_proof_parallel(&tp, &*blob, &*commitment, &*proof) {
+        match ctx.verify_blob_kzg_proof_parallel(&*blob, &*commitment, &*proof) {
             Ok(valid) => {
                 assert_eq!(valid, test.output.unwrap());
                 if valid {
@@ -735,10 +747,13 @@ fn t_verify_blob_kzg_proof_batch_parallel() {
         output: Option<bool>,
     }
 
-    let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
-        .expect("Trusted setup should be loaded without error.");
-
     let tp = Threadpool::new(hardware::get_num_threads_os());
+    let ctx = EthKzgContext::builder()
+                .load_trusted_setup(Path::new(SRS_PATH))
+                .expect("Trusted setup loaded successfully")
+                .set_threadpool(&tp)
+                .build()
+                .expect("EthKzgContext initialized successfully");
 
     let mut secure_random_bytes = [0u8; 32];
     csprngs::sysrand(secure_random_bytes.as_mut_slice());
@@ -788,7 +803,6 @@ fn t_verify_blob_kzg_proof_batch_parallel() {
             .collect();
 
         match ctx.verify_blob_kzg_proof_batch_parallel(
-            &tp,
             &blobs,
             &commitments,
             &proofs,

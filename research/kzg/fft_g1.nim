@@ -7,12 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../constantine/platforms/primitives,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/ec_shortweierstrass,
-  ../../constantine/math/elliptic/ec_scalar_mul_vartime,
-  ../../constantine/math/io/[io_fields, io_ec, io_bigints],
+  constantine/platforms/primitives,
+  constantine/named/algebras,
+  constantine/math/arithmetic,
+  constantine/math/ec_shortweierstrass,
+  constantine/math/elliptic/ec_scalar_mul_vartime,
+  constantine/math/io/[io_fields, io_ec, io_bigints],
   # Research
   ./strided_views,
   ./fft_lut
@@ -62,9 +62,9 @@ type
   FFTDescriptor*[EC] = object
     ## Metadata for FFT on Elliptic Curve
     maxWidth: int
-    rootOfUnity: matchingOrderBigInt(EC.F.C)
+    rootOfUnity: EC.F.getBigInt()
       ## The root of unity that generates all roots
-    expandedRootsOfUnity: seq[matchingOrderBigInt(EC.F.C)]
+    expandedRootsOfUnity: seq[EC.F.getBigInt()]
       ## domain, starting and ending with 1
 
 func expandRootOfUnity[F](rootOfUnity: F): auto {.noInit.} =
@@ -77,7 +77,7 @@ func expandRootOfUnity[F](rootOfUnity: F): auto {.noInit.} =
   # so embrace heap (re-)allocations.
   # Figuring out how to do to right size the buffers
   # in production will be fun.
-  var r: seq[matchingOrderBigInt(F.C)]
+  var r: seq[F.getBigInt()]
   r.setLen(2)
   r[0].setOne()
   r[1] = rootOfUnity.toBig()
@@ -125,7 +125,7 @@ func fft_internal[EC; bits: static int](
 
   # Recursive Divide-and-Conquer
   let (evenVals, oddVals) = vals.splitAlternate()
-  var (outLeft, outRight) = output.splitMiddle()
+  var (outLeft, outRight) = output.splitHalf()
   let halfROI = rootsOfUnity.skipHalf()
 
   fft_internal(outLeft, evenVals, halfROI)
@@ -176,7 +176,7 @@ func ifft_vartime*[EC](
   var voutput = output.toView()
   fft_internal(voutput, vals.toView(), rootz)
 
-  var invLen {.noInit.}: Fr[EC.F.C]
+  var invLen {.noInit.}: Fr[EC.getName()]
   invLen.fromUint(vals.len.uint64)
   invLen.inv_vartime()
   let inv = invLen.toBig()
@@ -192,7 +192,7 @@ func ifft_vartime*[EC](
 proc init*(T: type FFTDescriptor, maxScale: uint8): T =
   result.maxWidth = 1 shl maxScale
 
-  let root = scaleToRootOfUnity(T.EC.F.C)[maxScale]
+  let root = scaleToRootOfUnity(T.EC.getName())[maxScale]
   result.rootOfUnity = root.toBig()
   result.expandedRootsOfUnity = root.expandRootOfUnity()
     # Aren't you tired of reading about unity?
@@ -206,10 +206,10 @@ proc init*(T: type FFTDescriptor, maxScale: uint8): T =
 when isMainModule:
   import
     std/[times, monotimes, strformat],
-    ../../helpers/prng_unsafe
+    helpers/prng_unsafe
 
-  type EC_G1 = ECP_ShortW_Prj[Fp[BLS12_381], G1]
-  var Generator1: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  type EC_G1 = EC_ShortW_Prj[Fp[BLS12_381], G1]
+  var Generator1: EC_ShortW_Aff[Fp[BLS12_381], G1]
   doAssert Generator1.fromHex(
     "0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb",
     "0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1"
@@ -220,7 +220,7 @@ when isMainModule:
     var data = newSeq[EC_G1](fftDesc.maxWidth)
     data[0].fromAffine(Generator1)
     for i in 1 ..< fftDesc.maxWidth:
-      data[i].madd(data[i-1], Generator1)
+      data[i].mixedSum(data[i-1], Generator1)
 
     var coefs = newSeq[EC_G1](data.len)
     let fftOk = fft_vartime(fftDesc, coefs, data)
@@ -271,7 +271,7 @@ when isMainModule:
       var data = newSeq[EC_G1](desc.maxWidth)
       data[0].fromAffine(Generator1)
       for i in 1 ..< desc.maxWidth:
-        data[i].madd(data[i-1], Generator1)
+        data[i].mixedSum(data[i-1], Generator1)
 
       var coefsOut = newSeq[EC_G1](data.len)
 

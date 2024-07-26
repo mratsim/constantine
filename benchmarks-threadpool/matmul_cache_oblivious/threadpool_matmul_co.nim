@@ -19,7 +19,7 @@ import
   # Stdlib
   system/ansi_c, std/[strformat, os, strutils, math, cpuinfo],
   # Library
-  ../../constantine/threadpool,
+  constantine/threadpool,
   # bench
   ../wtime, ../resources
 

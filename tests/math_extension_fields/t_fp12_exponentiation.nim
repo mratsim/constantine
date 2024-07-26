@@ -10,13 +10,13 @@ import
   # Standard library
   std/[tables, unittest, times],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/io/io_extfields,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/named/algebras,
+  constantine/math/io/io_extfields,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 const
   Iters = 2
@@ -45,9 +45,9 @@ func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, no
   else:
     result = rng.random_long01Seq(F)
 
-proc test_sameBaseProduct(C: static Curve, gen: RandomGen) =
+proc test_sameBaseProduct(Name: static Algebra, gen: RandomGen) =
   ## xᴬ xᴮ = xᴬ⁺ᴮ - product of power
-  let x = rng.random_elem(Fp12[C], gen)
+  let x = rng.random_elem(Fp12[Name], gen)
 
   var a = rng.random_elem(BigInt[128], gen)
   var b = rng.random_elem(BigInt[128], gen)
@@ -70,9 +70,9 @@ proc test_sameBaseProduct(C: static Curve, gen: RandomGen) =
   xa *= xb
   doAssert: bool(xa == xapb)
 
-proc test_powpow(C: static Curve, gen: RandomGen) =
+proc test_powpow(Name: static Algebra, gen: RandomGen) =
   ## (xᴬ)ᴮ = xᴬᴮ - power of power
-  var x = rng.random_elem(Fp12[C], gen)
+  var x = rng.random_elem(Fp12[Name], gen)
 
   var a = rng.random_elem(BigInt[128], gen)
   var b = rng.random_elem(BigInt[128], gen)
@@ -88,14 +88,14 @@ proc test_powpow(C: static Curve, gen: RandomGen) =
   y.pow_vartime(ab, window = 3)
   doAssert: bool(x == y)
 
-proc test_powprod(C: static Curve, gen: RandomGen) =
+proc test_powprod(Name: static Algebra, gen: RandomGen) =
   ## (xy)ᴬ = xᴬyᴬ - power of product
-  var x = rng.random_elem(Fp12[C], gen)
-  var y = rng.random_elem(Fp12[C], gen)
+  var x = rng.random_elem(Fp12[Name], gen)
+  var y = rng.random_elem(Fp12[Name], gen)
 
   let a = rng.random_elem(BigInt[128], gen)
 
-  var xy{.noInit.}: Fp12[C]
+  var xy{.noInit.}: Fp12[Name]
   xy.prod(x, y)
 
   xy.pow_vartime(a, window=3)
@@ -107,25 +107,25 @@ proc test_powprod(C: static Curve, gen: RandomGen) =
 
   doAssert: bool(x == xy)
 
-proc test_pow0(C: static Curve, gen: RandomGen) =
+proc test_pow0(Name: static Algebra, gen: RandomGen) =
   ## x⁰ = 1
-  var x = rng.random_elem(Fp12[C], gen)
+  var x = rng.random_elem(Fp12[Name], gen)
   var a: BigInt[128] # 0-init
 
   x.pow_vartime(a, window=3)
   doAssert: bool x.isOne()
 
-proc test_0pow0(C: static Curve, gen: RandomGen) =
+proc test_0pow0(Name: static Algebra, gen: RandomGen) =
   ## 0⁰ = 1
-  var x: Fp12[C] # 0-init
+  var x: Fp12[Name] # 0-init
   var a: BigInt[128] # 0-init
 
   x.pow_vartime(a, window=3)
   doAssert: bool x.isOne()
 
-proc test_powinv(C: static Curve, gen: RandomGen) =
+proc test_powinv(Name: static Algebra, gen: RandomGen) =
   ## xᴬ / xᴮ = xᴬ⁻ᴮ - quotient of power
-  let x = rng.random_elem(Fp12[C], gen)
+  let x = rng.random_elem(Fp12[Name], gen)
 
   var a = rng.random_elem(BigInt[128], gen)
   var b = rng.random_elem(BigInt[128], gen)
@@ -152,10 +152,10 @@ proc test_powinv(C: static Curve, gen: RandomGen) =
 
   doAssert: bool(xa == xamb)
 
-proc test_invpow(C: static Curve, gen: RandomGen) =
+proc test_invpow(Name: static Algebra, gen: RandomGen) =
   ## (x / y)ᴬ = xᴬ / yᴬ - power of quotient
-  let x = rng.random_elem(Fp12[C], gen)
-  let y = rng.random_elem(Fp12[C], gen)
+  let x = rng.random_elem(Fp12[Name], gen)
+  let y = rng.random_elem(Fp12[Name], gen)
 
   var a = rng.random_elem(BigInt[128], gen)
 

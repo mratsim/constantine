@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../../platforms/intrinsics/extended_precision_vartime,
+  constantine/platforms/abstractions,
+  constantine/platforms/intrinsics/extended_precision_vartime,
   ./limbs_views
 
 # No exceptions allowed

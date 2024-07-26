@@ -58,22 +58,21 @@ export hashes # generic sandwich on sha256
 # ------------------------------------------------------------------------------------------------
 
 import
-    ./platforms/[abstractions, views],
-    ./math/config/curves,
+    ./platforms/[abstractions, views, allocs],
+    ./named/algebras,
+    ./named/zoo_subgroups,
     ./math/[
       ec_shortweierstrass,
       extension_fields,
       arithmetic,
-      constants/zoo_subgroups
     ],
     ./math/io/[io_bigints, io_fields],
-    signatures/bls_signatures,
-    serialization/codecs_status_codes,
-    serialization/codecs_bls12_381
+    ./signatures/bls_signatures,
+    ./serialization/codecs_status_codes,
+    ./serialization/codecs_bls12_381
 
 export
   abstractions, # generic sandwich on SecretBool and SecretBool in Jacobian sumImpl
-  curves, # generic sandwich on matchingBigInt
   extension_fields, # generic sandwich on extension field access
   ec_shortweierstrass, # generic sandwich on affine
 
@@ -90,15 +89,15 @@ const DomainSeparationTag = asBytes"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_"
 type
   SecretKey* {.byref, exportc: prefix_ffi & "seckey".} = object
     ## A BLS12_381 secret key
-    raw: matchingOrderBigInt(BLS12_381)
+    raw: Fr[BLS12_381].getBigInt()
 
   PublicKey* {.byref, exportc: prefix_ffi & "pubkey".} = object
     ## A BLS12_381 public key for BLS signature schemes with public keys on G1 and signatures on G2
-    raw: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+    raw: EC_ShortW_Aff[Fp[BLS12_381], G1]
 
   Signature* {.byref, exportc: prefix_ffi & "signature".} = object
     ## A BLS12_381 signature for BLS signature schemes with public keys on G1 and signatures on G2
-    raw: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+    raw: EC_ShortW_Aff[Fp2[BLS12_381], G2]
 
   cttEthBlsStatus* = enum
     cttEthBls_Success
@@ -107,16 +106,19 @@ type
     cttEthBls_ZeroLengthAggregation
     cttEthBls_PointAtInfinity
 
+  BatchSigAccumulator* {.byref, exportc: prefix_ffi & "batch_sig_accumulator".} = object
+    raw: BLSBatchSigAccumulator[Sha256Context, Fp[BLS12_381], Fp2[BLS12_381], Fp12[BLS12_381], EC_ShortW_Jac[Fp2[BLS12_381], G2], 128]
+
 # Comparisons
 # ------------------------------------------------------------------------------------------------
 
 func pubkey_is_zero*(pubkey: PublicKey): bool {.libPrefix: prefix_ffi.} =
   ## Returns true if input is 0
-  bool(pubkey.raw.isInf())
+  bool(pubkey.raw.isNeutral())
 
 func signature_is_zero*(sig: Signature): bool {.libPrefix: prefix_ffi.} =
   ## Returns true if input is 0
-  bool(sig.raw.isInf())
+  bool(sig.raw.isNeutral())
 
 func pubkeys_are_equal*(a, b: PublicKey): bool {.libPrefix: prefix_ffi.} =
   ## Returns true if inputs are equal
@@ -253,7 +255,7 @@ func verify*(public_key: PublicKey, message: openArray[byte], signature: Signatu
   ## In particular, the public key and signature are assumed to be on curve and subgroup-checked.
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
-  if bool(public_key.raw.isInf() or signature.raw.isInf()):
+  if bool(public_key.raw.isNeutral() or signature.raw.isNeutral()):
     return cttEthBls_PointAtInfinity
 
   let verified = coreVerify(public_key.raw, message, signature.raw, sha256, 128, augmentation = "", DomainSeparationTag)
@@ -272,7 +274,7 @@ func aggregate_pubkeys_unstable_api*(aggregate_pubkey: var PublicKey, pubkeys: o
   #
   # TODO: Return a bool or status code or nothing?
   if pubkeys.len == 0:
-    aggregate_pubkey.raw.setInf()
+    aggregate_pubkey.raw.setNeutral()
     return
   aggregate_pubkey.raw.aggregate(pubkeys.unwrap())
 
@@ -283,7 +285,7 @@ func aggregate_signatures_unstable_api*(aggregate_sig: var Signature, signatures
   #
   # TODO: Return a bool or status code or nothing?
   if signatures.len == 0:
-    aggregate_sig.raw.setInf()
+    aggregate_sig.raw.setNeutral()
     return
   aggregate_sig.raw.aggregate(signatures.unwrap())
 
@@ -308,11 +310,11 @@ func fast_aggregate_verify*(pubkeys: openArray[PublicKey], message: openArray[by
     return cttEthBls_ZeroLengthAggregation
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
-  if aggregate_sig.raw.isInf().bool:
+  if aggregate_sig.raw.isNeutral().bool:
     return cttEthBls_PointAtInfinity
 
   for i in 0 ..< pubkeys.len:
-    if pubkeys[i].raw.isInf().bool:
+    if pubkeys[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   let verified = fastAggregateVerify(
@@ -351,11 +353,11 @@ func aggregate_verify*(pubkeys: ptr UncheckedArray[PublicKey],
     return cttEthBls_ZeroLengthAggregation
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
-  if aggregate_sig.raw.isInf().bool:
+  if aggregate_sig.raw.isNeutral().bool:
     return cttEthBls_PointAtInfinity
 
   for i in 0 ..< len:
-    if pubkeys[i].raw.isInf().bool:
+    if pubkeys[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   let verified = aggregateVerify(
@@ -395,11 +397,11 @@ func aggregate_verify*[Msg](pubkeys: openArray[PublicKey], messages: openArray[M
     return cttEthBls_InputsLengthsMismatch
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
-  if aggregate_sig.raw.isInf().bool:
+  if aggregate_sig.raw.isNeutral().bool:
     return cttEthBls_PointAtInfinity
 
   for i in 0 ..< pubkeys.len:
-    if pubkeys[i].raw.isInf().bool:
+    if pubkeys[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   let verified = aggregateVerify(
@@ -411,11 +413,11 @@ func aggregate_verify*[Msg](pubkeys: openArray[PublicKey], messages: openArray[M
   return cttEthBls_VerificationFailure
 
 # C FFI
-func batch_verify*[Msg](pubkeys: ptr UncheckedArray[PublicKey],
-                        messages: ptr UncheckedArray[View[byte]],
-                        signatures: ptr UncheckedArray[Signature],
-                        len: int,
-                        secureRandomBytes: array[32, byte]): cttEthBlsStatus {.libPrefix: prefix_ffi.} =
+func batch_verify*(pubkeys: ptr UncheckedArray[PublicKey],
+                   messages: ptr UncheckedArray[View[byte]],
+                   signatures: ptr UncheckedArray[Signature],
+                   len: int,
+                   secureRandomBytes: array[32, byte]): cttEthBlsStatus {.libPrefix: prefix_ffi.} =
   ## Verify that all (pubkey, message, signature) triplets are valid
   ## returns `true` if all signatures are valid, `false` if at least one is invalid.
   ##
@@ -445,16 +447,16 @@ func batch_verify*[Msg](pubkeys: ptr UncheckedArray[PublicKey],
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
   for i in 0 ..< len:
-    if pubkeys[i].raw.isInf().bool:
+    if pubkeys[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   for i in 0 ..< len:
-    if signatures[i].raw.isInf().bool:
+    if signatures[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   let verified = batchVerify(
     pubkeys.toOpenArray(len).unwrap(),
-    messages,
+    messages.toOpenArray(len),
     signatures.toOpenArray(len).unwrap(),
     sha256, 128, DomainSeparationTag, secureRandomBytes)
   if verified:
@@ -495,11 +497,11 @@ func batch_verify*[Msg](pubkeys: openArray[PublicKey], messages: openarray[Msg],
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
   for i in 0 ..< pubkeys.len:
-    if pubkeys[i].raw.isInf().bool:
+    if pubkeys[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   for i in 0 ..< signatures.len:
-    if signatures[i].raw.isInf().bool:
+    if signatures[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   let verified = batchVerify(
@@ -510,3 +512,57 @@ func batch_verify*[Msg](pubkeys: openArray[PublicKey], messages: openarray[Msg],
   if verified:
     return cttEthBls_Success
   return cttEthBls_VerificationFailure
+
+func alloc_batch_sig_accumulator*(): ptr BatchSigAccumulator {.libPrefix: prefix_ffi.} =
+  ## Allocates using `alloc0` for a `BatchSigAccumulator`
+  ## so that it can remain an incomplete struct in the C header.
+  result = allocHeapAligned(BatchSigAccumulator, alignment = 64)
+
+proc free_batch_sig_accumulator*(p: ptr BatchSigAccumulator) {.libPrefix: prefix_ffi.} =
+  ## Frees previously `alloc`'d into `buf`
+  freeHeapAligned p
+
+func init_batch_sig_accumulator*(
+  ctx: var BatchSigAccumulator,
+  secureRandomBytes: array[32, byte],
+  accumSepTag: ptr UncheckedArray[byte],
+  accumSepTagLen: int
+     ) {.libPrefix: prefix_ffi.} =
+  ## Initializes a Batch BLS Signature accumulator context.
+  ##
+  ## This requires cryptographically secure random bytes
+  ## to defend against forged signatures that would not
+  ## verify individually but would verify while aggregated
+  ## https://ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407/14
+  ##
+  ## An optional accumulator separation tag can be added
+  ## so that from a single source of randomness
+  ## each accumulatpr is seeded with a different state.
+  ## This is useful in multithreaded context.
+
+  ctx.raw.init(DomainSeparationTag,
+               secureRandomBytes,
+               toOpenArray(accumSepTag, 0, accumSepTagLen-1))
+
+func update_batch_sig_accumulator*(
+  ctx: var BatchSigAccumulator,
+  pubkey: PublicKey,
+  message: ptr UncheckedArray[byte],
+  messageLen: int,
+  signature: Signature
+     ): bool {.libPrefix: prefix_ffi.} =
+  ## Add a (public key, message, signature) triplet
+  ## to a BLS signature accumulator
+  ##
+  ## Assumes that the public key and signature
+  ## have been group checked
+  ##
+  ## Returns false if pubkey or signatures are the infinity points
+  ctx.raw.update(pubkey.raw, toOpenArray(message, 0, messageLen-1), signature.raw)
+
+func final_verify_batch_sig_accumulator*(ctx: var BatchSigAccumulator): bool {.libPrefix: prefix_ffi.} =
+  ## Finish batch and/or aggregate signature verification and returns the final result.
+  ##
+  ## Returns false if nothing was accumulated
+  ## Rteturns false on verification failure
+  ctx.raw.finalVerify()

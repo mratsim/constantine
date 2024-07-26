@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../arithmetic,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
   ./ec_twistededwards_affine,
   ./ec_twistededwards_projective
 
@@ -23,8 +23,8 @@ import
 # ############################################################
 
 func batchAffine*[F](
-       affs: ptr UncheckedArray[ECP_TwEdwards_Aff[F]],
-       projs: ptr UncheckedArray[ECP_TwEdwards_Prj[F]],
+       affs: ptr UncheckedArray[EC_TwEdw_Aff[F]],
+       projs: ptr UncheckedArray[EC_TwEdw_Prj[F]],
        N: int) {.noInline, tags:[Alloca].} =
   # Algorithm: Montgomery's batch inversion
   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
@@ -78,46 +78,11 @@ func batchAffine*[F](
     affs[0].y.prod(projs[0].y, accInv)
 
 func batchAffine*[N: static int, F](
-       affs: var array[N, ECP_TwEdwards_Aff[F]],
-       projs: array[N, ECP_TwEdwards_Prj[F]]) {.inline.} =
+       affs: var array[N, EC_TwEdw_Aff[F]],
+       projs: array[N, EC_TwEdw_Prj[F]]) {.inline.} =
   batchAffine(affs.asUnchecked(), projs.asUnchecked(), N)
 
 func batchAffine*[M, N: static int, F](
-       affs: var array[M, array[N, ECP_TwEdwards_Aff[F]]],
-       projs: array[M, array[N, ECP_TwEdwards_Prj[F]]]) {.inline.} =
+       affs: var array[M, array[N, EC_TwEdw_Aff[F]]],
+       projs: array[M, array[N, EC_TwEdw_Prj[F]]]) {.inline.} =
   batchAffine(affs[0].asUnchecked(), projs[0].asUnchecked(), M*N)
-
-func batchInvert*[F](
-        dst: ptr UncheckedArray[F],
-        elements: ptr UncheckedArray[F],
-        N: int
-      ) {.noInline.} =
-  ##  Montgomery's batch inversion
-  var zeros = allocStackArray(bool, N)
-  zeroMem(zeros, N)
-
-  var accumulator: F
-  accumulator.setOne()    # sets the accumulator to 1
-
-  for i in 0 ..< N: 
-    if elements[i].isZero().bool():
-      zeros[i] = true
-      continue
-
-    dst[i] = accumulator
-    accumulator *= elements[i]
-
-  accumulator.inv()   # inversion of the accumulator
-
-  for i in countdown(N-1, 0):
-    if zeros[i] == true:
-      continue
-    dst[i] *= accumulator
-    accumulator *= elements[i]
-
-func batchInvert*[F](dst: var openArray[F], source: openArray[F]) {.inline.} =
-  debug: doAssert dst.len == source.len
-  batchInvert(dst.asUnchecked(), source.asUnchecked(), dst.len)
-
-func batchInvert*[N: static int, F](dst: var array[N, F], src: array[N, F]) =
-  batchInvert(dst.asUnchecked(), src.asUnchecked(), N)

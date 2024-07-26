@@ -12,7 +12,7 @@ import
   # Stdlib
   system/ansi_c, std/[strformat, os, strutils, math, cpuinfo],
   # Constantine
-  ../../constantine/threadpool
+  constantine/threadpool
 
 when not defined(windows):
   # bench

@@ -7,9 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../constantine/platforms/metering/[reports, tracer],
-  ../constantine/ethereum_evm_precompiles,
-  ../constantine/platforms/abstractions
+  constantine/platforms/metering/[reports, tracer],
+  constantine/ethereum_evm_precompiles,
+  constantine/platforms/abstractions
 
 let input = [
     # Length of base (1)

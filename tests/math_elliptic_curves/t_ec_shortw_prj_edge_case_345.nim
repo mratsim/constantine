@@ -1,21 +1,21 @@
 # https://github.com/mratsim/constantine/issues/345
 
-import ../../constantine/math/arithmetic
-import ../../constantine/math/io/io_fields
-import ../../constantine/math/io/io_bigints
-import ../../constantine/math/config/curves
-import ../../constantine/math/extension_fields/towers
-import ../../constantine/math/elliptic/ec_shortweierstrass_affine
-import ../../constantine/math/elliptic/ec_shortweierstrass_projective
-import ../../constantine/math/elliptic/ec_scalar_mul
-import ../../constantine/math/elliptic/ec_scalar_mul_vartime
+import constantine/math/arithmetic
+import constantine/math/io/io_fields
+import constantine/math/io/io_bigints
+import constantine/named/algebras
+import constantine/math/extension_fields/towers
+import constantine/math/elliptic/ec_shortweierstrass_affine
+import constantine/math/elliptic/ec_shortweierstrass_projective
+import constantine/math/elliptic/ec_scalar_mul
+import constantine/math/elliptic/ec_scalar_mul_vartime
 
 #-------------------------------------------------------------------------------
 
 type B  = BigInt[254]
 type F  = Fp[BN254Snarks]
 type F2 = QuadraticExt[F]
-type G  = ECP_ShortW_Prj[F2, G2]
+type G  = EC_ShortW_Prj[F2, G2]
 
 #-------------------------------------------------------------------------------
 
@@ -67,7 +67,7 @@ proc printF2( z: F2) =
 
 
 proc printG( pt: G ) =
-  var aff : ECP_ShortW_Aff[F2, G2];
+  var aff : EC_ShortW_Aff[F2, G2];
   aff.affine(pt)
   echo(" affine x coord: ");  printF2( aff.x )
   echo(" affine y coord: ");  printF2( aff.y )
@@ -117,7 +117,7 @@ template test(scalarProc: untyped) =
     p -= rhs
     printG(p)
 
-    doAssert p.isInf().bool()
+    doAssert p.isNeutral().bool()
 
   `test _ scalarProc`()
 
@@ -142,7 +142,7 @@ Fp = GF(p)
 Fr = GF(r)
 A  = Fp(0)
 B  = Fp(3)
-E  = EllipticCurve(Fp,[A,B])
+E  = EllipticCurve(Fp,[Name,B])
 gx = Fp(1)
 gy = Fp(2)
 gen = E(gx,gy)  # subgroup generator

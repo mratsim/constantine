@@ -6,12 +6,13 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ./ec_multi_scalar_mul_scheduler,
+import constantine/named/algebras,
+       ./ec_multi_scalar_mul_scheduler,
        ./ec_multi_scalar_mul,
-       ./ec_endomorphism_accel,
-       ../extension_fields,
-       ../constants/zoo_endomorphisms,
-       ../../threadpool/[threadpool, partitioners]
+       constantine/math/endomorphisms/split_scalars,
+       constantine/math/extension_fields,
+       constantine/named/zoo_endomorphisms,
+       constantine/threadpool/[threadpool, partitioners]
 export bestBucketBitSize
 
 # No exceptions allowed in core cryptographic operations
@@ -133,17 +134,18 @@ export bestBucketBitSize
 # Parallel MSM non-affine
 # ------------------------------
 
-proc bucketAccumReduce_zeroMem[bits: static int, EC, ECaff](
+proc bucketAccumReduce_withInit[bits: static int, EC, ECaff](
        windowSum: ptr EC,
        buckets: ptr EC or ptr UncheckedArray[EC],
        bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECaff], N: int) =
   const numBuckets = 1 shl (c-1)
   let buckets = cast[ptr UncheckedArray[EC]](buckets)
-  zeroMem(buckets, sizeof(EC) * numBuckets)
+  for i in 0 ..< numBuckets:
+    buckets[i].setNeutral()
   bucketAccumReduce(windowSum[], buckets, bitIndex, miniMsmKind, c, coefs, points, N)
 
-proc msm_vartime_parallel[bits: static int, EC, ECaff](
+proc msmImpl_vartime_parallel[bits: static int, EC, ECaff](
        tp: Threadpool,
        r: ptr EC,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[EC_aff],
@@ -167,14 +169,14 @@ proc msm_vartime_parallel[bits: static int, EC, ECaff](
   # ---------
 
   block: # 1. Bucket accumulation and reduction
-    miniMSMsReady[0] = tp.spawnAwaitable bucketAccumReduce_zeroMem(
+    miniMSMsReady[0] = tp.spawnAwaitable bucketAccumReduce_withInit(
                                   miniMSMsResults[0].addr,
                                   bucketsMatrix[0].addr,
                                   bitIndex = 0, kBottomWindow, c,
                                   coefs, points, N)
 
   for w in 1 ..< numFullWindows:
-    miniMSMsReady[w] = tp.spawnAwaitable bucketAccumReduce_zeroMem(
+    miniMSMsReady[w] = tp.spawnAwaitable bucketAccumReduce_withInit(
                                   miniMSMsResults[w].addr,
                                   bucketsMatrix[w*numBuckets].addr,
                                   bitIndex = w*c, kFullWindow, c,
@@ -186,13 +188,13 @@ proc msm_vartime_parallel[bits: static int, EC, ECaff](
 
   when top != 0:
     when excess != 0:
-      bucketAccumReduce_zeroMem(
+      bucketAccumReduce_withInit(
         r,
         bucketsMatrix[numFullWindows*numBuckets].addr,
         bitIndex = top, kTopWindow, c,
         coefs, points, N)
     else:
-      r[].setInf()
+      r[].setNeutral()
 
   # 3. Final reduction, r initialized to what would be miniMSMsReady[numWindows-1]
   when excess != 0:
@@ -279,13 +281,13 @@ proc bucketAccumReduce_parallel[bits: static int, EC, ECaff](
 
     if kAffine in buckets.status[numBuckets-1]:
       if kNonAffine in buckets.status[numBuckets-1]:
-        accumBuckets.madd_vartime(buckets.pt[numBuckets-1], buckets.ptAff[numBuckets-1])
+        accumBuckets.mixedSum_vartime(buckets.pt[numBuckets-1], buckets.ptAff[numBuckets-1])
       else:
         accumBuckets.fromAffine(buckets.ptAff[numBuckets-1])
     elif kNonAffine in buckets.status[numBuckets-1]:
       accumBuckets = buckets.pt[numBuckets-1]
     else:
-      accumBuckets.setInf()
+      accumBuckets.setNeutral()
     windowSum = accumBuckets
     buckets.reset(numBuckets-1)
 
@@ -301,7 +303,7 @@ proc bucketAccumReduce_parallel[bits: static int, EC, ECaff](
       if kAffine in buckets.status[k]:
         if kNonAffine in buckets.status[k]:
           var t{.noInit.}: EC
-          t.madd_vartime(buckets.pt[k], buckets.ptAff[k])
+          t.mixedSum_vartime(buckets.pt[k], buckets.ptAff[k])
           accumBuckets ~+= t
         else:
           accumBuckets ~+= buckets.ptAff[k]
@@ -373,12 +375,13 @@ proc msmAffine_vartime_parallel[bits: static int, EC, ECaff](
   when top != 0:
     when excess != 0:
       let buckets = allocHeapArray(EC, numBuckets)
-      zeroMem(buckets[0].addr, sizeof(EC) * numBuckets)
+      for i in 0 ..< numBuckets:
+        buckets[i].setNeutral()
       r[].bucketAccumReduce(buckets, bitIndex = top, kTopWindow, c,
                                 coefs, points, N)
       buckets.freeHeap()
     else:
-      r[].setInf()
+      r[].setNeutral()
 
   # 2. Final reduction with latency hiding, r initialized to what would be miniMSMsReady[numWindows-1]
   when excess != 0:
@@ -459,8 +462,10 @@ proc applyEndomorphism_parallel[bits: static int, ECaff](
   const M = when ECaff.F is Fp:  2
             elif ECaff.F is Fp2: 4
             else: {.error: "Unconfigured".}
+  const G = when ECaff isnot EC_ShortW_Aff: G1
+            else: ECaff.G
 
-  const L = bits.ceilDiv_vartime(M) + 1
+  const L = ECaff.getScalarField().bits().computeEndoRecodedLength(M)
   let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
   let endoBasis    = allocHeapArray(array[M, ECaff], N)
 
@@ -469,37 +474,36 @@ proc applyEndomorphism_parallel[bits: static int, ECaff](
       captures: {coefs, points, splitCoefs, endoBasis}
 
       var negatePoints {.noinit.}: array[M, SecretBool]
-      splitCoefs[i].decomposeEndo(negatePoints, coefs[i], ECaff.F)
+      splitCoefs[i].decomposeEndo(negatePoints, coefs[i], ECaff.getScalarField().bits(), ECaff.getName(), G)
       if negatePoints[0].bool:
         endoBasis[i][0].neg(points[i])
       else:
         endoBasis[i][0] = points[i]
 
-      when ECaff.F is Fp:
-        endoBasis[i][1].x.prod(points[i].x, ECaff.F.C.getCubicRootOfUnity_mod_p())
-        if negatePoints[1].bool:
-          endoBasis[i][1].y.neg(points[i].y)
-        else:
-          endoBasis[i][1].y = points[i].y
-      else:
-        staticFor m, 1, M:
-          endoBasis[i][m].frobenius_psi(points[i], m)
-          if negatePoints[m].bool:
-            endoBasis[i][m].neg()
+      cast[ptr array[M-1, ECaff]](endoBasis[i][1].addr)[].computeEndomorphisms(points[i])
+      for m in 1 ..< M:
+        if negatePoints[m].bool:
+          endoBasis[i][m].neg()
 
   let endoCoefs = cast[ptr UncheckedArray[BigInt[L]]](splitCoefs)
   let endoPoints  = cast[ptr UncheckedArray[ECaff]](endoBasis)
 
   return (endoCoefs, endoPoints, M*N)
 
-template withEndo[bits: static int, EC, ECaff](
+template withEndo[coefsBits: static int, EC, ECaff](
            msmProc: untyped,
            tp: Threadpool,
            r: ptr EC,
-           coefs: ptr UncheckedArray[BigInt[bits]],
+           coefs: ptr UncheckedArray[BigInt[coefsBits]],
            points: ptr UncheckedArray[ECaff],
            N: int, c: static int) =
-  when bits <= EC.F.C.getCurveOrderBitwidth() and hasEndomorphismAcceleration(EC.F.C):
+  when hasEndomorphismAcceleration(EC.getName()) and
+        EndomorphismThreshold <= coefsBits and
+        coefsBits <= EC.getScalarField().bits() and
+        # computeEndomorphism assumes they can be applied to affine repr
+        # but this is not the case for Bandersnatch/wagon
+        # instead Twisted Edwards MSM should be overloaded for Projective/ProjectiveExtended
+        EC.getName() notin {Bandersnatch, Banderwagon}:
     let (endoCoefs, endoPoints, endoN) = applyEndomorphism_parallel(tp, coefs, points, N)
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance
@@ -509,14 +513,14 @@ template withEndo[bits: static int, EC, ECaff](
   else:
     msmProc(tp, r, coefs, points, N, c)
 
-template withEndo[bits: static int, EC, ECaff](
+template withEndo[coefsBits: static int, EC, ECaff](
            msmProc: untyped,
            tp: Threadpool,
            r: ptr EC,
-           coefs: ptr UncheckedArray[BigInt[bits]],
+           coefs: ptr UncheckedArray[BigInt[coefsBits]],
            points: ptr UncheckedArray[ECaff],
            N: int, c: static int, useParallelBuckets: static bool) =
-  when bits <= EC.F.C.getCurveOrderBitwidth() and hasEndomorphismAcceleration(EC.F.C):
+  when coefsBits <= EC.getScalarField().bits() and hasEndomorphismAcceleration(EC.getName()):
     let (endoCoefs, endoPoints, endoN) = applyEndomorphism_parallel(tp, coefs, points, N)
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance
@@ -528,9 +532,9 @@ template withEndo[bits: static int, EC, ECaff](
 
 proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F, G](
        tp: Threadpool,
-       r: ptr (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
+       r: ptr (EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G]),
        coefs: ptr UncheckedArray[BigInt[bits]],
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
+       points: ptr UncheckedArray[EC_ShortW_Aff[F, G]], N: int) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
@@ -540,14 +544,14 @@ proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F, G](
   # but it has no significant impact on performance
 
   case c
-  of  2: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  2)
-  of  3: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  3)
-  of  4: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  4)
-  of  5: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  5)
-  of  6: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  6)
+  of  2: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  2)
+  of  3: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  3)
+  of  4: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  4)
+  of  5: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  5)
+  of  6: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  6)
 
-  of  7: msm_vartime_parallel(tp, r, coefs, points, N, c =  7)
-  of  8: msm_vartime_parallel(tp, r, coefs, points, N, c =  8)
+  of  7: msmImpl_vartime_parallel(tp, r, coefs, points, N, c =  7)
+  of  8: msmImpl_vartime_parallel(tp, r, coefs, points, N, c =  8)
 
   of  9: withEndo(msmAffine_vartime_parallel_split, tp, r, coefs, points, N, c =  9, useParallelBuckets = true)
   of 10: withEndo(msmAffine_vartime_parallel_split, tp, r, coefs, points, N, c = 10, useParallelBuckets = true)
@@ -564,8 +568,8 @@ proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F, G](
 
 proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F](
        tp: Threadpool,
-       r: ptr ECP_TwEdwards_Prj[F], coefs: ptr UncheckedArray[BigInt[bits]],
-       points: ptr UncheckedArray[ECP_TwEdwards_Aff[F]], N: int) =
+       r: ptr EC_TwEdw_Prj[F], coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[EC_TwEdw_Aff[F]], N: int) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
@@ -575,38 +579,25 @@ proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F](
   # but it has no significant impact on performance
 
   case c
-  of  2: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  2)
-  of  3: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  3)
-  of  4: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  4)
-  of  5: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  5)
-  of  6: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  6)
+  of  2: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  2)
+  of  3: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  3)
+  of  4: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  4)
+  of  5: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  5)
+  of  6: withEndo(msmImpl_vartime_parallel, tp, r, coefs, points, N, c =  6)
 
-  of   7: msm_vartime_parallel(tp, r, coefs, points, N, c =  7)
-  of   8: msm_vartime_parallel(tp, r, coefs, points, N, c =  8)
-  of   9: msm_vartime_parallel(tp, r, coefs, points, N, c =  9)
-  of  10: msm_vartime_parallel(tp, r, coefs, points, N, c = 10)
-  of  11: msm_vartime_parallel(tp, r, coefs, points, N, c = 11)
-  of  12: msm_vartime_parallel(tp, r, coefs, points, N, c = 12)
-  of  13: msm_vartime_parallel(tp, r, coefs, points, N, c = 13)
-  of  14: msm_vartime_parallel(tp, r, coefs, points, N, c = 14)
-  of  15: msm_vartime_parallel(tp, r, coefs, points, N, c = 16)
+  of   7: msmImpl_vartime_parallel(tp, r, coefs, points, N, c =  7)
+  of   8: msmImpl_vartime_parallel(tp, r, coefs, points, N, c =  8)
+  of   9: msmImpl_vartime_parallel(tp, r, coefs, points, N, c =  9)
+  of  10: msmImpl_vartime_parallel(tp, r, coefs, points, N, c = 10)
+  of  11: msmImpl_vartime_parallel(tp, r, coefs, points, N, c = 11)
+  of  12: msmImpl_vartime_parallel(tp, r, coefs, points, N, c = 12)
+  of  13: msmImpl_vartime_parallel(tp, r, coefs, points, N, c = 13)
+  of  14: msmImpl_vartime_parallel(tp, r, coefs, points, N, c = 14)
+  of  15: msmImpl_vartime_parallel(tp, r, coefs, points, N, c = 16)
 
-  of  16..17: msm_vartime_parallel(tp, r, coefs, points, N, c = 16)
+  of  16..17: msmImpl_vartime_parallel(tp, r, coefs, points, N, c = 16)
   else:
     unreachable()
-
-proc multiScalarMul_vartime_parallel*[bits: static int, EC, ECaff](
-       tp: Threadpool,
-       r: var EC,
-       coefs: openArray[BigInt[bits]],
-       points: openArray[ECaff]) {.meter, inline.} =
-  ## Multiscalar multiplication:
-  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
-  ## This function can be nested in another parallel function
-  debug: doAssert coefs.len == points.len
-  let N = points.len
-
-  tp.multiScalarMul_dispatch_vartime_parallel(r.addr, coefs.asUnchecked(), points.asUnchecked(), N)
 
 proc multiScalarMul_vartime_parallel*[bits: static int, EC, ECaff](
        tp: Threadpool,
@@ -618,3 +609,45 @@ proc multiScalarMul_vartime_parallel*[bits: static int, EC, ECaff](
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   ## This function can be nested in another parallel function
   tp.multiScalarMul_dispatch_vartime_parallel(r, coefs, points, len)
+
+proc multiScalarMul_vartime_parallel*[bits: static int, EC, ECaff](
+       tp: Threadpool,
+       r: var EC,
+       coefs: openArray[BigInt[bits]],
+       points: openArray[ECaff]) {.meter, inline.} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+  ## This function can be nested in another parallel function
+  debug: doAssert coefs.len == points.len
+  let N = points.len
+  tp.multiScalarMul_dispatch_vartime_parallel(r.addr, coefs.asUnchecked(), points.asUnchecked(), N)
+
+proc multiScalarMul_vartime_parallel*[F, EC, ECaff](
+       tp: Threadpool,
+       r: ptr EC,
+       coefs: ptr UncheckedArray[F],
+       points: ptr UncheckedArray[ECaff],
+       len: int) {.meter.} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
+  let n = cast[int](len)
+  let coefs_big = allocHeapArrayAligned(F.getBigInt(), n, alignment = 64)
+
+  syncScope:
+    tp.parallelFor i in 0 ..< n:
+      captures: {coefs, coefs_big}
+      coefs_big[i].fromField(coefs[i])
+  tp.multiScalarMul_vartime_parallel(r, coefs_big, points, n)
+
+  freeHeapAligned(coefs_big)
+
+proc multiScalarMul_vartime_parallel*[EC, ECaff](
+       tp: Threadpool,
+       r: var EC,
+       coefs: openArray[Fr],
+       points: openArray[ECaff]) {.inline.} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
+  debug: doAssert coefs.len == points.len
+  let N = points.len
+  tp.multiScalarMul_vartime_parallel(r.addr, coefs.asUnchecked(), points.asUnchecked(), N)

@@ -1,5 +1,5 @@
 packageName   = "constantine"
-version       = "0.0.1"
+version       = "0.1.0"
 author        = "Mamy Ratsimbazafy"
 description   = "This library provides thoroughly tested and highly-optimized implementations of cryptography protocols."
 license       = "MIT or Apache License 2.0"
@@ -8,6 +8,24 @@ license       = "MIT or Apache License 2.0"
 # ----------------------------------------------------------------
 
 requires "nim >= 1.6.12"
+
+when (NimMajor, NimMinor) >= (2, 0): # Task-level dependencies
+  taskRequires "make_zkalc", "jsony"
+  taskRequires "make_zkalc", "cliche"
+
+  taskRequires "test", "jsony"
+  taskRequires "test", "yaml"
+  taskRequires "test", "gmp#head"
+
+  taskRequires "test_parallel", "jsony"
+  taskRequires "test_parallel", "yaml"
+  taskRequires "test_parallel", "gmp#head"
+
+  taskRequires "test_no_gmp", "jsony"
+  taskRequires "test_no_gmp", "yaml"
+
+  taskRequires "test_parallel_no_gmp", "jsony"
+  taskRequires "test_parallel_no_gmp", "yaml"
 
 # Nimscript imports
 # ----------------------------------------------------------------
@@ -68,7 +86,7 @@ proc getEnvVars(): tuple[useAsmIfAble, force32, forceLto, useLtoDefault: bool] =
   else:
     result.useAsmIfAble = true
   if existsEnv"CTT_32":
-    result.force32 = parseBool(getEnv"CTT_ASM")
+    result.force32 = parseBool(getEnv"CTT_32")
   else:
     result.force32 = false
   if existsEnv"CTT_LTO":
@@ -172,12 +190,12 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
   #   "-s -flinker-output=nolto-rel"
   #   with an extra C compiler call
   #   to consolidate all objects into one.
-  let ltoFlags = " -d:lto " & # " --UseAsmSyntaxIntel --passC:-flto=auto --passL:-flto=auto "
+  let ltoFlags = " -d:lto " & # " -d:UseAsmSyntaxIntel --passC:-flto=auto --passL:-flto=auto "
                  # With LTO, the GCC linker produces lots of spurious warnings when copying into openArrays/strings
                  " --passC:-Wno-stringop-overflow --passL:-Wno-stringop-overflow " &
                  " --passC:-Wno-alloc-size-larger-than --passL:-Wno-alloc-size-larger-than "
 
-  let apple = defined(macos) or defined(macox) or defined(ios)
+  let apple = defined(macos) or defined(macosx) or defined(ios)
   let ltoOptions = if useLtoDefault:
                      if apple: ""
                      elif buildMode == bmStaticLib: ""
@@ -205,9 +223,12 @@ proc genDynamicLib(outdir, nimcache: string) =
   proc compile(libName: string, flags = "") =
     echo &"Compiling dynamic library: {outdir}/" & libName
 
+    let config = flags &
+                 releaseBuildOptions(bmDynamicLib)
+    echo &"  compiler config: {config}"
+
     exec "nim c " &
-         flags &
-         releaseBuildOptions(bmDynamicLib) &
+         config &
          " --threads:on " &
          " --noMain --app:lib " &
          &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
@@ -232,10 +253,14 @@ proc genStaticLib(outdir, nimcache: string, extFlags = "") =
   proc compile(libName: string, flags = "") =
     echo &"Compiling static library:  {outdir}/" & libName
 
+    let config = flags &
+                 extFlags &
+                 releaseBuildOptions(bmStaticLib)
+
+    echo &"  compiler config: {config}"
+
     exec "nim c " &
-         flags &
-         extFlags &
-         releaseBuildOptions(bmStaticLib) &
+         config &
          " --threads:on " &
          " --noMain --app:staticlib " &
          &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
@@ -276,6 +301,14 @@ task make_lib_rust, "Build Constantine library (use within a Rust build.rs scrip
   let extflags = if defined(windows): "" # Windows is fully position independent, flag is a no-op or on error depending on compiler.
                  else: "--passC:-fPIC"
   genStaticLib(rustOutDir, rustOutDir/"nimcache", extflags)
+
+task make_zkalc, "Build a benchmark executable for zkalc (with Clang)":
+  exec "nim c --cc:clang " &
+       releaseBuildOptions(bmBinary) &
+       " --threads:on " &
+       " --out:bin/constantine-bench-zkalc " &
+       " --nimcache:nimcache/bench_zkalc " &
+       " benchmarks/zkalc.nim"
 
 proc testLib(path, testName: string, useGMP: bool) =
   let dynlibName = if defined(windows): "constantine.dll"
@@ -371,7 +404,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/math_fields/t_finite_fields_conditional_arithmetic.nim", false),
   # ("tests/math_fields/t_finite_fields_mulsquare.nim", false),
   # ("tests/math_fields/t_finite_fields_sqrt.nim", false),
-  # ("tests/math_fields/t_finite_fields_powinv.nim", false),
+  ("tests/math_fields/t_finite_fields_powinv.nim", false),
   # ("tests/math_fields/t_finite_fields_vs_gmp.nim", true),
   # ("tests/math_fields/t_fp_cubic_root.nim", false),
 
@@ -404,7 +437,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/math_elliptic_curves/t_ec_conversion.nim", false),
 
-  # Elliptic curve arithmetic G1
+  # Elliptic curve arithmetic 𝔾₁
   # ----------------------------------------------------------
   ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_add_double.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_sanity.nim", false),
@@ -415,18 +448,24 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_add_double.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_sanity.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_distri.nim", false),
-  ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mixed_add.nim", false),
 
   ("tests/math_elliptic_curves/t_ec_shortw_jacext_g1_add_double.nim", false),
   ("tests/math_elliptic_curves/t_ec_shortw_jacext_g1_mixed_add.nim", false),
 
-  # ("tests/math_elliptic_curves/t_ec_twedwards_prj_add_double", false),
-  ("tests/math_elliptic_curves/t_ec_twedwards_prj_mul_sanity", false),
-  ("tests/math_elliptic_curves/t_ec_twedwards_prj_mul_distri", false),
+  # ("tests/math_elliptic_curves/t_ec_twedw_prj_add_double", false),
+  # ("tests/math_elliptic_curves/t_ec_twedw_prj_mul_sanity", false),
+  ("tests/math_elliptic_curves/t_ec_twedw_prj_mul_distri", false),
+
+  ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_endomorphism_bls12_381", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_endomorphism_bls12_381", false),
+  ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_endomorphism_bn254_snarks", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_endomorphism_bn254_snarks", false),
+  ("tests/math_elliptic_curves/t_ec_twedwards_mul_endomorphism_bandersnatch", false),
 
 
-  # Elliptic curve arithmetic G2
+  # Elliptic curve arithmetic 𝔾₂
   # ----------------------------------------------------------
   # ("tests/math_elliptic_curves/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_prj_g2_mul_sanity_bn254_snarks.nim", false),
@@ -455,13 +494,13 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_add_double_bn254_snarks.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_sanity_bn254_snarks.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_distri_bn254_snarks.nim", false),
-  ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_vs_ref_bn254_snarks.nim", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_vs_ref_bn254_snarks.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mixed_add_bn254_snarks.nim", false),
 
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_sanity_bls12_381.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_distri_bls12_381.nim", false),
-  ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_vs_ref_bls12_381.nim", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_vs_ref_bls12_381.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mixed_add_bls12_381.nim", false),
 
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
@@ -475,6 +514,11 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_distri_bw6_761.nim", false),
   ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_vs_ref_bw6_761.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mixed_add_bw6_761.nim", false),
+
+  ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_endomorphism_bls12_381", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g2_mul_endomorphism_bls12_381", false),
+  ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_endomorphism_bn254_snarks", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g2_mul_endomorphism_bn254_snarks", false),
 
   # Elliptic curve arithmetic vs Sagemath
   # ----------------------------------------------------------
@@ -498,7 +542,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math_elliptic_curves/t_ec_shortw_jacext_g1_sum_reduce.nim", false),
   ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_msm.nim", false),
   ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_msm.nim", false),
-  ("tests/math_elliptic_curves/t_ec_twedwards_prj_msm.nim", false),
+  ("tests/math_elliptic_curves/t_ec_twedw_prj_msm.nim", false),
+  ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_msm_bug_366.nim", false),
 
   # Subgroups and cofactors
   # ----------------------------------------------------------
@@ -513,16 +558,19 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/math_pairings/t_pairing_bls12_381_gt_subgroup.nim", false),
   # ("tests/math_pairings/t_pairing_bw6_761_gt_subgroup.nim", false),
 
-  # Pairing
+  # Pairing &
   # ----------------------------------------------------------
   # ("tests/math_pairings/t_pairing_bls12_377_line_functions.nim", false),
   # ("tests/math_pairings/t_pairing_bls12_381_line_functions.nim", false),
   # ("tests/math_pairings/t_pairing_mul_fp12_by_lines.nim", false),
   ("tests/math_pairings/t_pairing_cyclotomic_subgroup.nim", false),
-  ("tests/math_pairings/t_pairing_bn254_nogami_optate.nim", false),
-  ("tests/math_pairings/t_pairing_bn254_snarks_optate.nim", false),
-  ("tests/math_pairings/t_pairing_bls12_377_optate.nim", false),
-  ("tests/math_pairings/t_pairing_bls12_381_optate.nim", false),
+  # ("tests/math_pairings/t_pairing_bn254_nogami_optate.nim", false),
+  # ("tests/math_pairings/t_pairing_bn254_snarks_optate.nim", false),
+  # ("tests/math_pairings/t_pairing_bls12_377_optate.nim", false),
+  # ("tests/math_pairings/t_pairing_bls12_381_optate.nim", false),
+
+  ("tests/math_pairings/t_pairing_bn254_snarks_gt_exp.nim", false),
+  ("tests/math_pairings/t_pairing_bls12_381_gt_exp.nim", false),
 
   # Multi-Pairing
   # ----------------------------------------------------------
@@ -537,9 +585,13 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Hashing to elliptic curves
   # ----------------------------------------------------------
-  ("tests/t_hash_to_field.nim", false),
+  # ("tests/t_hash_to_field.nim", false),
   ("tests/t_hash_to_curve_random.nim", false),
   ("tests/t_hash_to_curve.nim", false),
+
+  # Polynomials
+  # ----------------------------------------------------------
+  ("tests/math_polynomials/t_polynomials.nim", false),
 
   # Protocols
   # ----------------------------------------------------------
@@ -550,6 +602,12 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_ethereum_eip4844_deneb_kzg.nim", false),
   ("tests/t_ethereum_eip4844_deneb_kzg_parallel.nim", false),
   ("tests/t_ethereum_verkle_primitives.nim", false),
+  ("tests/t_ethereum_verkle_ipa_primitives.nim", false),
+
+  # Proof systems
+  # ----------------------------------------------------------
+  ("tests/proof_systems/t_r1cs_parser.nim", false),
+  ("tests/interactive_proofs/t_multilinear_extensions.nim", false),
 ]
 
 const testDescNvidia: seq[string] = @[
@@ -579,6 +637,8 @@ const testDescMultithreadedCrypto: seq[string] = @[
   "tests/parallel/t_ec_shortw_prj_g1_batch_add_parallel.nim",
   "tests/parallel/t_ec_shortw_jac_g1_msm_parallel.nim",
   "tests/parallel/t_ec_shortw_prj_g1_msm_parallel.nim",
+  "tests/parallel/t_ec_twedwards_prj_msm_parallel.nim",
+  "tests/parallel/t_pairing_bls12_381_gt_multiexp_parallel.nim",
 ]
 
 const benchDesc = [
@@ -594,6 +654,7 @@ const benchDesc = [
   "bench_ec_msm_bandersnatch",
   "bench_ec_msm_bn254_snarks_g1",
   "bench_ec_msm_bls12_381_g1",
+  "bench_ec_msm_bls12_381_g2",
   "bench_ec_msm_pasta",
   "bench_ec_g2",
   "bench_ec_g2_scalar_mul",
@@ -601,6 +662,8 @@ const benchDesc = [
   "bench_pairing_bls12_381",
   "bench_pairing_bn254_nogami",
   "bench_pairing_bn254_snarks",
+  "bench_gt",
+  "bench_gt_multiexp_bls12_381",
   "bench_summary_bls12_377",
   "bench_summary_bls12_381",
   "bench_summary_bn254_nogami",
@@ -609,12 +672,16 @@ const benchDesc = [
   "bench_poly1305",
   "bench_sha256",
   "bench_hash_to_curve",
-  "bench_ethereum_bls_signatures",
-  "bench_ethereum_eip4844_kzg",
-  "bench_evm_modexp_dos",
   "bench_gmp_modexp",
   "bench_gmp_modmul",
-  "bench_verkle_primitives"
+  "bench_eth_bls_signatures",
+  "bench_eth_eip4844_kzg",
+  "bench_eth_evm_modexp_dos",
+  "bench_eth_eip2537_subgroup_checks_impact",
+  "bench_verkle_primitives",
+  "bench_eth_evm_precompiles",
+  "bench_multilinear_extensions",
+  # "zkalc", # Already tested through make_zkalc
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -924,25 +991,25 @@ task bench_fp6, "Run benchmark 𝔽p6 with your CC compiler":
 task bench_fp12, "Run benchmark 𝔽p12 with your CC compiler":
   runBench("bench_fp12")
 
-# Elliptic curve G1
+# Elliptic curve 𝔾₁
 # ------------------------------------------
 
 task bench_ec_g1, "Run benchmark on Elliptic Curve group 𝔾1 - CC compiler":
   runBench("bench_ec_g1")
 
-# Elliptic curve G1 - batch operations
+# Elliptic curve 𝔾₁ - batch operations
 # ------------------------------------------
 
 task bench_ec_g1_batch, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - CC compiler":
   runBench("bench_ec_g1_batch")
 
-# Elliptic curve G1 - scalar multiplication
+# Elliptic curve 𝔾₁ - scalar multiplication
 # ------------------------------------------
 
 task bench_ec_g1_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - CC compiler":
   runBench("bench_ec_g1_scalar_mul")
 
-# Elliptic curve G1 - Multi-scalar-mul
+# Elliptic curve 𝔾₁ - Multi-scalar-mul
 # ------------------------------------------
 
 task bench_ec_msm_pasta, "Run benchmark: Multi-Scalar-Mul for Pasta curves - CC compiler":
@@ -954,21 +1021,36 @@ task bench_ec_msm_bn254_snarks_g1, "Run benchmark: Multi-Scalar-Mul for BN254-Sn
 task bench_ec_msm_bls12_381_g1, "Run benchmark: Multi-Scalar-Mul for BLS12-381 𝔾1 - CC compiler":
   runBench("bench_ec_msm_bls12_381_g1")
 
+task bench_ec_msm_bls12_381_g2, "Run benchmark: Multi-Scalar-Mul for BLS12-381 𝔾2 - CC compiler":
+  runBench("bench_ec_msm_bls12_381_g2")
+
 task bench_ec_msm_bandersnatch, "Run benchmark: Multi-Scalar-Mul for Bandersnatch - CC compiler":
   runBench("bench_ec_msm_bandersnatch")
 
 
-# Elliptic curve G2
+# Elliptic curve 𝔾₂
 # ------------------------------------------
 
 task bench_ec_g2, "Run benchmark on Elliptic Curve group 𝔾2 - CC compiler":
   runBench("bench_ec_g2")
 
-# Elliptic curve G2 - scalar multiplication
+# Elliptic curve 𝔾₂ - scalar multiplication
 # ------------------------------------------
 
 task bench_ec_g2_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - CC compiler":
   runBench("bench_ec_g2_scalar_mul")
+
+# 𝔾ₜ
+# ------------------------------------------
+
+task bench_gt, "Run 𝔾ₜ benchmarks - CC compiler":
+  runBench("bench_gt")
+
+# 𝔾ₜ - multi-exponentiation
+# ------------------------------------------
+
+task bench_gt_multiexp_bls12_381, "Run 𝔾ₜ multiexponentiation benchmarks for BLS12-381 - CC compiler":
+  runBench("bench_gt_multiexp_bls12_381")
 
 # Pairings
 # ------------------------------------------
@@ -1030,13 +1112,23 @@ task bench_hash_to_curve, "Run Hash-to-Curve benchmarks":
 
 # BLS signatures
 # ------------------------------------------
-task bench_ethereum_bls_signatures, "Run Ethereum BLS signatures benchmarks - CC compiler":
-  runBench("bench_ethereum_bls_signatures")
+task bench_eth_bls_signatures, "Run Ethereum BLS signatures benchmarks - CC compiler":
+  runBench("bench_eth_bls_signatures")
 
 # EIP 4844 - KZG Polynomial Commitments
 # ------------------------------------------
-task bench_ethereum_eip4844_kzg, "Run Ethereum EIP4844 KZG Polynomial commitment - CC compiler":
-  runBench("bench_ethereum_eip4844_kzg")
+task bench_eth_eip4844_kzg, "Run Ethereum EIP4844 KZG Polynomial commitment - CC compiler":
+  runBench("bench_eth_eip4844_kzg")
 
 task bench_verkle, "Run benchmarks for Banderwagon":
   runBench("bench_verkle_primitives")
+
+# EIP 2537 - BLS12-381 precompiles
+# ------------------------------------------
+task bench_eth_eip2537_subgroup_checks_impact, "Run EIP2537 subgroup checks impact benchmark - CC compiler":
+  runBench("bench_eth_eip2537_subgroup_checks_impact")
+
+# EVM
+# ------------------------------------------
+task bench_eth_evm_precompiles, "Run Ethereum EVM precompiles - CC compiler":
+  runBench("bench_eth_evm_precompiles")

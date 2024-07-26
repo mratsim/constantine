@@ -12,12 +12,12 @@ use constantine_halo2_zal::CttEngine;
 use ark_std::{end_timer, start_timer};
 use rand_core::OsRng;
 
-use halo2curves::bn256;
-use halo2curves::ff::Field;
-use halo2curves::group::prime::PrimeCurveAffine;
-use halo2curves::group::{Curve, Group};
-use halo2curves::msm::best_multiexp;
-use halo2curves::zal::MsmAccel;
+use halo2_middleware::halo2curves::bn256;
+use halo2_middleware::halo2curves::ff::Field;
+use halo2_middleware::halo2curves::group::prime::PrimeCurveAffine;
+use halo2_middleware::halo2curves::group::{Curve, Group};
+use halo2_middleware::halo2curves::msm::best_multiexp;
+use halo2_middleware::zal::traits::MsmAccel;
 
 #[test]
 fn t_threadpool() {

@@ -99,7 +99,7 @@ extern "C" {
     pub fn ctt_sha256_update(
         ctx: *mut ctt_sha256_context,
         message: *const byte,
-        message_len: isize,
+        message_len: usize,
     );
 }
 extern "C" {
@@ -115,7 +115,7 @@ extern "C" {
     pub fn ctt_sha256_hash(
         digest: *mut byte,
         message: *const byte,
-        message_len: isize,
+        message_len: usize,
         clear_memory: bool,
     );
 }
@@ -214,27 +214,27 @@ fn bindgen_test_layout_big254() {
 }
 extern "C" {
     #[must_use]
-    pub fn ctt_big254_unmarshalBE(dst: *mut big254, src: *const byte, src_len: isize) -> bool;
+    pub fn ctt_big254_unmarshalBE(dst: *mut big254, src: *const byte, src_len: usize) -> bool;
 }
 extern "C" {
     #[must_use]
-    pub fn ctt_big254_marshalBE(dst: *mut byte, dst_len: isize, src: *const big254) -> bool;
+    pub fn ctt_big254_marshalBE(dst: *mut byte, dst_len: usize, src: *const big254) -> bool;
 }
 extern "C" {
     #[must_use]
-    pub fn ctt_big255_unmarshalBE(dst: *mut big255, src: *const byte, src_len: isize) -> bool;
+    pub fn ctt_big255_unmarshalBE(dst: *mut big255, src: *const byte, src_len: usize) -> bool;
 }
 extern "C" {
     #[must_use]
-    pub fn ctt_big255_marshalBE(dst: *mut byte, dst_len: isize, src: *const big255) -> bool;
+    pub fn ctt_big255_marshalBE(dst: *mut byte, dst_len: usize, src: *const big255) -> bool;
 }
 extern "C" {
     #[must_use]
-    pub fn ctt_big381_unmarshalBE(dst: *mut big381, src: *const byte, src_len: isize) -> bool;
+    pub fn ctt_big381_unmarshalBE(dst: *mut big381, src: *const byte, src_len: usize) -> bool;
 }
 extern "C" {
     #[must_use]
-    pub fn ctt_big381_marshalBE(dst: *mut byte, dst_len: isize, src: *const big381) -> bool;
+    pub fn ctt_big381_marshalBE(dst: *mut byte, dst_len: usize, src: *const big381) -> bool;
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -627,14 +627,14 @@ extern "C" {
     pub fn ctt_bls12_381_fr_unmarshalBE(
         dst: *mut bls12_381_fr,
         src: *const byte,
-        src_len: isize,
+        src_len: usize,
     ) -> bool;
 }
 extern "C" {
     #[must_use]
     pub fn ctt_bls12_381_fr_marshalBE(
         dst: *mut byte,
-        dst_len: isize,
+        dst_len: usize,
         src: *const bls12_381_fr,
     ) -> bool;
 }
@@ -756,14 +756,14 @@ extern "C" {
     pub fn ctt_bls12_381_fp_unmarshalBE(
         dst: *mut bls12_381_fp,
         src: *const byte,
-        src_len: isize,
+        src_len: usize,
     ) -> bool;
 }
 extern "C" {
     #[must_use]
     pub fn ctt_bls12_381_fp_marshalBE(
         dst: *mut byte,
-        dst_len: isize,
+        dst_len: usize,
         src: *const bls12_381_fp,
     ) -> bool;
 }
@@ -1047,10 +1047,10 @@ extern "C" {
     ) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bls12_381_g1_aff_is_inf(P: *const bls12_381_g1_aff) -> secret_bool;
+    pub fn ctt_bls12_381_g1_aff_is_neutral(P: *const bls12_381_g1_aff) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bls12_381_g1_aff_set_inf(P: *mut bls12_381_g1_aff);
+    pub fn ctt_bls12_381_g1_aff_set_neutral(P: *mut bls12_381_g1_aff);
 }
 extern "C" {
     pub fn ctt_bls12_381_g1_aff_ccopy(
@@ -1078,10 +1078,10 @@ extern "C" {
     ) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bls12_381_g1_jac_is_inf(P: *const bls12_381_g1_jac) -> secret_bool;
+    pub fn ctt_bls12_381_g1_jac_is_neutral(P: *const bls12_381_g1_jac) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bls12_381_g1_jac_set_inf(P: *mut bls12_381_g1_jac);
+    pub fn ctt_bls12_381_g1_jac_set_neutral(P: *mut bls12_381_g1_jac);
 }
 extern "C" {
     pub fn ctt_bls12_381_g1_jac_ccopy(
@@ -1185,10 +1185,10 @@ extern "C" {
     ) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bls12_381_g1_prj_is_inf(P: *const bls12_381_g1_prj) -> secret_bool;
+    pub fn ctt_bls12_381_g1_prj_is_neutral(P: *const bls12_381_g1_prj) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bls12_381_g1_prj_set_inf(P: *mut bls12_381_g1_prj);
+    pub fn ctt_bls12_381_g1_prj_set_neutral(P: *mut bls12_381_g1_prj);
 }
 extern "C" {
     pub fn ctt_bls12_381_g1_prj_ccopy(
@@ -1292,10 +1292,10 @@ extern "C" {
     ) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bls12_381_g2_aff_is_inf(P: *const bls12_381_g2_aff) -> secret_bool;
+    pub fn ctt_bls12_381_g2_aff_is_neutral(P: *const bls12_381_g2_aff) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bls12_381_g2_aff_set_inf(P: *mut bls12_381_g2_aff);
+    pub fn ctt_bls12_381_g2_aff_set_neutral(P: *mut bls12_381_g2_aff);
 }
 extern "C" {
     pub fn ctt_bls12_381_g2_aff_ccopy(
@@ -1323,10 +1323,10 @@ extern "C" {
     ) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bls12_381_g2_jac_is_inf(P: *const bls12_381_g2_jac) -> secret_bool;
+    pub fn ctt_bls12_381_g2_jac_is_neutral(P: *const bls12_381_g2_jac) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bls12_381_g2_jac_set_inf(P: *mut bls12_381_g2_jac);
+    pub fn ctt_bls12_381_g2_jac_set_neutral(P: *mut bls12_381_g2_jac);
 }
 extern "C" {
     pub fn ctt_bls12_381_g2_jac_ccopy(
@@ -1430,10 +1430,10 @@ extern "C" {
     ) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bls12_381_g2_prj_is_inf(P: *const bls12_381_g2_prj) -> secret_bool;
+    pub fn ctt_bls12_381_g2_prj_is_neutral(P: *const bls12_381_g2_prj) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bls12_381_g2_prj_set_inf(P: *mut bls12_381_g2_prj);
+    pub fn ctt_bls12_381_g2_prj_set_neutral(P: *mut bls12_381_g2_prj);
 }
 extern "C" {
     pub fn ctt_bls12_381_g2_prj_ccopy(
@@ -1528,6 +1528,72 @@ extern "C" {
         coefs: *const bls12_381_fr,
         points: *const bls12_381_g2_aff,
         len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bls12_381_g1_aff_sswu_sha256(
+        r: *mut bls12_381_g1_aff,
+        augmentation: *const byte,
+        augmentation_len: usize,
+        message: *const byte,
+        message_len: usize,
+        domainSepTag: *const byte,
+        domainSepTag_len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bls12_381_g1_jac_sswu_sha256(
+        r: *mut bls12_381_g1_jac,
+        augmentation: *const byte,
+        augmentation_len: usize,
+        message: *const byte,
+        message_len: usize,
+        domainSepTag: *const byte,
+        domainSepTag_len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bls12_381_g1_prj_sswu_sha256(
+        r: *mut bls12_381_g1_prj,
+        augmentation: *const byte,
+        augmentation_len: usize,
+        message: *const byte,
+        message_len: usize,
+        domainSepTag: *const byte,
+        domainSepTag_len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bls12_381_g2_aff_sswu_sha256(
+        r: *mut bls12_381_g2_aff,
+        augmentation: *const byte,
+        augmentation_len: usize,
+        message: *const byte,
+        message_len: usize,
+        domainSepTag: *const byte,
+        domainSepTag_len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bls12_381_g2_jac_sswu_sha256(
+        r: *mut bls12_381_g2_jac,
+        augmentation: *const byte,
+        augmentation_len: usize,
+        message: *const byte,
+        message_len: usize,
+        domainSepTag: *const byte,
+        domainSepTag_len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bls12_381_g2_prj_sswu_sha256(
+        r: *mut bls12_381_g2_prj,
+        augmentation: *const byte,
+        augmentation_len: usize,
+        message: *const byte,
+        message_len: usize,
+        domainSepTag: *const byte,
+        domainSepTag_len: usize,
     );
 }
 #[repr(C)]
@@ -1927,14 +1993,14 @@ extern "C" {
     pub fn ctt_bn254_snarks_fr_unmarshalBE(
         dst: *mut bn254_snarks_fr,
         src: *const byte,
-        src_len: isize,
+        src_len: usize,
     ) -> bool;
 }
 extern "C" {
     #[must_use]
     pub fn ctt_bn254_snarks_fr_marshalBE(
         dst: *mut byte,
-        dst_len: isize,
+        dst_len: usize,
         src: *const bn254_snarks_fr,
     ) -> bool;
 }
@@ -2067,14 +2133,14 @@ extern "C" {
     pub fn ctt_bn254_snarks_fp_unmarshalBE(
         dst: *mut bn254_snarks_fp,
         src: *const byte,
-        src_len: isize,
+        src_len: usize,
     ) -> bool;
 }
 extern "C" {
     #[must_use]
     pub fn ctt_bn254_snarks_fp_marshalBE(
         dst: *mut byte,
-        dst_len: isize,
+        dst_len: usize,
         src: *const bn254_snarks_fp,
     ) -> bool;
 }
@@ -2371,10 +2437,10 @@ extern "C" {
     ) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bn254_snarks_g1_aff_is_inf(P: *const bn254_snarks_g1_aff) -> secret_bool;
+    pub fn ctt_bn254_snarks_g1_aff_is_neutral(P: *const bn254_snarks_g1_aff) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bn254_snarks_g1_aff_set_inf(P: *mut bn254_snarks_g1_aff);
+    pub fn ctt_bn254_snarks_g1_aff_set_neutral(P: *mut bn254_snarks_g1_aff);
 }
 extern "C" {
     pub fn ctt_bn254_snarks_g1_aff_ccopy(
@@ -2402,10 +2468,10 @@ extern "C" {
     ) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bn254_snarks_g1_jac_is_inf(P: *const bn254_snarks_g1_jac) -> secret_bool;
+    pub fn ctt_bn254_snarks_g1_jac_is_neutral(P: *const bn254_snarks_g1_jac) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bn254_snarks_g1_jac_set_inf(P: *mut bn254_snarks_g1_jac);
+    pub fn ctt_bn254_snarks_g1_jac_set_neutral(P: *mut bn254_snarks_g1_jac);
 }
 extern "C" {
     pub fn ctt_bn254_snarks_g1_jac_ccopy(
@@ -2518,10 +2584,10 @@ extern "C" {
     ) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bn254_snarks_g1_prj_is_inf(P: *const bn254_snarks_g1_prj) -> secret_bool;
+    pub fn ctt_bn254_snarks_g1_prj_is_neutral(P: *const bn254_snarks_g1_prj) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bn254_snarks_g1_prj_set_inf(P: *mut bn254_snarks_g1_prj);
+    pub fn ctt_bn254_snarks_g1_prj_set_neutral(P: *mut bn254_snarks_g1_prj);
 }
 extern "C" {
     pub fn ctt_bn254_snarks_g1_prj_ccopy(
@@ -2634,10 +2700,10 @@ extern "C" {
     ) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bn254_snarks_g2_aff_is_inf(P: *const bn254_snarks_g2_aff) -> secret_bool;
+    pub fn ctt_bn254_snarks_g2_aff_is_neutral(P: *const bn254_snarks_g2_aff) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bn254_snarks_g2_aff_set_inf(P: *mut bn254_snarks_g2_aff);
+    pub fn ctt_bn254_snarks_g2_aff_set_neutral(P: *mut bn254_snarks_g2_aff);
 }
 extern "C" {
     pub fn ctt_bn254_snarks_g2_aff_ccopy(
@@ -2665,10 +2731,10 @@ extern "C" {
     ) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bn254_snarks_g2_jac_is_inf(P: *const bn254_snarks_g2_jac) -> secret_bool;
+    pub fn ctt_bn254_snarks_g2_jac_is_neutral(P: *const bn254_snarks_g2_jac) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bn254_snarks_g2_jac_set_inf(P: *mut bn254_snarks_g2_jac);
+    pub fn ctt_bn254_snarks_g2_jac_set_neutral(P: *mut bn254_snarks_g2_jac);
 }
 extern "C" {
     pub fn ctt_bn254_snarks_g2_jac_ccopy(
@@ -2781,10 +2847,10 @@ extern "C" {
     ) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bn254_snarks_g2_prj_is_inf(P: *const bn254_snarks_g2_prj) -> secret_bool;
+    pub fn ctt_bn254_snarks_g2_prj_is_neutral(P: *const bn254_snarks_g2_prj) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_bn254_snarks_g2_prj_set_inf(P: *mut bn254_snarks_g2_prj);
+    pub fn ctt_bn254_snarks_g2_prj_set_neutral(P: *mut bn254_snarks_g2_prj);
 }
 extern "C" {
     pub fn ctt_bn254_snarks_g2_prj_ccopy(
@@ -2888,6 +2954,72 @@ extern "C" {
         coefs: *const bn254_snarks_fr,
         points: *const bn254_snarks_g2_aff,
         len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bn254_snarks_g1_aff_svdw_sha256(
+        r: *mut bn254_snarks_g1_aff,
+        augmentation: *const byte,
+        augmentation_len: usize,
+        message: *const byte,
+        message_len: usize,
+        domainSepTag: *const byte,
+        domainSepTag_len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bn254_snarks_g1_jac_svdw_sha256(
+        r: *mut bn254_snarks_g1_jac,
+        augmentation: *const byte,
+        augmentation_len: usize,
+        message: *const byte,
+        message_len: usize,
+        domainSepTag: *const byte,
+        domainSepTag_len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bn254_snarks_g1_prj_svdw_sha256(
+        r: *mut bn254_snarks_g1_prj,
+        augmentation: *const byte,
+        augmentation_len: usize,
+        message: *const byte,
+        message_len: usize,
+        domainSepTag: *const byte,
+        domainSepTag_len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bn254_snarks_g2_aff_svdw_sha256(
+        r: *mut bn254_snarks_g2_aff,
+        augmentation: *const byte,
+        augmentation_len: usize,
+        message: *const byte,
+        message_len: usize,
+        domainSepTag: *const byte,
+        domainSepTag_len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bn254_snarks_g2_jac_svdw_sha256(
+        r: *mut bn254_snarks_g2_jac,
+        augmentation: *const byte,
+        augmentation_len: usize,
+        message: *const byte,
+        message_len: usize,
+        domainSepTag: *const byte,
+        domainSepTag_len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bn254_snarks_g2_prj_svdw_sha256(
+        r: *mut bn254_snarks_g2_prj,
+        augmentation: *const byte,
+        augmentation_len: usize,
+        message: *const byte,
+        message_len: usize,
+        domainSepTag: *const byte,
+        domainSepTag_len: usize,
     );
 }
 #[repr(C)]
@@ -3103,12 +3235,12 @@ extern "C" {
 }
 extern "C" {
     #[must_use]
-    pub fn ctt_pallas_fr_unmarshalBE(dst: *mut pallas_fr, src: *const byte, src_len: isize)
+    pub fn ctt_pallas_fr_unmarshalBE(dst: *mut pallas_fr, src: *const byte, src_len: usize)
         -> bool;
 }
 extern "C" {
     #[must_use]
-    pub fn ctt_pallas_fr_marshalBE(dst: *mut byte, dst_len: isize, src: *const pallas_fr) -> bool;
+    pub fn ctt_pallas_fr_marshalBE(dst: *mut byte, dst_len: usize, src: *const pallas_fr) -> bool;
 }
 extern "C" {
     pub fn ctt_pallas_fr_is_eq(a: *const pallas_fr, b: *const pallas_fr) -> secret_bool;
@@ -3205,12 +3337,12 @@ extern "C" {
 }
 extern "C" {
     #[must_use]
-    pub fn ctt_pallas_fp_unmarshalBE(dst: *mut pallas_fp, src: *const byte, src_len: isize)
+    pub fn ctt_pallas_fp_unmarshalBE(dst: *mut pallas_fp, src: *const byte, src_len: usize)
         -> bool;
 }
 extern "C" {
     #[must_use]
-    pub fn ctt_pallas_fp_marshalBE(dst: *mut byte, dst_len: isize, src: *const pallas_fp) -> bool;
+    pub fn ctt_pallas_fp_marshalBE(dst: *mut byte, dst_len: usize, src: *const pallas_fp) -> bool;
 }
 extern "C" {
     pub fn ctt_pallas_fp_is_eq(a: *const pallas_fp, b: *const pallas_fp) -> secret_bool;
@@ -3340,10 +3472,10 @@ extern "C" {
         -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_pallas_ec_aff_is_inf(P: *const pallas_ec_aff) -> secret_bool;
+    pub fn ctt_pallas_ec_aff_is_neutral(P: *const pallas_ec_aff) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_pallas_ec_aff_set_inf(P: *mut pallas_ec_aff);
+    pub fn ctt_pallas_ec_aff_set_neutral(P: *mut pallas_ec_aff);
 }
 extern "C" {
     pub fn ctt_pallas_ec_aff_ccopy(
@@ -3366,10 +3498,10 @@ extern "C" {
         -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_pallas_ec_jac_is_inf(P: *const pallas_ec_jac) -> secret_bool;
+    pub fn ctt_pallas_ec_jac_is_neutral(P: *const pallas_ec_jac) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_pallas_ec_jac_set_inf(P: *mut pallas_ec_jac);
+    pub fn ctt_pallas_ec_jac_set_neutral(P: *mut pallas_ec_jac);
 }
 extern "C" {
     pub fn ctt_pallas_ec_jac_ccopy(
@@ -3462,10 +3594,10 @@ extern "C" {
         -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_pallas_ec_prj_is_inf(P: *const pallas_ec_prj) -> secret_bool;
+    pub fn ctt_pallas_ec_prj_is_neutral(P: *const pallas_ec_prj) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_pallas_ec_prj_set_inf(P: *mut pallas_ec_prj);
+    pub fn ctt_pallas_ec_prj_set_neutral(P: *mut pallas_ec_prj);
 }
 extern "C" {
     pub fn ctt_pallas_ec_prj_ccopy(
@@ -3766,11 +3898,11 @@ extern "C" {
 }
 extern "C" {
     #[must_use]
-    pub fn ctt_vesta_fr_unmarshalBE(dst: *mut vesta_fr, src: *const byte, src_len: isize) -> bool;
+    pub fn ctt_vesta_fr_unmarshalBE(dst: *mut vesta_fr, src: *const byte, src_len: usize) -> bool;
 }
 extern "C" {
     #[must_use]
-    pub fn ctt_vesta_fr_marshalBE(dst: *mut byte, dst_len: isize, src: *const vesta_fr) -> bool;
+    pub fn ctt_vesta_fr_marshalBE(dst: *mut byte, dst_len: usize, src: *const vesta_fr) -> bool;
 }
 extern "C" {
     pub fn ctt_vesta_fr_is_eq(a: *const vesta_fr, b: *const vesta_fr) -> secret_bool;
@@ -3867,11 +3999,11 @@ extern "C" {
 }
 extern "C" {
     #[must_use]
-    pub fn ctt_vesta_fp_unmarshalBE(dst: *mut vesta_fp, src: *const byte, src_len: isize) -> bool;
+    pub fn ctt_vesta_fp_unmarshalBE(dst: *mut vesta_fp, src: *const byte, src_len: usize) -> bool;
 }
 extern "C" {
     #[must_use]
-    pub fn ctt_vesta_fp_marshalBE(dst: *mut byte, dst_len: isize, src: *const vesta_fp) -> bool;
+    pub fn ctt_vesta_fp_marshalBE(dst: *mut byte, dst_len: usize, src: *const vesta_fp) -> bool;
 }
 extern "C" {
     pub fn ctt_vesta_fp_is_eq(a: *const vesta_fp, b: *const vesta_fp) -> secret_bool;
@@ -4000,10 +4132,10 @@ extern "C" {
     pub fn ctt_vesta_ec_aff_is_eq(P: *const vesta_ec_aff, Q: *const vesta_ec_aff) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_vesta_ec_aff_is_inf(P: *const vesta_ec_aff) -> secret_bool;
+    pub fn ctt_vesta_ec_aff_is_neutral(P: *const vesta_ec_aff) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_vesta_ec_aff_set_inf(P: *mut vesta_ec_aff);
+    pub fn ctt_vesta_ec_aff_set_neutral(P: *mut vesta_ec_aff);
 }
 extern "C" {
     pub fn ctt_vesta_ec_aff_ccopy(P: *mut vesta_ec_aff, Q: *const vesta_ec_aff, ctl: secret_bool);
@@ -4021,10 +4153,10 @@ extern "C" {
     pub fn ctt_vesta_ec_jac_is_eq(P: *const vesta_ec_jac, Q: *const vesta_ec_jac) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_vesta_ec_jac_is_inf(P: *const vesta_ec_jac) -> secret_bool;
+    pub fn ctt_vesta_ec_jac_is_neutral(P: *const vesta_ec_jac) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_vesta_ec_jac_set_inf(P: *mut vesta_ec_jac);
+    pub fn ctt_vesta_ec_jac_set_neutral(P: *mut vesta_ec_jac);
 }
 extern "C" {
     pub fn ctt_vesta_ec_jac_ccopy(P: *mut vesta_ec_jac, Q: *const vesta_ec_jac, ctl: secret_bool);
@@ -4112,10 +4244,10 @@ extern "C" {
     pub fn ctt_vesta_ec_prj_is_eq(P: *const vesta_ec_prj, Q: *const vesta_ec_prj) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_vesta_ec_prj_is_inf(P: *const vesta_ec_prj) -> secret_bool;
+    pub fn ctt_vesta_ec_prj_is_neutral(P: *const vesta_ec_prj) -> secret_bool;
 }
 extern "C" {
-    pub fn ctt_vesta_ec_prj_set_inf(P: *mut vesta_ec_prj);
+    pub fn ctt_vesta_ec_prj_set_neutral(P: *mut vesta_ec_prj);
 }
 extern "C" {
     pub fn ctt_vesta_ec_prj_ccopy(P: *mut vesta_ec_prj, Q: *const vesta_ec_prj, ctl: secret_bool);
@@ -4595,6 +4727,11 @@ fn bindgen_test_layout_ctt_eth_bls_signature() {
         )
     );
 }
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct ctt_eth_bls_batch_sig_accumulator {
+    _unused: [u8; 0],
+}
 #[repr(u8)]
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum ctt_eth_bls_status {
@@ -4603,6 +4740,47 @@ pub enum ctt_eth_bls_status {
     cttEthBls_InputsLengthsMismatch = 2,
     cttEthBls_ZeroLengthAggregation = 3,
     cttEthBls_PointAtInfinity = 4,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct ctt_span {
+    data: *mut byte,
+    len: usize,
+}
+#[test]
+fn bindgen_test_layout_ctt_span() {
+    const UNINIT: ::core::mem::MaybeUninit<ctt_span> = ::core::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::core::mem::size_of::<ctt_span>(),
+        16usize,
+        concat!("Size of: ", stringify!(ctt_span))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<ctt_span>(),
+        8usize,
+        concat!("Alignment of ", stringify!(ctt_span))
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).data) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(ctt_span),
+            "::",
+            stringify!(data)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).len) as usize - ptr as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(ctt_span),
+            "::",
+            stringify!(len)
+        )
+    );
 }
 extern "C" {
     #[must_use]
@@ -4722,7 +4900,7 @@ extern "C" {
         sig: *mut ctt_eth_bls_signature,
         seckey: *const ctt_eth_bls_seckey,
         message: *const byte,
-        message_len: isize,
+        message_len: usize,
     );
 }
 extern "C" {
@@ -4731,7 +4909,7 @@ extern "C" {
     pub fn ctt_eth_bls_verify(
         pubkey: *const ctt_eth_bls_pubkey,
         message: *const byte,
-        message_len: isize,
+        message_len: usize,
         sig: *const ctt_eth_bls_signature,
     ) -> ctt_eth_bls_status;
 }
@@ -4740,10 +4918,78 @@ extern "C" {
     #[doc = " Check that a signature is valid for a message\n  under the aggregate of provided public keys.\n  returns `true` if the signature is valid, `false` otherwise.\n\n  For message domain separation purpose, the tag is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`\n\n  Input:\n  - Public keys initialized by one of the key derivation or deserialization procedure.\n    Or validated via validate_pubkey\n  - A message\n  - A signature initialized by one of the key derivation or deserialization procedure.\n    Or validated via validate_signature\n\n  In particular, the public keys and signature are assumed to be on curve subgroup checked."]
     pub fn ctt_eth_bls_fast_aggregate_verify(
         pubkeys: *const ctt_eth_bls_pubkey,
-        pubkeys_len: isize,
+        pubkeys_len: usize,
         message: *const byte,
-        message_len: isize,
+        message_len: usize,
         aggregate_sig: *const ctt_eth_bls_signature,
+    ) -> ctt_eth_bls_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Verify the aggregated signature of multiple (pubkey, message) pairs\n  returns `true` if the signature is valid, `false` otherwise.\n\n  For message domain separation purpose, the tag is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`\n\n  Input:\n  - Public keys initialized by one of the key derivation or deserialization procedure.\n    Or validated via validate_pubkey\n  - Messages\n  - `len`: Number of elements in the `pubkeys` and `messages` arrays.\n  - a signature initialized by one of the key derivation or deserialization procedure.\n    Or validated via validate_signature\n\n  In particular, the public keys and signature are assumed to be on curve subgroup checked.\n\n  To avoid splitting zeros and rogue keys attack:\n  1. Public keys signing the same message MUST be aggregated and checked for 0 before calling this function.\n  2. Augmentation or Proof of possessions must used for each public keys."]
+    pub fn ctt_eth_bls_aggregate_verify(
+        pubkeys: *const ctt_eth_bls_pubkey,
+        messages: *const ctt_span,
+        len: usize,
+        aggregate_sig: *const ctt_eth_bls_signature,
+    ) -> ctt_eth_bls_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Verify that all (pubkey, message, signature) triplets are valid\n  returns `true` if all signatures are valid, `false` if at least one is invalid.\n\n  For message domain separation purpose, the tag is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`\n\n  Input:\n  - Public keys initialized by one of the key derivation or deserialization procedure.\n    Or validated via validate_pubkey\n  - Messages\n  - Signatures initialized by one of the key derivation or deserialization procedure.\n    Or validated via validate_signature\n\n  In particular, the public keys and signature are assumed to be on curve subgroup checked.\n\n  To avoid splitting zeros and rogue keys attack:\n  1. Cryptographically-secure random bytes must be provided.\n  2. Augmentation or Proof of possessions must used for each public keys.\n\n  The secureRandomBytes will serve as input not under the attacker control to foil potential splitting zeros inputs.\n  The scheme assumes that the attacker cannot\n  resubmit 2^64 times forged (publickey, message, signature) triplets\n  against the same `secureRandomBytes`"]
+    pub fn ctt_eth_bls_batch_verify(
+        pubkeys: *const ctt_eth_bls_pubkey,
+        messages: *const ctt_span,
+        signatures: *const ctt_eth_bls_signature,
+        len: usize,
+        secure_random_bytes: *const byte,
+    ) -> ctt_eth_bls_status;
+}
+extern "C" {
+    #[doc = " Allocator function for the incomplete struct of the batch sig accumulator.\n Users of the C API *must* use this."]
+    pub fn ctt_eth_bls_alloc_batch_sig_accumulator() -> *mut ctt_eth_bls_batch_sig_accumulator;
+}
+extern "C" {
+    #[doc = " Function to free the storage allocated by the above.\n Users of the C API *must* use this."]
+    pub fn ctt_eth_bls_free_batch_sig_accumulator(ptr: *mut ctt_eth_bls_batch_sig_accumulator);
+}
+extern "C" {
+    #[doc = "  Initializes a Batch BLS Signature accumulator context.\n\n  This requires cryptographically secure random bytes\n  to defend against forged signatures that would not\n  verify individually but would verify while aggregated\n  https://ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407/14\n\n  An optional accumulator separation tag can be added\n  so that from a single source of randomness\n  each accumulatpr is seeded with a different state.\n  This is useful in multithreaded context."]
+    pub fn ctt_eth_bls_init_batch_sig_accumulator(
+        ctx: *mut ctt_eth_bls_batch_sig_accumulator,
+        secure_random_bytes: *const byte,
+        accum_sep_tag: *const byte,
+        accum_sep_tag_len: usize,
+    );
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Add a (public key, message, signature) triplet\n  to a BLS signature accumulator\n\n  Assumes that the public key and signature\n  have been group checked\n\n  Returns false if pubkey or signatures are the infinity points\n"]
+    pub fn ctt_eth_bls_update_batch_sig_accumulator(
+        ctx: *mut ctt_eth_bls_batch_sig_accumulator,
+        pubkey: *const ctt_eth_bls_pubkey,
+        message: *const byte,
+        message_len: usize,
+        signature: *const ctt_eth_bls_signature,
+    ) -> bool;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Finish batch and/or aggregate signature verification and returns the final result.\n\n  Returns false if nothing was accumulated\n  Rteturns false on verification failure"]
+    pub fn ctt_eth_bls_final_verify_batch_sig_accumulator(
+        ctx: *mut ctt_eth_bls_batch_sig_accumulator,
+    ) -> bool;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Verify that all (pubkey, message, signature) triplets are valid\n  returns `true` if all signatures are valid, `false` if at least one is invalid.\n\n  For message domain separation purpose, the tag is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`\n\n  Input:\n  - Public keys initialized by one of the key derivation or deserialization procedure.\n    Or validated via validate_pubkey\n  - Messages as an anonymous struct of `(data = byte*, length = size_t)` pairs\n    (the `View` type on the Nim side uses `int` for the length field, which depends on the\n    system)\n  - Signatures initialized by one of the key derivation or deserialization procedure.\n    Or validated via validate_signature\n  - `len`: number of elements in `pubkey`, `messages`, `sig` arrays\n\n  In particular, the public keys and signature are assumed to be on curve subgroup checked.\n\n  To avoid splitting zeros and rogue keys attack:\n  1. Cryptographically-secure random bytes must be provided.\n  2. Augmentation or Proof of possessions must used for each public keys.\n\n  The secureRandomBytes will serve as input not under the attacker control to foil potential splitting zeros inputs.\n  The scheme assumes that the attacker cannot\n  resubmit 2^64 times forged (publickey, message, signature) triplets\n  against the same `secureRandomBytes`"]
+    pub fn ctt_eth_bls_batch_verify_parallel(
+        tp: *const ctt_threadpool,
+        pubkey: *const ctt_eth_bls_pubkey,
+        messages: *const ctt_span,
+        sig: *const ctt_eth_bls_signature,
+        len: usize,
+        secure_random_bytes: *const byte,
     ) -> ctt_eth_bls_status;
 }
 #[repr(C)]
@@ -4845,30 +5091,30 @@ fn bindgen_test_layout_ctt_eth_kzg_blob() {
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct ctt_eth_kzg_challenge {
+pub struct ctt_eth_kzg_opening_challenge {
     raw: [byte; 32usize],
 }
 #[test]
-fn bindgen_test_layout_ctt_eth_kzg_challenge() {
-    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_kzg_challenge> =
+fn bindgen_test_layout_ctt_eth_kzg_opening_challenge() {
+    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_kzg_opening_challenge> =
         ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::core::mem::size_of::<ctt_eth_kzg_challenge>(),
+        ::core::mem::size_of::<ctt_eth_kzg_opening_challenge>(),
         32usize,
-        concat!("Size of: ", stringify!(ctt_eth_kzg_challenge))
+        concat!("Size of: ", stringify!(ctt_eth_kzg_opening_challenge))
     );
     assert_eq!(
-        ::core::mem::align_of::<ctt_eth_kzg_challenge>(),
+        ::core::mem::align_of::<ctt_eth_kzg_opening_challenge>(),
         1usize,
-        concat!("Alignment of ", stringify!(ctt_eth_kzg_challenge))
+        concat!("Alignment of ", stringify!(ctt_eth_kzg_opening_challenge))
     );
     assert_eq!(
         unsafe { ::core::ptr::addr_of!((*ptr).raw) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
-            stringify!(ctt_eth_kzg_challenge),
+            stringify!(ctt_eth_kzg_opening_challenge),
             "::",
             stringify!(raw)
         )
@@ -4932,7 +5178,7 @@ pub enum ctt_eth_trusted_setup_format {
 }
 extern "C" {
     #[must_use]
-    #[doc = " Compute a commitment to the `blob`.\n  The commitment can be verified without needing the full `blob`\n\n  Mathematical description\n    commitment = [p(τ)]₁\n\n    The blob data is used as a polynomial,\n    the polynomial is evaluated at powers of tau τ, a trusted setup.\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification challenge z.\n\n    with proof = [(p(τ) - p(z)) / (τ-z)]₁"]
+    #[doc = " Compute a commitment to the `blob`.\n  The commitment can be verified without needing the full `blob`\n\n  Mathematical description\n    commitment = [p(τ)]₁\n\n    The blob data is used as a polynomial,\n    the polynomial is evaluated at powers of tau τ, a trusted setup.\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification opening challenge z.\n\n    with proof = [(p(τ) - p(z)) / (τ-z)]₁"]
     pub fn ctt_eth_kzg_blob_to_kzg_commitment(
         ctx: *const ctt_eth_kzg_context,
         dst: *mut ctt_eth_kzg_commitment,
@@ -4941,22 +5187,22 @@ extern "C" {
 }
 extern "C" {
     #[must_use]
-    #[doc = " Generate:\n  - A proof of correct evaluation.\n  - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.\n\n  Mathematical description\n    [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ\n    The notation [a]₁ corresponds to the scalar multiplication of a by the generator of 𝔾1\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification challenge z."]
+    #[doc = " Generate:\n  - A proof of correct evaluation.\n  - y = p(z), the evaluation of p at the opening challenge z, with p being the Blob interpreted as a polynomial.\n\n  Mathematical description\n    [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ\n    The notation [a]₁ corresponds to the scalar multiplication of a by the generator of 𝔾1\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification opening challenge z."]
     pub fn ctt_eth_kzg_compute_kzg_proof(
         ctx: *const ctt_eth_kzg_context,
         proof: *mut ctt_eth_kzg_proof,
         y: *mut ctt_eth_kzg_eval_at_challenge,
         blob: *const ctt_eth_kzg_blob,
-        z: *const ctt_eth_kzg_challenge,
+        z: *const ctt_eth_kzg_opening_challenge,
     ) -> ctt_eth_kzg_status;
 }
 extern "C" {
     #[must_use]
-    #[doc = " Verify KZG proof\n  that p(z) == y where\n    - z is a random challenge\n    - y is the evaluation of the \"KZG polynomial\" p at z\n    - commitment is p(τ), the evaluation of p at the trusted setup τ,\n    - [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, ensure that p(z) evaluation was correct\n      without needing access to the polynomial p itself."]
+    #[doc = " Verify KZG proof\n  that p(z) == y where\n    - z is a random opening_challenge\n    - y is the evaluation of the \"KZG polynomial\" p at z\n    - commitment is p(τ), the evaluation of p at the trusted setup τ,\n    - [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, ensure that p(z) evaluation was correct\n      without needing access to the polynomial p itself."]
     pub fn ctt_eth_kzg_verify_kzg_proof(
         ctx: *const ctt_eth_kzg_context,
         commitment: *const ctt_eth_kzg_commitment,
-        z: *const ctt_eth_kzg_challenge,
+        z: *const ctt_eth_kzg_opening_challenge,
         y: *const ctt_eth_kzg_eval_at_challenge,
         proof: *const ctt_eth_kzg_proof,
     ) -> ctt_eth_kzg_status;
@@ -5008,32 +5254,32 @@ extern "C" {
 }
 extern "C" {
     #[must_use]
-    #[doc = " Compute a commitment to the `blob`.\n  The commitment can be verified without needing the full `blob`\n\n  Mathematical description\n    commitment = [p(τ)]₁\n\n    The blob data is used as a polynomial,\n    the polynomial is evaluated at powers of tau τ, a trusted setup.\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification challenge z.\n\n    with proof = [(p(τ) - p(z)) / (τ-z)]₁"]
+    #[doc = " Compute a commitment to the `blob`.\n  The commitment can be verified without needing the full `blob`\n\n  Mathematical description\n    commitment = [p(τ)]₁\n\n    The blob data is used as a polynomial,\n    the polynomial is evaluated at powers of tau τ, a trusted setup.\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification opening_challenge z.\n\n    with proof = [(p(τ) - p(z)) / (τ-z)]₁"]
     pub fn ctt_eth_kzg_blob_to_kzg_commitment_parallel(
-        ctx: *const ctt_eth_kzg_context,
         tp: *const ctt_threadpool,
+        ctx: *const ctt_eth_kzg_context,
         dst: *mut ctt_eth_kzg_commitment,
         blob: *const ctt_eth_kzg_blob,
     ) -> ctt_eth_kzg_status;
 }
 extern "C" {
     #[must_use]
-    #[doc = " Generate:\n  - A proof of correct evaluation.\n  - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.\n\n  Mathematical description\n    [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ\n    The notation [a]₁ corresponds to the scalar multiplication of a by the generator of 𝔾1\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification challenge z."]
+    #[doc = " Generate:\n  - A proof of correct evaluation.\n  - y = p(z), the evaluation of p at the opening_challenge z, with p being the Blob interpreted as a polynomial.\n\n  Mathematical description\n    [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ\n    The notation [a]₁ corresponds to the scalar multiplication of a by the generator of 𝔾1\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification opening_challenge z."]
     pub fn ctt_eth_kzg_compute_kzg_proof_parallel(
-        ctx: *const ctt_eth_kzg_context,
         tp: *const ctt_threadpool,
+        ctx: *const ctt_eth_kzg_context,
         proof: *mut ctt_eth_kzg_proof,
         y: *mut ctt_eth_kzg_eval_at_challenge,
         blob: *const ctt_eth_kzg_blob,
-        z: *const ctt_eth_kzg_challenge,
+        z: *const ctt_eth_kzg_opening_challenge,
     ) -> ctt_eth_kzg_status;
 }
 extern "C" {
     #[must_use]
     #[doc = " Given a blob, return the KZG proof that is used to verify it against the commitment.\n  This method does not verify that the commitment is correct with respect to `blob`."]
     pub fn ctt_eth_kzg_compute_blob_kzg_proof_parallel(
-        ctx: *const ctt_eth_kzg_context,
         tp: *const ctt_threadpool,
+        ctx: *const ctt_eth_kzg_context,
         proof: *mut ctt_eth_kzg_proof,
         blob: *const ctt_eth_kzg_blob,
         commitment: *const ctt_eth_kzg_commitment,
@@ -5043,8 +5289,8 @@ extern "C" {
     #[must_use]
     #[doc = " Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment."]
     pub fn ctt_eth_kzg_verify_blob_kzg_proof_parallel(
-        ctx: *const ctt_eth_kzg_context,
         tp: *const ctt_threadpool,
+        ctx: *const ctt_eth_kzg_context,
         blob: *const ctt_eth_kzg_blob,
         commitment: *const ctt_eth_kzg_commitment,
         proof: *const ctt_eth_kzg_proof,
@@ -5054,12 +5300,171 @@ extern "C" {
     #[must_use]
     #[doc = " Verify `n` (blob, commitment, proof) sets efficiently\n\n  `n` is the number of verifications set\n  - if n is negative, this procedure returns verification failure\n  - if n is zero, this procedure returns verification success\n\n  `secure_random_bytes` random bytes must come from a cryptographically secure RNG\n  or computed through the Fiat-Shamir heuristic.\n  It serves as a random number\n  that is not in the control of a potential attacker to prevent potential\n  rogue commitments attacks due to homomorphic properties of pairings,\n  i.e. commitments that are linear combination of others and sum would be zero."]
     pub fn ctt_eth_kzg_verify_blob_kzg_proof_batch_parallel(
-        ctx: *const ctt_eth_kzg_context,
         tp: *const ctt_threadpool,
+        ctx: *const ctt_eth_kzg_context,
         blobs: *const ctt_eth_kzg_blob,
         commitments: *const ctt_eth_kzg_commitment,
         proofs: *const ctt_eth_kzg_proof,
         n: usize,
         secure_random_bytes: *const byte,
     ) -> ctt_eth_kzg_status;
+}
+#[repr(u8)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
+pub enum ctt_evm_status {
+    cttEVM_Success = 0,
+    cttEVM_InvalidInputSize = 1,
+    cttEVM_InvalidOutputSize = 2,
+    cttEVM_IntLargerThanModulus = 3,
+    cttEVM_PointNotOnCurve = 4,
+    cttEVM_PointNotInSubgroup = 5,
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  SHA256\n\n  Inputs:\n  - r: array with 32 bytes of storage for the result\n  - r_len: length of `r`. Must be 32\n  - inputs: Message to hash\n  - inputs_len: length of the inputs array\n\n  Output:\n  - 32-byte digest\n  - status code:\n    cttEVM_Success\n    cttEVM_InvalidOutputSize"]
+    pub fn ctt_eth_evm_sha256(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Helper for `eth_evm_modexp`. Returns the size required to be allocated based on the\n  given input. Call this function first, then allocate space for the result buffer\n  in the call to `eth_evm_modexp` based on this function's result.\n\n  The size depends on the `modulusLen`, which is the third 32 bytes,\n  `inputs == [baseLen { 32 bytes }, exponentLen { 32 bytes }, modulusLen { 32 bytes }, ... ]`\n  in `inputs`.\n\n  The associated modulus length in bytes is the size required by the\n  result to `eth_evm_modexp`."]
+    pub fn ctt_eth_evm_modexp_result_size(
+        size: *mut u64,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Modular exponentiation\n\n  Name: MODEXP\n\n  Inputs:\n  - `baseLen`:     32 bytes base integer length (in bytes)\n  - `exponentLen`: 32 bytes exponent length (in bytes)\n  - `modulusLen`:  32 bytes modulus length (in bytes)\n  - `base`:        base integer (`baseLen` bytes)\n  - `exponent`:    exponent (`exponentLen` bytes)\n  - `modulus`:     modulus (`modulusLen` bytes)\n\n  Output:\n  - baseᵉˣᵖᵒⁿᵉⁿᵗ (mod modulus)\n    The result buffer size `r` MUST match the modulusLen\n  - status code:\n    cttEVM_Success\n    cttEVM_InvalidInputSize if the lengths require more than 32-bit or 64-bit addressing (depending on hardware)\n    cttEVM_InvalidOutputSize\n\n  Spec\n    Yellow Paper Appendix E\n    EIP-198 - https://github.com/ethereum/EIPs/blob/master/EIPS/eip-198.md\n\n  Hardware considerations:\n    This procedure stack allocates a table of (16+1)*modulusLen and many stack temporaries.\n    Make sure to validate gas costs and reject large inputs to bound stack usage."]
+    pub fn ctt_eth_evm_modexp(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Elliptic Curve addition on BN254_Snarks\n  (also called alt_bn128 in Ethereum specs\n   and bn256 in Ethereum tests)\n\n  Name: ECADD\n\n  Inputs:\n  - A G1 point P with coordinates (Px, Py)\n  - A G1 point Q with coordinates (Qx, Qy)\n\n  Each coordinate is a 32-byte bigEndian integer\n  They are serialized concatenated in a byte array [Px, Py, Qx, Qy]\n  If the length is less than 128 bytes, input is virtually padded with zeros.\n  If the length is greater than 128 bytes, input is truncated to 128 bytes.\n\n  Output\n  - Output buffer MUST be of length 64 bytes\n  - A G1 point R = P+Q with coordinates (Rx, Ry)\n  - Status code:\n    cttEVM_Success\n    cttEVM_InvalidOutputSize\n    cttEVM_IntLargerThanModulus\n    cttEVM_PointNotOnCurve\n\n  Spec https://eips.ethereum.org/EIPS/eip-196"]
+    pub fn ctt_eth_evm_bn254_g1add(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Elliptic Curve multiplication on BN254_Snarks\n  (also called alt_bn128 in Ethereum specs\n   and bn256 in Ethereum tests)\n\n  Name: ECMUL\n\n  Inputs:\n  - A G1 point P with coordinates (Px, Py)\n  - A scalar s in 0 ..< 2²⁵⁶\n\n  Each coordinate is a 32-byte bigEndian integer\n  r is a 32-byte bigEndian integer\n  They are serialized concatenated in a byte array [Px, Py, r]\n  If the length is less than 96 bytes, input is virtually padded with zeros.\n  If the length is greater than 96 bytes, input is truncated to 96 bytes.\n\n  Output\n  - Output buffer MUST be of length 64 bytes\n  - A G1 point R = [s]P\n  - Status codes:\n    cttEVM_Success\n    cttEVM_IntLargerThanModulus\n    cttEVM_PointNotOnCurve\n\n  Spec https://eips.ethereum.org/EIPS/eip-196"]
+    pub fn ctt_eth_evm_bn254_g1mul(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Elliptic Curve pairing check on BN254_Snarks\n  (also called alt_bn128 in Ethereum specs\n   and bn256 in Ethereum tests)\n\n  Name: ECPAIRING / Pairing check\n\n  Inputs:\n  - An array of [(P0, Q0), (P1, Q1), ... (Pk, Qk)] points in (G1, G2)\n\n  Output\n  - Output buffer MUST be of length 32 bytes\n  - 0 or 1 in uint256 BigEndian representation\n  - Status codes:\n    cttEVM_Success\n    cttEVM_InvalidInputSize\n    cttEVM_InvalidOutputSize\n    cttEVM_IntLargerThanModulus\n    cttEVM_PointNotOnCurve\n    cttEVM_PointNotInSubgroup\n\n  Specs https://eips.ethereum.org/EIPS/eip-197\n        https://eips.ethereum.org/EIPS/eip-1108"]
+    pub fn ctt_eth_evm_bn254_ecpairingcheck(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Elliptic Curve addition on BLS12-381 G1\n\n  Name: BLS12_G1ADD\n\n  Inputs:\n  - A G1 point P with coordinates (Px, Py)\n  - A G1 point Q with coordinates (Qx, Qy)\n  - Input buffer MUST be 256 bytes\n\n  Each coordinate is a 64-byte bigEndian integer\n  They are serialized concatenated in a byte array [Px, Py, Qx, Qy]\n\n  Inputs are NOT subgroup-checked.\n\n  Output\n  - Output buffer MUST be of length 128 bytes\n  - A G1 point R=P+Q with coordinates (Rx, Ry)\n  - Status codes:\n    cttEVM_Success\n    cttEVM_InvalidInputSize\n    cttEVM_InvalidOutputSize\n    cttEVM_IntLargerThanModulus\n    cttEVM_PointNotOnCurve\n\n  Spec https://eips.ethereum.org/EIPS/eip-2537"]
+    pub fn ctt_eth_evm_bls12381_g1add(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Elliptic Curve addition on BLS12-381 G2\n\n  Name: BLS12_G2ADD\n\n  Inputs:\n  - A G2 point P with coordinates (Px, Py)\n  - A G2 point Q with coordinates (Qx, Qy)\n  - Input buffer MUST be 512 bytes\n\n  Each coordinate is a 128-byte bigEndian integer pair (a+𝑖b) with 𝑖 = √-1\n  They are serialized concatenated in a byte array [Px, Py, Qx, Qy]\n\n  Inputs are NOT subgroup-checked.\n\n  Output\n  - Output buffer MUST be of length 256 bytes\n  - A G2 point R=P+Q with coordinates (Rx, Ry)\n  - Status codes:\n    cttEVM_Success\n    cttEVM_InvalidInputSize\n    cttEVM_InvalidOutputSize\n    cttEVM_IntLargerThanModulus\n    cttEVM_PointNotOnCurve\n\n  Spec https://eips.ethereum.org/EIPS/eip-2537"]
+    pub fn ctt_eth_evm_bls12381_g2add(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Elliptic Curve scalar multiplication on BLS12-381 G1\n\n  Name: BLS12_G1MUL\n\n  Inputs:\n  - A G1 point P with coordinates (Px, Py)\n  - A scalar s in 0 ..< 2²⁵⁶\n  - Input buffer MUST be 160 bytes\n\n  Each coordinate is a 64-byte bigEndian integer\n  s is a 32-byte bigEndian integer\n  They are serialized concatenated in a byte array [Px, Py, s]\n\n  Output\n  - Output buffer MUST be of length 128 bytes\n  - A G1 point R=P+Q with coordinates (Rx, Ry)\n  - Status code:\n    cttEVM_Success\n    cttEVM_InvalidInputSize\n    cttEVM_InvalidOutputSize\n    cttEVM_IntLargerThanModulus\n    cttEVM_PointNotOnCurve\n\n  Spec https://eips.ethereum.org/EIPS/eip-2537"]
+    pub fn ctt_eth_evm_bls12381_g1mul(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Elliptic Curve scalar multiplication on BLS12-381 G2\n\n  Name: BLS12_G2MUL\n\n  Inputs:\n  - A G2 point P with coordinates (Px, Py)\n  - A scalar s in 0 ..< 2²⁵⁶\n  - Input buffer MUST be 288 bytes\n\n  Each coordinate is a 128-byte bigEndian integer pair (a+𝑖b) with 𝑖 = √-1\n  s is a 32-byte bigEndian integer\n  They are serialized concatenated in a byte array [Px, Py, s]\n\n  Output\n  - Output buffer MUST be of length 256 bytes\n  - A G2 point R=P+Q with coordinates (Rx, Ry)\n  - Status code:\n    cttEVM_Success\n    cttEVM_InvalidInputSize\n    cttEVM_InvalidOutputSize\n    cttEVM_IntLargerThanModulus\n    cttEVM_PointNotOnCurve\n\n  Spec https://eips.ethereum.org/EIPS/eip-2537"]
+    pub fn ctt_eth_evm_bls12381_g2mul(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Elliptic Curve addition on BLS12-381 G1\n\n  Name: BLS12_G1MSM\n\n  Inputs:\n  - A sequence of pairs of points\n    - G1 points Pᵢ with coordinates (Pᵢx, Pᵢy)\n    - scalar sᵢ in 0 ..< 2²⁵⁶\n  - Each pair MUST be 160 bytes\n  - The total length MUST be a multiple of 160 bytes\n\n  Each coordinate is a 64-byte bigEndian integer\n  s is a 32-byte bigEndian integer\n  They are serialized concatenated in a byte array [(P₀x, P₀y, r₀), (P₁x, P₁y, r₁) ..., (Pₙx, Pₙy, rₙ)]\n\n  Output\n  - Output buffer MUST be of length 128 bytes\n  - A G1 point R=P+Q with coordinates (Rx, Ry)\n  - Status code:\n    cttEVM_Success\n    cttEVM_InvalidInputSize\n    cttEVM_InvalidOutputSize\n    cttEVM_IntLargerThanModulus\n    cttEVM_PointNotOnCurve\n\n  Spec https://eips.ethereum.org/EIPS/eip-2537"]
+    pub fn ctt_eth_evm_bls12381_g1msm(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Elliptic Curve addition on BLS12-381 G2\n\n  Name: BLS12_G2MSM\n\n  Inputs:\n  - A sequence of pairs of points\n    - G2 points Pᵢ with coordinates (Pᵢx, Pᵢy)\n    - scalar sᵢ in 0 ..< 2²⁵⁶\n  - Each pair MUST be 288 bytes\n  - The total length MUST be a multiple of 288 bytes\n\n  Each coordinate is a 128-byte bigEndian integer pair (a+𝑖b) with 𝑖 = √-1\n  s is a 32-byte bigEndian integer\n  They are serialized concatenated in a byte array [(P₀x, P₀y, r₀), (P₁x, P₁y, r₁) ..., (Pₙx, Pₙy, rₙ)]\n\n  Output\n  - Output buffer MUST be of length 512 bytes\n  - A G2 point R=P+Q with coordinates (Rx, Ry)\n  - Status code:\n    cttEVM_Success\n    cttEVM_InvalidInputSize\n    cttEVM_InvalidOutputSize\n    cttEVM_IntLargerThanModulus\n    cttEVM_PointNotOnCurve\n\n  Spec https://eips.ethereum.org/EIPS/eip-2537"]
+    pub fn ctt_eth_evm_bls12381_g2msm(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Elliptic curve pairing check on BLS12-381\n\n  Name: BLS12_PAIRINGCHECK\n\n  Inputs:\n  - An array of [(P0, Q0), (P1, Q1), ... (Pk, Qk)] points in (G1, G2)\n\n  Output\n  - Output buffer MUST be of length 32 bytes\n  - 0 or 1 in uint256 BigEndian representation\n  - Status codes:\n    cttEVM_Success\n    cttEVM_InvalidInputSize\n    cttEVM_InvalidOutputSize\n    cttEVM_IntLargerThanModulus\n    cttEVM_PointNotOnCurve\n    cttEVM_PointNotInSubgroup\n\n  specs https://eips.ethereum.org/EIPS/eip-2537"]
+    pub fn ctt_eth_evm_bls12381_pairingcheck(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Map a field element to G1\n\n  Name: BLS12_MAP_FP_TO_G1\n\n  Input:\n  - A field element in 0 ..< p, p the prime field of BLS12-381\n  - The length MUST be a 48-byte (381-bit) number serialized in 64-byte big-endian number\n\n  Output\n  - Output buffer MUST be of length 64 bytes\n  - A G1 point R with coordinates (Rx, Ry)\n  - Status code:\n    cttEVM_Success\n    cttEVM_InvalidInputSize\n    cttEVM_InvalidOutputSize\n    cttEVM_IntLargerThanModulus\n\n  Spec https://eips.ethereum.org/EIPS/eip-2537"]
+    pub fn ctt_eth_evm_bls12381_map_fp_to_g1(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Map an Fp2 extension field element to G2\n\n  Name: BLS12_MAP_FP2_TO_G2\n\n  Input:\n  - An extension field element in (0, 0) ..< (p, p), p the prime field of BLS12-381\n  - The length MUST be a tuple of 48-byte (381-bit) number serialized in tuple of 64-byte big-endian numbers\n\n  Output\n  - Output buffer MUST be of length 128 bytes\n  - A G2 point R with coordinates (Rx, Ry)\n  - Status code:\n    cttEVM_Success\n    cttEVM_InvalidInputSize\n    cttEVM_InvalidOutputSize\n    cttEVM_IntLargerThanModulus\n\n  Spec https://eips.ethereum.org/EIPS/eip-2537"]
+    pub fn ctt_eth_evm_bls12381_map_fp2_to_g2(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
 }

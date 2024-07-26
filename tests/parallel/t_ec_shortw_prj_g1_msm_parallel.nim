@@ -8,22 +8,22 @@
 
 import
   # Internals
-  ../../constantine/math/config/curves,
-  ../../constantine/math/elliptic/ec_shortweierstrass_projective,
-  ../../constantine/math/arithmetic,
+  constantine/named/algebras,
+  constantine/math/ec_shortweierstrass,
+  constantine/math/arithmetic,
   # Test utilities
   ./t_ec_template_parallel
 
 const numPoints = [1, 2, 8, 16, 128, 1024, 2048, 16384] # 32768, 262144, 1048576]
 
 run_EC_multi_scalar_mul_parallel_impl(
-    ec = ECP_ShortW_Prj[Fp[BN254_Snarks], G1],
+    ec = EC_ShortW_Prj[Fp[BN254_Snarks], G1],
     numPoints = numPoints,
     moduleName = "test_ec_shortweierstrass_projective_msm_parallel_" & $BN254_Snarks
   )
 
 run_EC_multi_scalar_mul_parallel_impl(
-    ec = ECP_ShortW_Prj[Fp[BLS12_381], G1],
+    ec = EC_ShortW_Prj[Fp[BLS12_381], G1],
     numPoints = numPoints,
     moduleName = "test_ec_shortweierstrass_projective_msm_parallel_" & $BLS12_381
   )

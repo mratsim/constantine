@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../constantine/platforms/primitives,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/io/io_fields,
+  constantine/platforms/primitives,
+  constantine/named/algebras,
+  constantine/math/arithmetic,
+  constantine/math/io/io_fields,
   # Research
   ./strided_views,
   ./fft_lut
@@ -117,7 +117,7 @@ func fft_internal[F](
 
   # Recursive Divide-and-Conquer
   let (evenVals, oddVals) = vals.splitAlternate()
-  var (outLeft, outRight) = output.splitMiddle()
+  var (outLeft, outRight) = output.splitHalf()
   let halfROI = rootsOfUnity.skipHalf()
 
   fft_internal(outLeft, evenVals, halfROI)
@@ -181,7 +181,7 @@ func ifft*[F](
 
 proc init*(T: type FFTDescriptor, maxScale: uint8): T =
   result.maxWidth = 1 shl maxScale
-  result.rootOfUnity = scaleToRootOfUnity(T.F.C)[maxScale]
+  result.rootOfUnity = scaleToRootOfUnity(T.F.Name)[maxScale]
   result.expandedRootsOfUnity =
     result.rootOfUnity.expandRootOfUnity()
     # Aren't you tired of reading about unity?
@@ -195,7 +195,7 @@ proc init*(T: type FFTDescriptor, maxScale: uint8): T =
 when isMainModule:
   import
     std/[times, monotimes, strformat],
-    ../../helpers/prng_unsafe
+    helpers/prng_unsafe
 
   proc roundtrip() =
     let fftDesc = FFTDescriptor[Fr[BLS12_381]].init(maxScale = 4)

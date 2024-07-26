@@ -12,12 +12,12 @@ import
   # Third-party
   gmp,
   # Internal
-  ../../constantine/math/[arithmetic, io/io_bigints],
-  ../../constantine/platforms/primitives,
-  ../../constantine/serialization/codecs,
-  ../../constantine/math_arbitrary_precision/arithmetic/limbs_divmod_vartime,
+  constantine/math/[arithmetic, io/io_bigints],
+  constantine/platforms/primitives,
+  constantine/serialization/codecs,
+  constantine/math_arbitrary_precision/arithmetic/limbs_divmod_vartime,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 echo "\n------------------------------------------------------\n"
 # We test up to 1024-bit, more is really slow

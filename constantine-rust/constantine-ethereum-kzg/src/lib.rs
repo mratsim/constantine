@@ -16,19 +16,25 @@ use std::{ffi::CString, path::Path};
 // ------------------------------------------------------------
 
 #[derive(Debug)]
-pub struct EthKzgContext {
+pub struct EthKzgContext<'tp> {
     ctx: *const ctt_eth_kzg_context,
+    threadpool: Option<&'tp Threadpool>,
 }
 
-impl Drop for EthKzgContext {
+pub struct EthKzgContextBuilder<'tp> {
+    ctx: Option<*const ctt_eth_kzg_context>,
+    threadpool: Option<&'tp Threadpool>,
+}
+
+impl<'tp> Drop for EthKzgContext<'tp> {
     #[inline(always)]
     fn drop(&mut self) {
         unsafe { ctt_eth_trusted_setup_delete(self.ctx as *mut ctt_eth_kzg_context) }
     }
 }
 
-impl EthKzgContext {
-    pub fn load_trusted_setup(file_path: &Path) -> Result<Self, ctt_eth_trusted_setup_status> {
+impl<'tp> EthKzgContextBuilder<'tp> {
+    pub fn load_trusted_setup(self, file_path: &Path) -> Result<Self, ctt_eth_trusted_setup_status> {
         // The joy of OS Paths / C Paths:
         // https://users.rust-lang.org/t/easy-way-to-pass-a-path-to-c/51829
         // https://doc.rust-lang.org/std/ffi/index.html#conversions
@@ -64,9 +70,38 @@ impl EthKzgContext {
             )
         };
         match status {
-            ctt_eth_trusted_setup_status::cttEthTS_Success => Ok(Self { ctx }),
+            ctt_eth_trusted_setup_status::cttEthTS_Success => Ok(Self { ctx: Some(ctx), threadpool: self.threadpool }),
             _ => Err(status),
         }
+    }
+
+    pub fn set_threadpool(self, tp: &'tp Threadpool) -> Self {
+        // Copy all other parameters
+        let Self { ctx, .. } = self;
+        // Return with threadpool
+        Self { ctx, threadpool: Some(tp)}
+    }
+
+    pub fn build(self) -> Result<EthKzgContext<'tp>, ctt_eth_trusted_setup_status> {
+        let ctx = self.ctx.ok_or(ctt_eth_trusted_setup_status::cttEthTS_MissingOrInaccessibleFile)?;
+        Ok(EthKzgContext{
+            ctx,
+            threadpool: self.threadpool,
+        })
+    }
+
+}
+
+impl<'tp> EthKzgContext<'tp> {
+    pub fn builder() -> EthKzgContextBuilder<'tp> {
+        EthKzgContextBuilder{ctx: None, threadpool: None}
+    }
+
+    pub fn load_trusted_setup(file_path: &Path) -> Result<Self, ctt_eth_trusted_setup_status> {
+        Ok(Self::builder()
+            .load_trusted_setup(file_path)?
+            .build()
+            .expect("Trusted setup should be loaded properly"))
     }
 
     #[inline]
@@ -102,7 +137,7 @@ impl EthKzgContext {
                 proof.as_mut_ptr() as *mut ctt_eth_kzg_proof,
                 y_eval.as_mut_ptr() as *mut ctt_eth_kzg_eval_at_challenge,
                 blob.as_ptr() as *const ctt_eth_kzg_blob,
-                z_challenge.as_ptr() as *const ctt_eth_kzg_challenge,
+                z_challenge.as_ptr() as *const ctt_eth_kzg_opening_challenge,
             );
             match status {
                 ctt_eth_kzg_status::cttEthKzg_Success => {
@@ -125,7 +160,7 @@ impl EthKzgContext {
             ctt_eth_kzg_verify_kzg_proof(
                 self.ctx,
                 commitment.as_ptr() as *const ctt_eth_kzg_commitment,
-                z_challenge.as_ptr() as *const ctt_eth_kzg_challenge,
+                z_challenge.as_ptr() as *const ctt_eth_kzg_opening_challenge,
                 y_eval_at_challenge.as_ptr() as *const ctt_eth_kzg_eval_at_challenge,
                 proof.as_ptr() as *const ctt_eth_kzg_proof,
             )
@@ -215,14 +250,13 @@ impl EthKzgContext {
     #[inline]
     pub fn blob_to_kzg_commitment_parallel(
         &self,
-        tp: &Threadpool,
         blob: &[u8; 4096 * 32],
     ) -> Result<[u8; 48], ctt_eth_kzg_status> {
         let mut result: MaybeUninit<[u8; 48]> = MaybeUninit::uninit();
         unsafe {
             let status = ctt_eth_kzg_blob_to_kzg_commitment_parallel(
+                self.threadpool.expect("Threadpool has been set").get_private_context(),
                 self.ctx,
-                tp.get_private_context(),
                 result.as_mut_ptr() as *mut ctt_eth_kzg_commitment,
                 blob.as_ptr() as *const ctt_eth_kzg_blob,
             );
@@ -236,7 +270,6 @@ impl EthKzgContext {
     #[inline]
     pub fn compute_kzg_proof_parallel(
         &self,
-        tp: &Threadpool,
         blob: &[u8; 4096 * 32],
         z_challenge: &[u8; 32],
     ) -> Result<([u8; 48], [u8; 32]), ctt_eth_kzg_status> {
@@ -244,12 +277,12 @@ impl EthKzgContext {
         let mut y_eval = MaybeUninit::<[u8; 32]>::uninit();
         unsafe {
             let status = ctt_eth_kzg_compute_kzg_proof_parallel(
+                self.threadpool.expect("Threadpool has been set").get_private_context(),
                 self.ctx,
-                tp.get_private_context(),
                 proof.as_mut_ptr() as *mut ctt_eth_kzg_proof,
                 y_eval.as_mut_ptr() as *mut ctt_eth_kzg_eval_at_challenge,
                 blob.as_ptr() as *const ctt_eth_kzg_blob,
-                z_challenge.as_ptr() as *const ctt_eth_kzg_challenge,
+                z_challenge.as_ptr() as *const ctt_eth_kzg_opening_challenge,
             );
             match status {
                 ctt_eth_kzg_status::cttEthKzg_Success => {
@@ -263,15 +296,14 @@ impl EthKzgContext {
     #[inline]
     pub fn compute_blob_kzg_proof_parallel(
         &self,
-        tp: &Threadpool,
         blob: &[u8; 4096 * 32],
         commitment: &[u8; 48],
     ) -> Result<[u8; 48], ctt_eth_kzg_status> {
         let mut proof = MaybeUninit::<[u8; 48]>::uninit();
         unsafe {
             let status = ctt_eth_kzg_compute_blob_kzg_proof_parallel(
+                self.threadpool.expect("Threadpool has been set").get_private_context(),
                 self.ctx,
-                tp.get_private_context(),
                 proof.as_mut_ptr() as *mut ctt_eth_kzg_proof,
                 blob.as_ptr() as *const ctt_eth_kzg_blob,
                 commitment.as_ptr() as *const ctt_eth_kzg_commitment,
@@ -286,15 +318,14 @@ impl EthKzgContext {
     #[inline]
     pub fn verify_blob_kzg_proof_parallel(
         &self,
-        tp: &Threadpool,
         blob: &[u8; 4096 * 32],
         commitment: &[u8; 48],
         proof: &[u8; 48],
     ) -> Result<bool, ctt_eth_kzg_status> {
         let status = unsafe {
             ctt_eth_kzg_verify_blob_kzg_proof_parallel(
+                self.threadpool.expect("Threadpool has been set").get_private_context(),
                 self.ctx,
-                tp.get_private_context(),
                 blob.as_ptr() as *const ctt_eth_kzg_blob,
                 commitment.as_ptr() as *const ctt_eth_kzg_commitment,
                 proof.as_ptr() as *const ctt_eth_kzg_proof,
@@ -310,7 +341,6 @@ impl EthKzgContext {
     #[inline]
     pub fn verify_blob_kzg_proof_batch_parallel(
         &self,
-        tp: &Threadpool,
         blobs: &[[u8; 4096 * 32]],
         commitments: &[[u8; 48]],
         proofs: &[[u8; 48]],
@@ -322,8 +352,8 @@ impl EthKzgContext {
 
         let status = unsafe {
             ctt_eth_kzg_verify_blob_kzg_proof_batch_parallel(
+                self.threadpool.expect("Threadpool has been set").get_private_context(),
                 self.ctx,
-                tp.get_private_context(),
                 blobs.as_ptr() as *const ctt_eth_kzg_blob,
                 commitments.as_ptr() as *const ctt_eth_kzg_commitment,
                 proofs.as_ptr() as *const ctt_eth_kzg_proof,

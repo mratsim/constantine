@@ -33,20 +33,20 @@ extern "C" {
  *      proof.(τ - z) = p(τ)-p(z)
  *    which doesn't require the full blob but only evaluations of it
  *    - at τ, p(τ) is the commitment
- *    - and at the verification challenge z.
+ *    - and at the verification opening_challenge z.
  *
  *    with proof = [(p(τ) - p(z)) / (τ-z)]₁
  */
 ctt_eth_kzg_status ctt_eth_kzg_blob_to_kzg_commitment_parallel(
-        const ctt_eth_kzg_context* ctx,
         const ctt_threadpool* tp,
+        const ctt_eth_kzg_context* ctx,
         ctt_eth_kzg_commitment* dst,
         const ctt_eth_kzg_blob* blob
 ) __attribute__((warn_unused_result));
 
 /** Generate:
  *  - A proof of correct evaluation.
- *  - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.
+ *  - y = p(z), the evaluation of p at the opening_challenge z, with p being the Blob interpreted as a polynomial.
  *
  *  Mathematical description
  *    [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ
@@ -56,23 +56,23 @@ ctt_eth_kzg_status ctt_eth_kzg_blob_to_kzg_commitment_parallel(
  *      proof.(τ - z) = p(τ)-p(z)
  *    which doesn't require the full blob but only evaluations of it
  *    - at τ, p(τ) is the commitment
- *    - and at the verification challenge z.
+ *    - and at the verification opening_challenge z.
  */
 ctt_eth_kzg_status ctt_eth_kzg_compute_kzg_proof_parallel(
-        const ctt_eth_kzg_context* ctx,
         const ctt_threadpool* tp,
+        const ctt_eth_kzg_context* ctx,
         ctt_eth_kzg_proof* proof,
         ctt_eth_kzg_eval_at_challenge* y,
         const ctt_eth_kzg_blob* blob,
-        const ctt_eth_kzg_challenge* z
+        const ctt_eth_kzg_opening_challenge* z
 ) __attribute__((warn_unused_result));
 
 /** Given a blob, return the KZG proof that is used to verify it against the commitment.
  *  This method does not verify that the commitment is correct with respect to `blob`.
  */
 ctt_eth_kzg_status ctt_eth_kzg_compute_blob_kzg_proof_parallel(
-        const ctt_eth_kzg_context* ctx,
         const ctt_threadpool* tp,
+        const ctt_eth_kzg_context* ctx,
         ctt_eth_kzg_proof* proof,
         const ctt_eth_kzg_blob* blob,
         const ctt_eth_kzg_commitment* commitment
@@ -81,8 +81,8 @@ ctt_eth_kzg_status ctt_eth_kzg_compute_blob_kzg_proof_parallel(
 /** Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment.
  */
 ctt_eth_kzg_status ctt_eth_kzg_verify_blob_kzg_proof_parallel(
-        const ctt_eth_kzg_context* ctx,
         const ctt_threadpool* tp,
+        const ctt_eth_kzg_context* ctx,
         const ctt_eth_kzg_blob* blob,
         const ctt_eth_kzg_commitment* commitment,
         const ctt_eth_kzg_proof* proof
@@ -102,8 +102,8 @@ ctt_eth_kzg_status ctt_eth_kzg_verify_blob_kzg_proof_parallel(
  *  i.e. commitments that are linear combination of others and sum would be zero.
  */
 ctt_eth_kzg_status ctt_eth_kzg_verify_blob_kzg_proof_batch_parallel(
-        const ctt_eth_kzg_context* ctx,
         const ctt_threadpool* tp,
+        const ctt_eth_kzg_context* ctx,
         const ctt_eth_kzg_blob blobs[],
         const ctt_eth_kzg_commitment commitments[],
         const ctt_eth_kzg_proof proofs[],

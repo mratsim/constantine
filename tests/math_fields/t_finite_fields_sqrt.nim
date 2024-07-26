@@ -10,12 +10,12 @@ import
   # Standard library
   std/[tables, unittest, times],
   # Internal
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/io/io_fields,
-  ../../constantine/math/config/curves,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/io/io_fields,
+  constantine/named/algebras,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 
 const Iters = 8
@@ -28,14 +28,14 @@ echo "test_finite_fields_sqrt xoshiro512** seed: ", seed
 
 static: doAssert defined(CTT_TEST_CURVES), "This modules requires the -d:CTT_TEST_CURVES compile option"
 
-proc exhaustiveCheck(C: static Curve, modulus: static int) =
-  test "Exhaustive square root check for " & $Curve(C):
+proc exhaustiveCheck(Name: static Algebra, modulus: static int) =
+  test "Exhaustive square root check for " & $Algebra(C):
     var squares_to_roots: Table[uint16, set[uint16]]
 
     # Create all squares
     # -------------------------
     for i in 0'u16 ..< modulus:
-      var a{.noInit.}: Fp[C]
+      var a{.noInit.}: Fp[Name]
       a.fromUint(i)
 
       a.square()
@@ -54,7 +54,7 @@ proc exhaustiveCheck(C: static Curve, modulus: static int) =
     # Check squares
     # -------------------------
     for i in 0'u16 ..< modulus:
-      var a{.noInit.}: Fp[C]
+      var a{.noInit.}: Fp[Name]
       a.fromUint(i)
 
       if i in squares_to_roots:
@@ -102,18 +102,18 @@ template testSqrtImpl(a: untyped): untyped {.dirty.} =
     bool(r == s)
     bool(r == a or r == na)
 
-proc randomSqrtCheck(C: static Curve) =
-  test "Random square root check for " & $Curve(C):
+proc randomSqrtCheck(Name: static Algebra) =
+  test "Random square root check for " & $Algebra(C):
     for _ in 0 ..< Iters:
-      let a = rng.random_unsafe(Fp[C])
+      let a = rng.random_unsafe(Fp[Name])
       testSqrtImpl(a)
 
     for _ in 0 ..< Iters:
-      let a = rng.randomHighHammingWeight(Fp[C])
+      let a = rng.randomHighHammingWeight(Fp[Name])
       testSqrtImpl(a)
 
     for _ in 0 ..< Iters:
-      let a = rng.random_long01Seq(Fp[C])
+      let a = rng.random_long01Seq(Fp[Name])
       testSqrtImpl(a)
 
 template testSqrtRatioImpl(u, v: untyped): untyped {.dirty.} =
@@ -128,21 +128,21 @@ template testSqrtRatioImpl(u, v: untyped): untyped {.dirty.} =
     r.square()
     check: bool(r == u_over_v)
 
-proc randomSqrtRatioCheck(C: static Curve) =
-  test "Random square root check for " & $Curve(C):
+proc randomSqrtRatioCheck(Name: static Algebra) =
+  test "Random square root check for " & $Algebra(C):
     for _ in 0 ..< Iters:
-      let u = rng.random_unsafe(Fp[C])
-      let v = rng.random_unsafe(Fp[C])
+      let u = rng.random_unsafe(Fp[Name])
+      let v = rng.random_unsafe(Fp[Name])
       testSqrtRatioImpl(u, v)
 
     for _ in 0 ..< Iters:
-      let u = rng.randomHighHammingWeight(Fp[C])
-      let v = rng.randomHighHammingWeight(Fp[C])
+      let u = rng.randomHighHammingWeight(Fp[Name])
+      let v = rng.randomHighHammingWeight(Fp[Name])
       testSqrtRatioImpl(u, v)
 
     for _ in 0 ..< Iters:
-      let u = rng.random_long01Seq(Fp[C])
-      let v = rng.random_long01Seq(Fp[C])
+      let u = rng.random_long01Seq(Fp[Name])
+      let v = rng.random_long01Seq(Fp[Name])
       testSqrtRatioImpl(u, v)
 
 proc main() =

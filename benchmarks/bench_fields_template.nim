@@ -14,13 +14,13 @@
 
 import
   # Internals
-  ../constantine/platforms/abstractions,
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/extension_fields,
-  ../constantine/math/constants/zoo_square_roots,
+  constantine/platforms/abstractions,
+  constantine/named/algebras,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/named/zoo_square_roots,
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./bench_blueprint
 
 export notes, abstractions
@@ -40,7 +40,7 @@ macro fixFieldDisplay(T: typedesc): untyped =
   # we get the Curve ID instead of the curve name.
   let instantiated = T.getTypeInst()
   var name = $instantiated[1][0] # 𝔽p
-  name.add "[" & $Curve(instantiated[1][1].intVal) & "]"
+  name.add "[" & $Algebra(instantiated[1][1].intVal) & "]"
   result = newLit name
 
 template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
@@ -50,8 +50,8 @@ template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
 func random_unsafe(rng: var RngState, a: var FpDbl) =
   ## Initialize a standalone Double-Width field element
   ## we don't reduce it modulo p², this is only used for benchmark
-  let aHi = rng.random_unsafe(Fp[FpDbl.C])
-  let aLo = rng.random_unsafe(Fp[FpDbl.C])
+  let aHi = rng.random_unsafe(Fp[FpDbl.Name])
+  let aLo = rng.random_unsafe(Fp[FpDbl.Name])
   for i in 0 ..< aLo.mres.limbs.len:
     a.limbs2x[i] = aLo.mres.limbs[i]
   for i in 0 ..< aHi.mres.limbs.len:
@@ -140,7 +140,7 @@ proc sumprodBench*(T: typedesc, iters: int) =
     r.sumprod([a, b], [u, v])
 
 proc toBigBench*(T: typedesc, iters: int) =
-  var r: matchingBigInt(T.C)
+  var r: T.getBigInt()
   let x = rng.random_unsafe(T)
   preventOptimAway(r)
   bench("BigInt <- field conversion", T, iters):
@@ -148,7 +148,7 @@ proc toBigBench*(T: typedesc, iters: int) =
 
 proc toFieldBench*(T: typedesc, iters: int) =
   var r: T
-  let x = rng.random_unsafe(matchingBigInt(T.C))
+  let x = rng.random_unsafe(T.getBigInt())
   preventOptimAway(r)
   bench("BigInt -> field conversion", T, iters):
     r.fromBig(x)
@@ -176,14 +176,14 @@ proc sqrtBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
 
   const algoType = block:
-    when T.C.has_P_3mod4_primeModulus():
+    when T.Name.has_P_3mod4_primeModulus():
       "p ≡ 3 (mod 4)"
-    elif T.C.has_P_5mod8_primeModulus():
+    elif T.Name.has_P_5mod8_primeModulus():
       "p ≡ 5 (mod 8)"
     else:
       "Tonelli-Shanks"
   const addchain = block:
-    when T.C.hasSqrtAddchain() or T.C.hasTonelliShanksAddchain():
+    when T.Name.hasSqrtAddchain() or T.Name.hasTonelliShanksAddchain():
       "with addition chain"
     else:
       "without addition chain"
@@ -203,14 +203,14 @@ proc sqrtVartimeBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
 
   const algoType = block:
-    when T.C.has_P_3mod4_primeModulus():
+    when T.Name.has_P_3mod4_primeModulus():
       "p ≡ 3 (mod 4)"
-    elif T.C.has_P_5mod8_primeModulus():
+    elif T.Name.has_P_5mod8_primeModulus():
       "p ≡ 5 (mod 8)"
     else:
       "Tonelli-Shanks"
   const addchain = block:
-    when T.C.hasSqrtAddchain() or T.C.hasTonelliShanksAddchain():
+    when T.Name.hasSqrtAddchain() or T.Name.hasTonelliShanksAddchain():
       "with addition chain"
     else:
       "without addition chain"
@@ -228,14 +228,14 @@ proc sqrtRatioVartimeBench*(T: typedesc, iters: int) =
 
 proc powBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
-  let exponent = rng.random_unsafe(BigInt[T.C.getCurveOrderBitwidth()])
+  let exponent = rng.random_unsafe(BigInt[Fr[T.Name].bits()])
+  var r = x
   bench("Exp curve order (constant-time) - " & $exponent.bits & "-bit", T, iters):
-    var r = x
     r.pow(exponent)
 
-proc powUnsafeBench*(T: typedesc, iters: int) =
+proc powVartimeBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
-  let exponent = rng.random_unsafe(BigInt[T.C.getCurveOrderBitwidth()])
-  bench("Exp curve order (Leak exponent bits) - " & $exponent.bits & "-bit", T, iters):
-    var r = x
+  let exponent = rng.random_unsafe(BigInt[Fr[T.Name].bits()])
+  var r = x
+  bench("Exp by curve order (vartime) - " & $exponent.bits & "-bit", T, iters):
     r.pow_vartime(exponent)

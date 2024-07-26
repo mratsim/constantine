@@ -14,7 +14,7 @@
 
 import std/[os, strformat, strutils, intsets]
 import ./c_typedefs, ./lib_curves
-import ../constantine/platforms/static_for
+import constantine/platforms/static_for
 
 proc writeHeader_classicCurve(filepath: string, curve: string, modBits, orderBits: int, curve_decls: string) =
   var header = "\n"
@@ -69,24 +69,24 @@ proc writeHeader_pairingFriendly(filepath: string, curve: string, modBits, order
 
   writeFile(filepath, header)
 
-proc writeHeader(dirPath: string, C: static Curve, curve_decls: string) =
-  const modBits = C.getCurveBitWidth()
-  const orderBits = C.getCurveOrderBitWidth()
-  let curve = ($C).toLowerASCII()
+proc writeHeader(dirPath: string, Name: static Algebra, curve_decls: string) =
+  const modBits = Fp[Name].bits()
+  const orderBits = Fr[Name].bits()
+  let curve = ($Name).toLowerASCII()
   let relPath = dirPath/"constantine"/"curves"/curve & ".h"
 
-  when C.family() == NoFamily:
+  when Name.family() == NoFamily:
     relPath.writeHeader_classicCurve(curve, modBits, orderBits, curve_decls)
   else:
-    const g2_extfield = C.getEmbeddingDegree() div 6 # All pairing-friendly curves use a sextic twist
+    const g2_extfield = Name.getEmbeddingDegree() div 6 # All pairing-friendly curves use a sextic twist
     relPath.writeHeader_pairingFriendly(curve, modBits, orderBits, curve_decls, g2_extfield)
 
   echo "Generated header: ", relPath
 
-proc writeParallelHeader(dirPath: string, C: static Curve, curve_decls: string) =
-  const modBits = C.getCurveBitWidth()
-  const orderBits = C.getCurveOrderBitWidth()
-  let curve = ($C).toLowerASCII()
+proc writeParallelHeader(dirPath: string, Name: static Algebra, curve_decls: string) =
+  const modBits = Fp[Name].bits()
+  const orderBits = Fr[Name].bits()
+  let curve = ($Name).toLowerASCII()
   let relPath = dirPath/"constantine"/"curves"/curve & "_parallel.h"
 
   var includes: string
@@ -154,8 +154,8 @@ proc writeCurveParallelHeaders(dir: string) =
 
   staticFor i, 0, curveMappings.len:
     writeParallelHeader(dir, curveMappings[i][0], curveMappings[i][1])
-    bigSizes.incl(curveMappings[i][0].getCurveBitWidth())
-    bigSizes.incl(curveMappings[i][0].getCurveOrderBitWidth())
+    bigSizes.incl(Fp[curveMappings[i][0]].bits())
+    bigSizes.incl(Fr[curveMappings[i][0]].bits())
 
   dir.writeBigIntHeader(bigSizes, cBindings_big)
 

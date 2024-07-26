@@ -8,7 +8,7 @@
 
 import
   std/unittest,
-  ../constantine/mac/mac_poly1305
+  constantine/mac/mac_poly1305
 
 suite "[Message Authentication Code] Poly1305":
   test "Test vector 1 - RFC8439":

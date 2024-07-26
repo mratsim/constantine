@@ -95,6 +95,15 @@ func setOne*(a: var openArray[SecretWord]){.inline.} =
   for i in 1 ..< a.len:
     a[i] = Zero
 
+func secretLookup*[T](dst: var T, table: openArray[T], index: SecretWord) =
+  ## Load a table[index] into `dst`
+  ## This is constant-time, whatever the `index`, its value is not leaked
+  ## This is also protected against cache-timing attack by always scanning the whole table
+  mixin ccopy
+  for i in 0 ..< table.len:
+    let selector = SecretWord(i) == index
+    dst.ccopy(table[i], selector)
+
 debug: # Don't allow printing secret words by default
   func toHex*(a: SecretWord): string =
     const hexChars = "0123456789abcdef"
@@ -113,6 +122,34 @@ debug: # Don't allow printing secret words by default
     for i in 1 ..< a.len:
       result.add ", " & toHex(a[i])
     result.add "]"
+
+# ############################################################
+#
+#                        Big Integer
+#
+# ############################################################
+
+type
+  BigInt*[bits: static int] = object
+    ## Fixed-precision big integer
+    ##
+    ## - "bits" is the announced bit-length of the BigInt
+    ##   This is public data, usually equal to the curve prime bitlength.
+    ##
+    ## - "limbs" is an internal field that holds the internal representation
+    ##   of the big integer. Least-significant limb first. Within limbs words are native-endian.
+    ##
+    ## This internal representation can be changed
+    ## without notice and should not be used by external applications or libraries.
+    limbs*: array[bits.wordsRequired, SecretWord]
+
+debug:
+  func `$`*(a: BigInt): string =
+    result = "BigInt["
+    result.add $BigInt.bits
+    result.add "](limbs: "
+    result.add a.limbs.toString()
+    result.add ")"
 
 # ############################################################
 #

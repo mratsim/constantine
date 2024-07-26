@@ -14,12 +14,12 @@
 
 import
   # Internals
-  ../constantine/platforms/abstractions,
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/extension_fields,
+  constantine/platforms/abstractions,
+  constantine/named/algebras,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./platforms,
   # Standard library
   std/[monotimes, times, strformat, strutils]
@@ -219,12 +219,12 @@ proc reduce2x*(T: typedesc, iters: int) =
 
 proc reduce2xViaDivision*(T: typedesc, iters: int) =
 
-  const bits2x = 2 * T.C.getCurveBitWidth()
-  var r: matchingBigInt(T.C)
+  const bits2x = 2 * T.bits()
+  var r: T.getBigInt()
   let t = rng.random_unsafe(BigInt[bits2x])
 
   bench("Reduction via division", $T & " <- " & $doublePrec(T), iters):
-    r.reduce(t, T.fieldMod())
+    r.reduce(t, T.getModulus())
 
 proc main() =
   separator()

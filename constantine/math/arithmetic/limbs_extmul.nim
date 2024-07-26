@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
+  constantine/platforms/abstractions,
   ./limbs
 
 when UseASM_X86_64:

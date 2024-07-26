@@ -27,15 +27,16 @@
 #     which requires a prime
 
 import
-  ../../platforms/abstractions,
-  ../config/[type_ff, curves_prop_field_core, curves_prop_field_derived],
+  constantine/platforms/abstractions,
+  constantine/serialization/endians,
+  constantine/named/properties_fields,
   ./bigints, ./bigints_montgomery
 
 when UseASM_X86_64:
   import ./assembly/limbs_asm_modular_x86
 
 when nimvm:
-  from ../config/precompute import montyResidue_precompute
+  from constantine/named/deriv/precompute import montyResidue_precompute
 else:
   discard
 
@@ -54,17 +55,17 @@ export Fp, Fr, FF
 func fromBig*(dst: var FF, src: BigInt) =
   ## Convert a BigInt to its Montgomery form
   when nimvm:
-    dst.mres.montyResidue_precompute(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord())
+    dst.mres.montyResidue_precompute(src, FF.getModulus(), FF.getR2modP(), FF.getNegInvModWord())
   else:
-    dst.mres.getMont(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
+    dst.mres.getMont(src, FF.getModulus(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
 
-func fromBig*[C: static Curve](T: type FF[C], src: BigInt): FF[C] {.noInit.} =
+func fromBig*[Name: static Algebra](T: type FF[Name], src: BigInt): FF[Name] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
   result.fromBig(src)
 
-func fromField*(dst: var BigInt, src: FF) {.noInit, inline.} =
+func fromField*(dst: var BigInt, src: FF) {.inline.} =
   ## Convert a finite-field element to a BigInt in natural representation
-  dst.fromMont(src.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+  dst.fromMont(src.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func toBig*(src: FF): auto {.noInit, inline.} =
   ## Convert a finite-field element to a BigInt in natural representation
@@ -105,7 +106,7 @@ func cswap*(a, b: var FF, ctl: SecretBool) {.meter.} =
 #       exist and can be implemented with compile-time specialization.
 
 # Note: for `+=`, double, sum
-#       not(a.mres < FF.fieldMod()) is unnecessary if the prime has the form
+#       not(a.mres < FF.getModulus()) is unnecessary if the prime has the form
 #       (2^64)ʷ - 1 (if using uint64 words).
 # In practice I'm not aware of such prime being using in elliptic curves.
 # 2^127 - 1 and 2^521 - 1 are used but 127 and 521 are not multiple of 32/64
@@ -149,11 +150,10 @@ func setMinusOne*(a: var FF) =
   #       Check if the compiler optimizes it away
   a.mres = FF.getMontyPrimeMinus1()
 
-
 func neg*(r: var FF, a: FF) {.meter.} =
   ## Negate modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    negmod_asm(r.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
+    negmod_asm(r.mres.limbs, a.mres.limbs, FF.getModulus().limbs)
   else:
     # If a = 0 we need r = 0 and not r = M
     # as comparison operator assume unicity
@@ -161,7 +161,7 @@ func neg*(r: var FF, a: FF) {.meter.} =
     # Also make sure to handle aliasing where r.addr = a.addr
     var t {.noInit.}: FF
     let isZero = a.isZero()
-    discard t.mres.diff(FF.fieldMod(), a.mres)
+    discard t.mres.diff(FF.getModulus(), a.mres)
     t.mres.csetZero(isZero)
     r = t
 
@@ -172,38 +172,38 @@ func neg*(a: var FF) {.meter.} =
 func `+=`*(a: var FF, b: FF) {.meter.} =
   ## In-place addition modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits())
+    addmod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = add(a.mres, b.mres)
-    overflowed = overflowed or not(a.mres < FF.fieldMod())
-    discard csub(a.mres, FF.fieldMod(), overflowed)
+    overflowed = overflowed or not(a.mres < FF.getModulus())
+    discard csub(a.mres, FF.getModulus(), overflowed)
 
 func `-=`*(a: var FF, b: FF) {.meter.} =
   ## In-place substraction modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    submod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
+    submod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs)
   else:
     let underflowed = sub(a.mres, b.mres)
-    discard cadd(a.mres, FF.fieldMod(), underflowed)
+    discard cadd(a.mres, FF.getModulus(), underflowed)
 
 func double*(a: var FF) {.meter.} =
   ## Double ``a`` modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(a.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits())
+    addmod_asm(a.mres.limbs, a.mres.limbs, a.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = double(a.mres)
-    overflowed = overflowed or not(a.mres < FF.fieldMod())
-    discard csub(a.mres, FF.fieldMod(), overflowed)
+    overflowed = overflowed or not(a.mres < FF.getModulus())
+    discard csub(a.mres, FF.getModulus(), overflowed)
 
 func sum*(r: var FF, a, b: FF) {.meter.} =
   ## Sum ``a`` and ``b`` into ``r`` modulo p
   ## r is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits())
+    addmod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = r.mres.sum(a.mres, b.mres)
-    overflowed = overflowed or not(r.mres < FF.fieldMod())
-    discard csub(r.mres, FF.fieldMod(), overflowed)
+    overflowed = overflowed or not(r.mres < FF.getModulus())
+    discard csub(r.mres, FF.getModulus(), overflowed)
 
 func sumUnr*(r: var FF, a, b: FF) {.meter.} =
   ## Sum ``a`` and ``b`` into ``r`` without reduction
@@ -214,10 +214,10 @@ func diff*(r: var FF, a, b: FF) {.meter.} =
   ## `r` is initialized/overwritten
   ## Requires r != b
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    submod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
+    submod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs)
   else:
     var underflowed = r.mres.diff(a.mres, b.mres)
-    discard cadd(r.mres, FF.fieldMod(), underflowed)
+    discard cadd(r.mres, FF.getModulus(), underflowed)
 
 func diffUnr*(r: var FF, a, b: FF) {.meter.} =
   ## Substract `b` from `a` and store the result into `r`
@@ -228,20 +228,20 @@ func double*(r: var FF, a: FF) {.meter.} =
   ## Double ``a`` into ``r``
   ## `r` is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(r.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits())
+    addmod_asm(r.mres.limbs, a.mres.limbs, a.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = r.mres.double(a.mres)
-    overflowed = overflowed or not(r.mres < FF.fieldMod())
-    discard csub(r.mres, FF.fieldMod(), overflowed)
+    overflowed = overflowed or not(r.mres < FF.getModulus())
+    discard csub(r.mres, FF.getModulus(), overflowed)
 
 func prod*(r: var FF, a, b: FF, skipFinalSub: static bool = false) {.meter.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
-  r.mres.mulMont(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
+  r.mres.mulMont(a.mres, b.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
 
 func square*(r: var FF, a: FF, skipFinalSub: static bool = false) {.meter.} =
   ## Squaring modulo p
-  r.mres.squareMont(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
+  r.mres.squareMont(a.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
 
 func sumprod*[N: static int](r: var FF, a, b: array[N, FF], skipFinalSub: static bool = false) {.meter.} =
   ## Compute r <- ⅀aᵢ.bᵢ (mod M) (sum of products)
@@ -249,7 +249,7 @@ func sumprod*[N: static int](r: var FF, a, b: array[N, FF], skipFinalSub: static
   r.mres.sumprodMont(
     cast[ptr array[N, typeof(a[0].mres)]](a.unsafeAddr)[],
     cast[ptr array[N, typeof(b[0].mres)]](b.unsafeAddr)[],
-    FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
+    FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
 
 # ############################################################
 #
@@ -329,7 +329,7 @@ func inv*(r: var FF, a: FF) =
   ## Incidentally this avoids extra check
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
-  r.mres.invmod(a.mres, FF.getR2modP(), FF.fieldMod())
+  r.mres.invmod(a.mres, FF.getR2modP(), FF.getModulus())
 
 func inv*(a: var FF) =
   ## Inversion modulo p
@@ -340,75 +340,23 @@ func inv*(a: var FF) =
   ## to affine for elliptic curve
   a.inv(a)
 
-# ############################################################
-#
-#               Field arithmetic exponentiation
-#
-# ############################################################
-#
-# Internally those procedures will allocate extra scratchspace on the stack
-
-func pow*(a: var FF, exponent: BigInt) =
-  ## Exponentiation modulo p
-  ## ``a``: a field element to be exponentiated
-  ## ``exponent``: a big integer
-  const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.powMont(
-    exponent,
-    FF.fieldMod(), FF.getMontyOne(),
-    FF.getNegInvModWord(), windowSize,
-    FF.getSpareBits()
-  )
-
-func pow*(a: var FF, exponent: openarray[byte]) =
-  ## Exponentiation modulo p
-  ## ``a``: a field element to be exponentiated
-  ## ``exponent``: a big integer in canonical big endian representation
-  const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.powMont(
-    exponent,
-    FF.fieldMod(), FF.getMontyOne(),
-    FF.getNegInvModWord(), windowSize,
-    FF.getSpareBits()
-  )
-
-func pow_vartime*(a: var FF, exponent: BigInt) =
-  ## Exponentiation modulo p
-  ## ``a``: a field element to be exponentiated
-  ## ``exponent``: a big integer
+func inv_vartime*(r: var FF, a: FF) {.tags: [VarTime].} =
+  ## Variable-time Inversion modulo p
   ##
-  ## Warning ⚠️ :
-  ## This is an optimization for public exponent
-  ## Otherwise bits of the exponent can be retrieved with:
-  ## - memory access analysis
-  ## - power analysis
-  ## - timing analysis
-  const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.powMont_vartime(
-    exponent,
-    FF.fieldMod(), FF.getMontyOne(),
-    FF.getNegInvModWord(), windowSize,
-    FF.getSpareBits()
-  )
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  r.mres.invmod_vartime(a.mres, FF.getR2modP(), FF.getModulus())
 
-func pow_vartime*(a: var FF, exponent: openarray[byte]) =
-  ## Exponentiation modulo p
-  ## ``a``: a field element to be exponentiated
-  ## ``exponent``: a big integer a big integer in canonical big endian representation
+func inv_vartime*(a: var FF) {.tags: [VarTime].} =
+  ## Variable-time Inversion modulo p
   ##
-  ## Warning ⚠️ :
-  ## This is an optimization for public exponent
-  ## Otherwise bits of the exponent can be retrieved with:
-  ## - memory access analysis
-  ## - power analysis
-  ## - timing analysis
-  const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.powMont_vartime(
-    exponent,
-    FF.fieldMod(), FF.getMontyOne(),
-    FF.getNegInvModWord(), windowSize,
-    FF.getSpareBits()
-  )
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  a.inv_vartime(a)
 
 # ############################################################
 #
@@ -551,6 +499,271 @@ template mulCheckSparse*(a: var Fp, b: Fp) =
 
 # ############################################################
 #
+#               Field arithmetic exponentiation
+#
+# ############################################################
+#
+# Internally those procedures will allocate extra scratchspace on the stack
+
+func pow*(a: var FF, exponent: BigInt) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a big integer
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.mres.powMont(
+    exponent,
+    FF.getModulus(), FF.getMontyOne(),
+    FF.getNegInvModWord(), windowSize,
+    FF.getSpareBits()
+  )
+
+func pow*(a: var FF, exponent: openarray[byte]) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a big integer in canonical big endian representation
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.mres.powMont(
+    exponent,
+    FF.getModulus(), FF.getMontyOne(),
+    FF.getNegInvModWord(), windowSize,
+    FF.getSpareBits()
+  )
+
+func pow*(a: var FF, exponent: FF) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a finite field element
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.pow(exponent.toBig())
+
+func pow*(r: var FF, a: FF, exponent: BigInt or openArray[byte] or FF) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a finite field element or big integer
+  r = a
+  a.pow(exponent)
+
+# Vartime exponentiation
+# -------------------------------------------------------------------
+
+func pow_vartime*(a: var FF, exponent: BigInt) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a big integer
+  ##
+  ## Warning ⚠️ :
+  ## This is an optimization for public exponent
+  ## Otherwise bits of the exponent can be retrieved with:
+  ## - memory access analysis
+  ## - power analysis
+  ## - timing analysis
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.mres.powMont_vartime(
+    exponent,
+    FF.getModulus(), FF.getMontyOne(),
+    FF.getNegInvModWord(), windowSize,
+    FF.getSpareBits()
+  )
+
+func pow_vartime*(a: var FF, exponent: openarray[byte]) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a big integer a big integer in canonical big endian representation
+  ##
+  ## Warning ⚠️ :
+  ## This is an optimization for public exponent
+  ## Otherwise bits of the exponent can be retrieved with:
+  ## - memory access analysis
+  ## - power analysis
+  ## - timing analysis
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.mres.powMont_vartime(
+    exponent,
+    FF.getModulus(), FF.getMontyOne(),
+    FF.getNegInvModWord(), windowSize,
+    FF.getSpareBits()
+  )
+
+func pow_vartime*(a: var FF, exponent: FF) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a finite field element
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.pow_vartime(exponent.toBig())
+
+func pow_vartime*(r: var FF, a: FF, exponent: BigInt or openArray[byte] or FF) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a finite field element or big integer
+  r = a
+  a.pow_vartime(exponent)
+
+# Small vartime exponentiation
+# -------------------------------------------------------------------
+
+func pow_squareMultiply_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[VarTime], meter.} =
+  ## **Variable-time** Exponentiation
+  ##
+  ##   a <- aᵉ (mod p)
+  ##
+  ## This uses the square-and-multiply algorithm
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+
+  if exponent == 0:
+    a.setOne()
+    return
+  if exponent == 1:
+    return
+
+  let aa {.noInit.} = a # Original a
+
+  # We use the fact that we can skip the final substraction
+  # because montgomery squaring and multiple
+  # can accept inputs in [0, 2p) and outputs in [0, 2p).
+
+  let eBytes = exponent.toBytes(bigEndian)
+  for e in 0 ..< eBytes.len-1:
+    let e = eBytes[e]
+    for i in countdown(7, 0):
+      a.square(skipFinalSub = true)
+      let bit = bool((e shr i) and 1)
+      if bit:
+        a.prod(a, aa, skipFinalSub = true)
+
+  let e = eBytes[eBytes.len-1]
+  block: # Epilogue, byte-level
+    for i in countdown(7, 1):
+          a.square(skipFinalSub = true)
+          let bit = bool((e shr i) and 1)
+          if bit:
+            a.prod(a, aa, skipFinalSub = true)
+
+  block: # Epilogue, bit-level
+    # for the very last bit we can't skip final substraction
+    let bit = bool(e and 1)
+    if bit:
+      a.square(skipFinalSub = true)
+      a.prod(a, aa, skipFinalSub = false)
+    else:
+      a.square(skipFinalSub = false)
+
+func pow_addchain_4bit_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[VarTime], meter.} =
+  ## **Variable-time** Exponentiation
+  ## This can only handle for small scalars up to 2⁴ = 16 included
+  case exponent
+  of 0:
+    a.setOne()
+  of 1:
+    discard
+  of 2:
+    a.square()
+  of 3:
+    var t {.noInit.}: typeof(a)
+    t.square(a, skipFinalSub = true)
+    a *= t
+  of 4:
+    a.square_repeated(2)
+  of 5:
+    var t {.noInit.}: typeof(a)
+    t.square_repeated(a, 2, skipFinalSub = true)
+    a *= t
+  of 6:
+    var t {.noInit.}: typeof(a)
+    t.square(a, skipFinalSub = true)
+    t.prod(t, a, skipFinalSub = true) # 3
+    a.square(t)
+  of 7:
+    var t {.noInit.}: typeof(a)
+    t.square(a, skipFinalSub = true)
+    a.prod(a, t, skipFinalSub = true) # 3
+    t.square(skipFinalSub = true)  # 4
+    a *= t
+  of 8:
+    a.square_repeated(3)
+  of 9:
+    var t {.noInit.}: typeof(a)
+    t.square_repeated(a, 3, skipFinalSub = true)
+    a *= t
+  of 10:
+    var t {.noInit.}: typeof(a)
+    t.square_repeated(a, 2, skipFinalSub = true)  # 4
+    a.prod(a, t, skipFinalSub = true)             # 5
+    a.square()
+  of 11:
+    var t {.noInit.}: typeof(a)
+    t.square_repeated(a, 2, skipFinalSub = true)  # 4
+    t.prod(t, a, skipFinalSub = true)             # 5
+    t.square(skipFinalSub = true)                 # 10
+    a *= t
+  of 12:
+    var t {.noInit.}: typeof(a)
+    t.square(a, skipFinalSub = true)
+    t.prod(t, a, skipFinalSub = true)  # 3
+    t.square(skipFinalSub = true)      # 6
+    a.square(t)                        # 12
+  of 13:
+    var t1 {.noInit.}, t2 {.noInit.}: typeof(a)
+    t1.square_repeated(a, 2, skipFinalSub = true) # 4
+    t2.square(t1, skipFinalSub = true)            # 8
+    t1.prod(t1, t2, skipFinalSub = true)          # 12
+    a *= t1                                       # 13
+  of 14:
+    var t {.noInit.}: typeof(a)
+    t.square(a, skipFinalSub = true)   # 2
+    a *= t                             # 3
+    t.square_repeated(2, skipFinalSub = true) # 8
+    a.square(skipFinalSub = true)      # 6
+    a *= t                             # 14
+  of 15:
+    var t {.noInit.}: typeof(a)
+    t.square(a, skipFinalSub = true)
+    t.prod(t, a, skipFinalSub = true)            # 3
+    a.square_repeated(t, 2, skipFinalSub = true) # 12
+    a *= t                                       # 15
+  of 16:
+    a.square_repeated(4, skipFinalSub = true)
+  else:
+    doAssert false, "exponentiation by this small int '" & $exponent & "' is not implemented"
+
+func pow_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[VarTime], meter.} =
+  if exponent <= 16:
+    a.pow_addchain_4bit_vartime(exponent)
+  else:
+    a.pow_squareMultiply_vartime(exponent)
+
+func computeSparsePowers_vartime*[Name](
+      dst: ptr UncheckedArray[FF[Name]],
+      base: FF[Name],
+      sparsePowers: ptr UncheckedArray[SomeUnsignedInt],
+      len: int) =
+  ## Compute sparse powers of base
+  ## sparsePowers MUST be ordered in ascending powers.
+  ## Both `dst` and sparsePowers are of length `len`
+  if len >= 1:
+    dst[0].pow_vartime(sparsePowers[0])
+  for i in 1 ..< len:
+    dst[i] = dst[i-1]
+    dst[i].pow_vartime(sparsePowers[i]-sparsePowers[i-1])
+
+func computePowers*[Name](dst: ptr UncheckedArray[FF[Name]], base: FF[Name], len: int) =
+  ## We need linearly independent random numbers
+  ## for batch proof sampling.
+  ## Powers are linearly independent.
+  ## It's also likely faster than calling a fast RNG + modular reduction
+  ## to be in 0 < number < curve_order
+  ## since modular reduction needs modular multiplication or a division anyway.
+  let N = len
+  if N >= 1:
+    dst[0].setOne()
+  if N >= 2:
+    dst[1] = base
+  for i in 2 ..< N:
+    dst[i].prod(dst[i-1], base)
+
+# ############################################################
+#
 #            Field arithmetic ergonomic macros
 #
 # ############################################################
@@ -593,24 +806,170 @@ macro addchain*(fn: untyped): untyped =
 
 # ############################################################
 #
-#                   **Variable-Time**
+#                   Batch operations
 #
 # ############################################################
 
-func inv_vartime*(r: var FF, a: FF) {.tags: [VarTime].} =
-  ## Variable-time Inversion modulo p
-  ##
-  ## The inverse of 0 is 0.
-  ## Incidentally this avoids extra check
-  ## to convert Jacobian and Projective coordinates
-  ## to affine for elliptic curve
-  r.mres.invmod_vartime(a.mres, FF.getR2modP(), FF.fieldMod())
+func batchFromField*[N, Name](
+      dst: ptr UncheckedArray[BigInt[N]],
+      src: ptr UncheckedArray[FF[Name]],
+      len: int) {.inline.} =
+  for i in 0 ..< len:
+    dst[i].fromField(src[i])
 
-func inv_vartime*(a: var FF) {.tags: [VarTime].} =
-  ## Variable-time Inversion modulo p
+func batchInv*[F](
+        dst: ptr UncheckedArray[F],
+        elements: ptr UncheckedArray[F],
+        N: int) {.noInline.} =
+  ## Batch inversion
+  ## If an element is 0, the inverse stored will be 0.
+  var zeros = allocStackArray(SecretBool, N)
+  zeroMem(zeros, N)
+
+  var acc: F
+  acc.setOne()
+
+  for i in 0 ..< N:
+    # Skip zeros
+    zeros[i] = elements[i].isZero()
+    var z = elements[i]
+    z.csetOne(zeros[i])
+
+    dst[i] = acc
+    if i != N-1:
+      acc.prod(acc, z, skipFinalSub = true)
+    else:
+      acc.prod(acc, z, skipFinalSub = false)
+
+  acc.inv()
+
+  for i in countdown(N-1, 0):
+    # Extract 1/elemᵢ
+    dst[i] *= acc
+    dst[i].csetZero(zeros[i])
+
+    # next iteration
+    var eli = elements[i]
+    eli.csetOne(zeros[i])
+    acc.prod(acc, eli, skipFinalSub = true)
+
+func batchInv_vartime*[F](
+        dst: ptr UncheckedArray[F],
+        elements: ptr UncheckedArray[F],
+        N: int) {.noInline.} =
+  ## Batch inversion
+  ## If an element is 0, the inverse stored will be 0.
+
+  if N == 0:
+    return
+  if N == 1:
+    dst[0].inv_vartime(elements[0])
+    return
+
+  var zeros = allocStackArray(bool, N)
+  zeroMem(zeros, N)
+
+  var acc: F
+  acc.setOne()
+
+  for i in 0 ..< N:
+    if elements[i].isZero().bool():
+      zeros[i] = true
+      dst[i].setZero()
+      continue
+
+    dst[i] = acc
+    if i != N-1:
+      acc.prod(acc, elements[i], skipFinalSub = true)
+    else:
+      acc.prod(acc, elements[i], skipFinalSub = false)
+
+  acc.inv_vartime()
+
+  for i in countdown(N-1, 0):
+    if zeros[i] == true:
+      continue
+    dst[i] *= acc
+    acc.prod(acc, elements[i], skipFinalSub = true)
+
+func batchInv*[F](dst: var openArray[F], source: openArray[F]) {.inline.} =
+  debug: doAssert dst.len == source.len
+  batchInv(dst.asUnchecked(), source.asUnchecked(), dst.len)
+
+func batchInv*[N: static int, F](dst: var array[N, F], src: array[N, F]) =
+  batchInv(dst.asUnchecked(), src.asUnchecked(), N)
+
+func batchInv_vartime*[F](dst: var openArray[F], source: openArray[F]) {.inline.} =
+  debug: doAssert dst.len == source.len
+  batchInv_vartime(dst.asUnchecked(), source.asUnchecked(), dst.len)
+
+func batchInv_vartime*[N: static int, F](dst: var array[N, F], src: array[N, F]) =
+  batchInv_vartime(dst.asUnchecked(), src.asUnchecked(), N)
+
+# ############################################################
+#
+#                 Out-of-Place functions
+#
+# ############################################################
+#
+# Except from the constant function getZero, getOne, getMinusOne
+# out-of-place functions are intended for rapid prototyping, debugging and testing.
+#
+# They SHOULD NOT be used in performance-critical subroutines as compilers
+# tend to generate useless memory moves or have difficulties to minimize stack allocation
+# and our types might be large (Fp12 ...)
+# See: https://github.com/mratsim/constantine/issues/145
+
+func getZero*(T: type FF): T {.inline.} =
+  discard
+
+func getOne*(T: type FF): T {.noInit, inline.} =
+  cast[ptr T](T.getMontyOne().unsafeAddr)[]
+
+func getMinusOne*(T: type FF): T {.noInit, inline.} =
+  cast[ptr T](T.getMontyPrimeMinus1().unsafeAddr)[]
+
+func `+`*(a, b: FF): FF {.noInit, inline.} =
+  ## Finite Field addition
   ##
-  ## The inverse of 0 is 0.
-  ## Incidentally this avoids extra check
-  ## to convert Jacobian and Projective coordinates
-  ## to affine for elliptic curve
-  a.inv_vartime(a)
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.sum(a, b)
+
+func `-`*(a, b: FF): FF {.noInit, inline.} =
+  ## Finite Field substraction
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.diff(a, b)
+
+func `*`*(a, b: FF): FF {.noInit, inline.} =
+  ## Finite Field multiplication
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.prod(a, b)
+
+func `^`*(a: FF, b: FF or BigInt or openArray[byte]): FF {.noInit, inline.} =
+  ## Finite Field exponentiation
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.pow(a, b)
+
+func `~^`*(a: FF, b: FF or BigInt or openArray[byte]): FF {.noInit, inline.} =
+  ## Finite Field vartime exponentiation
+  ##
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines as compilers
+  ## tend to generate useless memory moves or have difficulties to minimize stack allocation
+  ## and our types might be large (Fp12 ...)
+  ## See: https://github.com/mratsim/constantine/issues/145
+  result.pow_vartime(a, b)

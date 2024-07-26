@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/isa/simd_x86,
-  ../../platforms/primitives,
+  constantine/platforms/x86/simd_x86,
+  constantine/platforms/primitives,
   ./sha256_generic
 
 {.localpassC:"-msse4.1 -msha".}
@@ -42,7 +42,7 @@ func hashMessageBlocks_shaext*(
   ## Hash a message block by block
   ## Sha256 block size is 64 bytes hence
   ## a message will be process 64 by 64 bytes.
-  
+
   var
     abef_save {.noInit.}: m128i
     cdgh_save {.noInit.}: m128i
@@ -89,7 +89,7 @@ func hashMessageBlocks_shaext*(
 
     # Rounds 12-59
     msgtmp[3] = shuf_u8x16(loadu_u128(data[16*3].addr), shuf_mask)
-    
+
     staticFor i, 3, 15:
       let prev = (i-1) and 3 # mod 4, we rotate buffers
       let curr =  i    and 3
@@ -115,7 +115,7 @@ func hashMessageBlocks_shaext*(
     state1 = add_u32x4(state1, cdgh_save)
 
     data +%= BlockSize
-  
+
   # The SHA state is stored in this order:
   #   D, C, B, A, H, G, F, E
   #

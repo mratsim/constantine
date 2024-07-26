@@ -7,19 +7,19 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../constantine/platforms/abstractions,
-  ../constantine/math/arithmetic,
-  ../constantine/math/arithmetic/limbs_montgomery,
-  ../constantine/math/config/curves,
-  ../constantine/math/elliptic/[
+  constantine/named/algebras,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/arithmetic/limbs_montgomery,
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_jacobian_extended,
     ec_twistededwards_affine,
     ec_twistededwards_projective],
-  ../constantine/math/io/io_bigints,
-  ../constantine/math/extension_fields/towers
+  constantine/math/io/io_bigints,
+  constantine/math/extension_fields/towers
 
 # ############################################################
 #
@@ -147,7 +147,7 @@ func sample_unsafe*[T](rng: var RngState, src: openarray[T]): T =
 #   a deviation of an estimate from the quantity under observation
 
 func reduceViaMont[N: static int, F](reduced: var array[N, SecretWord], unreduced: array[2*N, SecretWord], _: typedesc[F]) =
-  #  reduced.reduce(unreduced, FF.fieldMod())
+  #  reduced.reduce(unreduced, FF.getModulus())
   #  ----------------------------------------
   #  With R ≡ (2^WordBitWidth)^numWords (mod p)
   #  redc2xMont(a) computes a/R (mod p)
@@ -157,10 +157,10 @@ func reduceViaMont[N: static int, F](reduced: var array[N, SecretWord], unreduce
   #  so for 384-bit prime (6-words on 64-bit CPUs), so 6*6 = 36, twice for multiplication and reduction
   #  significantly faster than division which works bit-by-bit due to constant-time requirement
   reduced.redc2xMont(unreduced,                          # a/R
-                     F.fieldMod().limbs, F.getNegInvModWord(),
+                     F.getModulus().limbs, F.getNegInvModWord(),
                      F.getSpareBits())
   reduced.mulMont(reduced, F.getR2modP().limbs,          # (a/R) * R² * R⁻¹ ≡ a (mod p)
-                  F.fieldMod().limbs, F.getNegInvModWord(),
+                  F.getModulus().limbs, F.getNegInvModWord(),
                   F.getSpareBits())
 
 func random_unsafe(rng: var RngState, a: var Limbs) =
@@ -286,19 +286,19 @@ func random_long01Seq(rng: var RngState, a: var ExtensionField) =
 # Elliptic curves
 # ------------------------------------------------------------
 
-type ECP = ECP_ShortW_Aff or ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_JacExt or
-           ECP_TwEdwards_Aff or ECP_TwEdwards_Prj
-type ECP_ext = ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_JacExt or
-               ECP_TwEdwards_Prj
+type ECP = EC_ShortW_Aff or EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_JacExt or
+           EC_TwEdw_Aff or EC_TwEdw_Prj
+type ECP_ext = EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_JacExt or
+               EC_TwEdw_Prj
 
 template trySetFromCoord[F](a: ECP, fieldElem: F): SecretBool =
-  when a is (ECP_ShortW_Aff or ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_JacExt):
+  when a is (EC_ShortW_Aff or EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_JacExt):
     trySetFromCoordX(a, fieldElem)
   else:
     trySetFromCoordY(a, fieldElem)
 
 template trySetFromCoords[F](a: ECP, fieldElem, scale: F): SecretBool =
-  when a is (ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_JacExt):
+  when a is (EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_JacExt):
     trySetFromCoordsXandZ(a, fieldElem, scale)
   else:
     trySetFromCoordsYandZ(a, fieldElem, scale)
@@ -437,6 +437,12 @@ func random_long01Seq_with_randZ*(rng: var RngState, T: typedesc[ECP_ext]): T =
   ## Create a random curve element with a random Z coordinate
   ## Skewed towards long bitstrings of 0 or 1
   rng.random_long01Seq_with_randZ(result)
+
+func random_unsafe*[T](rng: var RngState, a: var openArray[T]) =
+  ## Initialize an array or sequence of T
+  ## with random values
+  for elem in a.mitems():
+    elem = rng.random_unsafe(typeof(elem))
 
 # Byte sequences
 # ------------------------------------------------------------

@@ -8,9 +8,9 @@
 
 
 import
-  ../../platforms/abstractions,
-  ../arithmetic,
-  ../io/io_bigints,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/io/io_bigints,
   ./towers
 
 # ############################################################

@@ -10,12 +10,12 @@ import
   # Standard library
   std/[unittest, times],
   # Internal
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/io/[io_bigints, io_fields],
-  ../../constantine/math/config/curves,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/io/[io_bigints, io_fields],
+  constantine/named/algebras,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 const Iters = 24
 
@@ -25,16 +25,16 @@ rng.seed(seed)
 echo "\n------------------------------------------------------\n"
 echo "test_fr xoshiro512** seed: ", seed
 
-proc sanity(C: static Curve) =
-  test "Fr: Squaring 0,1,2 with "& $Fr[C] & " [FastSquaring = " & $(Fr[C].getSpareBits() >= 2) & "]":
+proc sanity(Name: static Algebra) =
+  test "Fr: Squaring 0,1,2 with "& $Fr[Name] & " [FastSquaring = " & $(Fr[Name].getSpareBits() >= 2) & "]":
         block: # 0² mod
-          var n: Fr[C]
+          var n: Fr[Name]
 
           n.fromUint(0'u32)
           let expected = n
 
           # Out-of-place
-          var r: Fr[C]
+          var r: Fr[Name]
           r.square(n)
           # In-place
           n.square()
@@ -44,13 +44,13 @@ proc sanity(C: static Curve) =
             bool(n == expected)
 
         block: # 1² mod
-          var n: Fr[C]
+          var n: Fr[Name]
 
           n.fromUint(1'u32)
           let expected = n
 
           # Out-of-place
-          var r: Fr[C]
+          var r: Fr[Name]
           r.square(n)
           # In-place
           n.square()
@@ -60,13 +60,13 @@ proc sanity(C: static Curve) =
             bool(n == expected)
 
         block: # 2² mod
-          var n, expected: Fr[C]
+          var n, expected: Fr[Name]
 
           n.fromUint(2'u32)
           expected.fromUint(4'u32)
 
           # Out-of-place
-          var r: Fr[C]
+          var r: Fr[Name]
           r.square(n)
           # In-place
           n.square()
@@ -82,30 +82,30 @@ proc mainSanity() =
 
 mainSanity()
 
-proc randomCurve(C: static Curve) =
-  let a = rng.random_unsafe(Fr[C])
+proc randomCurve(Name: static Algebra) =
+  let a = rng.random_unsafe(Fr[Name])
 
-  var r_mul, r_sqr: Fr[C]
-
-  r_mul.prod(a, a)
-  r_sqr.square(a)
-
-  doAssert bool(r_mul == r_sqr)
-
-proc randomHighHammingWeight(C: static Curve) =
-  let a = rng.random_highHammingWeight(Fr[C])
-
-  var r_mul, r_sqr: Fr[C]
+  var r_mul, r_sqr: Fr[Name]
 
   r_mul.prod(a, a)
   r_sqr.square(a)
 
   doAssert bool(r_mul == r_sqr)
 
-proc random_long01Seq(C: static Curve) =
-  let a = rng.random_long01Seq(Fr[C])
+proc randomHighHammingWeight(Name: static Algebra) =
+  let a = rng.random_highHammingWeight(Fr[Name])
 
-  var r_mul, r_sqr: Fr[C]
+  var r_mul, r_sqr: Fr[Name]
+
+  r_mul.prod(a, a)
+  r_sqr.square(a)
+
+  doAssert bool(r_mul == r_sqr)
+
+proc random_long01Seq(Name: static Algebra) =
+  let a = rng.random_long01Seq(Fr[Name])
+
+  var r_mul, r_sqr: Fr[Name]
 
   r_mul.prod(a, a)
   r_sqr.square(a)

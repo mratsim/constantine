@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/primitives
+  constantine/platforms/primitives
 
 # SHA256, a hash function from the SHA2 family
 # --------------------------------------------------------------------------------

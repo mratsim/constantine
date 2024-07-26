@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../../constantine/math/config/curves,
-  ../../constantine/math/elliptic/ec_shortweierstrass_projective,
-  ../../constantine/math/extension_fields,
+  constantine/named/algebras,
+  constantine/math/elliptic/ec_shortweierstrass_projective,
+  constantine/math/extension_fields,
   # Test utilities
   ./t_ec_template
 
@@ -18,7 +18,7 @@ const
   Iters = 12
 
 run_EC_mixed_add_impl(
-    ec = ECP_ShortW_Prj[Fp2[BLS12_381], G2],
+    ec = EC_ShortW_Prj[Fp2[BLS12_381], G2],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_mixed_add_" & $BLS12_381
   )

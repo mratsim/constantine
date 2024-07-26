@@ -10,14 +10,14 @@ import
   # Standard library
   std/[tables, unittest, times],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/io/io_extfields,
-  ../../constantine/math/pairings/lines_eval,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/named/algebras,
+  constantine/math/io/io_extfields,
+  constantine/math/pairings/lines_eval,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 const
   Iters = 8
@@ -50,13 +50,13 @@ func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, no
 
 suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent with dense 𝔽p12 mul":
   test "Dense 𝔽p4 by Sparse 0y":
-    proc test_fp4_0y(C: static Curve, gen: static RandomGen) =
+    proc test_fp4_0y(Name: static Algebra, gen: static RandomGen) =
       for _ in 0 ..< Iters:
-        let a = rng.random_elem(Fp4[C], gen)
-        let y = rng.random_elem(Fp2[C], gen)
-        let b = Fp4[C](coords: [Fp2[C](), y])
+        let a = rng.random_elem(Fp4[Name], gen)
+        let y = rng.random_elem(Fp2[Name], gen)
+        let b = Fp4[Name](coords: [Fp2[Name](), y])
 
-        var r, r2: Fp4[C]
+        var r, r2: Fp4[Name]
 
         r.prod(a, b)
         r2.mul_sparse_by_0y(a, y)
@@ -69,13 +69,13 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
       test_fp4_0y(curve, gen = Long01Sequence)
 
   test "Dense 𝔽p6 by Sparse 0y0":
-    proc test_fp6_0y0(C: static Curve, gen: static RandomGen) =
+    proc test_fp6_0y0(Name: static Algebra, gen: static RandomGen) =
       for _ in 0 ..< Iters:
-        let a = rng.random_elem(Fp6[C], gen)
-        let y = rng.random_elem(Fp2[C], gen)
-        let b = Fp6[C](coords: [Fp2[C](), y, Fp2[C]()])
+        let a = rng.random_elem(Fp6[Name], gen)
+        let y = rng.random_elem(Fp2[Name], gen)
+        let b = Fp6[Name](coords: [Fp2[Name](), y, Fp2[Name]()])
 
-        var r, r2: Fp6[C]
+        var r, r2: Fp6[Name]
 
         r.prod(a, b)
         r2.mul_sparse_by_0y0(a, y)
@@ -88,14 +88,14 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
       test_fp6_0y0(curve, gen = Long01Sequence)
 
   test "Dense 𝔽p6 by Sparse xy0":
-    proc test_fp6_xy0(C: static Curve, gen: static RandomGen) =
+    proc test_fp6_xy0(Name: static Algebra, gen: static RandomGen) =
       for _ in 0 ..< Iters:
-        let a = rng.random_elem(Fp6[C], gen)
-        let x = rng.random_elem(Fp2[C], gen)
-        let y = rng.random_elem(Fp2[C], gen)
-        let b = Fp6[C](coords: [x, y, Fp2[C]()])
+        let a = rng.random_elem(Fp6[Name], gen)
+        let x = rng.random_elem(Fp2[Name], gen)
+        let y = rng.random_elem(Fp2[Name], gen)
+        let b = Fp6[Name](coords: [x, y, Fp2[Name]()])
 
-        var r, r2: Fp6[C]
+        var r, r2: Fp6[Name]
 
         r.prod(a, b)
         r2.mul_sparse_by_xy0(a, x, y)
@@ -108,14 +108,14 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
       test_fp6_xy0(curve, gen = Long01Sequence)
 
   test "Dense 𝔽p6 by Sparse 0yz":
-    proc test_fp6_0yz(C: static Curve, gen: static RandomGen) =
+    proc test_fp6_0yz(Name: static Algebra, gen: static RandomGen) =
       for _ in 0 ..< Iters:
-        let a = rng.random_elem(Fp6[C], gen)
-        let y = rng.random_elem(Fp2[C], gen)
-        let z = rng.random_elem(Fp2[C], gen)
-        let b = Fp6[C](coords: [Fp2[C](), y, z])
+        let a = rng.random_elem(Fp6[Name], gen)
+        let y = rng.random_elem(Fp2[Name], gen)
+        let z = rng.random_elem(Fp2[Name], gen)
+        let b = Fp6[Name](coords: [Fp2[Name](), y, z])
 
-        var r, r2: Fp6[C]
+        var r, r2: Fp6[Name]
 
         r.prod(a, b)
         r2.mul_sparse_by_0yz(a, y, z)
@@ -131,20 +131,20 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
     # =========== Towering 𝔽p12/𝔽p6 ======================================
 
     test "Sparse 𝔽p12/𝔽p6 resulting from a00bc0 line function":
-      proc test_fp12_a00bc0(C: static Curve, gen: static RandomGen) =
-        when C.getSexticTwist() == D_Twist:
+      proc test_fp12_a00bc0(Name: static Algebra, gen: static RandomGen) =
+        when Name.getSexticTwist() == D_Twist:
           for _ in 0 ..< Iters:
-            var a = rng.random_elem(Fp12[C], gen)
+            var a = rng.random_elem(Fp12[Name], gen)
             var a2 = a
 
-            var x = rng.random_elem(Fp2[C], gen)
-            var y = rng.random_elem(Fp2[C], gen)
-            var z = rng.random_elem(Fp2[C], gen)
+            var x = rng.random_elem(Fp2[Name], gen)
+            var y = rng.random_elem(Fp2[Name], gen)
+            var z = rng.random_elem(Fp2[Name], gen)
 
-            let line = Line[Fp2[C]](a: x, b: y, c: z)
-            let b = Fp12[C]( coords: [
-              Fp6[C](coords: [ x, Fp2[C](), Fp2[C]()]),
-              Fp6[C](coords: [ y,        z, Fp2[C]()])
+            let line = Line[Fp2[Name]](a: x, b: y, c: z)
+            let b = Fp12[Name]( coords: [
+              Fp6[Name](coords: [ x, Fp2[Name](), Fp2[Name]()]),
+              Fp6[Name](coords: [ y,        z, Fp2[Name]()])
             ])
 
             a *= b
@@ -158,20 +158,20 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
           test_fp12_a00bc0(curve, gen = Long01Sequence)
 
     test "Sparse 𝔽p12/𝔽p6 resulting from cb00a0 line function":
-      proc test_fp12_cb00a0(C: static Curve, gen: static RandomGen) =
-        when C.getSexticTwist() == M_Twist:
+      proc test_fp12_cb00a0(Name: static Algebra, gen: static RandomGen) =
+        when Name.getSexticTwist() == M_Twist:
           for _ in 0 ..< Iters:
-            var a = rng.random_elem(Fp12[C], gen)
+            var a = rng.random_elem(Fp12[Name], gen)
             var a2 = a
 
-            var x = rng.random_elem(Fp2[C], gen)
-            var y = rng.random_elem(Fp2[C], gen)
-            var z = rng.random_elem(Fp2[C], gen)
+            var x = rng.random_elem(Fp2[Name], gen)
+            var y = rng.random_elem(Fp2[Name], gen)
+            var z = rng.random_elem(Fp2[Name], gen)
 
-            let line = Line[Fp2[C]](a: x, b: y, c: z)
-            let b = Fp12[C](coords: [
-              Fp6[C](coords: [       z, y, Fp2[C]()]),
-              Fp6[C](coords: [Fp2[C](), x, Fp2[C]()])
+            let line = Line[Fp2[Name]](a: x, b: y, c: z)
+            let b = Fp12[Name](coords: [
+              Fp6[Name](coords: [       z, y, Fp2[Name]()]),
+              Fp6[Name](coords: [Fp2[Name](), x, Fp2[Name]()])
             ])
 
             a *= b
@@ -185,34 +185,34 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
           test_fp12_cb00a0(curve, gen = Long01Sequence)
 
     test "Somewhat-sparse 𝔽p12/𝔽p6 resulting from a00bc0*a00bc0 line functions (D-twist only)":
-      proc test_fp12_a00bc0_a00bc0(C: static Curve, gen: static RandomGen) =
-        when C.getSexticTwist() == D_Twist:
+      proc test_fp12_a00bc0_a00bc0(Name: static Algebra, gen: static RandomGen) =
+        when Name.getSexticTwist() == D_Twist:
           for _ in 0 ..< Iters:
-            var x0 = rng.random_elem(Fp2[C], gen)
-            var y0 = rng.random_elem(Fp2[C], gen)
-            var z0 = rng.random_elem(Fp2[C], gen)
+            var x0 = rng.random_elem(Fp2[Name], gen)
+            var y0 = rng.random_elem(Fp2[Name], gen)
+            var z0 = rng.random_elem(Fp2[Name], gen)
 
-            let line0 = Line[Fp2[C]](a: x0, b: y0, c: z0)
-            let f0 = Fp12[C]( coords: [
-              Fp6[C](coords: [ x0, Fp2[C](), Fp2[C]()]),
-              Fp6[C](coords: [ y0,       z0, Fp2[C]()])
+            let line0 = Line[Fp2[Name]](a: x0, b: y0, c: z0)
+            let f0 = Fp12[Name]( coords: [
+              Fp6[Name](coords: [ x0, Fp2[Name](), Fp2[Name]()]),
+              Fp6[Name](coords: [ y0,       z0, Fp2[Name]()])
             ])
 
 
-            var x1 = rng.random_elem(Fp2[C], gen)
-            var y1 = rng.random_elem(Fp2[C], gen)
-            var z1 = rng.random_elem(Fp2[C], gen)
+            var x1 = rng.random_elem(Fp2[Name], gen)
+            var y1 = rng.random_elem(Fp2[Name], gen)
+            var z1 = rng.random_elem(Fp2[Name], gen)
 
-            let line1 = Line[Fp2[C]](a: x1, b: y1, c: z1)
-            let f1 = Fp12[C]( coords: [
-              Fp6[C](coords: [ x1, Fp2[C](), Fp2[C]()]),
-              Fp6[C](coords: [ y1,       z1, Fp2[C]()])
+            let line1 = Line[Fp2[Name]](a: x1, b: y1, c: z1)
+            let f1 = Fp12[Name]( coords: [
+              Fp6[Name](coords: [ x1, Fp2[Name](), Fp2[Name]()]),
+              Fp6[Name](coords: [ y1,       z1, Fp2[Name]()])
             ])
 
-            var r: Fp12[C]
+            var r: Fp12[Name]
             r.prod(f0, f1)
 
-            var rl: Fp12[C]
+            var rl: Fp12[Name]
             rl.prod_x00yz0_x00yz0_into_abcdefghij00(line0, line1)
 
             check: bool(r == rl)
@@ -223,33 +223,33 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         test_fp12_a00bc0_a00bc0(curve, gen = Long01Sequence)
 
     test "Somewhat-sparse 𝔽p12/𝔽p6 resulting from cb00a0*cb00a0 line functions (M-twist only)":
-      proc test_fp12_cb00a0_cb00a0(C: static Curve, gen: static RandomGen) =
-        when C.getSexticTwist() == M_Twist:
+      proc test_fp12_cb00a0_cb00a0(Name: static Algebra, gen: static RandomGen) =
+        when Name.getSexticTwist() == M_Twist:
           for _ in 0 ..< Iters:
-            var x0 = rng.random_elem(Fp2[C], gen)
-            var y0 = rng.random_elem(Fp2[C], gen)
-            var z0 = rng.random_elem(Fp2[C], gen)
+            var x0 = rng.random_elem(Fp2[Name], gen)
+            var y0 = rng.random_elem(Fp2[Name], gen)
+            var z0 = rng.random_elem(Fp2[Name], gen)
 
-            let line0 = Line[Fp2[C]](a: x0, b: y0, c: z0)
-            let f0 = Fp12[C](coords: [
-              Fp6[C](coords: [      z0, y0, Fp2[C]()]),
-              Fp6[C](coords: [Fp2[C](), x0, Fp2[C]()])
+            let line0 = Line[Fp2[Name]](a: x0, b: y0, c: z0)
+            let f0 = Fp12[Name](coords: [
+              Fp6[Name](coords: [      z0, y0, Fp2[Name]()]),
+              Fp6[Name](coords: [Fp2[Name](), x0, Fp2[Name]()])
             ])
 
-            var x1 = rng.random_elem(Fp2[C], gen)
-            var y1 = rng.random_elem(Fp2[C], gen)
-            var z1 = rng.random_elem(Fp2[C], gen)
+            var x1 = rng.random_elem(Fp2[Name], gen)
+            var y1 = rng.random_elem(Fp2[Name], gen)
+            var z1 = rng.random_elem(Fp2[Name], gen)
 
-            let line1 = Line[Fp2[C]](a: x1, b: y1, c: z1)
-            let f1 = Fp12[C](coords: [
-              Fp6[C](coords: [      z1, y1, Fp2[C]()]),
-              Fp6[C](coords: [Fp2[C](), x1, Fp2[C]()])
+            let line1 = Line[Fp2[Name]](a: x1, b: y1, c: z1)
+            let f1 = Fp12[Name](coords: [
+              Fp6[Name](coords: [      z1, y1, Fp2[Name]()]),
+              Fp6[Name](coords: [Fp2[Name](), x1, Fp2[Name]()])
             ])
 
-            var r: Fp12[C]
+            var r: Fp12[Name]
             r.prod(f0, f1)
 
-            var rl: Fp12[C]
+            var rl: Fp12[Name]
             rl.prod_zy00x0_zy00x0_into_abcdef00ghij(line0, line1)
 
             check: bool(r == rl)
@@ -260,38 +260,38 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         test_fp12_cb00a0_cb00a0(curve, gen = Long01Sequence)
 
     test "Somewhat-sparse 𝔽p12/𝔽p6 mul by the product a00bc0*a00bc0 of line functions (D-twist only)":
-      proc test_fp12_abcdefghij00(C: static Curve, gen: static RandomGen) =
-        when C.getSexticTwist() == D_Twist:
+      proc test_fp12_abcdefghij00(Name: static Algebra, gen: static RandomGen) =
+        when Name.getSexticTwist() == D_Twist:
           for _ in 0 ..< Iters:
-            var x0 = rng.random_elem(Fp2[C], gen)
-            var y0 = rng.random_elem(Fp2[C], gen)
-            var z0 = rng.random_elem(Fp2[C], gen)
+            var x0 = rng.random_elem(Fp2[Name], gen)
+            var y0 = rng.random_elem(Fp2[Name], gen)
+            var z0 = rng.random_elem(Fp2[Name], gen)
 
-            let line0 = Line[Fp2[C]](a: x0, b: y0, c: z0)
-            let f0 = Fp12[C]( coords: [
-              Fp6[C](coords: [ x0, Fp2[C](), Fp2[C]()]),
-              Fp6[C](coords: [ y0,       z0, Fp2[C]()])
+            let line0 = Line[Fp2[Name]](a: x0, b: y0, c: z0)
+            let f0 = Fp12[Name]( coords: [
+              Fp6[Name](coords: [ x0, Fp2[Name](), Fp2[Name]()]),
+              Fp6[Name](coords: [ y0,       z0, Fp2[Name]()])
             ])
 
 
-            var x1 = rng.random_elem(Fp2[C], gen)
-            var y1 = rng.random_elem(Fp2[C], gen)
-            var z1 = rng.random_elem(Fp2[C], gen)
+            var x1 = rng.random_elem(Fp2[Name], gen)
+            var y1 = rng.random_elem(Fp2[Name], gen)
+            var z1 = rng.random_elem(Fp2[Name], gen)
 
-            let line1 = Line[Fp2[C]](a: x1, b: y1, c: z1)
-            let f1 = Fp12[C]( coords: [
-              Fp6[C](coords: [ x1, Fp2[C](), Fp2[C]()]),
-              Fp6[C](coords: [ y1,       z1, Fp2[C]()])
+            let line1 = Line[Fp2[Name]](a: x1, b: y1, c: z1)
+            let f1 = Fp12[Name]( coords: [
+              Fp6[Name](coords: [ x1, Fp2[Name](), Fp2[Name]()]),
+              Fp6[Name](coords: [ y1,       z1, Fp2[Name]()])
             ])
 
 
-            var r: Fp12[C]
+            var r: Fp12[Name]
             r.prod(f0, f1)
 
-            var rl: Fp12[C]
+            var rl: Fp12[Name]
             rl.prod_x00yz0_x00yz0_into_abcdefghij00(line0, line1)
 
-            var f = rng.random_elem(Fp12[C], gen)
+            var f = rng.random_elem(Fp12[Name], gen)
             var f2 = f
 
             f *= rl
@@ -305,36 +305,36 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         test_fp12_abcdefghij00(curve, gen = Long01Sequence)
 
     test "Somewhat-sparse 𝔽p12/𝔽p6 mul by the product (cb00a0*cb00a0) of line functions (M-twist only)":
-      proc test_fp12_abcdef00ghij(C: static Curve, gen: static RandomGen) =
-        when C.getSexticTwist() == M_Twist:
+      proc test_fp12_abcdef00ghij(Name: static Algebra, gen: static RandomGen) =
+        when Name.getSexticTwist() == M_Twist:
           for _ in 0 ..< Iters:
-            var x0 = rng.random_elem(Fp2[C], gen)
-            var y0 = rng.random_elem(Fp2[C], gen)
-            var z0 = rng.random_elem(Fp2[C], gen)
+            var x0 = rng.random_elem(Fp2[Name], gen)
+            var y0 = rng.random_elem(Fp2[Name], gen)
+            var z0 = rng.random_elem(Fp2[Name], gen)
 
-            let line0 = Line[Fp2[C]](a: x0, b: y0, c: z0)
-            let f0 = Fp12[C](coords: [
-              Fp6[C](coords: [      z0, y0, Fp2[C]()]),
-              Fp6[C](coords: [Fp2[C](), x0, Fp2[C]()])
+            let line0 = Line[Fp2[Name]](a: x0, b: y0, c: z0)
+            let f0 = Fp12[Name](coords: [
+              Fp6[Name](coords: [      z0, y0, Fp2[Name]()]),
+              Fp6[Name](coords: [Fp2[Name](), x0, Fp2[Name]()])
             ])
 
-            var x1 = rng.random_elem(Fp2[C], gen)
-            var y1 = rng.random_elem(Fp2[C], gen)
-            var z1 = rng.random_elem(Fp2[C], gen)
+            var x1 = rng.random_elem(Fp2[Name], gen)
+            var y1 = rng.random_elem(Fp2[Name], gen)
+            var z1 = rng.random_elem(Fp2[Name], gen)
 
-            let line1 = Line[Fp2[C]](a: x1, b: y1, c: z1)
-            let f1 = Fp12[C](coords: [
-              Fp6[C](coords: [      z1, y1, Fp2[C]()]),
-              Fp6[C](coords: [Fp2[C](), x1, Fp2[C]()])
+            let line1 = Line[Fp2[Name]](a: x1, b: y1, c: z1)
+            let f1 = Fp12[Name](coords: [
+              Fp6[Name](coords: [      z1, y1, Fp2[Name]()]),
+              Fp6[Name](coords: [Fp2[Name](), x1, Fp2[Name]()])
             ])
 
-            var r: Fp12[C]
+            var r: Fp12[Name]
             r.prod(f0, f1)
 
-            var rl: Fp12[C]
+            var rl: Fp12[Name]
             rl.prod_zy00x0_zy00x0_into_abcdef00ghij(line0, line1)
 
-            var f = rng.random_elem(Fp12[C], gen)
+            var f = rng.random_elem(Fp12[Name], gen)
             var f2 = f
 
             f *= rl
@@ -351,22 +351,22 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
     static: doAssert Fp12[BN254_Snarks]().c0.typeof is Fp4
 
     test "Sparse 𝔽p12/𝔽p4 resulting from ca00b0 line function (M-twist only)":
-      proc test_fp12_ca00b0(C: static Curve, gen: static RandomGen) =
-        when C.getSexticTwist() == M_Twist:
+      proc test_fp12_ca00b0(Name: static Algebra, gen: static RandomGen) =
+        when Name.getSexticTwist() == M_Twist:
           for _ in 0 ..< Iters:
-            var a = rng.random_elem(Fp12[C], gen)
+            var a = rng.random_elem(Fp12[Name], gen)
             var a2 = a
 
-            var x = rng.random_elem(Fp2[C], gen)
-            var y = rng.random_elem(Fp2[C], gen)
-            var z = rng.random_elem(Fp2[C], gen)
+            var x = rng.random_elem(Fp2[Name], gen)
+            var y = rng.random_elem(Fp2[Name], gen)
+            var z = rng.random_elem(Fp2[Name], gen)
 
-            let line = Line[Fp2[C]](a: x, b: y, c: z)
-            let b = Fp12[C](
+            let line = Line[Fp2[Name]](a: x, b: y, c: z)
+            let b = Fp12[Name](
               coords: [
-                Fp4[C](coords: [z, x]),
-                Fp4[C](),
-                Fp4[C](coords: [y, Fp2[C]()])
+                Fp4[Name](coords: [z, x]),
+                Fp4[Name](),
+                Fp4[Name](coords: [y, Fp2[Name]()])
               ]
             )
 
@@ -381,22 +381,22 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         test_fp12_ca00b0(curve, gen = Long01Sequence)
 
     test "Sparse 𝔽p12/𝔽p4 resulting from xyz000 line function (D-twist only)":
-      proc test_fp12_acb000(C: static Curve, gen: static RandomGen) =
-        when C.getSexticTwist() == D_Twist:
+      proc test_fp12_acb000(Name: static Algebra, gen: static RandomGen) =
+        when Name.getSexticTwist() == D_Twist:
           for _ in 0 ..< Iters:
-            var a = rng.random_elem(Fp12[C], gen)
+            var a = rng.random_elem(Fp12[Name], gen)
             var a2 = a
 
-            var x = rng.random_elem(Fp2[C], gen)
-            var y = rng.random_elem(Fp2[C], gen)
-            var z = rng.random_elem(Fp2[C], gen)
+            var x = rng.random_elem(Fp2[Name], gen)
+            var y = rng.random_elem(Fp2[Name], gen)
+            var z = rng.random_elem(Fp2[Name], gen)
 
-            let line = Line[Fp2[C]](a: x, b: y, c: z)
-            let b = Fp12[C](
+            let line = Line[Fp2[Name]](a: x, b: y, c: z)
+            let b = Fp12[Name](
               coords: [
-                Fp4[C](coords: [x, z]),
-                Fp4[C](coords: [y, Fp2[C]()]),
-                Fp4[C]()
+                Fp4[Name](coords: [x, z]),
+                Fp4[Name](coords: [y, Fp2[Name]()]),
+                Fp4[Name]()
               ]
             )
 
@@ -411,39 +411,39 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         test_fp12_acb000(curve, gen = Long01Sequence)
 
     test "Somewhat-sparse 𝔽p12/𝔽p4 resulting from ca00b0*ca00b0 line functions (M-twist only)":
-      proc test_fp12_ca00b0_ca00b0(C: static Curve, gen: static RandomGen) =
-        when C.getSexticTwist() == M_Twist:
+      proc test_fp12_ca00b0_ca00b0(Name: static Algebra, gen: static RandomGen) =
+        when Name.getSexticTwist() == M_Twist:
           for _ in 0 ..< Iters:
-            var x0 = rng.random_elem(Fp2[C], gen)
-            var y0 = rng.random_elem(Fp2[C], gen)
-            var z0 = rng.random_elem(Fp2[C], gen)
+            var x0 = rng.random_elem(Fp2[Name], gen)
+            var y0 = rng.random_elem(Fp2[Name], gen)
+            var z0 = rng.random_elem(Fp2[Name], gen)
 
-            let line0 = Line[Fp2[C]](a: x0, b: y0, c: z0)
-            let f0 = Fp12[C](
+            let line0 = Line[Fp2[Name]](a: x0, b: y0, c: z0)
+            let f0 = Fp12[Name](
               coords: [
-                Fp4[C](coords: [z0, x0]),
-                Fp4[C](),
-                Fp4[C](coords: [y0, Fp2[C]()])
+                Fp4[Name](coords: [z0, x0]),
+                Fp4[Name](),
+                Fp4[Name](coords: [y0, Fp2[Name]()])
               ]
             )
 
-            var x1 = rng.random_elem(Fp2[C], gen)
-            var y1 = rng.random_elem(Fp2[C], gen)
-            var z1 = rng.random_elem(Fp2[C], gen)
+            var x1 = rng.random_elem(Fp2[Name], gen)
+            var y1 = rng.random_elem(Fp2[Name], gen)
+            var z1 = rng.random_elem(Fp2[Name], gen)
 
-            let line1 = Line[Fp2[C]](a: x1, b: y1, c: z1)
-            let f1 = Fp12[C](
+            let line1 = Line[Fp2[Name]](a: x1, b: y1, c: z1)
+            let f1 = Fp12[Name](
               coords: [
-                Fp4[C](coords: [z1, x1]),
-                Fp4[C](),
-                Fp4[C](coords: [y1, Fp2[C]()])
+                Fp4[Name](coords: [z1, x1]),
+                Fp4[Name](),
+                Fp4[Name](coords: [y1, Fp2[Name]()])
               ]
             )
 
-            var r: Fp12[C]
+            var r: Fp12[Name]
             r.prod(f0, f1)
 
-            var rl: Fp12[C]
+            var rl: Fp12[Name]
             rl.prod_zx00y0_zx00y0_into_abcd00efghij(line0, line1)
 
             check: bool(r == rl)
@@ -454,39 +454,39 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         test_fp12_ca00b0_ca00b0(curve, gen = Long01Sequence)
 
     test "Somewhat-sparse 𝔽p12/𝔽p4 resulting from acb000*acb000 line functions (D-twist only)":
-      proc test_fp12_acb000_acb000(C: static Curve, gen: static RandomGen) =
-        when C.getSexticTwist() == D_Twist:
+      proc test_fp12_acb000_acb000(Name: static Algebra, gen: static RandomGen) =
+        when Name.getSexticTwist() == D_Twist:
           for _ in 0 ..< Iters:
-            var x0 = rng.random_elem(Fp2[C], gen)
-            var y0 = rng.random_elem(Fp2[C], gen)
-            var z0 = rng.random_elem(Fp2[C], gen)
+            var x0 = rng.random_elem(Fp2[Name], gen)
+            var y0 = rng.random_elem(Fp2[Name], gen)
+            var z0 = rng.random_elem(Fp2[Name], gen)
 
-            let line0 = Line[Fp2[C]](a: x0, b: y0, c: z0)
-            let f0 = Fp12[C](
+            let line0 = Line[Fp2[Name]](a: x0, b: y0, c: z0)
+            let f0 = Fp12[Name](
               coords: [
-                Fp4[C](coords: [x0, z0]),
-                Fp4[C](coords: [y0, Fp2[C]()]),
-                Fp4[C]()
+                Fp4[Name](coords: [x0, z0]),
+                Fp4[Name](coords: [y0, Fp2[Name]()]),
+                Fp4[Name]()
               ]
             )
 
-            var x1 = rng.random_elem(Fp2[C], gen)
-            var y1 = rng.random_elem(Fp2[C], gen)
-            var z1 = rng.random_elem(Fp2[C], gen)
+            var x1 = rng.random_elem(Fp2[Name], gen)
+            var y1 = rng.random_elem(Fp2[Name], gen)
+            var z1 = rng.random_elem(Fp2[Name], gen)
 
-            let line1 = Line[Fp2[C]](a: x1, b: y1, c: z1)
-            let f1 = Fp12[C](
+            let line1 = Line[Fp2[Name]](a: x1, b: y1, c: z1)
+            let f1 = Fp12[Name](
               coords: [
-                Fp4[C](coords: [x1, z1]),
-                Fp4[C](coords: [y1, Fp2[C]()]),
-                Fp4[C]()
+                Fp4[Name](coords: [x1, z1]),
+                Fp4[Name](coords: [y1, Fp2[Name]()]),
+                Fp4[Name]()
               ]
             )
 
-            var r: Fp12[C]
+            var r: Fp12[Name]
             r.prod(f0, f1)
 
-            var rl: Fp12[C]
+            var rl: Fp12[Name]
             rl.prod_xzy000_xzy000_into_abcdefghij00(line0, line1)
 
             check: bool(r == rl)
@@ -497,42 +497,42 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         test_fp12_acb000_acb000(curve, gen = Long01Sequence)
 
     test "Somewhat-sparse 𝔽p12/𝔽p4 mul by the product (acb000*acb000) of line functions (D-twist only)":
-      proc test_fp12_abcdefghij00(C: static Curve, gen: static RandomGen) =
-        when C.getSexticTwist() == D_Twist:
+      proc test_fp12_abcdefghij00(Name: static Algebra, gen: static RandomGen) =
+        when Name.getSexticTwist() == D_Twist:
           for _ in 0 ..< Iters:
-            var x0 = rng.random_elem(Fp2[C], gen)
-            var y0 = rng.random_elem(Fp2[C], gen)
-            var z0 = rng.random_elem(Fp2[C], gen)
+            var x0 = rng.random_elem(Fp2[Name], gen)
+            var y0 = rng.random_elem(Fp2[Name], gen)
+            var z0 = rng.random_elem(Fp2[Name], gen)
 
-            let line0 = Line[Fp2[C]](a: x0, b: y0, c: z0)
-            let f0 = Fp12[C](
+            let line0 = Line[Fp2[Name]](a: x0, b: y0, c: z0)
+            let f0 = Fp12[Name](
               coords: [
-                Fp4[C](coords: [x0, z0]),
-                Fp4[C](coords: [y0, Fp2[C]()]),
-                Fp4[C]()
+                Fp4[Name](coords: [x0, z0]),
+                Fp4[Name](coords: [y0, Fp2[Name]()]),
+                Fp4[Name]()
               ]
             )
 
-            var x1 = rng.random_elem(Fp2[C], gen)
-            var y1 = rng.random_elem(Fp2[C], gen)
-            var z1 = rng.random_elem(Fp2[C], gen)
+            var x1 = rng.random_elem(Fp2[Name], gen)
+            var y1 = rng.random_elem(Fp2[Name], gen)
+            var z1 = rng.random_elem(Fp2[Name], gen)
 
-            let line1 = Line[Fp2[C]](a: x1, b: y1, c: z1)
-            let f1 = Fp12[C](
+            let line1 = Line[Fp2[Name]](a: x1, b: y1, c: z1)
+            let f1 = Fp12[Name](
               coords: [
-                Fp4[C](coords: [x1, z1]),
-                Fp4[C](coords: [y1, Fp2[C]()]),
-                Fp4[C]()
+                Fp4[Name](coords: [x1, z1]),
+                Fp4[Name](coords: [y1, Fp2[Name]()]),
+                Fp4[Name]()
               ]
             )
 
-            var r: Fp12[C]
+            var r: Fp12[Name]
             r.prod(f0, f1)
 
-            var rl: Fp12[C]
+            var rl: Fp12[Name]
             rl.prod_xzy000_xzy000_into_abcdefghij00(line0, line1)
 
-            var f = rng.random_elem(Fp12[C], gen)
+            var f = rng.random_elem(Fp12[Name], gen)
             var f2 = f
 
             f *= rl
@@ -546,42 +546,42 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         test_fp12_abcdefghij00(curve, gen = Long01Sequence)
 
     test "Somewhat-sparse 𝔽p12/𝔽p4 mul by the product (ca00b0*ca00b0) of line functions (M-twist only)":
-      proc test_fp12_abcdef00ghij(C: static Curve, gen: static RandomGen) =
-        when C.getSexticTwist() == M_Twist:
+      proc test_fp12_abcdef00ghij(Name: static Algebra, gen: static RandomGen) =
+        when Name.getSexticTwist() == M_Twist:
           for _ in 0 ..< Iters:
-            var x0 = rng.random_elem(Fp2[C], gen)
-            var y0 = rng.random_elem(Fp2[C], gen)
-            var z0 = rng.random_elem(Fp2[C], gen)
+            var x0 = rng.random_elem(Fp2[Name], gen)
+            var y0 = rng.random_elem(Fp2[Name], gen)
+            var z0 = rng.random_elem(Fp2[Name], gen)
 
-            let line0 = Line[Fp2[C]](a: x0, b: y0, c: z0)
-            let f0 = Fp12[C](
+            let line0 = Line[Fp2[Name]](a: x0, b: y0, c: z0)
+            let f0 = Fp12[Name](
               coords: [
-                Fp4[C](coords: [z0, x0]),
-                Fp4[C](),
-                Fp4[C](coords: [y0, Fp2[C]()])
+                Fp4[Name](coords: [z0, x0]),
+                Fp4[Name](),
+                Fp4[Name](coords: [y0, Fp2[Name]()])
               ]
             )
 
-            var x1 = rng.random_elem(Fp2[C], gen)
-            var y1 = rng.random_elem(Fp2[C], gen)
-            var z1 = rng.random_elem(Fp2[C], gen)
+            var x1 = rng.random_elem(Fp2[Name], gen)
+            var y1 = rng.random_elem(Fp2[Name], gen)
+            var z1 = rng.random_elem(Fp2[Name], gen)
 
-            let line1 = Line[Fp2[C]](a: x1, b: y1, c: z1)
-            let f1 = Fp12[C](
+            let line1 = Line[Fp2[Name]](a: x1, b: y1, c: z1)
+            let f1 = Fp12[Name](
               coords: [
-                Fp4[C](coords: [z1, x1]),
-                Fp4[C](),
-                Fp4[C](coords: [y1, Fp2[C]()])
+                Fp4[Name](coords: [z1, x1]),
+                Fp4[Name](),
+                Fp4[Name](coords: [y1, Fp2[Name]()])
               ]
             )
 
-            var r: Fp12[C]
+            var r: Fp12[Name]
             r.prod(f0, f1)
 
-            var rl: Fp12[C]
+            var rl: Fp12[Name]
             rl.prod_zx00y0_zx00y0_into_abcd00efghij(line0, line1)
 
-            var f = rng.random_elem(Fp12[C], gen)
+            var f = rng.random_elem(Fp12[Name], gen)
             var f2 = f
 
             f *= rl

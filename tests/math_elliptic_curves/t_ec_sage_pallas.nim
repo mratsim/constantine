@@ -8,20 +8,19 @@
 
 import
   # Internals
-  ../../constantine/math/config/curves,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/elliptic/ec_shortweierstrass_jacobian,
-  ../../constantine/math/elliptic/ec_shortweierstrass_projective,
+  constantine/named/algebras,
+  constantine/math/extension_fields,
+  constantine/math/ec_shortweierstrass,
   # Test utilities
   ./t_ec_sage_template
 
-staticFor(bits, [Pallas.getCurveOrderBitwidth()]):
+staticFor(bits, [Fr[Pallas].bits()]):
   run_scalar_mul_test_vs_sage(
-    ECP_ShortW_Prj[Fp[Pallas], G1], bits,
+    EC_ShortW_Prj[Fp[Pallas], G1], bits,
     "t_ec_sage_pallas_g1_projective"
   )
 
   run_scalar_mul_test_vs_sage(
-    ECP_ShortW_Jac[Fp[Pallas], G1], bits,
+    EC_ShortW_Jac[Fp[Pallas], G1], bits,
     "t_ec_sage_pallas_g1_jacobian"
   )

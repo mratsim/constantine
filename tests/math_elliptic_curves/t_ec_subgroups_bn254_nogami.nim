@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../../constantine/math/config/curves,
-  ../../constantine/math/elliptic/ec_shortweierstrass_projective,
-  ../../constantine/math/extension_fields,
+  constantine/named/algebras,
+  constantine/math/elliptic/ec_shortweierstrass_projective,
+  constantine/math/extension_fields,
   # Test utilities
   ./t_ec_template
 
@@ -19,13 +19,13 @@ const
   ItersMul = Iters div 4
 
 run_EC_subgroups_cofactors_impl(
-    ec = ECP_ShortW_Prj[Fp[BN254_Nogami], G1],
+    ec = EC_ShortW_Prj[Fp[BN254_Nogami], G1],
     ItersMul = ItersMul,
     moduleName = "test_ec_subgroups_g1_" & $BN254_Nogami
   )
 
 run_EC_subgroups_cofactors_impl(
-    ec = ECP_ShortW_Prj[Fp2[BN254_Nogami], G2],
+    ec = EC_ShortW_Prj[Fp2[BN254_Nogami], G2],
     ItersMul = ItersMul,
     moduleName = "test_ec_subgroups_g2_" & $BN254_Nogami
   )

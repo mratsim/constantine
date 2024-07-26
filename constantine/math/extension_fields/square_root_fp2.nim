@@ -7,11 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
+  constantine/platforms/abstractions,
   ./towers,
-  ../arithmetic,
-  ../config/curves,
-  ../constants/zoo_square_roots_fp2
+  constantine/math/arithmetic,
+  constantine/named/algebras,
+  constantine/named/zoo_square_roots_fp2
 
 # Square root
 # -----------------------------------------------------------
@@ -58,7 +58,7 @@ func sqrt_rotate_extension*(
   ## This requires the sqrt of sqrt of the quadratic non-residue
   ## to be in Fp2
   var coeff{.noInit.}, cand2{.noInit.}, t{.noInit.}: Fp2
-  const Curve = typeof(a.c0).C
+  const Curve = typeof(a.c0).Name
 
   # We name µ² the quadratic non-residue
   # if p ≡ 3 (mod 4), we have µ = 𝑖 = √-1 and µ² = -1
@@ -191,7 +191,7 @@ func sqrt_if_square*(a: var Fp2): SecretBool =
   ##
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
-  when Fp2.C == BLS12_377:
+  when Fp2.Name == BLS12_377:
     # For BLS12_377,
     # the solution µ to x² - µ = 0 being a quadratic non-residue
     # is also a quadratic non-residue in Fp2, which means

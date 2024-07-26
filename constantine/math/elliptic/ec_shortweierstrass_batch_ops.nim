@@ -7,9 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../arithmetic,
-  ../extension_fields,
+  constantine/named/algebras,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
   ./ec_shortweierstrass_affine,
   ./ec_shortweierstrass_jacobian,
   ./ec_shortweierstrass_projective,
@@ -26,9 +27,9 @@ import
 # ############################################################
 
 func batchAffine*[F, G](
-       affs: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-       projs: ptr UncheckedArray[ECP_ShortW_Prj[F, G]],
-       N: int) {.noInline, tags:[Alloca].} =
+       affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
+       projs: ptr UncheckedArray[EC_ShortW_Prj[F, G]],
+       N: int) {.noInline, tags:[Alloca], meter.} =
   # Algorithm: Montgomery's batch inversion
   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
   #   Section 10.3.1
@@ -81,13 +82,13 @@ func batchAffine*[F, G](
     affs[0].y.prod(projs[0].y, accInv)
 
 func batchAffine*[N: static int, F, G](
-       affs: var array[N, ECP_ShortW_Aff[F, G]],
-       projs: array[N, ECP_ShortW_Prj[F, G]]) {.inline.} =
+       affs: var array[N, EC_ShortW_Aff[F, G]],
+       projs: array[N, EC_ShortW_Prj[F, G]]) {.inline.} =
   batchAffine(affs.asUnchecked(), projs.asUnchecked(), N)
 
 func batchAffine*[F, G](
-       affs: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-       jacs: ptr UncheckedArray[ECP_ShortW_Jac[F, G]],
+       affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
+       jacs: ptr UncheckedArray[EC_ShortW_Jac[F, G]],
        N: int) {.noInline, tags:[Alloca], meter.} =
   # Algorithm: Montgomery's batch inversion
   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
@@ -147,18 +148,18 @@ func batchAffine*[F, G](
     affs[0].y.prod(jacs[0].y, accInv)
 
 func batchAffine*[N: static int, F, G](
-       affs: var array[N, ECP_ShortW_Aff[F, G]],
-       jacs: array[N, ECP_ShortW_Jac[F, G]]) {.inline.} =
+       affs: var array[N, EC_ShortW_Aff[F, G]],
+       jacs: array[N, EC_ShortW_Jac[F, G]]) {.inline.} =
   batchAffine(affs.asUnchecked(), jacs.asUnchecked(), N)
 
 func batchAffine*[M, N: static int, F, G](
-       affs: var array[M, array[N, ECP_ShortW_Aff[F, G]]],
-       projs: array[M, array[N, ECP_ShortW_Prj[F, G]]]) {.inline.} =
+       affs: var array[M, array[N, EC_ShortW_Aff[F, G]]],
+       projs: array[M, array[N, EC_ShortW_Prj[F, G]]]) {.inline.} =
   batchAffine(affs[0].asUnchecked(), projs[0].asUnchecked(), M*N)
 
 func batchAffine*[M, N: static int, F, G](
-       affs: var array[M, array[N, ECP_ShortW_Aff[F, G]]],
-       projs: array[M, array[N, ECP_ShortW_Jac[F, G]]]) {.inline.} =
+       affs: var array[M, array[N, EC_ShortW_Aff[F, G]]],
+       projs: array[M, array[N, EC_ShortW_Jac[F, G]]]) {.inline.} =
   batchAffine(affs[0].asUnchecked(), projs[0].asUnchecked(), M*N)
 
 # ############################################################
@@ -211,30 +212,30 @@ func batchAffine*[M, N: static int, F, G](
 #   Projective addition:       12M      (for curves in the form y² = x³ + b)
 #   Projective mixed addition: 11M      (for curves in the form y² = x³ + b)
 
-func lambdaAdd*[F; G: static Subgroup](lambda_num, lambda_den: var F, P, Q: ECP_ShortW_Aff[F, G]) {.inline.} =
+func lambdaAdd*[F; G: static Subgroup](lambda_num, lambda_den: var F, P, Q: EC_ShortW_Aff[F, G]) {.inline.} =
   ## Compute the slope of the line (PQ)
   lambda_num.diff(Q.y, P.y)
   lambda_den.diff(Q.x, P.x)
 
-func lambdaSub*[F; G: static Subgroup](lambda_num, lambda_den: var F, P, Q: ECP_ShortW_Aff[F, G]) {.inline.} =
+func lambdaSub*[F; G: static Subgroup](lambda_num, lambda_den: var F, P, Q: EC_ShortW_Aff[F, G]) {.inline.} =
   ## Compute the slope of the line (PQ)
   lambda_num.neg(Q.y)
   lambda_num -= P.y
   lambda_den.diff(Q.x, P.x)
 
-func lambdaDouble*[F; G: static Subgroup](lambda_num, lambda_den: var F, P: ECP_ShortW_Aff[F, G]) {.inline.} =
+func lambdaDouble*[F; G: static Subgroup](lambda_num, lambda_den: var F, P: EC_ShortW_Aff[F, G]) {.inline.} =
   ## Compute the tangent at P
   lambda_num.square(P.x)
   lambda_num *= 3
-  when F.C.getCoefA() != 0:
-    t += F.C.getCoefA()
+  when F.Name.getCoefA() != 0:
+    t += F.Name.getCoefA()
 
   lambda_den.double(P.y)
 
 func affineAdd*[F; G: static Subgroup](
-       r{.noAlias.}: var ECP_ShortW_Aff[F, G],
+       r{.noAlias.}: var EC_ShortW_Aff[F, G],
        lambda: F,
-       P, Q: ECP_ShortW_Aff[F, G]) =
+       P, Q: EC_ShortW_Aff[F, G]) =
   ## `r` MUST NOT alias P or Q
   r.x.square(lambda)
   r.x -= P.x
@@ -245,7 +246,7 @@ func affineAdd*[F; G: static Subgroup](
   r.y -= P.y
 
 func accum_half_vartime[F; G: static Subgroup](
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+       points: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
        len: int) {.noInline, tags:[VarTime, Alloca].} =
   ## Affine accumulation of half the points into the other half
   ## Warning ⚠️ : variable-time
@@ -287,7 +288,7 @@ func accum_half_vartime[F; G: static Subgroup](
 
     # Special case 1: infinity points have affine coordinates (0, 0) by convention
     #                 it doesn't match the y²=x³+ax+b equation so slope formula need special handling
-    if points[p].isInf().bool() or points[q].isInf().bool():
+    if points[p].isNeutral().bool() or points[q].isNeutral().bool():
       markSpecialCase()
       continue
 
@@ -320,12 +321,12 @@ func accum_half_vartime[F; G: static Subgroup](
     # As Qy is used as an accumulator, we saved Qy in λᵢ_num
     # For special cases handling, restore it.
     points[q].y = lambdas[i].num
-    if points[p].isInf().bool():
+    if points[p].isNeutral().bool():
       points[i] = points[q]
     elif points[q].x.isZero().bool() and lambdas[i].num.isZero().bool():
       discard "points[q] is infinity => point[p] unchanged"
     else:
-      points[i].setInf()
+      points[i].setNeutral()
 
   for i in countdown(N-1, 1):
     let p = i
@@ -341,7 +342,7 @@ func accum_half_vartime[F; G: static Subgroup](
     points[q].y.prod(points[q].y, lambdas[i].num, skipFinalSub = true)
 
     # Compute EC addition
-    var r{.noInit.}: ECP_ShortW_Aff[F, G]
+    var r{.noInit.}: EC_ShortW_Aff[F, G]
     r.affineAdd(lambda = points[q].y, points[p], points[q])
 
     # Store result
@@ -362,7 +363,7 @@ func accum_half_vartime[F; G: static Subgroup](
       points[q].y.prod(lambdas[0].num, accInv, skipFinalSub = true)
 
       # Compute EC addition
-      var r{.noInit.}: ECP_ShortW_Aff[F, G]
+      var r{.noInit.}: EC_ShortW_Aff[F, G]
       r.affineAdd(lambda = points[q].y, points[p], points[q])
 
       # Store result
@@ -372,8 +373,8 @@ func accum_half_vartime[F; G: static Subgroup](
 # ------------------------------------------------------------
 
 func accumSum_chunk_vartime*[F; G: static Subgroup](
-       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G] or ECP_ShortW_JacExt[F, G]),
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], len: int) {.noInline, tags:[VarTime, Alloca].} =
+       r: var (EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G] or EC_ShortW_JacExt[F, G]),
+       points: ptr UncheckedArray[EC_ShortW_Aff[F, G]], len: int) {.noInline, tags:[VarTime, Alloca].} =
   ## Accumulate `points` into r.
   ## `r` is NOT overwritten
   ## r += ∑ points
@@ -381,8 +382,8 @@ func accumSum_chunk_vartime*[F; G: static Subgroup](
   ## `len` should be chosen so that `len` points
   ## use cache efficiently
 
-  let accumulators = allocStackArray(ECP_ShortW_Aff[F, G], len)
-  let size = len * sizeof(ECP_ShortW_Aff[F, G])
+  let accumulators = allocStackArray(EC_ShortW_Aff[F, G], len)
+  let size = len * sizeof(EC_ShortW_Aff[F, G])
   copyMem(accumulators[0].addr, points[0].unsafeAddr, size)
 
   const minNumPointsSerial = 16
@@ -391,7 +392,7 @@ func accumSum_chunk_vartime*[F; G: static Subgroup](
   while n >= minNumPointsSerial:
     if (n and 1) == 1: # odd number of points
       ## Accumulate the last
-      r.madd_vartime(r, points[n-1])
+      r.mixedSum_vartime(r, points[n-1])
       n -= 1
 
     # Compute [0, n/2) += [n/2, n)
@@ -402,11 +403,11 @@ func accumSum_chunk_vartime*[F; G: static Subgroup](
 
   # Tail
   for i in 0 ..< n:
-    r.madd_vartime(r, points[i])
+    r.mixedSum_vartime(r, points[i])
 
 func accum_batch_vartime[F; G: static Subgroup](
-       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G] or ECP_ShortW_JacExt[F, G]),
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], pointsLen: int) =
+       r: var (EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G] or EC_ShortW_JacExt[F, G]),
+       points: ptr UncheckedArray[EC_ShortW_Aff[F, G]], pointsLen: int) =
   ## Batch accumulation of `points` into `r`
   ## `r` is accumulated into
 
@@ -430,25 +431,25 @@ func accum_batch_vartime[F; G: static Subgroup](
   # as we halve after each chunk.
 
   const maxTempMem = 262144 # 2¹⁸ = 262144
-  const maxStride = maxTempMem div sizeof(ECP_ShortW_Aff[F, G])
+  const maxStride = maxTempMem div sizeof(EC_ShortW_Aff[F, G])
 
   for i in countup(0, pointsLen-1, maxStride):
     let n = min(maxStride, pointsLen - i)
     r.accumSum_chunk_vartime(points +% i, n)
 
 func sum_reduce_vartime*[F; G: static Subgroup](
-       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G] or ECP_ShortW_JacExt[F, G]),
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], pointsLen: int) {.inline, tags:[VarTime, Alloca].} =
+       r: var (EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G] or EC_ShortW_JacExt[F, G]),
+       points: ptr UncheckedArray[EC_ShortW_Aff[F, G]], pointsLen: int) {.inline, tags:[VarTime, Alloca].} =
   ## Batch addition of `points` into `r`
   ## `r` is overwritten
-  r.setInf()
+  r.setNeutral()
   if pointsLen == 0:
     return
   r.accum_batch_vartime(points, pointsLen)
 
 func sum_reduce_vartime*[F; G: static Subgroup](
-       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G] or ECP_ShortW_JacExt[F, G]),
-       points: openArray[ECP_ShortW_Aff[F, G]]) {.inline, tags:[VarTime, Alloca].} =
+       r: var (EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G] or EC_ShortW_JacExt[F, G]),
+       points: openArray[EC_ShortW_Aff[F, G]]) {.inline, tags:[VarTime, Alloca].} =
   ## Batch addition of `points` into `r`
   ## `r` is overwritten
   r.sum_reduce_vartime(points.asUnchecked(), points.len)
@@ -469,11 +470,11 @@ type EcAddAccumulator_vartime*[EC, F; G: static Subgroup; AccumMax: static int] 
   # Do we want alignment guarantees?
   len: uint32
   accum: EC
-  buffer: array[AccumMax, ECP_ShortW_Aff[F, G]]
+  buffer: array[AccumMax, EC_ShortW_Aff[F, G]]
 
 func init*(ctx: var EcAddAccumulator_vartime) =
   static: doAssert EcAddAccumulator_vartime.AccumMax >= 16, "There is no point in a EcAddBatchAccumulator if the batch size is too small"
-  ctx.accum.setInf()
+  ctx.accum.setNeutral()
   ctx.len = 0
 
 func consumeBuffer[EC, F; G: static Subgroup; AccumMax: static int](
@@ -486,9 +487,9 @@ func consumeBuffer[EC, F; G: static Subgroup; AccumMax: static int](
 
 func update*[EC, F, G; AccumMax: static int](
         ctx: var EcAddAccumulator_vartime[EC, F, G, AccumMax],
-        P: ECP_ShortW_Aff[F, G]) =
+        P: EC_ShortW_Aff[F, G]) =
 
-  if P.isInf().bool:
+  if P.isNeutral().bool:
     return
 
   if ctx.len == AccumMax:

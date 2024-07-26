@@ -10,13 +10,13 @@ import
   # Standard library
   std/[tables, unittest, times],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/io/io_extfields,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/named/algebras,
+  constantine/math/io/io_extfields,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 const
   Iters = 8
@@ -47,10 +47,10 @@ func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, no
   else:
     result = rng.random_long01Seq(F)
 
-proc randomSqrtCheck(C: static Curve, gen: RandomGen) =
+proc randomSqrtCheck(Name: static Algebra, gen: RandomGen) =
   for _ in 0 ..< Iters:
-    let a = rng.random_elem(Fp2[C], gen)
-    var na{.noInit.}: Fp2[C]
+    let a = rng.random_elem(Fp2[Name], gen)
+    var na{.noInit.}: Fp2[Name]
     na.neg(a)
 
     var a2 = a

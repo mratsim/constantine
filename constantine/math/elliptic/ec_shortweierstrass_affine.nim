@@ -7,12 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../config/curves,
-  ../arithmetic,
-  ../extension_fields,
-  ../io/[io_fields, io_extfields],
-  ../constants/zoo_constants
+  constantine/platforms/abstractions,
+  constantine/named/algebras,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/math/io/[io_fields, io_extfields],
+  constantine/named/zoo_constants
 
 # No exceptions allowed
 {.push raises: [].}
@@ -29,7 +29,7 @@ type
     G1
     G2
 
-  ECP_ShortW_Aff*[F; G: static Subgroup] = object
+  EC_ShortW_Aff*[F; G: static Subgroup] = object
     ## Elliptic curve point for a curve in Short Weierstrass form
     ##   y² = x³ + a x + b
     ##
@@ -38,22 +38,31 @@ type
 
   SexticNonResidue* = NonResidue
 
-func `==`*(P, Q: ECP_ShortW_Aff): SecretBool =
+template getName*(EC: type EC_ShortW_Aff): untyped =
+  EC.F.Name
+
+template getScalarField*(EC: type EC_ShortW_Aff): untyped =
+  Fr[EC.F.Name]
+
+func `==`*(P, Q: EC_ShortW_Aff): SecretBool =
   ## Constant-time equality check
   result = P.x == Q.x
   result = result and (P.y == Q.y)
 
-func isInf*(P: ECP_ShortW_Aff): SecretBool =
-  ## Returns true if P is an infinity point
-  ## and false otherwise
+func isNeutral*(P: EC_ShortW_Aff): SecretBool =
+  ## Returns true if P is the neutral element / identity element
+  ## and false otherwise, i.e. ∀Q, P+Q == Q
+  ## For Short Weierstrass curves, this is the infinity point.
   result = P.x.isZero() and P.y.isZero()
 
-func setInf*(P: var ECP_ShortW_Aff) =
-  ## Set P to the infinity point
+func setNeutral*(P: var EC_ShortW_Aff) =
+  ## Set P to the neutral element / identity element
+  ## i.e. ∀Q, P+Q == Q
+  ## For Short Weierstrass curves, this is the infinity point.
   P.x.setZero()
   P.y.setZero()
 
-func ccopy*(P: var ECP_ShortW_Aff, Q: ECP_ShortW_Aff, ctl: SecretBool) {.inline.} =
+func ccopy*(P: var EC_ShortW_Aff, Q: EC_ShortW_Aff, ctl: SecretBool) {.inline.} =
   ## Constant-time conditional copy
   ## If ctl is true: Q is copied into P
   ## if ctl is false: Q is not copied and P is unmodified
@@ -69,19 +78,19 @@ func curve_eq_rhs*[F](y2: var F, x: F, G: static Subgroup) =
 
   var t{.noInit.}: F
   t.square(x)
-  when F.C.getCoefA() != 0:
-    t += F.C.getCoefA()
+  when F.Name.getCoefA() != 0:
+    t += F.Name.getCoefA()
   t *= x
 
   when G == G1:
-    when F.C.getCoefB() >= 0:
-      y2.fromUint uint F.C.getCoefB()
+    when F.Name.getCoefB() >= 0:
+      y2.fromUint uint F.Name.getCoefB()
       y2 += t
     else:
-      y2.fromUint uint -F.C.getCoefB()
+      y2.fromUint uint -F.Name.getCoefB()
       y2.diff(t, y2)
   else:
-    y2.sum(F.C.getCoefB_G2(), t)
+    y2.sum(F.Name.getCoefB_G2(), t)
 
 func isOnCurve*[F](x, y: F, G: static Subgroup): SecretBool =
   ## Returns true if the (x, y) coordinates
@@ -94,7 +103,7 @@ func isOnCurve*[F](x, y: F, G: static Subgroup): SecretBool =
   return y2 == rhs
 
 func trySetFromCoordX*[F, G](
-       P: var ECP_ShortW_Aff[F, G],
+       P: var EC_ShortW_Aff[F, G],
        x: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
@@ -105,7 +114,7 @@ func trySetFromCoordX*[F, G](
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
-  ## 
+  ##
   ##       For **test case generation only**,
   ##       this is preferred to generating random point
   ##       via random scalar multiplication of the curve generator
@@ -118,16 +127,16 @@ func trySetFromCoordX*[F, G](
   result = sqrt_if_square(P.y)
   P.x = x
 
-func neg*(P: var ECP_ShortW_Aff, Q: ECP_ShortW_Aff) =
+func neg*(P: var EC_ShortW_Aff, Q: EC_ShortW_Aff) =
   ## Negate ``P``
   P.x = Q.x
   P.y.neg(Q.y)
 
-func neg*(P: var ECP_ShortW_Aff) =
+func neg*(P: var EC_ShortW_Aff) =
   ## Negate ``P``
   P.y.neg()
 
-func cneg*(P: var ECP_ShortW_Aff, ctl: CTBool) =
+func cneg*(P: var EC_ShortW_Aff, ctl: CTBool) =
   ## Conditional negation.
   ## Negate if ``ctl`` is true
   P.y.cneg(ctl)

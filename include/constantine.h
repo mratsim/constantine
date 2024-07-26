@@ -35,7 +35,10 @@
 
 // Protocols
 #include "constantine/protocols/ethereum_bls_signatures.h"
+#include "constantine/protocols/ethereum_bls_signatures_parallel.h"
 #include "constantine/protocols/ethereum_eip4844_kzg.h"
 #include "constantine/protocols/ethereum_eip4844_kzg_parallel.h"
+
+#include "constantine/protocols/ethereum_evm_precompiles.h"
 
 #endif

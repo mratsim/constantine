@@ -8,7 +8,7 @@
 
 import
   # Internal
-  ../../platforms/abstractions,
+  constantine/platforms/abstractions,
   ./limbs, ./limbs_extmul
 
 when UseASM_X86_32:
@@ -663,8 +663,7 @@ func powMontPrologue(
        a: var Limbs, M, one: Limbs,
        m0ninv: BaseType,
        scratchspace: var openarray[Limbs],
-       spareBits: static int
-     ): uint =
+       spareBits: static int): uint =
   ## Setup the scratchspace
   ## Returns the fixed-window size for exponentiation with window optimization.
   result = scratchspace.len.getWindowLen()
@@ -725,9 +724,9 @@ func powMontSquarings(
   let bits = (acc shr (acc_len - k)) and ((1'u shl k) - 1)
   acc_len -= k
 
-  # We have k bits and can do k squaring
+  # We have k bits and can do k squaring, skip final substraction for first k-1 ones.
   for i in 0 ..< k:
-    a.squareMont(a, M, m0ninv, spareBits)
+    a.squareMont(a, M, m0ninv, spareBits) # TODO: skipFinalSub
 
   return (k, bits)
 
@@ -802,8 +801,7 @@ func powMont_vartime*(
        M, one: Limbs,
        m0ninv: BaseType,
        scratchspace: var openarray[Limbs],
-       spareBits: static int
-      ) =
+       spareBits: static int) =
   ## Modular exponentiation a <- a^exponent (mod M)
   ## in the Montgomery domain
   ##

@@ -65,12 +65,15 @@ Protocols are a set of routines, designed for specific goals or a combination th
 
 Constantine supports the following protocols in its public API.
 
-|                                       |        Nim         |            C            | Rust                    |         Go         |
-|---------------------------------------|:------------------:|:-----------------------:|-------------------------|:------------------:|
-| Ethereum BLS signatures               | :white_check_mark: | :building_construction: | :building_construction: |   :see_no_evil:    |
-| Ethereum KZG commitments for EIP-4844 | :white_check_mark: |   :white_check_mark:    | :white_check_mark:      | :white_check_mark: |
-| Ethereum Virtual Machine Precompiles (ECADD, ECMUL, ECPAIRING, MODEXP) | :white_check_mark: | :see_no_evil: | :see_no_evil: | :see_no_evil: | :see_no_evil: |
-| Zk Accel layer for Halo2 proof system (experimental) | not applicable | not applicable | :white_check_mark: | not applicable |
+|                                                                        |           Nim           |         C          | Rust               |         Go         |
+|------------------------------------------------------------------------|:-----------------------:|:------------------:|--------------------|:------------------:|
+| Ethereum BLS signatures                                                |   :white_check_mark:    | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Ethereum KZG commitments for EIP-4844                                  |   :white_check_mark:    | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Ethereum IPA commitments for Verkle Tries                              | :building_construction: |   :see_no_evil:    | :see_no_evil:      |   :see_no_evil:    |
+| Ethereum Virtual Machine BN254 Precompiles ECADD, ECMUL, ECPAIRING     |   :white_check_mark:    | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| EVM BLS12-381 precompiles (EIP-2537)                                   |   :white_check_mark:    | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| EVM Misc: SHA256, modexp                                               |   :white_check_mark:    | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Zk Accel layer for Halo2 proof system (experimental)                   |     not applicable      |   not applicable   | :white_check_mark: |   not applicable   |
 
 ### Elliptic Curves
 
@@ -87,8 +90,8 @@ For all elliptic curves, the following arithmetic is supported
     - on Fr (i.e. modulo the 255-bit curve order)
     - on Fp (i.e. modulo the 381-bit prime modulus)
   - elliptic curve arithmetic:
-    - on elliptic curve over Fp (EC G1) with affine, jacobian and homogenous projective coordinates
-    - on elliptic curve over Fp2 (EC G2) with affine, jacobian and homogenous projective coordinates
+    - on elliptic curve over Fp (EC 𝔾₁) with affine, jacobian and homogenous projective coordinates
+    - on elliptic curve over Fp2 (EC 𝔾₂) with affine, jacobian and homogenous projective coordinates
     - including scalar multiplication, multi-scalar-multiplication (MSM) and parallel MSM
 
 _All operations are constant-time unless explicitly mentioned_ vartime.
@@ -102,7 +105,7 @@ Constantine supports the following hash functions and CSPRNGs in its public API.
 
 |                                                              |        Nim         |         C          | Rust                    |         Go         |
 |--------------------------------------------------------------|:------------------:|:------------------:|-------------------------|:------------------:|
-| SHA256                                                       | :white_check_mark: | :white_check_mark: | :building_construction: |                    |
+| SHA256                                                       | :white_check_mark: | :white_check_mark: | :white_check_mark:      | :white_check_mark: |
 | Cryptographically-secure RNG from Operating System (sysrand) | :white_check_mark: | :white_check_mark: | :white_check_mark:      | :white_check_mark: |
 
 ### Threadpool
@@ -132,9 +135,8 @@ See the following documents on the threadpool performance details, design and re
 
 ## Installation
 
-|                                                                                                                               |
-|:-----------------------------------------------------------------------------------------------------------------------------:|
-| :exclamation: Constantine can be compiled by Nim v1.6.x or v2.0.2 but not Nim v2.0.0 due to a compile-time integer regression |
+> [!IMPORTANT]
+> Constantine can be compiled by Nim v1.6.x, v2.0.2 and v2.0.4 but not Nim v2.0.0 (due to a compile-time evaluation crash)
 
 ### From Rust
 
@@ -142,9 +144,8 @@ See the following documents on the threadpool performance details, design and re
     - Debian/Ubuntu `sudo apt update && sudo apt install build-essential clang`
     - Archlinux `pacman -S base-devel clang`
 
-    |        |                                                                                                                                                                                                                                                                                                                                                                            |
-    |:------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-    | :memo: | We require Clang as it's significantly more performant than GCC for cryptographic code, especially for ARM where Constantine has no assembly optimizations. And Rust, like Clang both rely on LLVM.<br />This can be changed to any C compiler by deleting [this line](https://github.com/mratsim/constantine/blob/8991b16/constantine-rust/constantine-sys/build.rs#L17). |
+    > [!TIP]
+    > We require Clang as it's significantly more performant than GCC for cryptographic code, especially for ARM where Constantine has no assembly optimizations. And Rust, like Clang both rely on LLVM.<br />This can be changed to any C compiler by deleting [this line](https://github.com/mratsim/constantine/blob/8991b16/constantine-rust/constantine-sys/build.rs#L17).
 
 2. Install nim, it is available in most distros package manager for Linux and Homebrew for MacOS
    Windows binaries are on the official website: https://nim-lang.org/install_unix.html
@@ -219,9 +220,9 @@ and modify Constantine's [`build.rs`](https://github.com/mratsim/constantine/blo
     cd constantine-go
     go test -modfile=../go_test.mod
     ```
-    |        |                                                                                                                                    |
-    |:------:|:-----------------------------------------------------------------------------------------------------------------------------------|
-    | :memo: | Constantine uses a separate modfile for tests.<br />It has no dependencies (key to avoid supply chain attacks) except for testing. |
+    > [!IMPORTANT]
+    > Constantine uses a separate modfile for tests.<br />It has no dependencies (key to avoid supply chain attacks) except for testing.
+
 ### From C
 
 1. Install a C compiler, `clang` is recommended, for example:

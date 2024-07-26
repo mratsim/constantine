@@ -10,18 +10,18 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/io/io_extfields,
-  ../../constantine/math/elliptic/[
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/named/algebras,
+  constantine/math/io/io_extfields,
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_scalar_mul],
-  ../../constantine/math/pairings/lines_eval,
+  constantine/math/pairings/lines_eval,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 const
   Iters = 4
@@ -67,12 +67,12 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
 
 suite "Pairing - Line Functions on BLS12-377" & " [" & $WordBitWidth & "-bit words]":
   test "Line double - lt,t(P)":
-    proc test_line_double(C: static Curve, randZ: bool, gen: RandomGen) =
+    proc test_line_double(Name: static Algebra, randZ: bool, gen: RandomGen) =
       for _ in 0 ..< Iters:
-        let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1], gen)
-        var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2], randZ, gen)
-        let Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2], randZ, gen)
-        var l: Line[Fp2[C]]
+        let P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1], gen)
+        var T = rng.random_point(EC_ShortW_Prj[Fp2[Name], G2], randZ, gen)
+        let Q = rng.random_point(EC_ShortW_Prj[Fp2[Name], G2], randZ, gen)
+        var l: Line[Fp2[Name]]
 
         var T2: typeof(Q)
         T2.double(T)
@@ -89,17 +89,17 @@ suite "Pairing - Line Functions on BLS12-377" & " [" & $WordBitWidth & "-bit wor
       test_line_double(curve, randZ = true, gen = Long01Sequence)
 
   test "Line add - lt,q(P)":
-    proc test_line_add(C: static Curve, randZ: bool, gen: RandomGen) =
+    proc test_line_add(Name: static Algebra, randZ: bool, gen: RandomGen) =
       for _ in 0 ..< Iters:
-        let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1], gen)
-        let Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2], randZ, gen)
-        var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2], randZ, gen)
-        var l: Line[Fp2[C]]
+        let P = rng.random_point(EC_ShortW_Aff[Fp[Name], G1], gen)
+        let Q = rng.random_point(EC_ShortW_Prj[Fp2[Name], G2], randZ, gen)
+        var T = rng.random_point(EC_ShortW_Prj[Fp2[Name], G2], randZ, gen)
+        var l: Line[Fp2[Name]]
 
         var TQ{.noInit.}: typeof(T)
         TQ.sum(T, Q)
 
-        var Qaff{.noInit.}: ECP_ShortW_Aff[Fp2[C], G2]
+        var Qaff{.noInit.}: EC_ShortW_Aff[Fp2[Name], G2]
         Qaff.affine(Q)
         l.line_add(T, Qaff, P)
 

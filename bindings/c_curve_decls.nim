@@ -7,12 +7,23 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../constantine/math/config/curves,
-  ../constantine/curves_primitives,
+  constantine/named/algebras,
+  constantine/[
+    lowlevel_bigints,
+    lowlevel_fields,
+    lowlevel_extension_fields,
+    lowlevel_elliptic_curves,
+    hashes
+  ]
 
-  ../constantine/math/extension_fields # generic sandwich
+export algebras,
+       lowlevel_bigints,
+       lowlevel_fields, lowlevel_extension_fields,
+       lowlevel_elliptic_curves,
+       hashes
 
-export curves, curves_primitives, extension_fields
+import constantine/math/extension_fields # generic sandwich
+export extension_fields
 
 # Overview
 # ------------------------------------------------------------
@@ -25,10 +36,10 @@ template genBindingsBig*(Big: untyped) =
   else:
     {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
-  func `ctt _ Big _ unmarshalBE`(dst: var Big, src: openarray[byte]): bool =
+  func `ctt _ Big _ unmarshalBE`(dst: var Big, src: openArray[byte]): bool =
     unmarshalBE(dst, src)
 
-  func `ctt _ Big _ marshalBE`(dst: var openarray[byte], src: Big): bool =
+  func `ctt _ Big _ marshalBE`(dst: var openArray[byte], src: Big): bool =
     marshalBE(dst, src)
 
   {.pop.}
@@ -51,10 +62,10 @@ template genBindingsField*(Big, Field: untyped) =
     fromBig(dst, src)
 
   # --------------------------------------------------------------------------------------
-  func `ctt _ Field _ unmarshalBE`(dst: var Field, src: openarray[byte]): bool =
+  func `ctt _ Field _ unmarshalBE`(dst: var Field, src: openArray[byte]): bool =
     unmarshalBE(dst, src)
 
-  func `ctt _ Field _ marshalBE`(dst: var openarray[byte], src: Field): bool =
+  func `ctt _ Field _ marshalBE`(dst: var openArray[byte], src: Field): bool =
     marshalBE(dst, src)
   # --------------------------------------------------------------------------------------
   func `ctt _ Field _ is_eq`(a, b: Field): SecretBool =
@@ -300,37 +311,37 @@ template genBindingsExtFieldSqrt*(Field: untyped) =
 
   {.pop}
 
-template genBindings_EC_ShortW_Affine*(ECP, Field: untyped) =
+template genBindings_EC_ShortW_Affine*(EC, Field: untyped) =
   when appType == "lib":
     {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:
     {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
   # --------------------------------------------------------------------------------------
-  func `ctt _ ECP _ is_eq`(P, Q: ECP): SecretBool =
+  func `ctt _ EC _ is_eq`(P, Q: EC): SecretBool =
     P == Q
 
-  func `ctt _ ECP _ is_inf`(P: ECP): SecretBool =
-    P.isInf()
+  func `ctt _ EC _ is_neutral`(P: EC): SecretBool =
+    P.isNeutral()
 
-  func `ctt _ ECP _ set_inf`(P: var ECP) =
-    P.setInf()
+  func `ctt _ EC _ set_neutral`(P: var EC) =
+    P.setNeutral()
 
-  func `ctt _ ECP _ ccopy`(P: var ECP, Q: ECP, ctl: SecretBool) =
+  func `ctt _ EC _ ccopy`(P: var EC, Q: EC, ctl: SecretBool) =
     P.ccopy(Q, ctl)
 
-  func `ctt _ ECP _ is_on_curve`(x, y: Field): SecretBool =
-    isOnCurve(x, y, ECP.G)
+  func `ctt _ EC _ is_on_curve`(x, y: Field): SecretBool =
+    isOnCurve(x, y, EC.G)
 
-  func `ctt _ ECP _ neg`(P: var ECP, Q: ECP) =
+  func `ctt _ EC _ neg`(P: var EC, Q: EC) =
     P.neg(Q)
 
-  func `ctt _ ECP _ neg_in_place`(P: var ECP) =
+  func `ctt _ EC _ neg_in_place`(P: var EC) =
     P.neg()
 
   {.pop.}
 
-template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarBig, ScalarField: untyped) =
+template genBindings_EC_ShortW_NonAffine*(EC, EcAff, ScalarBig, ScalarField: untyped) =
   # TODO: remove the need of explicit ScalarBig and ScalarField
 
   when appType == "lib":
@@ -339,95 +350,112 @@ template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarBig, ScalarField: 
     {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
   # --------------------------------------------------------------------------------------
-  func `ctt _ ECP _ is_eq`(P, Q: ECP): SecretBool =
+  func `ctt _ EC _ is_eq`(P, Q: EC): SecretBool =
     P == Q
 
-  func `ctt _ ECP _ is_inf`(P: ECP): SecretBool =
-    P.isInf()
+  func `ctt _ EC _ is_neutral`(P: EC): SecretBool =
+    P.isNeutral()
 
-  func `ctt _ ECP _ set_inf`(P: var ECP) =
-    P.setInf()
+  func `ctt _ EC _ set_neutral`(P: var EC) =
+    P.setNeutral()
 
-  func `ctt _ ECP _ ccopy`(P: var ECP, Q: ECP, ctl: SecretBool) =
+  func `ctt _ EC _ ccopy`(P: var EC, Q: EC, ctl: SecretBool) =
     P.ccopy(Q, ctl)
 
-  func `ctt _ ECP _ neg`(P: var ECP, Q: ECP) =
+  func `ctt _ EC _ neg`(P: var EC, Q: EC) =
     P.neg(Q)
 
-  func `ctt _ ECP _ neg_in_place`(P: var ECP) =
+  func `ctt _ EC _ neg_in_place`(P: var EC) =
     P.neg()
 
-  func `ctt _ ECP _ cneg_in_place`(P: var ECP, ctl: SecretBool) =
+  func `ctt _ EC _ cneg_in_place`(P: var EC, ctl: SecretBool) =
     P.neg()
 
-  func `ctt _ ECP _ sum`(r: var ECP, P, Q: ECP) =
+  func `ctt _ EC _ sum`(r: var EC, P, Q: EC) =
     r.sum(P, Q)
 
-  func `ctt _ ECP _ add_in_place`(P: var ECP, Q: ECP) =
+  func `ctt _ EC _ add_in_place`(P: var EC, Q: EC) =
     P += Q
 
-  func `ctt _ ECP _ diff`(r: var ECP, P, Q: ECP) =
+  func `ctt _ EC _ diff`(r: var EC, P, Q: EC) =
     r.diff(P, Q)
 
-  func `ctt _ ECP _ double`(r: var ECP, P: ECP) =
+  func `ctt _ EC _ double`(r: var EC, P: EC) =
     r.double(P)
 
-  func `ctt _ ECP _ double_in_place`(P: var ECP) =
+  func `ctt _ EC _ double_in_place`(P: var EC) =
     P.double()
 
-  func `ctt _ ECP _ affine`(dst: var ECP_Aff, src: ECP) =
+  func `ctt _ EC _ affine`(dst: var EcAff, src: EC) =
     dst.affine(src)
 
-  func `ctt _ ECP _ from_affine`(dst: var ECP, src: ECP_Aff) =
+  func `ctt _ EC _ from_affine`(dst: var EC, src: EcAff) =
     dst.fromAffine(src)
 
-  func `ctt _ ECP _ batch_affine`(dst: ptr UncheckedArray[ECP_Aff], src: ptr UncheckedArray[ECP], n: csize_t) =
+  func `ctt _ EC _ batch_affine`(dst: ptr UncheckedArray[EcAff], src: ptr UncheckedArray[EC], n: csize_t) =
     dst.batchAffine(src, cast[int](n))
 
-  func `ctt _ ECP _ scalar_mul_big_coef`(
-    P: var ECP, scalar: ScalarBig) =
+  func `ctt _ EC _ scalar_mul_big_coef`(
+    P: var EC, scalar: ScalarBig) =
 
     P.scalarMul(scalar)
 
-  func `ctt _ ECP _ scalar_mul_fr_coef`(
-        P: var ECP, scalar: ScalarField) =
+  func `ctt _ EC _ scalar_mul_fr_coef`(
+        P: var EC, scalar: ScalarField) =
 
-    var big: ScalarBig # TODO: {.noInit.}
-    big.fromField(scalar)
-    P.scalarMul(big)
+    P.scalarMul(scalar)
 
-  func `ctt _ ECP _ scalar_mul_big_coef_vartime`(
-    P: var ECP, scalar: ScalarBig) =
+  func `ctt _ EC _ scalar_mul_big_coef_vartime`(
+    P: var EC, scalar: ScalarBig) =
 
     P.scalarMul_vartime(scalar)
 
-  func `ctt _ ECP _ scalar_mul_fr_coef_vartime`(
-        P: var ECP, scalar: ScalarField) =
+  func `ctt _ EC _ scalar_mul_fr_coef_vartime`(
+        P: var EC, scalar: ScalarField) =
 
-    var big: ScalarBig # TODO: {.noInit.}
-    big.fromField(scalar)
-    P.scalarMul_vartime(big)
+    P.scalarMul_vartime(scalar)
 
-  func `ctt _ ECP _ multi_scalar_mul_big_coefs_vartime`(
-          r: var ECP,
+  func `ctt _ EC _ multi_scalar_mul_big_coefs_vartime`(
+          r: var EC,
           coefs: ptr UncheckedArray[ScalarBig],
-          points: ptr UncheckedArray[ECP_Aff],
+          points: ptr UncheckedArray[EcAff],
           len: csize_t) =
     r.multiScalarMul_vartime(coefs, points, cast[int](len))
 
-  func `ctt _ ECP _ multi_scalar_mul_fr_coefs_vartime`(
-          r: var ECP,
+  func `ctt _ EC _ multi_scalar_mul_fr_coefs_vartime`(
+          r: var EC,
           coefs: ptr UncheckedArray[ScalarField],
-          points: ptr UncheckedArray[ECP_Aff],
+          points: ptr UncheckedArray[EcAff],
           len: csize_t)=
+    r.multiScalarMul_vartime(coefs, points, cast[int](len))
 
-    let n = cast[int](len)
-    let coefs_fr = allocHeapArrayAligned(ScalarBig, n, alignment = 64)
+  {.pop.}
 
-    for i in 0 ..< n:
-      coefs_fr[i].fromField(coefs[i])
-    r.multiScalarMul_vartime(coefs_fr, points, n)
+template genBindings_EC_hash_to_curve*(EC: untyped, mapping, hash: untyped, k: static int) =
+  when appType == "lib":
+    {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
+  else:
+    {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
-    freeHeapAligned(coefs_fr)
+  func `ctt _ EC _ mapping _ hash`(
+        r: var EC,
+        augmentation: openArray[byte],
+        message: openArray[byte],
+        domainSepTag: openArray[byte]) =
+    ## Hashing to Elliptic Curve for `EC`
+    ## with the hash function `hash`
+    ## using the mapping `mapping`
+    ##
+    ## The security parameter used is k = `k`-bit
+    when EC is EC_ShortW_Jac:
+      `hashToCurve _ mapping`(hash, k, r, augmentation, message, domainSepTag)
+    elif EC is EC_ShortW_Prj:
+      var jac {.noInit, inject.}: jacobian(affine(EC)) # inject to workaround jac'gensym codegen in Nim v2.0.8 (not necessary in Nim v2.2.x) - https://github.com/nim-lang/Nim/pull/23801#issue-2393452970
+      `hashToCurve _ mapping`(hash, k, jac, augmentation, message, domainSepTag)
+      r.projectiveFromJacobian(jac)
+    else:
+      var jac {.noInit, inject.}: jacobian(EC) # inject to workaround jac'gensym codegen in Nim v2.0.8 (not necessary in Nim v2.2.x) - https://github.com/nim-lang/Nim/pull/23801#issue-2393452970
+      `hashToCurve _ mapping`(hash, k, jac, augmentation, message, domainSepTag)
+      r.affine(jac)
 
   {.pop.}

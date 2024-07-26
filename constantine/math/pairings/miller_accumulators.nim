@@ -7,9 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../extension_fields,
-  ../elliptic/ec_shortweierstrass_affine,
-  ../arithmetic,
+  constantine/math/extension_fields,
+  constantine/math/elliptic/ec_shortweierstrass_affine,
+  constantine/math/arithmetic,
   ./pairings_generic
 
 {.push raises: [].} # No exceptions allowed in core cryptographic operations
@@ -28,7 +28,7 @@ import
 # See ./multi-pairing.md for 2 approaches to a miller loop accumulator:
 #
 # - Software Implementation, Algorithm 11.2 & 11.3
-#   Aranha, Dominguez Perez, A. Mrabet, Schwabe,
+#   Aranha, Dominguez Perez, Mrabet, Schwabe,
 #   Guide to Pairing-Based Cryptography, 2015
 #
 # - Pairing Implementation Revisited
@@ -63,8 +63,8 @@ const MillerAccumMax = 8
 
 type MillerAccumulator*[FF1, FF2; FpK: ExtensionField] = object
   accum: FpK
-  Ps: array[MillerAccumMax, ECP_ShortW_Aff[FF1, G1]]
-  Qs: array[MillerAccumMax, ECP_ShortW_Aff[FF2, G2]]
+  Ps: array[MillerAccumMax, EC_ShortW_Aff[FF1, G1]]
+  Qs: array[MillerAccumMax, EC_ShortW_Aff[FF2, G2]]
   len: uint32
   accOnce: bool
 
@@ -85,13 +85,13 @@ func consumeBuffers[FF1, FF2, FpK](ctx: var MillerAccumulator[FF1, FF2, FpK]) =
     ctx.accOnce = true
   ctx.len = 0
 
-func update*[FF1, FF2, FpK](ctx: var MillerAccumulator[FF1, FF2, FpK], P: ECP_ShortW_Aff[FF1, G1], Q: ECP_ShortW_Aff[FF2, G2]): bool =
+func update*[FF1, FF2, FpK](ctx: var MillerAccumulator[FF1, FF2, FpK], P: EC_ShortW_Aff[FF1, G1], Q: EC_ShortW_Aff[FF2, G2]): bool =
   ## Aggregate another set for pairing
   ## This returns `false` if P or Q are the infinity point
   ##
   ## ⚠️: This reveals if a point is infinity through timing side-channels
 
-  if P.isInf().bool or Q.isInf().bool:
+  if P.isNeutral().bool or Q.isNeutral().bool:
     return false
 
   if ctx.len == MillerAccumMax:

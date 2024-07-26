@@ -15,9 +15,9 @@ use constantine_sys::*;
 use ::core::mem::MaybeUninit;
 use std::mem;
 
-use halo2curves::bn256;
-use halo2curves::zal::MsmAccel;
-use halo2curves::CurveAffine;
+use halo2_middleware::halo2curves::bn256;
+use halo2_middleware::zal::traits::MsmAccel;
+use halo2_middleware::halo2curves::CurveAffine;
 
 #[derive(Debug)]
 pub struct CttEngine(Threadpool);

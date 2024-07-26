@@ -10,13 +10,12 @@ import
   # Standard library
   std/[os, times, strformat],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/[arithmetic, extension_fields, ec_shortweierstrass],
-  ../../constantine/math/io/io_extfields,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/pairings/pairings_bn,
+  constantine/platforms/abstractions,
+  constantine/math/[arithmetic, extension_fields, ec_shortweierstrass],
+  constantine/named/algebras,
+  constantine/math/pairings/pairings_generic,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 # Testing multipairing
 # ----------------------------------------------
@@ -29,8 +28,8 @@ echo "test_pairing_bn254_nogami_multi xoshiro512** seed: ", timeseed
 
 proc testMultiPairing(rng: var RngState, N: static int) =
   var
-    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[BN254_Nogami], G1]]
-    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[BN254_Nogami], G2]]
+    Ps {.noInit.}: array[N, EC_ShortW_Aff[Fp[BN254_Nogami], G1]]
+    Qs {.noInit.}: array[N, EC_ShortW_Aff[Fp2[BN254_Nogami], G2]]
 
     GTs {.noInit.}: array[N, Fp12[BN254_Nogami]]
 
@@ -42,7 +41,7 @@ proc testMultiPairing(rng: var RngState, N: static int) =
   let clockSimpleStart = cpuTime()
   var GTsimple {.noInit.}: Fp12[BN254_Nogami]
   for i in 0 ..< N:
-    GTs[i].pairing_bn(Ps[i], Qs[i])
+    GTs[i].pairing(Ps[i], Qs[i])
 
   GTsimple = GTs[0]
   for i in 1 ..< N:
@@ -52,7 +51,7 @@ proc testMultiPairing(rng: var RngState, N: static int) =
   # Multipairing
   let clockMultiStart = cpuTime()
   var GTmulti {.noInit.}: Fp12[BN254_Nogami]
-  GTmulti.pairing_bn(Ps, Qs)
+  GTmulti.pairing(Ps, Qs)
   let clockMultiStop = cpuTime()
 
   echo &"N={N}, Simple: {clockSimpleStop - clockSimpleStart:>4.4f}s, Multi: {clockMultiStop - clockMultiStart:>4.4f}s"

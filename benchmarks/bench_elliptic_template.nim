@@ -14,24 +14,24 @@
 
 import
   # Internals
-  ../constantine/platforms/abstractions,
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/io/io_bigints,
-  ../constantine/math/elliptic/[
+  constantine/platforms/abstractions,
+  constantine/named/algebras,
+  constantine/math/arithmetic,
+  constantine/math/io/io_bigints,
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_batch_ops,
-    ec_scalar_mul, ec_endomorphism_accel],
-    ../constantine/math/constants/zoo_subgroups,
+    ec_scalar_mul],
+    constantine/named/zoo_subgroups,
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./platforms,
   ./bench_blueprint,
   # Reference unsafe scalar multiplication
-  ../constantine/math/elliptic/ec_scalar_mul_vartime
+  constantine/math/elliptic/ec_scalar_mul_vartime
 
 export notes
 export abstractions # generic sandwich on SecretBool and SecretBool in Jacobian sum
@@ -45,8 +45,14 @@ macro fixEllipticDisplay(EC: typedesc): untyped =
   let instantiated = EC.getTypeInst()
   var name = $instantiated[1][0] # EllipticEquationFormCoordinates
   let fieldName = $instantiated[1][1][0]
-  let curveName = $Curve(instantiated[1][1][1].intVal)
-  name.add "[" & fieldName & "[" & curveName & "]]"
+  let curve = Algebra(instantiated[1][1][1].intVal)
+  let curveName = $curve
+  name.add "[" &
+      fieldName & "[" & curveName & "]" &
+      (if family(curve) != NoFamily:
+        ", " & $Subgroup(instantiated[1][2].intVal)
+      else: "") &
+      "]"
   result = newLit name
 
 proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
@@ -61,17 +67,17 @@ template bench*(op: string, EC: typedesc, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
   report(op, fixEllipticDisplay(EC), startTime, stopTime, startClk, stopClk, iters)
 
-func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_JacExt[F, G]) {.inline.}=
+func `+=`[F; G: static Subgroup](P: var EC_ShortW_JacExt[F, G], Q: EC_ShortW_JacExt[F, G]) {.inline.}=
   P.sum_vartime(P, Q)
-func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) {.inline.}=
-  P.madd_vartime(P, Q)
+func `+=`[F; G: static Subgroup](P: var EC_ShortW_JacExt[F, G], Q: EC_ShortW_Aff[F, G]) {.inline.}=
+  P.mixedSum_vartime(P, Q)
 
 proc addBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC
   let P = rng.random_unsafe(EC)
   let Q = rng.random_unsafe(EC)
 
-  when EC is ECP_ShortW_JacExt:
+  when EC is EC_ShortW_JacExt:
     bench("EC Add vartime " & $EC.G, EC, iters):
       r.sum_vartime(P, Q)
   else:
@@ -86,19 +92,19 @@ proc mixedAddBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC
   let P = rng.random_unsafe(EC)
   let Q = rng.random_unsafe(EC)
-  var Qaff: ECP_ShortW_Aff[EC.F, EC.G]
+  var Qaff: EC_ShortW_Aff[EC.F, EC.G]
   Qaff.affine(Q)
 
-  when EC is ECP_ShortW_JacExt:
+  when EC is EC_ShortW_JacExt:
     bench("EC Mixed Addition vartime " & $EC.G, EC, iters):
-      r.madd_vartime(P, Qaff)
+      r.mixedSum_vartime(P, Qaff)
   else:
     block:
       bench("EC Mixed Addition " & $EC.G, EC, iters):
-        r.madd(P, Qaff)
+        r.mixedSum(P, Qaff)
     block:
       bench("EC Mixed Addition vartime " & $EC.G, EC, iters):
-        r.madd_vartime(P, Qaff)
+        r.mixedSum_vartime(P, Qaff)
 
 proc doublingBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC
@@ -107,13 +113,13 @@ proc doublingBench*(EC: typedesc, iters: int) =
     r.double(P)
 
 proc affFromProjBench*(EC: typedesc, iters: int) =
-  var r {.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+  var r {.noInit.}: EC_ShortW_Aff[EC.F, EC.G]
   let P = rng.random_unsafe(EC)
   bench("EC Projective to Affine " & $EC.G, EC, iters):
     r.affine(P)
 
 proc affFromJacBench*(EC: typedesc, iters: int) =
-  var r {.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+  var r {.noInit.}: EC_ShortW_Aff[EC.F, EC.G]
   let P = rng.random_unsafe(EC)
   bench("EC Jacobian to Affine " & $EC.G, EC, iters):
     r.affine(P)
@@ -155,7 +161,7 @@ proc scalarMulGenericBench*(EC: typedesc, bits, window: static int, iters: int) 
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (window-" & $window & ", generic)", EC, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (window-" & $window & ", constant-time)", EC, iters):
     r = P
     r.scalarMulGeneric(exponent, window)
 
@@ -166,7 +172,7 @@ proc scalarMulEndo*(EC: typedesc, bits: static int, iters: int) =
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (endomorphism accelerated)", EC, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (constant-time, endomorphism)", EC, iters):
     r = P
     r.scalarMulEndo(exponent)
 
@@ -177,7 +183,7 @@ proc scalarMulEndoWindow*(EC: typedesc, bits: static int, iters: int) =
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (window-2, endomorphism accelerated)", EC, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (constant-time, window-2, endomorphism)", EC, iters):
     r = P
     when EC.F is Fp:
       r.scalarMulGLV_m2w2(exponent)
@@ -204,7 +210,7 @@ proc scalarMulVartimeMinHammingWeightRecodingBench*(EC: typedesc, bits: static i
 
   bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime min Hamming Weight recoding)", EC, iters):
     r = P
-    r.scalarMul_minHammingWeight_vartime(exponent)
+    r.scalarMul_jy00_vartime(exponent)
 
 proc scalarMulVartimeWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
   var r {.noInit.}: EC
@@ -215,7 +221,7 @@ proc scalarMulVartimeWNAFBench*(EC: typedesc, bits, window: static int, iters: i
 
   bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime wNAF-" & $window & ")", EC, iters):
     r = P
-    r.scalarMul_minHammingWeight_windowed_vartime(exponent, window)
+    r.scalarMul_wNAF_vartime(exponent, window)
 
 proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
   var r {.noInit.}: EC
@@ -226,13 +232,32 @@ proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iter
 
   bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime endomorphism + wNAF-" & $window & ")", EC, iters):
     r = P
-    r.scalarMulEndo_minHammingWeight_windowed_vartime(exponent, window)
+    r.scalarMulEndo_wNAF_vartime(exponent, window)
+
+proc subgroupCheckBench*(EC: typedesc, iters: int) =
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
+
+  bench("Subgroup check", EC, iters):
+    discard P.isInSubgroup()
+
+proc subgroupCheckScalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
+  var r {.noInit.}: EC
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
+
+  let exponent = rng.random_unsafe(BigInt[bits])
+
+  bench("EC subgroup check + ScalarMul " & $bits & "-bit " & $EC.G & " (vartime endo + wNAF-" & $window & ")", EC, iters):
+    r = P
+    discard r.isInSubgroup()
+    r.scalarMulEndo_wNAF_vartime(exponent, window)
 
 proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
-  var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
+  var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](numPoints)
 
   for i in 0 ..< numPoints:
-    points[i] = rng.random_unsafe(ECP_ShortW_Aff[EC.F, EC.G])
+    points[i] = rng.random_unsafe(EC_ShortW_Aff[EC.F, EC.G])
 
   var r{.noInit.}: EC
 
@@ -241,14 +266,14 @@ proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int)
       r.sum_reduce_vartime(points)
   else:
     bench("EC Multi Mixed-Add unbatched          " & $EC.G & " (" & $numPoints & " points)", EC, iters):
-      r.setInf()
+      r.setNeutral()
       for i in 0 ..< numPoints:
         r += points[i]
 
 
 proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
-  var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
+  const bits = EC.getScalarField().bits()
+  var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](numPoints)
   var scalars = newSeq[BigInt[bits]](numPoints)
 
   for i in 0 ..< numPoints:
@@ -264,7 +289,7 @@ proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
     bench("EC scalar muls                " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
       startNaive = getMonotime()
       var tmp: EC
-      r.setInf()
+      r.setNeutral()
       for i in 0 ..< points.len:
         tmp.fromAffine(points[i])
         tmp.scalarMul(scalars[i])

@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ../../platforms/abstractions
+import constantine/platforms/abstractions
 
 when UseASM_X86_32:
   import ./assembly/limbs_asm_x86

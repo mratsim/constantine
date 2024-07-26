@@ -16,10 +16,10 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/constants/zoo_subgroups,
-  ../../constantine/math/[arithmetic, extension_fields],
-  ../../constantine/math/elliptic/[
+  constantine/platforms/abstractions,
+  constantine/named/zoo_subgroups,
+  constantine/math/[arithmetic, extension_fields],
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_projective,
@@ -29,11 +29,11 @@ import
     ec_scalar_mul,
     ec_multi_scalar_mul,
     ec_multi_scalar_mul_parallel],
-  ../../constantine/threadpool/threadpool,
+  constantine/threadpool/threadpool,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
-export unittest, abstractions, arithmetic # Generic sandwich
+export unittest, abstractions, arithmetic, ec_twistededwards_affine # Generic sandwich
 
 type
   RandomGen* = enum
@@ -42,7 +42,7 @@ type
     Long01Sequence
 
 func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen): EC {.noInit.} =
-  when EC is (ECP_ShortW_Aff or ECP_TwEdwards_Aff):
+  when EC is (EC_ShortW_Aff or EC_TwEdw_Aff):
     if gen == Uniform:
       result = rng.random_unsafe(EC)
     elif gen == HighHammingWeight:
@@ -88,14 +88,14 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
           let tp = Threadpool.new()
           defer: tp.shutdown()
 
-          var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
+          var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](n)
 
           for i in 0 ..< n:
-            points[i] = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+            points[i] = rng.random_point(EC_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
 
           var r_batch{.noinit.}, r_ref{.noInit.}: EC
 
-          r_ref.setInf()
+          r_ref.setNeutral()
           for i in 0 ..< n:
             r_ref += points[i]
 
@@ -113,19 +113,19 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
           let tp = Threadpool.new()
           defer: tp.shutdown()
 
-          var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
+          var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](n)
 
           let halfN = n div 2
 
           for i in 0 ..< halfN:
-            points[i] = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+            points[i] = rng.random_point(EC_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
 
           for i in halfN ..< n:
             # The special cases test relies on internal knowledge that we sum(points[i], points[i+n/2]
             # It should be changed if scheduling change, for example if we sum(points[2*i], points[2*i+1])
             let c = rng.random_unsafe(3)
             if c == 0:
-              points[i] = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+              points[i] = rng.random_point(EC_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
             elif c == 1:
               points[i] = points[i-halfN]
             else:
@@ -133,7 +133,7 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
 
           var r_batch{.noinit.}, r_ref{.noInit.}: EC
 
-          r_ref.setInf()
+          r_ref.setNeutral()
           for i in 0 ..< n:
             r_ref += points[i]
 
@@ -161,22 +161,22 @@ proc run_EC_multi_scalar_mul_parallel_impl*[N: static int](
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
-      let bucketBits = bestBucketBitSize(n, ec.F.C.getCurveOrderBitwidth(), useSignedBuckets = false, useManualTuning = false)
+      let bucketBits = bestBucketBitSize(n, ec.getScalarField().bits(), useSignedBuckets = false, useManualTuning = false)
       test $ec & " Parallel Multi-scalar-mul (N=" & $n & ", bucket bits (default): " & $bucketBits & ")":
         proc test(EC: typedesc, gen: RandomGen) =
           let tp = Threadpool.new()
           defer: tp.shutdown()
           var points = newSeq[affine(EC)](n)
-          var coefs = newSeq[BigInt[EC.F.C.getCurveOrderBitwidth()]](n)
+          var coefs = newSeq[BigInt[EC.getScalarField().bits()]](n)
 
           for i in 0 ..< n:
             var tmp = rng.random_unsafe(EC)
             tmp.clearCofactor()
             points[i].affine(tmp)
-            coefs[i] = rng.random_unsafe(BigInt[EC.F.C.getCurveOrderBitwidth()])
+            coefs[i] = rng.random_unsafe(BigInt[EC.getScalarField().bits()])
 
           var naive, naive_tmp: EC
-          naive.setInf()
+          naive.setNeutral()
           for i in 0 ..< n:
             naive_tmp.fromAffine(points[i])
             naive_tmp.scalarMul(coefs[i])

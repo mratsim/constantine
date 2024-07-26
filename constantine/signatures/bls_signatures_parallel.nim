@@ -24,11 +24,12 @@ import
   # Standard library
   std/atomics,
   # Constantine
-  ../threadpool/[threadpool, partitioners],
-  ../platforms/[abstractions, allocs, views],
-  ../serialization/endians,
-  ../hashes,
-  ../math/ec_shortweierstrass
+  constantine/threadpool/threadpool,
+  constantine/platforms/[abstractions, allocs, views],
+  constantine/serialization/endians,
+  constantine/hashes,
+  constantine/math/ec_shortweierstrass,
+  constantine/named/algebras
 
 # No exceptions allowed in core cryptographic operations
 {.push raises: [].}
@@ -104,13 +105,13 @@ proc batchVerify_parallel*[Msg, Pubkey, Sig](
 
   type FF1 = Pubkey.F
   type FF2 = Sig.F
-  type FpK = Sig.F.C.getGT()
+  type FpK = Sig.F.Name.getGT()
 
   # Stage 0a: Setup per-thread accumulators
   debug: doAssert pubkeys.len <= 1 shl 32
   let N = pubkeys.len.uint32
   let numAccums = min(N, tp.numThreads.uint32)
-  let accums = allocHeapArray(BLSBatchSigAccumulator[H, FF1, FF2, Fpk, ECP_ShortW_Jac[Sig.F, Sig.G], k], numAccums)
+  let accums = allocHeapArray(BLSBatchSigAccumulator[H, FF1, FF2, Fpk, EC_ShortW_Jac[Sig.F, Sig.G], k], numAccums)
 
   # Stage 0b: Setup synchronization
   var currentItem {.noInit.}: Atomic[uint32]

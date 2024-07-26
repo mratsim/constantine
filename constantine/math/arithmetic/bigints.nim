@@ -7,12 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../config/type_bigint,
+  constantine/platforms/abstractions,
   ./limbs,
   ./limbs_extmul,
   ./limbs_exgcd,
-  ../../math_arbitrary_precision/arithmetic/limbs_divmod
+  constantine/math_arbitrary_precision/arithmetic/[
+    limbs_divmod, limbs_divmod_vartime]
 
 export BigInt
 
@@ -520,6 +520,11 @@ func invmod*[bits](r: var BigInt[bits], a, M: BigInt[bits]) =
 
 {.push inline.}
 
+func reduce_vartime*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBits]): bool {.discardable.} =
+  ## Reduce `a` modulo `M` and store the result in `r`
+  ## Return false if M == 0
+  return reduce_vartime(r.limbs, a.limbs, M.limbs)
+
 func invmod_vartime*[bits](
        r: var BigInt[bits],
        a, F, M: BigInt[bits]) {.tags: [VarTime].} =
@@ -597,6 +602,10 @@ iterator recoding_l2r_signed_vartime*[bits: static int](a: BigInt[bits]): int8 =
   ##
   ## ⚠️ While the recoding is constant-time,
   ##   usage of this recoding is intended vartime
+  ##
+  ## - Optimal Left-to-Right Binary Signed-Digit Recoding
+  ##   Joye, Yen, 2000
+  ##   https://marcjoye.github.io/papers/JY00sd2r.pdf
 
   # As the caller is copy-pasted at each yield
   # we rework the algorithm so that we have a single yield point
@@ -605,7 +614,7 @@ iterator recoding_l2r_signed_vartime*[bits: static int](a: BigInt[bits]): int8 =
   var bi, bi1, ri, ri1, ri2: int8
 
   var i = bits
-  while true:     # JY00 outputs at mots bits+1 digits
+  while true:     # JY00 outputs at most bits+1 digits
     if i == bits: # We rely on compiler to hoist this branch out of the loop.
       ri = 0
       ri1 = int8 a.bit(bits-1)

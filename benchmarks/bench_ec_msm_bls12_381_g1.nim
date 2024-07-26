@@ -8,13 +8,11 @@
 
 import
   # Internals
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/elliptic/[
-    ec_shortweierstrass_projective,
-    ec_shortweierstrass_jacobian],
+  constantine/named/algebras,
+  constantine/math/arithmetic,
+  constantine/math/ec_shortweierstrass,
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./bench_elliptic_parallel_template
 
 # ############################################################
@@ -39,7 +37,7 @@ proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    var ctx = createBenchMsmContext(ECP_ShortW_Jac[Fp[curve], G1], testNumPoints)
+    var ctx = createBenchMsmContext(EC_ShortW_Jac[Fp[curve], G1], testNumPoints)
     separator()
     for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)

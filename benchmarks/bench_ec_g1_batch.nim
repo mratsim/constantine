@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/elliptic/[
+  constantine/named/algebras,
+  constantine/math/arithmetic,
+  constantine/math/elliptic/[
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_jacobian_extended],
@@ -40,47 +40,47 @@ proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    addBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
-    doublingBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
-    mixedAddBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
-    addBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
-    doublingBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
-    mixedAddBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
-    addBench(ECP_ShortW_JacExt[Fp[curve], G1], Iters)
-    doublingBench(ECP_ShortW_JacExt[Fp[curve], G1], Iters)
-    mixedAddBench(ECP_ShortW_JacExt[Fp[curve], G1], Iters)
+    addBench(EC_ShortW_Prj[Fp[curve], G1], Iters)
+    doublingBench(EC_ShortW_Prj[Fp[curve], G1], Iters)
+    mixedAddBench(EC_ShortW_Prj[Fp[curve], G1], Iters)
+    addBench(EC_ShortW_Jac[Fp[curve], G1], Iters)
+    doublingBench(EC_ShortW_Jac[Fp[curve], G1], Iters)
+    mixedAddBench(EC_ShortW_Jac[Fp[curve], G1], Iters)
+    addBench(EC_ShortW_JacExt[Fp[curve], G1], Iters)
+    doublingBench(EC_ShortW_JacExt[Fp[curve], G1], Iters)
+    mixedAddBench(EC_ShortW_JacExt[Fp[curve], G1], Iters)
     separator()
     # for numPoints in testNumPoints:
     #   let batchIters = max(1, Iters div numPoints)
-    #   multiAddBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, useBatching = false, batchIters)
+    #   multiAddBench(EC_ShortW_Prj[Fp[curve], G1], numPoints, useBatching = false, batchIters)
     # separator()
     # for numPoints in testNumPoints:
     #   let batchIters = max(1, Iters div numPoints)
-    #   multiAddBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, useBatching = true, batchIters)
+    #   multiAddBench(EC_ShortW_Prj[Fp[curve], G1], numPoints, useBatching = true, batchIters)
     # separator()
     # for numPoints in testNumPoints:
     #   let batchIters = max(1, Iters div numPoints)
-    #   multiAddParallelBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
+    #   multiAddParallelBench(EC_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
     # separator()
     for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
-      multiAddBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, useBatching = false, batchIters)
+      multiAddBench(EC_ShortW_Jac[Fp[curve], G1], numPoints, useBatching = false, batchIters)
     separator()
     for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
-      multiAddBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, useBatching = true, batchIters)
+      multiAddBench(EC_ShortW_Jac[Fp[curve], G1], numPoints, useBatching = true, batchIters)
     separator()
     for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
-      multiAddParallelBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
+      multiAddParallelBench(EC_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
     # separator()
     # for numPoints in testNumPoints:
     #   let batchIters = max(1, Iters div numPoints)
-    #   multiAddBench(ECP_ShortW_JacExt[Fp[curve], G1], numPoints, useBatching = false, batchIters)
+    #   multiAddBench(EC_ShortW_JacExt[Fp[curve], G1], numPoints, useBatching = false, batchIters)
     # separator()
     # for numPoints in testNumPoints:
     #   let batchIters = max(1, Iters div numPoints)
-    #   multiAddBench(ECP_ShortW_JacExt[Fp[curve], G1], numPoints, useBatching = true, batchIters)
+    #   multiAddBench(EC_ShortW_JacExt[Fp[curve], G1], numPoints, useBatching = true, batchIters)
     separator()
     separator()
 

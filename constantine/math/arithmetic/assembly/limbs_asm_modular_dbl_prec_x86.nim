@@ -11,7 +11,7 @@ import
   std/macros,
   # Internal
   ./limbs_asm_modular_x86,
-  ../../../platforms/abstractions
+  constantine/platforms/abstractions
 
 # ############################################################
 #                                                            #
