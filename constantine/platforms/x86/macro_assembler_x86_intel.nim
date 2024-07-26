@@ -1017,8 +1017,11 @@ func mov*(a: var Assembler_x86, dst: Operand, imm: SomeInteger) =
   # We special-case register <- immediate mov
   # as they can take up to 10 bytes (2 bytes REX instr + 8-byte data)
   # on x86-64 even though most of the time we load small values
-  let off = a.getStrOffset(dst, force32IfReg = true)
-  a.code &= "mov " & off & ", " & $imm & '\n'
+  if log2_vartime(uint64 imm) >= 32:
+    a.codeFragment("mov", dst, imm)
+  else:
+    let off = a.getStrOffset(dst, force32IfReg = true)
+    a.code &= "mov " & off & ", " & $imm & '\n'
   # No clobber
 
 func mov*(a: var Assembler_x86, dst: Register, imm: SomeInteger) =
