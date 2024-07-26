@@ -1179,14 +1179,20 @@ func imul*(a: var Assembler_x86, dst: Register, src0: Operand, imm: SomeInteger)
   ## Does dst <- a * imm, keeping only the low half
   let off0 = a.getStrOffset(src0)
 
-  a.code &= "imul $" & $imm & ", " & $off0 & ", " & $dst & '\n'
+  if a.wordBitWidth == 64:
+    a.code &= "imulq $" & $imm & ", " & $off0 & ", %%" & $dst & '\n'
+  else:
+    a.code &= "imull $" & $imm & ", " & $off0 & ", %%" & $dst & '\n'
   a.regClobbers.incl dst
   a.areFlagsClobbered = true
   a.operands.incl(src0.desc)
 
 func imul*(a: var Assembler_x86, dst: Register, src0: Register, imm: SomeInteger) =
   ## Does dst <- a * imm, keeping only the low half
-  a.code &= "imul $" & $imm & ", " & $src0 & ", " & $dst '\n'
+  if a.wordBitWidth == 64:
+    a.code &= "imulq $" & $imm & ", %%" & $src0 & ", %%" & $dst '\n'
+  else:
+    a.code &= "imull $" & $imm & ", %%" & $src0 & ", %%" & $dst '\n'
   a.regClobbers.incl {dst, src0}
   a.areFlagsClobbered = true
 

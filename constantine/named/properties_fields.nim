@@ -107,7 +107,7 @@ macro isCrandallPrimeField*[Name: static Algebra](F: type Fp[Name]): static bool
   let subTerm = bindSym($Name & "_fp_CrandallSubTerm")
   result = quote do:
     when `rawCrandall`:
-      when `subTerm` < (1'u64 shl (WordBitWidth shr 1)) - 1:
+      when log2_vartime(`subTerm`) < WordBitWidth:
         true
       else: false
     else: false
