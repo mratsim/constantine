@@ -10,6 +10,9 @@ import
   constantine/platforms/abstractions,
   ./limbs, ./limbs_extmul
 
+when UseASM_X86_32:
+  import ./assembly/limbs_asm_crandall_x86
+
 # No exceptions allowed
 {.push raises: [], checks: off.}
 
@@ -92,7 +95,7 @@ func reduce_crandall_partial_impl[N: static int](
   # Move all extra bits to hi, i.e. double-word shift
   hi = (hi shl S) or (r[N-1] shr (WordBitWidth-S))
 
-  # High-bit has been "carried" to `hi`, cancel it.
+  # High-bits have been "carried" to `hi`, cancel them in r[N-1].
   # Note: there might be up to `c` not reduced.
   r[N-1] = r[N-1] and (MaxWord shr S)
 
@@ -191,7 +194,10 @@ func reduce_crandall_partial*[N: static int](
   ##   <=> a2ᵐ+b ≡ ac + b (mod p)
 
   static: doAssert N*WordBitWidth >= m
-  reduce_crandall_partial_impl(r, a, m, c)
+  when UseASM_X86_32 and r.len in {3..6}:
+    r.reduceCrandallPartial_asm(a, m, c)
+  else:
+    r.reduce_crandall_partial_impl(a, m, c)
 
 func reduce_crandall_final*[N: static int](
         a: var Limbs[N],
