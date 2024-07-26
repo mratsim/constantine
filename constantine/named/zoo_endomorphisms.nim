@@ -27,6 +27,7 @@ import
   ./constants/bw6_761_endomorphisms,
   ./constants/pallas_endomorphisms,
   ./constants/vesta_endomorphisms,
+  ./constants/secp256k1_endomorphisms,
   ./constants/bandersnatch_endomorphisms,
   ./constants/banderwagon_endomorphisms
 
@@ -112,6 +113,7 @@ func hasEndomorphismAcceleration*(Name: static Algebra): bool {.compileTime.} =
     Banderwagon,
     BN254_Nogami,
     BN254_Snarks,
+    Secp256k1,
     BLS12_377,
     BLS12_381,
     BW6_761,

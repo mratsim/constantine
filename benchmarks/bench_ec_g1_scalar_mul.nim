@@ -31,7 +31,7 @@ const AvailableCurves = [
   BN254_Snarks,
   # Edwards25519,
   # P256,
-  # Secp256k1,
+  Secp256k1,
   Pallas,
   Vesta,
   BLS12_377,
@@ -67,7 +67,7 @@ proc main() =
     scalarMulVartimeWNAFBench(EC_ShortW_Jac[Fp[curve], G1], bits, window = 4, MulIters)
     scalarMulVartimeWNAFBench(EC_ShortW_Jac[Fp[curve], G1], bits, window = 5, MulIters)
     separator()
-    when bits >= EndomorphismThreshold: # All endomorphisms constants are below this threshold
+    when curve.hasEndomorphismAcceleration():
       scalarMulVartimeEndoWNAFBench(EC_ShortW_Prj[Fp[curve], G1], bits, window = 2, MulIters)
       scalarMulVartimeEndoWNAFBench(EC_ShortW_Prj[Fp[curve], G1], bits, window = 3, MulIters)
       scalarMulVartimeEndoWNAFBench(EC_ShortW_Prj[Fp[curve], G1], bits, window = 4, MulIters)

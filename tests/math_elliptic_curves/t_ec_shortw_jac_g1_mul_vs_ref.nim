@@ -24,6 +24,12 @@ run_EC_mul_vs_ref_impl(
   )
 
 run_EC_mul_vs_ref_impl(
+    ec = EC_ShortW_Jac[Fp[Secp256k1], G1],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_vs_ref_" & $Secp256k1
+  )
+
+run_EC_mul_vs_ref_impl(
     ec = EC_ShortW_Jac[Fp[BLS12_381], G1],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_vs_ref_" & $BLS12_381

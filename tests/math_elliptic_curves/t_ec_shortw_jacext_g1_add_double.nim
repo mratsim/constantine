@@ -23,6 +23,12 @@ run_EC_addition_tests(
   )
 
 run_EC_addition_tests(
+    ec = EC_ShortW_JacExt[Fp[Secp256k1], G1],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_jacobian_extended_g1_add_double_" & $Secp256k1
+  )
+
+run_EC_addition_tests(
     ec = EC_ShortW_JacExt[Fp[BLS12_381], G1],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_jacobian_extended_g1_add_double_" & $BLS12_381

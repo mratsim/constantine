@@ -263,5 +263,5 @@ if __name__ == "__main__":
     elif group == 'G2':
       out = genScalarMulG2(curve, Curves, count, seed, scalarBits)
 
-    with open(f'tv_{curve}_scalar_mul_{group}_{bits}bits.json', 'w') as f:
+    with open(f'tv_{curve}_scalar_mul_{group}_{bits}bit.json', 'w') as f:
       json.dump(out, f, indent=2)

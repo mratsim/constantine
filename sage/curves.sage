@@ -174,5 +174,16 @@ Curves = {
       'a': 0,
       'b': 5
     }
-  }
+  },
+  'Secp256k1': {
+    'field': {
+      'modulus':  Integer('0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f'),
+      'order': Integer('0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141'),
+    },
+    'curve': {
+      'form': 'short_weierstrass',
+      'a': 0,
+      'b': 7
+    }
+  },
 }

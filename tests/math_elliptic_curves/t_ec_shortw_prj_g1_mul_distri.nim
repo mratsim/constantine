@@ -24,6 +24,12 @@ run_EC_mul_distributive_tests(
   )
 
 run_EC_mul_distributive_tests(
+    ec = EC_ShortW_Prj[Fp[Secp256k1], G1],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_shortweierstrass_projective_g1_mul_distributive_" & $Secp256k1
+  )
+
+run_EC_mul_distributive_tests(
     ec = EC_ShortW_Prj[Fp[BLS12_381], G1],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_distributive_" & $BLS12_381

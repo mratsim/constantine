@@ -69,6 +69,12 @@ suite "Order checks on BN254_Snarks":
       bool not ay.sqrt_if_square()
 
 run_EC_mul_sanity_tests(
+    ec = EC_ShortW_Jac[Fp[Secp256k1], G1],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_sanity_" & $Secp256k1
+  )
+
+run_EC_mul_sanity_tests(
     ec = EC_ShortW_Jac[Fp[BLS12_381], G1],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_sanity_" & $BLS12_381

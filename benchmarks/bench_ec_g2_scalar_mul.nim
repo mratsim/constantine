@@ -66,7 +66,7 @@ proc main() =
     scalarMulVartimeWNAFBench(EC_ShortW_Jac[Fp2[curve], G2], bits, window = 4, MulIters)
     scalarMulVartimeWNAFBench(EC_ShortW_Jac[Fp2[curve], G2], bits, window = 5, MulIters)
     separator()
-    when bits >= EndomorphismThreshold: # All endomorphisms constants are below this threshold
+    when curve.hasEndomorphismAcceleration():
       scalarMulVartimeEndoWNAFBench(EC_ShortW_Prj[Fp2[curve], G2], bits, window = 2, MulIters)
       scalarMulVartimeEndoWNAFBench(EC_ShortW_Prj[Fp2[curve], G2], bits, window = 3, MulIters)
       scalarMulVartimeEndoWNAFBench(EC_ShortW_Prj[Fp2[curve], G2], bits, window = 4, MulIters)
