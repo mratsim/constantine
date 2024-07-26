@@ -24,6 +24,12 @@ run_EC_mixed_add_impl(
   )
 
 run_EC_mixed_add_impl(
+    ec = EC_ShortW_Prj[Fp[Secp256k1], G1],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_projective_mixed_add_" & $Secp256k1
+  )
+
+run_EC_mixed_add_impl(
     ec = EC_ShortW_Prj[Fp[BLS12_381], G1],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_mixed_add_" & $BLS12_381

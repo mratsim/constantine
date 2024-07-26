@@ -34,7 +34,7 @@ const AvailableCurves = [
   BN254_Snarks,
   # Edwards25519,
   # P256,
-  # Secp256k1,
+  Secp256k1,
   Pallas,
   Vesta,
   BLS12_377,

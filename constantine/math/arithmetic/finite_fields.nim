@@ -472,6 +472,15 @@ func `*=`*(a: var FF, b: static int) =
     a.double(t)  # 6
     a.double()   # 12
     a += t       # 15
+  elif b == 21:
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t.double()   # 4
+    t += a       # 5
+    t.double()   # 10
+    t.double()   # 20
+    a += t       # 21
+
   else:
     {.error: "Multiplication by this small int not implemented".}
 

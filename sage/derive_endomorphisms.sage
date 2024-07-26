@@ -258,16 +258,20 @@ if __name__ == "__main__":
     print('\nPrecomputing G1 - 𝜑 (phi) cubic root endomorphism')
     print('----------------------------------------------------\n')
     cubeRootModP, g1lat, g1babai = genCubicRootEndo(curve, Curves)
-    print('\n\nPrecomputing 𝔾₂ - ψ (Psi) - untwist-Frobenius-twist endomorphism')
-    print('----------------------------------------------------\n')
-    g2lat, g2babai = genPsiEndo(curve, Curves)
+
+    hasG2 = 'tower' in Curves[curve]
+
+    if hasG2:
+        print('\n\nPrecomputing 𝔾₂ - ψ (Psi) - untwist-Frobenius-twist endomorphism')
+        print('----------------------------------------------------\n')
+        g2lat, g2babai = genPsiEndo(curve, Curves)
 
     with open(f'{curve.lower()}_endomorphisms.nim', 'w') as f:
       f.write(copyright())
       f.write('\n\n')
       f.write(inspect.cleandoc(f"""
         import
-          constantine/named/algebra,
+          constantine/named/algebras,
           constantine/math/io/[io_bigints, io_fields]
 
         # {curve} G1
@@ -288,18 +292,21 @@ if __name__ == "__main__":
         f'{curve}_Babai_G1',
         dumpBabai(g1babai)
       ))
-      f.write('\n\n')
-      f.write(inspect.cleandoc(f"""
-        # {curve} 𝔾₂
-        # ------------------------------------------------------------
-      """))
-      f.write('\n\n')
-      f.write(dumpConst(
-        f'{curve}_Lattice_G2',
-        dumpLattice(g2lat)
-      ))
       f.write('\n')
-      f.write(dumpConst(
-        f'{curve}_Babai_G2',
-        dumpBabai(g2babai)
-      ))
+      if hasG2:
+        f.write('\n')
+        f.write(inspect.cleandoc(f"""
+            # {curve} 𝔾₂
+            # ------------------------------------------------------------
+        """))
+        f.write('\n\n')
+        f.write(dumpConst(
+            f'{curve}_Lattice_G2',
+            dumpLattice(g2lat)
+        ))
+        f.write('\n')
+        f.write(dumpConst(
+            f'{curve}_Babai_G2',
+            dumpBabai(g2babai)
+        ))
+        f.write('\n')

@@ -56,14 +56,14 @@ proc multiAddParallelBench*(EC: typedesc, numInputs: int, iters: int) =
 type BenchMsmContext*[EC] = object
   tp: Threadpool
   numInputs: int
-  coefs: seq[getBigInt(EC.getName(), kScalarField)]
+  coefs: seq[BigInt[64]] # seq[getBigInt(EC.getName(), kScalarField)]
   points: seq[affine(EC)]
 
 proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int]): BenchMsmContext[EC] =
   result.tp = Threadpool.new()
   let maxNumInputs = inputSizes.max()
 
-  const bits = EC.getScalarField().bits()
+  const bits = 64 # EC.getScalarField().bits()
   type ECaff = affine(EC)
 
   result.numInputs = maxNumInputs
@@ -104,7 +104,7 @@ proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int]): BenchMsmC
   stdout.write &"in {float64(inNanoSeconds(stop-start)) / 1e6:6.3f} ms\n"
 
 proc msmParallelBench*[EC](ctx: var BenchMsmContext[EC], numInputs: int, iters: int) =
-  const bits = EC.getScalarField().bits()
+  const bits = 64 # EC.getScalarField().bits()
   type ECaff = affine(EC)
 
   template coefs: untyped = ctx.coefs.toOpenArray(0, numInputs-1)
