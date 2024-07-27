@@ -44,6 +44,7 @@ proc main() =
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
     addBench(Fp[curve], Iters)
+    add10Bench(Fp[curve], Iters)
     subBench(Fp[curve], Iters)
     negBench(Fp[curve], Iters)
     ccopyBench(Fp[curve], Iters)
