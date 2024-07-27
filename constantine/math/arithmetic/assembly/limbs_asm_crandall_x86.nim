@@ -10,8 +10,10 @@ import
   # Standard library
   std/macros,
   # Internal
-  constantine/platforms/abstractions,
-  ./limbs_asm_mul_x86
+  constantine/platforms/abstractions
+
+when UseASM_X86_64:
+  import ./limbs_asm_mul_x86
 
 # ############################################################
 #

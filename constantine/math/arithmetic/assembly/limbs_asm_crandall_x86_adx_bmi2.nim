@@ -11,8 +11,10 @@ import
   std/macros,
   # Internal
   constantine/platforms/abstractions,
-  ./limbs_asm_mul_x86_adx_bmi2,
   ./limbs_asm_crandall_x86
+
+when UseASM_X86_64:
+  import ./limbs_asm_mul_x86_adx_bmi2
 
 # ############################################################
 #
@@ -178,6 +180,7 @@ func mulCranPartialReduce_asm_adx*[N: static int](
         r: var Limbs[N],
         a, b: Limbs[N],
         m: static int, c: static SecretWord) =
+  static: doAssert UseASM_X86_64, "x86-32 does not have enough registers for squaring"
   var r2 {.noInit.}: Limbs[2*N]
   r2.mul_asm_adx(a, b)
   r.reduceCrandallPartial_asm_adx(r2, m, c)
@@ -186,6 +189,7 @@ func squareCranPartialReduce_asm_adx*[N: static int](
         r: var Limbs[N],
         a: Limbs[N],
         m: static int, c: static SecretWord) =
+  static: doAssert UseASM_X86_64, "x86-32 does not have enough registers for squaring"
   var r2 {.noInit.}: Limbs[2*N]
   r2.square_asm_adx(a)
   r.reduceCrandallPartial_asm_adx(r2, m, c)
