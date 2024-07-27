@@ -258,14 +258,14 @@ func prod*(r: var FF, a, b: FF, lazyReduce: static bool = false) {.meter.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
   when FF.isCrandallPrimeField():
-    r.mres.mulCran(a.mres, b.mres, FF.getCrandallPrimeSubterm(), lazyReduce)
+    r.mres.mulCran(a.mres, b.mres, FF.getModulus(), FF.getCrandallPrimeSubterm(), lazyReduce)
   else:
     r.mres.mulMont(a.mres, b.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), lazyReduce)
 
 func square*(r: var FF, a: FF, lazyReduce: static bool = false) {.meter.} =
   ## Squaring modulo p
   when FF.isCrandallPrimeField():
-    r.mres.squareCran(a.mres, FF.getCrandallPrimeSubterm(), lazyReduce)
+    r.mres.squareCran(a.mres, FF.getModulus(), FF.getCrandallPrimeSubterm(), lazyReduce)
   else:
     r.mres.squareMont(a.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), lazyReduce)
 
@@ -557,6 +557,7 @@ func pow*(a: var FF, exponent: BigInt) =
     const windowSize = 5 # TODO: find best window size for each curves
     a.mres.powCran(
       exponent,
+      FF.getModulus(),
       windowSize,
       FF.getCrandallPrimeSubterm()
     )
@@ -577,6 +578,7 @@ func pow*(a: var FF, exponent: openarray[byte]) =
     const windowSize = 5 # TODO: find best window size for each curves
     a.mres.powCran(
       exponent,
+      FF.getModulus(),
       windowSize,
       FF.getCrandallPrimeSubterm()
     )
@@ -621,6 +623,7 @@ func pow_vartime*(a: var FF, exponent: BigInt) =
     const windowSize = 5 # TODO: find best window size for each curves
     a.mres.powCran_vartime(
       exponent,
+      FF.getModulus(),
       windowSize,
       FF.getCrandallPrimeSubterm()
     )
@@ -649,6 +652,7 @@ func pow_vartime*(a: var FF, exponent: openarray[byte]) =
     const windowSize = 5 # TODO: find best window size for each curves
     a.mres.powCran_vartime(
       exponent,
+      FF.getModulus(),
       windowSize,
       FF.getCrandallPrimeSubterm()
     )
@@ -665,7 +669,6 @@ func pow_vartime*(a: var FF, exponent: FF) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a finite field element
-  const windowSize = 5 # TODO: find best window size for each curves
   a.pow_vartime(exponent.toBig())
 
 func pow_vartime*(r: var FF, a: FF, exponent: BigInt or openArray[byte] or FF) =

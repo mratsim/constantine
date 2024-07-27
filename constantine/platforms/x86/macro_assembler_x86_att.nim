@@ -798,18 +798,18 @@ func isOutput(op: Operand): bool =
 # ------------------------------------------------------------------------------------------------------------
 
 const Reg8Low = [
-      rbx: "bl",
-      rdx: "dl",
-      r8: "r8l",
-      rax: "al",
+      rbx: "%%bl",
+      rdx: "%%dl",
+      r8:  "%%r8l",
+      rax: "%%al",
       xmm0: "invalid",
 ]
 
 const Reg32 = [ # Allow using 32-bit reg on 64-bit for smaller instructions
-      rbx: "ebx",
-      rdx: "edx",
-      r8 : "r8d",
-      rax: "eax",
+      rbx: "%%ebx",
+      rdx: "%%edx",
+      r8 : "%%r8d",
+      rax: "%%eax",
       xmm0: "invalid",
 ]
 
@@ -881,6 +881,15 @@ func sub*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst - src
   doAssert dst.isOutput()
   a.codeFragment("sub", src, dst)
+  a.areFlagsClobbered = true
+
+func sub*(a: var Assembler_x86, dst: Operand, imm: SomeInteger) =
+  ## Does: dst <- dst - imm
+  doAssert dst.isOutput()
+  doAssert dst.desc.rm notin {Mem, MemOffsettable},
+    "Using subborrow with a memory destination, this incurs significant performance penalties."
+
+  a.codeFragment("sub", imm, dst)
   a.areFlagsClobbered = true
 
 func sbb*(a: var Assembler_x86, dst, src: Operand) =
@@ -1014,7 +1023,7 @@ func `xor`*(a: var Assembler_x86, dst, src: Register) =
   ## reset all flags
   if dst == src:
     # Special case zero-ing so it uses 32-bit registers
-    a.code &= "xorl %%" & Reg32[dst] & ", %%" & Reg32[dst] & '\n'
+    a.code &= "xorl " & Reg32[dst] & ", " & Reg32[dst] & '\n'
 
     a.regClobbers.incl dst
     a.areFlagsClobbered = true
@@ -1068,7 +1077,7 @@ func mov*(a: var Assembler_x86, dst: Register, imm: SomeInteger) =
   if log2_vartime(uint64 imm) >= 32:
     a.codeFragment("mov", imm, dst)
   else:
-    a.code &= "movl $" & $imm & ", %%" & Reg32[dst] & '\n'
+    a.code &= "movl $" & $imm & ", " & Reg32[dst] & '\n'
   a.regClobbers.incl dst
 
 func mov*(a: var Assembler_x86, dst: Register, src: Operand) =
@@ -1101,6 +1110,11 @@ func cmovnc*(a: var Assembler_x86, dst, src: Operand) =
   doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
   doAssert dst.isOutput(), $dst.repr
 
+  a.codeFragment("cmovnc", src, dst)
+  # No clobber
+
+func cmovnc*(a: var Assembler_x86, dst: Register, src: Operand) =
+  ## Does: dst <- src if the carry flag is not set
   a.codeFragment("cmovnc", src, dst)
   # No clobber
 

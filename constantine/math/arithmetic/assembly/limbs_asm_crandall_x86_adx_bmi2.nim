@@ -10,7 +10,9 @@ import
   # Standard library
   std/macros,
   # Internal
-  constantine/platforms/abstractions
+  constantine/platforms/abstractions,
+  ./limbs_asm_mul_x86_adx_bmi2,
+  ./limbs_asm_crandall_x86
 
 # ############################################################
 #
@@ -165,3 +167,36 @@ func reduceCrandallPartial_asm_adx*[N: static int](
   ##   <=>  2ᵐ   ≡  c     (mod p)
   ##   <=> a2ᵐ+b ≡ ac + b (mod p)
   r.reduceCrandallPartial_adx_gen(a, m, BaseType(c))
+
+# Crandall Multiplication and squaring
+# ------------------------------------------------------------
+
+func mulCranPartialReduce_asm_adx*[N: static int](
+        r: var Limbs[N],
+        a, b: Limbs[N],
+        m: static int, c: static SecretWord) =
+  var r2 {.noInit.}: Limbs[2*N]
+  r2.mul_asm_adx(a, b)
+  r.reduceCrandallPartial_asm_adx(r2, m, c)
+
+func squareCranPartialReduce_asm_adx*[N: static int](
+        r: var Limbs[N],
+        a: Limbs[N],
+        m: static int, c: static SecretWord) =
+  var r2 {.noInit.}: Limbs[2*N]
+  r2.square_asm_adx(a)
+  r.reduceCrandallPartial_asm_adx(r2, m, c)
+
+func mulCran_asm_adx*[N: static int](
+        r: var Limbs[N],
+        a, b, p: Limbs[N],
+        m: static int, c: static SecretWord) =
+  r.mulCranPartialReduce_asm_adx(a, b, m, c)
+  r.reduceCrandallFinal_asm(p)
+
+func squareCran_asm_adx*[N: static int](
+        r: var Limbs[N],
+        a, p: Limbs[N],
+        m: static int, c: static SecretWord) =
+  r.squareCranPartialReduce_asm_adx(a, m, c)
+  r.reduceCrandallFinal_asm(p)

@@ -234,12 +234,13 @@ proc main() =
         r.inv(x)
         let computed = r.toHex()
 
-        check:
-          computed == expected
+        check: computed == expected
 
         var r2: Fp[BLS12_381]
         r2.inv_vartime(x)
         let computed2 = r2.toHex()
+
+        check: computed2 == expected
 
     test "Specific tests on Fp[BN254_Snarks]":
       block:

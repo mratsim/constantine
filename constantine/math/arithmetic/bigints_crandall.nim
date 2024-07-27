@@ -24,20 +24,23 @@ import
 
 func mulCran*[m: static int](
       r: var BigInt[m], a, b: BigInt[m],
+      p: BigInt[m],
       c: static SecretWord,
       lazyReduce: static bool = false) =
   ## Compute r <- a*b (2ᵐ-c)
-  mulCran(r.limbs, a.limbs, b.limbs, m, c, lazyReduce)
+  mulCran(r.limbs, a.limbs, b.limbs, p.limbs, m, c, lazyReduce)
 
 func squareCran*[m: static int](
       r: var BigInt[m], a: BigInt[m],
+      p: BigInt[m],
       c: static SecretWord,
       lazyReduce: static bool = false) =
   ## Compute r <- a² (2ᵐ-c), m = bits
-  squareCran(r.limbs, a.limbs, m, c, lazyReduce)
+  squareCran(r.limbs, a.limbs, p.limbs, m, c, lazyReduce)
 
 func powCran*[m: static int](
        a: var BigInt[m], exponent: openarray[byte],
+       p: BigInt[m],
        windowSize: static int,
        c: static SecretWord,
        lazyReduce: static bool = false) =
@@ -52,10 +55,11 @@ func powCran*[m: static int](
   const scratchLen = if windowSize == 1: 2
                      else: (1 shl windowSize) + 1
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[m.wordsRequired()]]
-  powCran(a.limbs, exponent, scratchSpace, m, c, lazyReduce)
+  powCran(a.limbs, exponent, p.limbs, scratchSpace, m, c, lazyReduce)
 
 func powCran_vartime*[m: static int](
        a: var BigInt[m], exponent: openarray[byte],
+       p: BigInt[m],
        windowSize: static int,
        c: static SecretWord,
        lazyReduce: static bool = false) =
@@ -75,10 +79,11 @@ func powCran_vartime*[m: static int](
   const scratchLen = if windowSize == 1: 2
                      else: (1 shl windowSize) + 1
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[m.wordsRequired()]]
-  powCran_vartime(a.limbs, exponent, scratchSpace, m, c, lazyReduce)
+  powCran_vartime(a.limbs, exponent, p.limbs, scratchSpace, m, c, lazyReduce)
 
 func powCran*[m, eBits: static int](
        a: var BigInt[m], exponent: BigInt[eBits],
+       p: BigInt[m],
        windowSize: static int,
        c: static SecretWord,
        lazyReduce: static bool = false) =
@@ -93,10 +98,11 @@ func powCran*[m, eBits: static int](
   var expBE {.noInit.}: array[ebits.ceilDiv_vartime(8), byte]
   expBE.marshal(exponent, bigEndian)
 
-  powCran(a, expBE, windowSize, c, lazyReduce)
+  powCran(a, expBE, p, windowSize, c, lazyReduce)
 
 func powCran_vartime*[m, eBits: static int](
        a: var BigInt[m], exponent: BigInt[eBits],
+       p: BigInt[m],
        windowSize: static int,
        c: static SecretWord,
        lazyReduce: static bool = false) =
@@ -116,7 +122,7 @@ func powCran_vartime*[m, eBits: static int](
   var expBE {.noInit.}: array[ebits.ceilDiv_vartime(8), byte]
   expBE.marshal(exponent, bigEndian)
 
-  powCran_vartime(a, expBE, windowSize, c, lazyReduce)
+  powCran_vartime(a, expBE, p, windowSize, c, lazyReduce)
 
 {.pop.} # inline
 {.pop.} # raises no exceptions

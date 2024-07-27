@@ -30,7 +30,7 @@ when UseASM_X86_32:
 # Fast reduction
 # ------------------------------------------------------------
 
-func reduce_crandall_partial_impl[N: static int](
+func reduceCrandallPartial_impl[N: static int](
         r: var Limbs[N],
         a: array[2*N, SecretWord], # using Limbs lead to type mismatch or ICE
         m: static int,
@@ -150,97 +150,108 @@ func reduce_crandall_partial_impl[N: static int](
   else:
     {.error: "Not implemented".}
 
-func reduce_crandall_final_impl[N: static int](
+func reduceCrandallFinal_impl[N: static int](
         a: var Limbs[N],
-        m: static int,
-        c: static SecretWord) =
+        p: Limbs[N]) =
   ## Final Reduction modulo p
   ## with p with special form 2ᵐ-c
   ## called "Crandall prime" or Pseudo-Mersenne Prime in the litterature
   ##
   ## This reduces `a` from [0, 2ᵐ) to [0, 2ᵐ-c)
-  const S = (N*WordBitWidth - m)
-  const top = MaxWord shr S
-  static: doAssert 0 <= S and S < WordBitWidth
 
   # 1. Substract p = 2ᵐ-c
-  #    p is in the form 0x7FFF...FFFF`c` (7FFF or 3FFF or ... depending of 255-bit 254-bit ...)
   var t {.noInit.}: Limbs[N]
-  var borrow: Borrow
-  subB(borrow, t[0], a[0], -c, Borrow(0))
-  for i in 1 ..< N-1:
-    subB(borrow, t[i], a[i], MaxWord, borrow)
-  when N >= 2:
-    subB(borrow, t[N-1], a[N-1], top, borrow)
+  let underflow = t.diff(a, p)
 
   # 2. If underflow, a has the proper reduced result
   #    otherwise t has the proper reduced result
-  a.ccopy(t, not SecretBool(borrow))
+  a.ccopy(t, not SecretBool(underflow))
 
-func reduce_crandall_partial*[N: static int](
-        r: var Limbs[N],
-        a: array[2*N, SecretWord], # using Limbs lead to type mismatch or ICE
-        m: static int,
-        c: static SecretWord) =
-  ## Partial Reduction modulo p
-  ## with p with special form 2ᵐ-c
-  ## called "Crandall prime" or Pseudo-Mersenne Prime in the litterature
-  ##
-  ## This is a partial reduction that reduces down to
-  ## 2ᵐ, i.e. it fits in the same amount of word by p
-  ## but values my be up to p+c
-  ##
-  ## Crandal primes allow fast reduction from the fact that
-  ##        2ᵐ-c ≡  0     (mod p)
-  ##   <=>  2ᵐ   ≡  c     (mod p)
-  ##   <=> a2ᵐ+b ≡ ac + b (mod p)
-
-  static: doAssert N*WordBitWidth >= m
-  when UseASM_X86_32 and r.len in {3..6}:
-    if ({.noSideEffect.}: hasAdx()):
-      r.reduceCrandallPartial_asm_adx(a, m, c)
-    else:
-      r.reduceCrandallPartial_asm(a, m, c)
-  else:
-    r.reduce_crandall_partial_impl(a, m, c)
-
-func reduce_crandall_final*[N: static int](
+func reduceCrandallFinal[N: static int](
         a: var Limbs[N],
-        m: static int,
-        c: static SecretWord) =
+        p: Limbs[N]) {.inline.} =
   ## Final Reduction modulo p
   ## with p with special form 2ᵐ-c
   ## called "Crandall prime" or Pseudo-Mersenne Prime in the litterature
   ##
   ## This reduces `a` from [0, 2ᵐ) to [0, 2ᵐ-c)
+  when UseASM_X86_32 and a.len in {3..6}:
+    a.reduceCrandallFinal_asm(p)
+  else:
+    a.reduceCrandallFinal_impl(p)
 
-  static: doAssert N*WordBitWidth >= m
-  reduce_crandall_final_impl(a, m, c)
-
-# Crandall Multiplication
+# High-level API
 # ------------------------------------------------------------
+
+func mulCranPartialReduce[N: static int](
+        r: var Limbs[N],
+        a, b: Limbs[N],
+        m: static int, c: static SecretWord) {.inline.} =
+  when UseASM_X86_32 and a.len in {3..6}:
+    # ADX implies BMI2
+    if ({.noSideEffect.}: hasAdx()):
+      r.mulCranPartialReduce_asm(a, b, m, c)
+    else:
+      r.mulCranPartialReduce_asm(a, b, m, c)
+  else:
+    var r2 {.noInit.}: Limbs[2*N]
+    r2.prod(a, b)
+    r.reduceCrandallPartial_impl(r2, m, c)
 
 func mulCran*[N: static int](
         r: var Limbs[N],
         a, b: Limbs[N],
+        p: Limbs[N],
         m: static int, c: static SecretWord,
         lazyReduce: static bool = false) {.inline.} =
-  var r2 {.noInit.}: Limbs[2*N]
-  r2.prod(a, b)
-  r.reduce_crandall_partial(r2, m, c)
-  when not lazyReduce:
-    r.reduce_crandall_final(m, c)
+  when lazyReduce:
+    r.mulCranPartialReduce(a, b, m, c)
+  elif UseASM_X86_32 and a.len in {3..6}:
+    # ADX implies BMI2
+    if ({.noSideEffect.}: hasAdx()):
+      r.mulCran_asm(a, b, p, m, c)
+    else:
+      r.mulCran_asm(a, b, p, m, c)
+  else:
+    var r2 {.noInit.}: Limbs[2*N]
+    r2.prod(a, b)
+    r.reduceCrandallPartial_impl(r2, m, c)
+    r.reduceCrandallFinal_impl(p)
+
+func squareCranPartialReduce[N: static int](
+        r: var Limbs[N],
+        a: Limbs[N],
+        m: static int, c: static SecretWord) {.inline.} =
+  when UseASM_X86_32 and a.len in {3..6}:
+    # ADX implies BMI2
+    if ({.noSideEffect.}: hasAdx()):
+      r.squareCranPartialReduce_asm(a, m, c)
+    else:
+      r.squareCranPartialReduce_asm(a, m, c)
+  else:
+    var r2 {.noInit.}: Limbs[2*N]
+    r2.square(a)
+    r.reduceCrandallPartial_impl(r2, m, c)
 
 func squareCran*[N: static int](
         r: var Limbs[N],
         a: Limbs[N],
+        p: Limbs[N],
         m: static int, c: static SecretWord,
         lazyReduce: static bool = false) {.inline.} =
-  var r2 {.noInit.}: array[2*N, SecretWord]
-  r2.square(a)
-  r.reduce_crandall_partial(r2, m, c)
-  when not lazyReduce:
-    r.reduce_crandall_final(m, c)
+  when lazyReduce:
+    r.squareCranPartialReduce(a, m, c)
+  elif UseASM_X86_32 and a.len in {3..6}:
+    # ADX implies BMI2
+    if ({.noSideEffect.}: hasAdx()):
+      r.squareCran_asm(a, p, m, c)
+    else:
+      r.squareCran_asm(a, p, m, c)
+  else:
+    var r2 {.noInit.}: Limbs[2*N]
+    r2.square(a)
+    r.reduceCrandallPartial_impl(r2, m, c)
+    r.reduceCrandallFinal_impl(p)
 
 # Crandall Exponentiation
 # ------------------------------------------------------------
@@ -299,7 +310,7 @@ func powCranPrologue(
   else:
     scratchspace[2] = a
     for k in 2 ..< 1 shl result:
-      scratchspace[k+1].mulCran(scratchspace[k], a, m, c, lazyReduce = true)
+      scratchspace[k+1].mulCranPartialReduce(scratchspace[k], a, m, c)
 
   # Set a to one
   a.setOne()
@@ -347,13 +358,14 @@ func powCranSquarings(
 
   # We have k bits and can do k squaring, skip final substraction for first k-1 ones.
   for i in 0 ..< k:
-    a.squareCran(a, m, c, lazyReduce = true)
+    a.squareCranPartialReduce(a, m, c)
 
   return (k, bits)
 
 func powCran*(
        a: var Limbs,
        exponent: openarray[byte],
+       p: Limbs,
        scratchspace: var openarray[Limbs],
        m: static int, c: static SecretWord,
        lazyReduce: static bool = false) =
@@ -401,15 +413,16 @@ func powCran*(
 
     # Multiply with the looked-up value
     # we keep the product only if the exponent bits are not all zeroes
-    scratchspace[0].mulCran(a, scratchspace[1], m, c, lazyReduce = true)
+    scratchspace[0].mulCranPartialReduce(a, scratchspace[1], m, c)
     a.ccopy(scratchspace[0], SecretWord(bits).isNonZero())
 
   when not lazyReduce:
-    a.reduce_crandall_final(m, c)
+    a.reduceCrandallFinal_impl(p)
 
 func powCran_vartime*(
        a: var Limbs,
        exponent: openarray[byte],
+       p: Limbs,
        scratchspace: var openarray[Limbs],
        m: static int, c: static SecretWord,
        lazyReduce: static bool = false) =
@@ -439,14 +452,14 @@ func powCran_vartime*(
     ## Warning ⚠️: Exposes the exponent bits
     if bits != 0:
       if window > 1:
-        scratchspace[0].mulCran(a, scratchspace[1+bits], m, c, lazyReduce = true)
+        scratchspace[0].mulCranPartialReduce(a, scratchspace[1+bits], m, c)
       else:
         # scratchspace[1] holds the original `a`
-        scratchspace[0].mulCran(a, scratchspace[1], m, c, lazyReduce = true)
+        scratchspace[0].mulCranPartialReduce(a, scratchspace[1], m, c)
       a = scratchspace[0]
 
   when not lazyReduce:
-    a.reduce_crandall_final(m, c)
+    a.reduceCrandallFinal_impl(p)
 
 # Lazily reduced arithmetic
 # ------------------------------------------------------------

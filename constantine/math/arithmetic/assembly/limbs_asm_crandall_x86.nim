@@ -10,7 +10,8 @@ import
   # Standard library
   std/macros,
   # Internal
-  constantine/platforms/abstractions
+  constantine/platforms/abstractions,
+  ./limbs_asm_mul_x86
 
 # ############################################################
 #
@@ -21,7 +22,7 @@ import
 
 static: doAssert UseASM_X86_32
 
-# Crandall reduction
+# Crandall reductions
 # ------------------------------------------------------------
 
 macro reduceCrandallPartial_gen*[N: static int](
@@ -31,6 +32,9 @@ macro reduceCrandallPartial_gen*[N: static int](
 
   result = newStmtList()
   var ctx = init(Assembler_x86, BaseType)
+
+  ctx.comment "Crandall reduction - Partial"
+  ctx.comment "----------------------------"
 
   let
     r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
@@ -165,3 +169,94 @@ func reduceCrandallPartial_asm*[N: static int](
   ##   <=>  2ᵐ   ≡  c     (mod p)
   ##   <=> a2ᵐ+b ≡ ac + b (mod p)
   r.reduceCrandallPartial_gen(a, m, BaseType(c))
+
+macro reduceCrandallFinal_gen*[N: static int](
+      a_PIR: var Limbs[N], p_MEM: Limbs[N]) =
+  ## Final Reduction modulo p
+  ## with p with special form 2ᵐ-c
+  ## called "Crandall prime" or Pseudo-Mersenne Prime in the litterature
+  ##
+  ## This reduces `a` from [0, 2ᵐ) to [0, 2ᵐ-c)
+
+  result = newStmtList()
+  var ctx = init(Assembler_x86, BaseType)
+
+  ctx.comment "Crandall reduction - Final substraction"
+  ctx.comment "---------------------------------------"
+
+  let a =asmArray(a_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but_ec_shortw_prj_g1_sum_reduce.nimt compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
+  let tSym = ident"t"
+  let t = asmArray(tSym, N, ElemsInReg, asmOutputEarlyClobber)
+  let p = asmArray(p_MEM, N, MemOffsettable, asmInput)
+
+  result.add quote do:
+    var `tsym`{.noInit.}: typeof(`a_PIR`)
+
+  # Substract the modulus, and test a < p with the last borrow
+  ctx.mov t[0], a[0]
+  ctx.sub t[0], p[0]
+  for i in 1 ..< N:
+    ctx.mov t[i], a[i]
+    ctx.sbb t[i], p[i]
+
+  # If we borrowed it means that we were smaller than
+  # the modulus and we don't need "scratch".
+  var r0 = rax
+  var r1 = rdx
+  for i in 0 ..< N:
+    ctx.mov r0, a[i]
+    ctx.cmovnc r0, t[i]
+    ctx.mov a[i], r0
+    swap(r0, r1)
+
+  # Codegen
+  result.add ctx.generate()
+
+func reduceCrandallFinal_asm*[N: static int](
+      a: var Limbs[N], p: Limbs[N]) =
+  ## Partial Reduction modulo p
+  ## with p with special form 2ᵐ-c
+  ## called "Crandall prime" or Pseudo-Mersenne Prime in the litterature
+  ##
+  ## This is a partial reduction that reduces down to
+  ## 2ᵐ, i.e. it fits in the same amount of word by p
+  ## but values my be up to p+c
+  ##
+  ## Crandal primes allow fast reduction from the fact that
+  ##        2ᵐ-c ≡  0     (mod p)
+  ##   <=>  2ᵐ   ≡  c     (mod p)
+  ##   <=> a2ᵐ+b ≡ ac + b (mod p)
+  a.reduceCrandallFinal_gen(p)
+
+# Crandall Multiplication and squaring
+# ------------------------------------------------------------
+
+func mulCranPartialReduce_asm*[N: static int](
+        r: var Limbs[N],
+        a, b: Limbs[N],
+        m: static int, c: static SecretWord) =
+  var r2 {.noInit.}: Limbs[2*N]
+  r2.mul_asm(a, b)
+  r.reduceCrandallPartial_asm(r2, m, c)
+
+func squareCranPartialReduce_asm*[N: static int](
+        r: var Limbs[N],
+        a: Limbs[N],
+        m: static int, c: static SecretWord) =
+  var r2 {.noInit.}: Limbs[2*N]
+  r2.square_asm(a)
+  r.reduceCrandallPartial_asm(r2, m, c)
+
+func mulCran_asm*[N: static int](
+        r: var Limbs[N],
+        a, b, p: Limbs[N],
+        m: static int, c: static SecretWord) =
+  r.mulCranPartialReduce_asm(a, b, m, c)
+  r.reduceCrandallFinal_asm(p)
+
+func squareCran_asm*[N: static int](
+        r: var Limbs[N],
+        a, p: Limbs[N],
+        m: static int, c: static SecretWord) =
+  r.squareCranPartialReduce_asm(a, m, c)
+  r.reduceCrandallFinal_asm(p)

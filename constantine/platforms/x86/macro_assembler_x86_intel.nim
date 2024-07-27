@@ -850,6 +850,15 @@ func sub*(a: var Assembler_x86, dst, src: Operand) =
   a.codeFragment("sub", dst, src)
   a.areFlagsClobbered = true
 
+func sub*(a: var Assembler_x86, dst: Operand, imm: SomeInteger) =
+  ## Does: dst <- dst - imm
+  doAssert dst.isOutput()
+  doAssert dst.desc.rm notin {Mem, MemOffsettable},
+    "Using subborrow with a memory destination, this incurs significant performance penalties."
+
+  a.codeFragment("sub", dst, imm)
+  a.areFlagsClobbered = true
+
 func sbb*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst - src - borrow
   doAssert dst.isOutput()
@@ -1066,6 +1075,11 @@ func cmovnc*(a: var Assembler_x86, dst, src: Operand) =
   doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
   doAssert dst.isOutput(), $dst.repr
 
+  a.codeFragment("cmovnc", dst, src)
+  # No clobber
+
+func cmovnc*(a: var Assembler_x86, dst: Register, src: Operand) =
+  ## Does: dst <- src if the carry flag is not set
   a.codeFragment("cmovnc", dst, src)
   # No clobber
 

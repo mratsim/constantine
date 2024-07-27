@@ -92,8 +92,7 @@ Other tracks are stretch goals, contributions towards them are accepted.
 
 - ARM assembly
 - Finish Nvidia GPU codegenerator up to MSM
-- Implement a backend for prime moduli of special form with fast reduction
-  that don't need Montgomery form
+- Implement a backend for Solinas prime like P256
 - Implement an unsaturated finite fields backend for Risc-V, WASM, WebGPU, AMD GPU, Apple Metal, Vulkan, ...
     - ideally in LLVM IR so that pristine Risc-V assembly can be generated
       and used in zkVMs without any risk of C stdlib or syscalls being used
