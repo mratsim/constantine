@@ -34,6 +34,9 @@ macro reduceCrandallPartial_adx_gen*[N: static int](
   result = newStmtList()
   var ctx = init(Assembler_x86, BaseType)
 
+  ctx.comment "Crandall reduction - Partial"
+  ctx.comment "----------------------------"
+
   let
     r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
     a = asmArray(a_MEM, 2*N, MemOffsettable, asmInput)
@@ -65,18 +68,18 @@ macro reduceCrandallPartial_adx_gen*[N: static int](
   ctx.comment "--------------------"
   ctx.comment "(hi, r₀) <- aₙ*cs + a₀"
   ctx.mov  rdx, cs
-  for i in 0 ..< N-1:
-    ctx.comment "  (hi, rᵢ) <- aᵢ₊ₙ*cs + aᵢ + hi"
+  ctx.mov  t[0], a[0]
+  for i in 0 ..< N:
     # TODO: should we alternate rax with another register?
     #       to deal with false dependencies?
-    ctx.mov t[i], a[i]
+    ctx.comment "  (hi, rᵢ) <- aᵢ₊ₙ*cs + aᵢ + hi"
+    if i != N-1:
+      ctx.mov t[i+1], a[i+1]
     ctx.mulx hi, rax, a[N+i], rdx
     ctx.adox t[i], rax
-    ctx.adcx t[i+1], hi
-  # Last limb
-  ctx.mov t[N-1], a[N-1]
-  ctx.mulx hi, rax, a[2*N-1], rdx
-  ctx.adox t[N-1], rax
+    if i != N-1:
+      ctx.adcx t[i+1], hi
+
   # Final carries
   ctx.mov rdx, 0
   ctx.adcx hi, rdx

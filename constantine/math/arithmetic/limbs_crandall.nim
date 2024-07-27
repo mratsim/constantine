@@ -190,7 +190,7 @@ func mulCranPartialReduce[N: static int](
   when UseASM_X86_32 and a.len in {3..6}:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
-      r.mulCranPartialReduce_asm(a, b, m, c)
+      r.mulCranPartialReduce_asm_adx(a, b, m, c)
     else:
       r.mulCranPartialReduce_asm(a, b, m, c)
   else:
@@ -209,7 +209,7 @@ func mulCran*[N: static int](
   elif UseASM_X86_32 and a.len in {3..6}:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
-      r.mulCran_asm(a, b, p, m, c)
+      r.mulCran_asm_adx(a, b, p, m, c)
     else:
       r.mulCran_asm(a, b, p, m, c)
   else:
@@ -225,7 +225,7 @@ func squareCranPartialReduce[N: static int](
   when UseASM_X86_32 and a.len in {3..6}:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
-      r.squareCranPartialReduce_asm(a, m, c)
+      r.squareCranPartialReduce_asm_adx(a, m, c)
     else:
       r.squareCranPartialReduce_asm(a, m, c)
   else:
@@ -244,7 +244,7 @@ func squareCran*[N: static int](
   elif UseASM_X86_32 and a.len in {3..6}:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
-      r.squareCran_asm(a, p, m, c)
+      r.squareCran_asm_adx(a, p, m, c)
     else:
       r.squareCran_asm(a, p, m, c)
   else:
