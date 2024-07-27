@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  std/[macros, strutils, sets, hashes, algorithm, sequtils],
-  ../config
+  std/[macros, strutils, sets, hashes, algorithm, sequtils, enumutils],
+  ../[config, bithacks]
 
 # A compile-time inline assembler
 
@@ -306,8 +306,7 @@ func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint, mem
         desc: desc,
         kind: kFromArray,
         offset: i)
-  else:
-    # For ElemsInReg
+  elif rm == ElemsInReg:
     #   We can't store an array in register so we create assign individual register
     #   per array elements instead
     for i in 0 ..< len:
@@ -320,6 +319,8 @@ func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint, mem
       result.buf[i] = Operand(
         desc: desc,
         kind: kRegister)
+  else:
+    error "Not implemented"
 
 func asArrayAddr*(op: Operand, memPointer: NimNode, len: int, memIndirect: MemIndirectAccess): Operand =
   ## Use the value stored in an operand as an array address
@@ -432,7 +433,7 @@ func generate*(a: Assembler_x86): NimNode =
     params.add newLit(": ") &  inOperands.foldl(a & newLit(", ") & b) & newLit("\n")
   else:
     params.add newLit(":\n")
-    
+
   let clobbers = [(a.isStackClobbered, "sp"),
                   (a.areFlagsClobbered, "cc"),
                   (memClobbered, "memory")]
@@ -484,7 +485,9 @@ func generate*(a: Assembler_x86): NimNode =
     newEmptyNode(),
     result)
 
-func getStrOffset(a: Assembler_x86, op: Operand): string =
+func getStrOffset(a: Assembler_x86, op: Operand, force32IfReg = false): string =
+  # force32IfReg forces uses of 32-bit registers (memory operand are not changed)
+
   if op.kind != kFromArray:
     if op.kind in {kArrayAddr, k2dArrayAddr}:
       # We are operating on an array pointer
@@ -493,8 +496,13 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
         return op.buf[0].desc.asmId
       else:
         return "%" & op.buf[0].desc.asmId
+    elif op.kind == kRegister:
+      if force32IfReg:
+        return "%k" & op.desc.asmId
+      else:
+        return "%" & op.desc.asmId
     else:
-      return "%" & op.desc.asmId
+      error "Unsupported: " & $op.kind
 
   # Beware GCC / Clang differences with displacements
   # https://lists.llvm.org/pipermail/llvm-dev/2017-August/116202.html
@@ -564,7 +572,8 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
         return "DWORD ptr [" & op.desc.asmId & ']'
       return "DWORD ptr [" & op.desc.asmId & " + " & $(op.offset * a.wordSize) & ']'
   else:
-    error "Unsupported: " & $op.desc.rm.ord
+    error "Unsupported: " & $op.desc.rm.symbolName() & "\n" &
+      op.repr
 
 func codeFragment(a: var Assembler_x86, instr: string, op: Operand) =
   # Generate a code fragment
@@ -628,7 +637,7 @@ func codeFragment(a: var Assembler_x86, instr: string, reg0, reg1: Register) =
   a.regClobbers.incl reg0
   a.regClobbers.incl reg1
 
-func codeFragment(a: var Assembler_x86, instr: string, op: Operand, imm: int) =
+func codeFragment(a: var Assembler_x86, instr: string, op: Operand, imm: SomeInteger) =
   # Generate a code fragment
   # ⚠️ Warning:
   # The caller should deal with destination/source operand
@@ -639,6 +648,21 @@ func codeFragment(a: var Assembler_x86, instr: string, op: Operand, imm: int) =
 
   if op.desc.constraint != asmClobberedRegister:
     a.operands.incl op.desc
+
+func codeFragment(a: var Assembler_x86, instr: string, op0, op1: Operand, imm: SomeInteger) =
+  # Generate a code fragment
+  # ⚠️ Warning:
+  # The caller should deal with destination/source operand
+  # so that it fits Intel Assembly
+  let off0 = a.getStrOffset(op0)
+  let off1 = a.getStrOffset(op1)
+
+  a.code &= instr & " " & off0 & ", " & off1 & ", " & $imm & '\n'
+
+  if op0.desc.constraint != asmClobberedRegister:
+    a.operands.incl op0.desc
+  if op1.desc.constraint != asmClobberedRegister:
+    a.operands.incl op1.desc
 
 func codeFragment(a: var Assembler_x86, instr: string, op: OperandReuse, reg: Register) =
   # Generate a code fragment
@@ -656,7 +680,7 @@ func codeFragment(a: var Assembler_x86, instr: string, reg: Register, op: Operan
   a.code &= instr & " " & $reg & ", %" & $op.asmId & '\n'
   a.regClobbers.incl reg
 
-func codeFragment(a: var Assembler_x86, instr: string, reg: Register, imm: int) =
+func codeFragment(a: var Assembler_x86, instr: string, reg: Register, imm: SomeInteger) =
   # Generate a code fragment
   # ⚠️ Warning:
   # The caller should deal with destination/source operand
@@ -664,7 +688,7 @@ func codeFragment(a: var Assembler_x86, instr: string, reg: Register, imm: int) 
   a.code &= instr & " " & $reg & ", " & $imm & '\n'
   a.regClobbers.incl reg
 
-func codeFragment(a: var Assembler_x86, instr: string, reg: OperandReuse, imm: int) =
+func codeFragment(a: var Assembler_x86, instr: string, reg: OperandReuse, imm: SomeInteger) =
   # Generate a code fragment
   # ⚠️ Warning:
   # The caller should deal with destination/source operand
@@ -740,6 +764,30 @@ func isOutput(op: Operand): bool =
 # Instructions
 # ------------------------------------------------------------------------------------------------------------
 
+const Reg8Low = [
+      rbx: "bl",
+      rdx: "dl",
+      r8: "r8l",
+      rax: "al",
+      xmm0: "invalid",
+]
+
+const Reg32 = [ # Allow using 32-bit reg on 64-bit for smaller instructions
+      rbx: "ebx",
+      rdx: "edx",
+      r8 : "r8d",
+      rax: "eax",
+      xmm0: "invalid",
+]
+
+func setc*(a: var Assembler_x86, dst: Register) =
+  ## Set destination to 1 if carry flag is set
+  ## and 0 otherwise
+
+  # This only works with 8-bit reg so we special-map them
+  a.code &= "setc " & Reg8Low[dst] & '\n'
+  # No flags affected
+
 func add*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst + src
   doAssert dst.isOutput()
@@ -776,7 +824,7 @@ func adc*(a: var Assembler_x86, dst, src: Register) =
   a.codeFragment("adc", dst, src)
   a.areFlagsClobbered = true
 
-func adc*(a: var Assembler_x86, dst: Operand, imm: int) =
+func adc*(a: var Assembler_x86, dst: Operand, imm: SomeInteger) =
   ## Does: dst <- dst + imm + borrow
   doAssert dst.isOutput()
   doAssert dst.desc.rm notin {Mem, MemOffsettable},
@@ -791,7 +839,7 @@ func adc*(a: var Assembler_x86, dst: Operand, src: Register) =
   a.codeFragment("adc", dst, src)
   a.areFlagsClobbered = true
 
-func adc*(a: var Assembler_x86, dst: Register, imm: int) =
+func adc*(a: var Assembler_x86, dst: Register, imm: SomeInteger) =
   ## Does: dst <- dst + src
   a.codeFragment("adc", dst, imm)
   a.areFlagsClobbered = true
@@ -800,6 +848,15 @@ func sub*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst - src
   doAssert dst.isOutput()
   a.codeFragment("sub", dst, src)
+  a.areFlagsClobbered = true
+
+func sub*(a: var Assembler_x86, dst: Operand, imm: SomeInteger) =
+  ## Does: dst <- dst - imm
+  doAssert dst.isOutput()
+  doAssert dst.desc.rm notin {Mem, MemOffsettable},
+    "Using subborrow with a memory destination, this incurs significant performance penalties."
+
+  a.codeFragment("sub", dst, imm)
   a.areFlagsClobbered = true
 
 func sbb*(a: var Assembler_x86, dst, src: Operand) =
@@ -811,7 +868,7 @@ func sbb*(a: var Assembler_x86, dst, src: Operand) =
   a.codeFragment("sbb", dst, src)
   a.areFlagsClobbered = true
 
-func sbb*(a: var Assembler_x86, dst: Operand, imm: int) =
+func sbb*(a: var Assembler_x86, dst: Operand, imm: SomeInteger) =
   ## Does: dst <- dst - imm - borrow
   doAssert dst.isOutput()
   doAssert dst.desc.rm notin {Mem, MemOffsettable},
@@ -820,7 +877,7 @@ func sbb*(a: var Assembler_x86, dst: Operand, imm: int) =
   a.codeFragment("sbb", dst, imm)
   a.areFlagsClobbered = true
 
-func sbb*(a: var Assembler_x86, dst: Register, imm: int) =
+func sbb*(a: var Assembler_x86, dst: Register, imm: SomeInteger) =
   ## Does: dst <- dst - imm - borrow
   a.codeFragment("sbb", dst, imm)
   a.areFlagsClobbered = true
@@ -830,7 +887,7 @@ func sbb*(a: var Assembler_x86, dst, src: Register) =
   a.codeFragment("sbb", dst, src)
   a.areFlagsClobbered = true
 
-func sbb*(a: var Assembler_x86, dst: OperandReuse, imm: int) =
+func sbb*(a: var Assembler_x86, dst: OperandReuse, imm: SomeInteger) =
   ## Does: dst <- dst - imm - borrow
   a.codeFragment("sbb", dst, imm)
   a.areFlagsClobbered = true
@@ -840,7 +897,13 @@ func sbb*(a: var Assembler_x86, dst, src: OperandReuse) =
   a.codeFragment("sbb", dst, src)
   a.areFlagsClobbered = true
 
-func sar*(a: var Assembler_x86, dst: Operand, imm: int) =
+func shld*(a: var Assembler_x86, inout: Operand, src: Operand, imm: SomeInteger) =
+  ## Does double precision left shift
+  ## inout <- (inout, src) << imm
+  a.codeFragment("shld", inout, src, imm)
+  a.areFlagsClobbered = true
+
+func sar*(a: var Assembler_x86, dst: Operand, imm: SomeInteger) =
   ## Does Arithmetic Right Shift (i.e. with sign extension)
   doAssert dst.isOutput()
   a.codeFragment("sar", dst, imm)
@@ -852,7 +915,13 @@ func `and`*(a: var Assembler_x86, dst: Operand, src: Register) =
   a.codeFragment("and", dst, src)
   a.areFlagsClobbered = true
 
-func `and`*(a: var Assembler_x86, dst: OperandReuse, imm: int) =
+func `and`*(a: var Assembler_x86, dst: Operand, imm: SomeInteger) =
+  ## Compute the bitwise AND of x and y and
+  ## set the Sign, Zero and Parity flags
+  a.codeFragment("and", dst, imm)
+  a.areFlagsClobbered = true
+
+func `and`*(a: var Assembler_x86, dst: OperandReuse, imm: SomeInteger) =
   ## Compute the bitwise AND of x and y and
   ## set the Sign, Zero and Parity flags
   a.codeFragment("and", dst, imm)
@@ -903,14 +972,31 @@ func `or`*(a: var Assembler_x86, dst: OperandReuse, src: Operand) =
 func `xor`*(a: var Assembler_x86, dst, src: Operand) =
   ## Compute the bitwise xor of x and y and
   ## reset all flags
-  a.codeFragment("xor", dst, src)
-  a.areFlagsClobbered = true
+  if dst.desc == src.desc:
+    # Special case zero-ing so it uses 32-bit registers
+    # and rely on auto zero-clear of upper bits
+    let off = a.getStrOffset(dst, force32IfReg = true)
+    a.code &= "xor " & off & ", " & off & '\n'
+
+    if dst.desc.constraint != asmClobberedRegister:
+      a.operands.incl dst.desc
+    a.areFlagsClobbered = true
+  else:
+    a.codeFragment("xor", src, dst)
+    a.areFlagsClobbered = true
 
 func `xor`*(a: var Assembler_x86, dst, src: Register) =
   ## Compute the bitwise xor of x and y and
   ## reset all flags
-  a.codeFragment("xor", dst, src)
-  a.areFlagsClobbered = true
+  if dst == src:
+    # Special case zero-ing so it uses 32-bit registers
+    a.code &= "xor " & Reg32[dst] & ", " & Reg32[dst] & '\n'
+
+    a.regClobbers.incl dst
+    a.areFlagsClobbered = true
+  else:
+    a.codeFragment("xor", src, dst)
+    a.areFlagsClobbered = true
 
 func mov*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- src
@@ -933,16 +1019,31 @@ func mov*(a: var Assembler_x86, dst: OperandReuse, src: Operand) =
   a.codeFragment("mov", dst, src)
   # No clobber
 
-func mov*(a: var Assembler_x86, dst: Operand, imm: int) =
+func mov*(a: var Assembler_x86, dst: Operand, imm: SomeInteger) =
   ## Does: dst <- imm
   doAssert dst.isOutput(), $dst.repr
 
-  a.codeFragment("mov", dst, imm)
+  # We special-case register <- immediate mov
+  # as they can take up to 10 bytes (2 bytes REX instr + 8-byte data)
+  # on x86-64 even though most of the time we load small values
+  if log2_vartime(uint64 imm) >= 32:
+    a.codeFragment("mov", dst, imm)
+  else:
+    let off = a.getStrOffset(dst, force32IfReg = true)
+    a.code &= "mov " & off & ", " & $imm & '\n'
   # No clobber
 
-func mov*(a: var Assembler_x86, dst: Register, imm: int) =
+func mov*(a: var Assembler_x86, dst: Register, imm: SomeInteger) =
   ## Does: dst <- src with dst a fixed register
-  a.codeFragment("mov", dst, imm)
+
+  # We special-case register <- immediate mov
+  # as they can take up to 10 bytes (2 bytes REX instr + 8-byte data)
+  # on x86-64 even though most of the time we load small values
+  if log2_vartime(uint64 imm) >= 32:
+    a.codeFragment("mov", dst, imm)
+  else:
+    a.code &= "mov " & Reg32[dst] & ", " & $imm & '\n'
+  a.regClobbers.incl dst
 
 func mov*(a: var Assembler_x86, dst: Register, src: Operand) =
   ## Does: dst <- src with dst a fixed register
@@ -974,6 +1075,11 @@ func cmovnc*(a: var Assembler_x86, dst, src: Operand) =
   doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
   doAssert dst.isOutput(), $dst.repr
 
+  a.codeFragment("cmovnc", dst, src)
+  # No clobber
+
+func cmovnc*(a: var Assembler_x86, dst: Register, src: Operand) =
+  ## Does: dst <- src if the carry flag is not set
   a.codeFragment("cmovnc", dst, src)
   # No clobber
 
@@ -1034,6 +1140,7 @@ func mul*(a: var Assembler_x86, dHi, dLo: Register, src0: Operand, src1: Registe
   a.regClobbers.incl rdx
 
   a.codeFragment("mul", src0)
+  a.areFlagsClobbered = true
 
 func imul*(a: var Assembler_x86, dst, src: Operand) =
   ## Does dst <- dst * src, keeping only the low half
@@ -1041,10 +1148,27 @@ func imul*(a: var Assembler_x86, dst, src: Operand) =
   doAssert dst.isOutput(), $dst.repr
 
   a.codeFragment("imul", dst, src)
+  a.areFlagsClobbered = true
 
 func imul*(a: var Assembler_x86, dst: Register, src: Operand) =
   ## Does dst <- dst * src, keeping only the low half
   a.codeFragment("imul", dst, src)
+  a.areFlagsClobbered = true
+
+func imul*(a: var Assembler_x86, dst: Register, src0: Operand, imm: SomeInteger) =
+  ## Does dst <- a * imm, keeping only the low half
+  let off0 = a.getStrOffset(src0)
+
+  a.code &= "imul " & $dst & ", " & $off0 & ", " & $imm & '\n'
+  a.regClobbers.incl dst
+  a.areFlagsClobbered = true
+  a.operands.incl(src0.desc)
+
+func imul*(a: var Assembler_x86, dst: Register, src0: Register, imm: SomeInteger) =
+  ## Does dst <- a * imm, keeping only the low half
+  a.code &= "imul " & $dst & ", " & $src0 & ", " & $imm '\n'
+  a.regClobbers.incl {dst, src0}
+  a.areFlagsClobbered = true
 
 func mulx*(a: var Assembler_x86, dHi, dLo, src0: Operand, src1: Register) =
   ## Does (dHi, dLo) <- src0 * src1
@@ -1063,6 +1187,7 @@ func mulx*(a: var Assembler_x86, dHi, dLo, src0: Operand, src1: Register) =
   a.code &= "mulx %" & $dHi.desc.asmId & ", %" & $dLo.desc.asmId & ", " & off0 & '\n'
 
   a.operands.incl src0.desc
+  # No clobber
 
 func mulx*(a: var Assembler_x86, dHi: Operand, dLo: Register, src0: Operand, src1: Register) =
   ## Does (dHi, dLo) <- src0 * src1
@@ -1078,6 +1203,20 @@ func mulx*(a: var Assembler_x86, dHi: Operand, dLo: Register, src0: Operand, src
   a.code &= "mulx %" & $dHi.desc.asmId & ", " & $dLo & ", " & off0 & '\n'
 
   a.operands.incl src0.desc
+  a.regClobbers.incl dLo
+
+func mulx*(a: var Assembler_x86, dHi: Operand, dLo, src0, src1: Register) =
+  ## Does (dHi, dLo) <- src0 * src1
+  doAssert src1 == rdx, "MULX requires the RDX register"
+  a.regClobbers.incl rdx
+
+  doAssert dHi.desc.rm in {Reg, ElemsInReg}+SpecificRegisters,
+    "The destination operand must be a register " & $dHi.repr
+  doAssert dHi.desc.constraint in OutputReg
+
+  a.code &= "mulx %" & $dHi.desc.asmId & ", " & $dLo & ", " & $src0 & '\n'
+
+  a.regClobbers.incl src0
   a.regClobbers.incl dLo
 
 func mulx*(a: var Assembler_x86, dHi: OperandReuse, dLo, src0: Operand, src1: Register) =

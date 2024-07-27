@@ -193,12 +193,12 @@ proc field_sub_gen*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field): FnDef
 
   return (subModTy, subModKernel)
 
-proc field_mul_CIOS_sparebit_gen(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, skipFinalSub: bool): FnDef =
+proc field_mul_CIOS_sparebit_gen(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, lazyReduce: bool): FnDef =
   ## Generate an optimized modular multiplication kernel
   ## with parameters `a, b, modulus: Limbs -> Limbs`
 
   let procName = cm.genSymbol(block:
-    if skipFinalSub:
+    if lazyReduce:
       case field
       of fp: opFpMulSkipFinalSub
       of fr: opFrMulSkipFinalSub
@@ -343,7 +343,7 @@ proc field_mul_CIOS_sparebit_gen(asy: Assembler_LLVM, cm: CurveMetadata, field: 
     else:
       t[0] = bld.mulhiadd(m, M[0], t[0])
 
-  if not skipFinalSub:
+  if not lazyReduce:
     asy.finalSubNoOverflow(cm, field, t, t)
 
   bld.store(r, t)
@@ -351,7 +351,7 @@ proc field_mul_CIOS_sparebit_gen(asy: Assembler_LLVM, cm: CurveMetadata, field: 
 
   return (mulModTy, mulModKernel)
 
-proc field_mul_gen*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, skipFinalSub = false): FnDef =
+proc field_mul_gen*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, lazyReduce = false): FnDef =
   ## Generate an optimized modular addition kernel
   ## with parameters `a, b, modulus: Limbs -> Limbs`
-  return asy.field_mul_CIOS_sparebit_gen(cm, field, skipFinalSub)
+  return asy.field_mul_CIOS_sparebit_gen(cm, field, lazyReduce)

@@ -58,7 +58,7 @@ proc binary_prologue[Name: static Algebra, N: static int](
   bTest = rng.random_unsafe(Fp[Name])
 
   # Set modulus to curve modulus
-  let err = mpz_set_str(p, Fp[Name].getmodulus().toHex(), 0)
+  let err = mpz_set_str(p, Fp[Name].getModulus().toHex(), 0)
   doAssert err == 0, "Error on prime for curve " & $Name
 
   #########################################################

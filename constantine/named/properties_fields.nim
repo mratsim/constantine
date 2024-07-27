@@ -97,6 +97,21 @@ template getBigInt*[Name: static Algebra](T: type FF[Name]): untyped =
   ## Get the underlying BigInt type.
   typeof(default(T).mres)
 
+template isCrandallPrimeField*(F: type Fr): static bool = false
+
+macro getCrandallPrimeSubterm*[Name: static Algebra](F: type Fp[Name]): static SecretWord =
+  result = newcall(bindSym"SecretWord", bindSym($Name & "_fp_CrandallSubTerm"))
+
+macro isCrandallPrimeField*[Name: static Algebra](F: type Fp[Name]): static bool =
+  let rawCrandall = bindSym($Name & "_fp_isCrandall")
+  let subTerm = bindSym($Name & "_fp_CrandallSubTerm")
+  result = quote do:
+    when `rawCrandall`:
+      when log2_vartime(`subTerm`) < WordBitWidth:
+        true
+      else: false
+    else: false
+
 func bits*[Name: static Algebra](T: type FF[Name]): static int =
   T.getBigInt().bits
 
@@ -203,6 +218,11 @@ macro getPrimePlus1div2*(ff: type FF): untyped =
   ## Get (P+1) / 2 for an odd prime
   ## Warning ⚠️: Result in canonical domain (not Montgomery)
   result = bindConstant(ff, "PrimePlus1div2")
+
+macro getPrimeMinus1*(ff: type FF): untyped =
+  ## Get P-1
+  ## Warning ⚠️: Result in canonical domain (not Montgomery)
+  result = bindConstant(ff, "PrimeMinus1")
 
 macro getPrimeMinus1div2*(ff: type FF): untyped =
   ## Get (P-1) / 2 for an odd prime

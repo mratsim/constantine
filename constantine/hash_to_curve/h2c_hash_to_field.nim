@@ -229,12 +229,12 @@ func hashToField*[Field; count: static int](
         output[i].redc2x(big2x)
         output[i].mres.mulMont(
           output[i].mres,
-          Fp[Field.Name].getR3ModP(),
+          Fp[Field.Name].getR3modP(),
           Fp[Field.Name])
 
       else:
         output[i].coords[j].redc2x(big2x)
         output[i].coords[j].mres.mulMont(
           output[i].coords[j].mres,
-          Fp[Field.Name].getR3ModP(),
+          Fp[Field.Name].getR3modP(),
           Fp[Field.Name])

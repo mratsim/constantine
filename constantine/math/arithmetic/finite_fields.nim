@@ -30,7 +30,9 @@ import
   constantine/platforms/abstractions,
   constantine/serialization/endians,
   constantine/named/properties_fields,
-  ./bigints, ./bigints_montgomery
+  ./bigints,
+  ./bigints_montgomery,
+  ./bigints_crandall
 
 when UseASM_X86_64:
   import ./assembly/limbs_asm_modular_x86
@@ -54,10 +56,13 @@ export Fp, Fr, FF
 
 func fromBig*(dst: var FF, src: BigInt) =
   ## Convert a BigInt to its Montgomery form
-  when nimvm:
-    dst.mres.montyResidue_precompute(src, FF.getModulus(), FF.getR2modP(), FF.getNegInvModWord())
+  when FF.isCrandallPrimeField():
+    dst.mres = src
   else:
-    dst.mres.getMont(src, FF.getModulus(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
+    when nimvm:
+      dst.mres.montyResidue_precompute(src, FF.getModulus(), FF.getR2modP(), FF.getNegInvModWord())
+    else:
+      dst.mres.getMont(src, FF.getModulus(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func fromBig*[Name: static Algebra](T: type FF[Name], src: BigInt): FF[Name] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
@@ -65,7 +70,10 @@ func fromBig*[Name: static Algebra](T: type FF[Name], src: BigInt): FF[Name] {.n
 
 func fromField*(dst: var BigInt, src: FF) {.inline.} =
   ## Convert a finite-field element to a BigInt in natural representation
-  dst.fromMont(src.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits())
+  when FF.isCrandallPrimeField():
+    dst = src.mres
+  else:
+    dst.fromMont(src.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func toBig*(src: FF): auto {.noInit, inline.} =
   ## Convert a finite-field element to a BigInt in natural representation
@@ -121,11 +129,17 @@ func isZero*(a: FF): SecretBool =
 
 func isOne*(a: FF): SecretBool =
   ## Constant-time check if one
-  a.mres == FF.getMontyOne()
+  when FF.isCrandallPrimeField():
+    a.mres.isOne()
+  else:
+    a.mres == FF.getMontyOne()
 
 func isMinusOne*(a: FF): SecretBool =
   ## Constant-time check if -1 (mod p)
-  a.mres == FF.getMontyPrimeMinus1()
+  when FF.isCrandallPrimeField():
+    a.mres == FF.getPrimeMinus1()
+  else:
+    a.mres == FF.getMontyPrimeMinus1()
 
 func isOdd*(a: FF): SecretBool {.
   error: "Do you need the actual value to be odd\n" &
@@ -141,14 +155,20 @@ func setOne*(a: var FF) =
   # Note: we need 1 in Montgomery residue form
   # TODO: Nim codegen is not optimal it uses a temporary
   #       Check if the compiler optimizes it away
-  a.mres = FF.getMontyOne()
+  when FF.isCrandallPrimeField():
+    a.mres.setOne()
+  else:
+    a.mres = FF.getMontyOne()
 
 func setMinusOne*(a: var FF) =
   ## Set ``a`` to -1 (mod p)
   # Note: we need -1 in Montgomery residue form
   # TODO: Nim codegen is not optimal it uses a temporary
   #       Check if the compiler optimizes it away
-  a.mres = FF.getMontyPrimeMinus1()
+  when FF.isCrandallPrimeField():
+    a.mres = FF.getPrimeMinus1()
+  else:
+    a.mres = FF.getMontyPrimeMinus1()
 
 func neg*(r: var FF, a: FF) {.meter.} =
   ## Negate modulo p
@@ -234,22 +254,31 @@ func double*(r: var FF, a: FF) {.meter.} =
     overflowed = overflowed or not(r.mres < FF.getModulus())
     discard csub(r.mres, FF.getModulus(), overflowed)
 
-func prod*(r: var FF, a, b: FF, skipFinalSub: static bool = false) {.meter.} =
+func prod*(r: var FF, a, b: FF, lazyReduce: static bool = false) {.meter.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
-  r.mres.mulMont(a.mres, b.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
+  when FF.isCrandallPrimeField():
+    r.mres.mulCran(a.mres, b.mres, FF.getModulus(), FF.getCrandallPrimeSubterm(), lazyReduce)
+  else:
+    r.mres.mulMont(a.mres, b.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), lazyReduce)
 
-func square*(r: var FF, a: FF, skipFinalSub: static bool = false) {.meter.} =
+func square*(r: var FF, a: FF, lazyReduce: static bool = false) {.meter.} =
   ## Squaring modulo p
-  r.mres.squareMont(a.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
+  when FF.isCrandallPrimeField():
+    r.mres.squareCran(a.mres, FF.getModulus(), FF.getCrandallPrimeSubterm(), lazyReduce)
+  else:
+    r.mres.squareMont(a.mres, FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), lazyReduce)
 
-func sumprod*[N: static int](r: var FF, a, b: array[N, FF], skipFinalSub: static bool = false) {.meter.} =
+func sumprod*[N: static int](r: var FF, a, b: array[N, FF], lazyReduce: static bool = false) {.meter.} =
   ## Compute r <- ⅀aᵢ.bᵢ (mod M) (sum of products)
   # We rely on FF and Bigints having the same repr to avoid array copies
-  r.mres.sumprodMont(
-    cast[ptr array[N, typeof(a[0].mres)]](a.unsafeAddr)[],
-    cast[ptr array[N, typeof(b[0].mres)]](b.unsafeAddr)[],
-    FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
+  when FF.isCrandallPrimeField():
+    {.error: "Not implemented".}
+  else:
+    r.mres.sumprodMont(
+      cast[ptr array[N, typeof(a[0].mres)]](a.unsafeAddr)[],
+      cast[ptr array[N, typeof(b[0].mres)]](b.unsafeAddr)[],
+      FF.getModulus(), FF.getNegInvModWord(), FF.getSpareBits(), lazyReduce)
 
 # ############################################################
 #
@@ -329,7 +358,10 @@ func inv*(r: var FF, a: FF) =
   ## Incidentally this avoids extra check
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
-  r.mres.invmod(a.mres, FF.getR2modP(), FF.getModulus())
+  when FF.isCrandallPrimeField():
+    r.mres.invmod(a.mres, FF.getModulus())
+  else:
+    r.mres.invmod(a.mres, FF.getR2modP(), FF.getModulus())
 
 func inv*(a: var FF) =
   ## Inversion modulo p
@@ -347,7 +379,10 @@ func inv_vartime*(r: var FF, a: FF) {.tags: [VarTime].} =
   ## Incidentally this avoids extra check
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
-  r.mres.invmod_vartime(a.mres, FF.getR2modP(), FF.getModulus())
+  when FF.isCrandallPrimeField():
+    r.mres.invmod_vartime(a.mres, FF.getModulus())
+  else:
+    r.mres.invmod_vartime(a.mres, FF.getR2modP(), FF.getModulus())
 
 func inv_vartime*(a: var FF) {.tags: [VarTime].} =
   ## Variable-time Inversion modulo p
@@ -370,23 +405,23 @@ func `*=`*(a: var FF, b: FF) {.meter.} =
   ## Multiplication modulo p
   a.prod(a, b)
 
-func square*(a: var FF, skipFinalSub: static bool = false) {.meter.} =
+func square*(a: var FF, lazyReduce: static bool = false) {.meter.} =
   ## Squaring modulo p
-  a.square(a, skipFinalSub)
+  a.square(a, lazyReduce)
 
-func square_repeated*(a: var FF, num: int, skipFinalSub: static bool = false) {.meter.} =
+func square_repeated*(a: var FF, num: int, lazyReduce: static bool = false) {.meter.} =
   ## Repeated squarings
   ## Assumes at least 1 squaring
   for _ in 0 ..< num-1:
-    a.square(skipFinalSub = true)
-  a.square(skipFinalSub)
+    a.square(lazyReduce = true)
+  a.square(lazyReduce)
 
-func square_repeated*(r: var FF, a: FF, num: int, skipFinalSub: static bool = false) {.meter.} =
+func square_repeated*(r: var FF, a: FF, num: int, lazyReduce: static bool = false) {.meter.} =
   ## Repeated squarings
-  r.square(a, skipFinalSub = true)
+  r.square(a, lazyReduce = true)
   for _ in 1 ..< num-1:
-    r.square(skipFinalSub = true)
-  r.square(skipFinalSub)
+    r.square(lazyReduce = true)
+  r.square(lazyReduce)
 
 func `*=`*(a: var FF, b: static int) =
   ## Multiplication by a small integer known at compile-time
@@ -518,31 +553,48 @@ func pow*(a: var FF, exponent: BigInt) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer
-  const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.powMont(
-    exponent,
-    FF.getModulus(), FF.getMontyOne(),
-    FF.getNegInvModWord(), windowSize,
-    FF.getSpareBits()
-  )
+  when FF.isCrandallPrimeField():
+    const windowSize = 5 # TODO: find best window size for each curves
+    a.mres.powCran(
+      exponent,
+      FF.getModulus(),
+      windowSize,
+      FF.getCrandallPrimeSubterm()
+    )
+  else:
+    const windowSize = 5 # TODO: find best window size for each curves
+    a.mres.powMont(
+      exponent,
+      FF.getModulus(), FF.getMontyOne(),
+      FF.getNegInvModWord(), windowSize,
+      FF.getSpareBits()
+    )
 
 func pow*(a: var FF, exponent: openarray[byte]) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer in canonical big endian representation
-  const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.powMont(
-    exponent,
-    FF.getModulus(), FF.getMontyOne(),
-    FF.getNegInvModWord(), windowSize,
-    FF.getSpareBits()
-  )
+  when FF.isCrandallPrimeField():
+    const windowSize = 5 # TODO: find best window size for each curves
+    a.mres.powCran(
+      exponent,
+      FF.getModulus(),
+      windowSize,
+      FF.getCrandallPrimeSubterm()
+    )
+  else:
+    const windowSize = 5 # TODO: find best window size for each curves
+    a.mres.powMont(
+      exponent,
+      FF.getModulus(), FF.getMontyOne(),
+      FF.getNegInvModWord(), windowSize,
+      FF.getSpareBits()
+    )
 
 func pow*(a: var FF, exponent: FF) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a finite field element
-  const windowSize = 5 # TODO: find best window size for each curves
   a.pow(exponent.toBig())
 
 func pow*(r: var FF, a: FF, exponent: BigInt or openArray[byte] or FF) =
@@ -566,13 +618,23 @@ func pow_vartime*(a: var FF, exponent: BigInt) =
   ## - memory access analysis
   ## - power analysis
   ## - timing analysis
-  const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.powMont_vartime(
-    exponent,
-    FF.getModulus(), FF.getMontyOne(),
-    FF.getNegInvModWord(), windowSize,
-    FF.getSpareBits()
-  )
+
+  when FF.isCrandallPrimeField():
+    const windowSize = 5 # TODO: find best window size for each curves
+    a.mres.powCran_vartime(
+      exponent,
+      FF.getModulus(),
+      windowSize,
+      FF.getCrandallPrimeSubterm()
+    )
+  else:
+    const windowSize = 5 # TODO: find best window size for each curves
+    a.mres.powMont_vartime(
+      exponent,
+      FF.getModulus(), FF.getMontyOne(),
+      FF.getNegInvModWord(), windowSize,
+      FF.getSpareBits()
+    )
 
 func pow_vartime*(a: var FF, exponent: openarray[byte]) =
   ## Exponentiation modulo p
@@ -585,19 +647,28 @@ func pow_vartime*(a: var FF, exponent: openarray[byte]) =
   ## - memory access analysis
   ## - power analysis
   ## - timing analysis
-  const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.powMont_vartime(
-    exponent,
-    FF.getModulus(), FF.getMontyOne(),
-    FF.getNegInvModWord(), windowSize,
-    FF.getSpareBits()
-  )
+
+  when FF.isCrandallPrimeField():
+    const windowSize = 5 # TODO: find best window size for each curves
+    a.mres.powCran_vartime(
+      exponent,
+      FF.getModulus(),
+      windowSize,
+      FF.getCrandallPrimeSubterm()
+    )
+  else:
+    const windowSize = 5 # TODO: find best window size for each curves
+    a.mres.powMont_vartime(
+      exponent,
+      FF.getModulus(), FF.getMontyOne(),
+      FF.getNegInvModWord(), windowSize,
+      FF.getSpareBits()
+    )
 
 func pow_vartime*(a: var FF, exponent: FF) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a finite field element
-  const windowSize = 5 # TODO: find best window size for each curves
   a.pow_vartime(exponent.toBig())
 
 func pow_vartime*(r: var FF, a: FF, exponent: BigInt or openArray[byte] or FF) =
@@ -636,27 +707,27 @@ func pow_squareMultiply_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[Va
   for e in 0 ..< eBytes.len-1:
     let e = eBytes[e]
     for i in countdown(7, 0):
-      a.square(skipFinalSub = true)
+      a.square(lazyReduce = true)
       let bit = bool((e shr i) and 1)
       if bit:
-        a.prod(a, aa, skipFinalSub = true)
+        a.prod(a, aa, lazyReduce = true)
 
   let e = eBytes[eBytes.len-1]
   block: # Epilogue, byte-level
     for i in countdown(7, 1):
-          a.square(skipFinalSub = true)
+          a.square(lazyReduce = true)
           let bit = bool((e shr i) and 1)
           if bit:
-            a.prod(a, aa, skipFinalSub = true)
+            a.prod(a, aa, lazyReduce = true)
 
   block: # Epilogue, bit-level
     # for the very last bit we can't skip final substraction
     let bit = bool(e and 1)
     if bit:
-      a.square(skipFinalSub = true)
-      a.prod(a, aa, skipFinalSub = false)
+      a.square(lazyReduce = true)
+      a.prod(a, aa, lazyReduce = false)
     else:
-      a.square(skipFinalSub = false)
+      a.square(lazyReduce = false)
 
 func pow_addchain_4bit_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[VarTime], meter.} =
   ## **Variable-time** Exponentiation
@@ -670,69 +741,69 @@ func pow_addchain_4bit_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[Var
     a.square()
   of 3:
     var t {.noInit.}: typeof(a)
-    t.square(a, skipFinalSub = true)
+    t.square(a, lazyReduce = true)
     a *= t
   of 4:
     a.square_repeated(2)
   of 5:
     var t {.noInit.}: typeof(a)
-    t.square_repeated(a, 2, skipFinalSub = true)
+    t.square_repeated(a, 2, lazyReduce = true)
     a *= t
   of 6:
     var t {.noInit.}: typeof(a)
-    t.square(a, skipFinalSub = true)
-    t.prod(t, a, skipFinalSub = true) # 3
+    t.square(a, lazyReduce = true)
+    t.prod(t, a, lazyReduce = true) # 3
     a.square(t)
   of 7:
     var t {.noInit.}: typeof(a)
-    t.square(a, skipFinalSub = true)
-    a.prod(a, t, skipFinalSub = true) # 3
-    t.square(skipFinalSub = true)  # 4
+    t.square(a, lazyReduce = true)
+    a.prod(a, t, lazyReduce = true) # 3
+    t.square(lazyReduce = true)  # 4
     a *= t
   of 8:
     a.square_repeated(3)
   of 9:
     var t {.noInit.}: typeof(a)
-    t.square_repeated(a, 3, skipFinalSub = true)
+    t.square_repeated(a, 3, lazyReduce = true)
     a *= t
   of 10:
     var t {.noInit.}: typeof(a)
-    t.square_repeated(a, 2, skipFinalSub = true)  # 4
-    a.prod(a, t, skipFinalSub = true)             # 5
+    t.square_repeated(a, 2, lazyReduce = true)  # 4
+    a.prod(a, t, lazyReduce = true)             # 5
     a.square()
   of 11:
     var t {.noInit.}: typeof(a)
-    t.square_repeated(a, 2, skipFinalSub = true)  # 4
-    t.prod(t, a, skipFinalSub = true)             # 5
-    t.square(skipFinalSub = true)                 # 10
+    t.square_repeated(a, 2, lazyReduce = true)  # 4
+    t.prod(t, a, lazyReduce = true)             # 5
+    t.square(lazyReduce = true)                 # 10
     a *= t
   of 12:
     var t {.noInit.}: typeof(a)
-    t.square(a, skipFinalSub = true)
-    t.prod(t, a, skipFinalSub = true)  # 3
-    t.square(skipFinalSub = true)      # 6
+    t.square(a, lazyReduce = true)
+    t.prod(t, a, lazyReduce = true)  # 3
+    t.square(lazyReduce = true)      # 6
     a.square(t)                        # 12
   of 13:
     var t1 {.noInit.}, t2 {.noInit.}: typeof(a)
-    t1.square_repeated(a, 2, skipFinalSub = true) # 4
-    t2.square(t1, skipFinalSub = true)            # 8
-    t1.prod(t1, t2, skipFinalSub = true)          # 12
+    t1.square_repeated(a, 2, lazyReduce = true) # 4
+    t2.square(t1, lazyReduce = true)            # 8
+    t1.prod(t1, t2, lazyReduce = true)          # 12
     a *= t1                                       # 13
   of 14:
     var t {.noInit.}: typeof(a)
-    t.square(a, skipFinalSub = true)   # 2
+    t.square(a, lazyReduce = true)   # 2
     a *= t                             # 3
-    t.square_repeated(2, skipFinalSub = true) # 8
-    a.square(skipFinalSub = true)      # 6
+    t.square_repeated(2, lazyReduce = true) # 8
+    a.square(lazyReduce = true)      # 6
     a *= t                             # 14
   of 15:
     var t {.noInit.}: typeof(a)
-    t.square(a, skipFinalSub = true)
-    t.prod(t, a, skipFinalSub = true)            # 3
-    a.square_repeated(t, 2, skipFinalSub = true) # 12
+    t.square(a, lazyReduce = true)
+    t.prod(t, a, lazyReduce = true)            # 3
+    a.square_repeated(t, 2, lazyReduce = true) # 12
     a *= t                                       # 15
   of 16:
-    a.square_repeated(4, skipFinalSub = true)
+    a.square_repeated(4, lazyReduce = true)
   else:
     doAssert false, "exponentiation by this small int '" & $exponent & "' is not implemented"
 
@@ -781,7 +852,7 @@ import std/macros
 
 macro addchain*(fn: untyped): untyped =
   ## Modify all prod, `*=`, square, square_repeated calls
-  ## to skipFinalSub except the very last call.
+  ## to lazyReduce except the very last call.
   ## This assumes straight-line code.
   fn.expectKind(nnkFuncDef)
 
@@ -846,9 +917,9 @@ func batchInv*[F](
 
     dst[i] = acc
     if i != N-1:
-      acc.prod(acc, z, skipFinalSub = true)
+      acc.prod(acc, z, lazyReduce = true)
     else:
-      acc.prod(acc, z, skipFinalSub = false)
+      acc.prod(acc, z, lazyReduce = false)
 
   acc.inv()
 
@@ -860,7 +931,7 @@ func batchInv*[F](
     # next iteration
     var eli = elements[i]
     eli.csetOne(zeros[i])
-    acc.prod(acc, eli, skipFinalSub = true)
+    acc.prod(acc, eli, lazyReduce = true)
 
 func batchInv_vartime*[F](
         dst: ptr UncheckedArray[F],
@@ -889,9 +960,9 @@ func batchInv_vartime*[F](
 
     dst[i] = acc
     if i != N-1:
-      acc.prod(acc, elements[i], skipFinalSub = true)
+      acc.prod(acc, elements[i], lazyReduce = true)
     else:
-      acc.prod(acc, elements[i], skipFinalSub = false)
+      acc.prod(acc, elements[i], lazyReduce = false)
 
   acc.inv_vartime()
 
@@ -899,7 +970,7 @@ func batchInv_vartime*[F](
     if zeros[i] == true:
       continue
     dst[i] *= acc
-    acc.prod(acc, elements[i], skipFinalSub = true)
+    acc.prod(acc, elements[i], lazyReduce = true)
 
 func batchInv*[F](dst: var openArray[F], source: openArray[F]) {.inline.} =
   debug: doAssert dst.len == source.len

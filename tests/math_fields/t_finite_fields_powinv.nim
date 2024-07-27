@@ -234,12 +234,13 @@ proc main() =
         r.inv(x)
         let computed = r.toHex()
 
-        check:
-          computed == expected
+        check: computed == expected
 
         var r2: Fp[BLS12_381]
         r2.inv_vartime(x)
         let computed2 = r2.toHex()
+
+        check: computed2 == expected
 
     test "Specific tests on Fp[BN254_Snarks]":
       block:
@@ -275,6 +276,9 @@ proc main() =
     proc testRandomInv(name: static Algebra) =
       test "Random inversion testing on " & $Algebra(name):
         var aInv, r: Fp[name]
+        var aFLT, pm2: Fp[name]
+        pm2 = Fp[name].fromUint(2'u)
+        pm2.neg()
 
         for _ in 0 ..< Iters:
           let a = rng.random_unsafe(Fp[name])
@@ -290,6 +294,15 @@ proc main() =
           r.prod(aInv, a)
           check: bool r.isOne() or (a.isZero() and r.isZero())
 
+          aFLT = a
+          aFLT.pow(pm2)
+          r.prod(a, aFLT)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+          aFLT = a
+          aFLT.pow_vartime(pm2)
+          r.prod(a, aFLT)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+
         for _ in 0 ..< Iters:
           let a = rng.randomHighHammingWeight(Fp[name])
           aInv.inv(a)
@@ -303,6 +316,16 @@ proc main() =
           check: bool r.isOne() or (a.isZero() and r.isZero())
           r.prod(aInv, a)
           check: bool r.isOne() or (a.isZero() and r.isZero())
+
+          aFLT = a
+          aFLT.pow(pm2)
+          r.prod(a, aFLT)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+          aFLT = a
+          aFLT.pow_vartime(pm2)
+          r.prod(a, aFLT)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+
         for _ in 0 ..< Iters:
           let a = rng.random_long01Seq(Fp[name])
           aInv.inv(a)
@@ -316,6 +339,16 @@ proc main() =
           check: bool r.isOne() or (a.isZero() and r.isZero())
           r.prod(aInv, a)
           check: bool r.isOne() or (a.isZero() and r.isZero())
+
+          aFLT = a
+          aFLT.pow(pm2)
+          r.prod(a, aFLT)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+          aFLT = a
+          aFLT.pow_vartime(pm2)
+          r.prod(a, aFLT)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+
 
     testRandomInv P224
     testRandomInv BN254_Nogami

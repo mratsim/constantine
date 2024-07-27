@@ -29,7 +29,7 @@ echo "test_finite_fields_sqrt xoshiro512** seed: ", seed
 static: doAssert defined(CTT_TEST_CURVES), "This modules requires the -d:CTT_TEST_CURVES compile option"
 
 proc exhaustiveCheck(Name: static Algebra, modulus: static int) =
-  test "Exhaustive square root check for " & $Algebra(C):
+  test "Exhaustive square root check for " & $Algebra(Name):
     var squares_to_roots: Table[uint16, set[uint16]]
 
     # Create all squares
@@ -103,7 +103,7 @@ template testSqrtImpl(a: untyped): untyped {.dirty.} =
     bool(r == a or r == na)
 
 proc randomSqrtCheck(Name: static Algebra) =
-  test "Random square root check for " & $Algebra(C):
+  test "Random square root check for " & $Algebra(Name):
     for _ in 0 ..< Iters:
       let a = rng.random_unsafe(Fp[Name])
       testSqrtImpl(a)
@@ -129,7 +129,7 @@ template testSqrtRatioImpl(u, v: untyped): untyped {.dirty.} =
     check: bool(r == u_over_v)
 
 proc randomSqrtRatioCheck(Name: static Algebra) =
-  test "Random square root check for " & $Algebra(C):
+  test "Random square root check for " & $Algebra(Name):
     for _ in 0 ..< Iters:
       let u = rng.random_unsafe(Fp[Name])
       let v = rng.random_unsafe(Fp[Name])
