@@ -187,7 +187,7 @@ func mulCranPartialReduce[N: static int](
         r: var Limbs[N],
         a, b: Limbs[N],
         m: static int, c: static SecretWord) {.inline.} =
-  when UseASM_X86_32 and a.len in {3..6}:
+  when UseASM_X86_64 and a.len in {3..6}:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
       r.mulCranPartialReduce_asm_adx(a, b, m, c)
@@ -206,7 +206,7 @@ func mulCran*[N: static int](
         lazyReduce: static bool = false) {.inline.} =
   when lazyReduce:
     r.mulCranPartialReduce(a, b, m, c)
-  elif UseASM_X86_32 and a.len in {3..6}:
+  elif UseASM_X86_64 and a.len in {3..6}:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
       r.mulCran_asm_adx(a, b, p, m, c)
@@ -222,7 +222,7 @@ func squareCranPartialReduce[N: static int](
         r: var Limbs[N],
         a: Limbs[N],
         m: static int, c: static SecretWord) {.inline.} =
-  when UseASM_X86_32 and a.len in {3..6}:
+  when UseASM_X86_64 and a.len in {3..6}:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
       r.squareCranPartialReduce_asm_adx(a, m, c)
@@ -241,7 +241,7 @@ func squareCran*[N: static int](
         lazyReduce: static bool = false) {.inline.} =
   when lazyReduce:
     r.squareCranPartialReduce(a, m, c)
-  elif UseASM_X86_32 and a.len in {3..6}:
+  elif UseASM_X86_64 and a.len in {3..6}:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
       r.squareCran_asm_adx(a, p, m, c)

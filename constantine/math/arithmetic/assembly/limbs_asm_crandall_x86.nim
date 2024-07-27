@@ -235,6 +235,7 @@ func mulCranPartialReduce_asm*[N: static int](
         r: var Limbs[N],
         a, b: Limbs[N],
         m: static int, c: static SecretWord) =
+  static: doAssert UseASM_X86_64, "x86-32 does not have enough registers for multiplication"
   var r2 {.noInit.}: Limbs[2*N]
   r2.mul_asm(a, b)
   r.reduceCrandallPartial_asm(r2, m, c)
@@ -243,6 +244,7 @@ func squareCranPartialReduce_asm*[N: static int](
         r: var Limbs[N],
         a: Limbs[N],
         m: static int, c: static SecretWord) =
+  static: doAssert UseASM_X86_64, "x86-32 does not have enough registers for squaring"
   var r2 {.noInit.}: Limbs[2*N]
   r2.square_asm(a)
   r.reduceCrandallPartial_asm(r2, m, c)
