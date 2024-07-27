@@ -62,6 +62,8 @@ proc mulx_by_word(
 
   # Steady state
   for j in 1 ..< N-1:
+    # TODO: should we alternate lo with another register?
+    #       to deal with false dependencies?
     ctx.mulx t[j+1], lo, a[j], rdx
     if j == 1:
       ctx.add t[j], lo

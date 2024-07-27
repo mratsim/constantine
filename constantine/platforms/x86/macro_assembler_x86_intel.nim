@@ -1191,6 +1191,20 @@ func mulx*(a: var Assembler_x86, dHi: Operand, dLo: Register, src0: Operand, src
   a.operands.incl src0.desc
   a.regClobbers.incl dLo
 
+func mulx*(a: var Assembler_x86, dHi: Operand, dLo, src0, src1: Register) =
+  ## Does (dHi, dLo) <- src0 * src1
+  doAssert src1 == rdx, "MULX requires the RDX register"
+  a.regClobbers.incl rdx
+
+  doAssert dHi.desc.rm in {Reg, ElemsInReg}+SpecificRegisters,
+    "The destination operand must be a register " & $dHi.repr
+  doAssert dHi.desc.constraint in OutputReg
+
+  a.code &= "mulx %" & $dHi.desc.asmId & ", " & $dLo & ", " & $src0 & '\n'
+
+  a.regClobbers.incl src0
+  a.regClobbers.incl dLo
+
 func mulx*(a: var Assembler_x86, dHi: OperandReuse, dLo, src0: Operand, src1: Register) =
   ## Does (dHi, dLo) <- src0 * src1
   doAssert src1 == rdx, "MULX requires the RDX register"

@@ -11,7 +11,9 @@ import
   ./limbs, ./limbs_extmul
 
 when UseASM_X86_32:
-  import ./assembly/limbs_asm_crandall_x86
+  import
+    ./assembly/limbs_asm_crandall_x86,
+    ./assembly/limbs_asm_crandall_x86_adx_bmi2
 
 # No exceptions allowed
 {.push raises: [], checks: off.}
@@ -195,7 +197,10 @@ func reduce_crandall_partial*[N: static int](
 
   static: doAssert N*WordBitWidth >= m
   when UseASM_X86_32 and r.len in {3..6}:
-    r.reduceCrandallPartial_asm(a, m, c)
+    if ({.noSideEffect.}: hasAdx()):
+      r.reduceCrandallPartial_asm_adx(a, m, c)
+    else:
+      r.reduceCrandallPartial_asm(a, m, c)
   else:
     r.reduce_crandall_partial_impl(a, m, c)
 
