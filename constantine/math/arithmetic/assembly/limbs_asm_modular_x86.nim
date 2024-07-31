@@ -41,6 +41,9 @@ proc finalSubNoOverflowImpl*(
   if not a_in_scratch:
     ctx.mov scratch[0], a[0]
   ctx.sub scratch[0], M[0]
+  # Combat cache-misses
+  # https://github.com/mratsim/constantine/issues/446#issuecomment-2254258024
+  ctx.prefetchw r
   for i in 1 ..< N:
     if not a_in_scratch:
       ctx.mov scratch[i], a[i]
@@ -75,6 +78,9 @@ proc finalSubMayOverflowImpl*(
   if not a_in_scratch:
     ctx.mov scratch[0], a[0]
   ctx.sub scratch[0], M[0]
+  # Combat cache-misses
+  # https://github.com/mratsim/constantine/issues/446#issuecomment-2254258024
+  ctx.prefetchw r
   for i in 1 ..< N:
     if not a_in_scratch:
       ctx.mov scratch[i], a[i]
@@ -157,6 +163,9 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_MEM: Limbs[
   # Addition
   ctx.add u[0], b[0]
   ctx.mov v[0], u[0]
+  # Combat cache-misses
+  # https://github.com/mratsim/constantine/issues/446#issuecomment-2254258024
+  ctx.prefetcht0 M
   for i in 1 ..< N:
     ctx.adc u[i], b[i]
     # Interleaved copy in a second buffer as well
@@ -215,6 +224,10 @@ macro submod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_MEM: Limbs[
   let underflowed = b.reuseRegister()
   ctx.sbb underflowed, underflowed
 
+  # Combat cache-misses
+  # https://github.com/mratsim/constantine/issues/446#issuecomment-2254258024
+  ctx.prefetchw r
+
   # Now mask the adder, with 0 or the modulus limbs
   for i in 0 ..< N:
     ctx.`and` v[i], underflowed
@@ -264,6 +277,10 @@ macro negmod_gen[N: static int](r_PIR: var Limbs[N], a_MEM, M_MEM: Limbs[N]): un
   for i in 1 ..< N:
     ctx.mov u[i], M[i]
     ctx.sbb u[i], a[i]
+
+  # Combat cache-misses
+  # https://github.com/mratsim/constantine/issues/446#issuecomment-2254258024
+  ctx.prefetchw r
 
   # Deal with a == 0
   ctx.mov isZero, a[0]
