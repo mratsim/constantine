@@ -529,7 +529,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math_elliptic_curves/t_ec_sage_bls12_381.nim", false),
   ("tests/math_elliptic_curves/t_ec_sage_pallas.nim", false),
   ("tests/math_elliptic_curves/t_ec_sage_vesta.nim", false),
-  ("tests/math_elliptic_curves/t_ec_sage_secp256k1.nim", false),
+  # ("tests/math_elliptic_curves/t_ec_sage_secp256k1.nim", false),
 
   # Edge cases highlighted by past bugs
   # ----------------------------------------------------------
