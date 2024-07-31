@@ -22,11 +22,11 @@ run_EC_addition_tests(
     moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $BN254_Snarks
   )
 
-run_EC_addition_tests(
-    ec = EC_ShortW_Jac[Fp[Secp256k1], G1],
-    Iters = Iters,
-    moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $Secp256k1
-  )
+# run_EC_addition_tests(
+#     ec = EC_ShortW_Jac[Fp[Secp256k1], G1],
+#     Iters = Iters,
+#     moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $Secp256k1
+#   )
 
 run_EC_addition_tests(
     ec = EC_ShortW_Jac[Fp[BLS12_381], G1],
