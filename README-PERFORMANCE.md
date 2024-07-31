@@ -27,7 +27,7 @@ To measure the performance of Constantine
 ```bash
 git clone https://github.com/mratsim/constantine
 
-# Default compiler
+# Default compiler. We recommand enforcing CC=clang for best performance.
 nimble bench_fp
 
 # Arithmetic
@@ -46,37 +46,55 @@ CC=clang nimble bench_summary_bn254_snarks
 CC=clang nimble bench_summary_bls12_377
 CC=clang nimble bench_summary_bls12_381
 
-# The Ethereum BLS signature protocol
-CC=clang nimble bench_ethereum_bls_signatures
+# Ethereum BLS signature protocol
+CC=clang nimble bench_eth_bls_signatures
+
+# Ethereum KZG commitments
+CC=clang nimble bench_eth_eip4844_kzg
+
+# Ethereum Virtual Machine (EVM) precompiles
+CC=clang nimble bench_eth_evm_precompiles
 
 # Multi-scalar multiplication
 CC=clang nimble bench_ec_g1_msm_bls12_381
-CC=clang nimble bench_ec_g1_msm_bn256_snarks
+CC=clang nimble bench_ec_g1_msm_bn254_snarks
 ```
 
 The full list of benchmarks is available in the [`benchmarks`](./benchmarks) folder.
+And the exact commands are listed as part of `nimble tasks`
+
 
 As mentioned in the [Compiler caveats](#compiler-caveats) section, GCC is up to 2x slower than Clang due to mishandling of carries and register usage.
 
-#### Ethereum BLS signatures (over BLS12-381 𝔾₂)
+## Ethereum benchmarks
 
-![Bench Ethereum BLS signature](./media/ethereum_bls_signatures.png)
+### Ethereum Virtual Machine (EVM) precompiles
+
+![Bench Ethereum KZG commitments](./media/bench-eth_evm_precompiles-R7_7840U.png)
+
+### Ethereum KZG commitments (EIP-4844)
+
+![Bench Ethereum KZG commitments](./media/bench-eth_eip4844_kzg-R7_7840U.png)
+
+### Ethereum BLS signatures (over BLS12-381 𝔾₂)
+
+![Bench Ethereum BLS signature](./media/bench-eth_bls_signatures-R7_7840U.png)
+
+## Cryptographic primitives benchmarks
 
 ### BLS12-381 detailed benchmarks
 
-On my machine i9-11980HK (8 cores 2.6GHz, turbo 5GHz), for Clang + Assembly, **all being constant-time** (including scalar multiplication, square root and inversion).
+![BLS12-381 perf summary](./media/bench-summary_bls12_381-R7_7840U.png)
 
-![BLS12-381 perf summary](./media/bls12_381_perf_summary_i9-11980HK.png)
-
-![BLS12-381 Multi-Scalar multiplication 1](./media/bls12_381_msm_i9-11980HK-8cores_1.png)
-![BLS12-381 Multi-Scalar multiplication 2](./media/bls12_381_msm_i9-11980HK-8cores_2.png)
-![BLS12-381 Multi-Scalar multiplication 3](./media/bls12_381_msm_i9-11980HK-8cores_3.png)
+![BLS12-381 Multi-Scalar multiplication 1](./media/bench-bls12_381_msm-2_to_128-R7_7840U.png)
+![BLS12-381 Multi-Scalar multiplication 2](./media/bench-bls12_381_msm-256_to_16384-R7_7840U.png)
+![BLS12-381 Multi-Scalar multiplication 3](./media/bench-bls12_381_msm-65536_to_262144-R7_7840U.png)
 
 ### BN254-Snarks Multi-Scalar-Multiplication benchmarks
 
-On a i9-9980XE (18 cores,watercooled, overclocked, 4.1GHz all core turbo)
+On a i9-9980XE (18 cores, watercooled, overclocked, 4.1GHz all core turbo)
 
-![BN254-Snarks multi-scalar multiplication](./media/bn254_snarks_msm-i9-9980XE-18cores.png)
+![BN254-Snarks multi-scalar multiplication](./media/bench-bn254_snarks_msm-i9_9980XE.png)
 
 ### Parallelism
 
