@@ -84,9 +84,9 @@ proc addBench*(EC: typedesc, iters: int) {.noinline.} =
     block:
       bench("EC Add " & $EC.G, EC, iters):
         r.sum(P, Q)
-    block:
-      bench("EC Add vartime " & $EC.G, EC, iters):
-        r.sum_vartime(P, Q)
+    # block:
+    #   bench("EC Add vartime " & $EC.G, EC, iters):
+    #     r.sum_vartime(P, Q)
 
 proc mixedAddBench*(EC: typedesc, iters: int) {.noinline.} =
   var r {.noInit.}: EC
