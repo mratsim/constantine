@@ -786,6 +786,9 @@ proc runBench(benchName: string) =
   if not dirExists "build":
     mkDir "build"
   let command = setupBench(benchName, run = true)
+  echo "\n=============================================================================================="
+  echo "Running '", command, "'"
+  echo "=============================================================================================="
   exec command
 
 proc buildBenchBatch(commands: var string, benchName: string) =

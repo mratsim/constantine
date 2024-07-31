@@ -99,6 +99,8 @@ Other tracks are stretch goals, contributions towards them are accepted.
       and used in zkVMs without any risk of C stdlib or syscalls being used
       and without depending on the Nim compiler at build time.
 - introduce batchAffine_vartime
+- Optimized square_repeated in assembly for Montgomery and Crandall/Pseudo-Mersenne primes
+- Optimized elliptic curve directly calling assembly without ADX checks and limited input/output movement in registers or using function multi-versioning.
 
 ### User Experience track
 
