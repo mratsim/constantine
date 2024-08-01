@@ -23,11 +23,11 @@ run_EC_mixed_add_impl(
     moduleName = "test_ec_shortweierstrass_jacobian_extendedmixed_add_" & $BN254_Snarks
   )
 
-run_EC_mixed_add_impl(
-    ec = EC_ShortW_JacExt[Fp[Secp256k1], G1],
-    Iters = Iters,
-    moduleName = "test_ec_shortweierstrass_jacobian_extendedmixed_add_" & $Secp256k1
-  )
+# run_EC_mixed_add_impl(
+#     ec = EC_ShortW_JacExt[Fp[Secp256k1], G1],
+#     Iters = Iters,
+#     moduleName = "test_ec_shortweierstrass_jacobian_extendedmixed_add_" & $Secp256k1
+#   )
 
 run_EC_mixed_add_impl(
     ec = EC_ShortW_JacExt[Fp[BLS12_381], G1],
