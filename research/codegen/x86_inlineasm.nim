@@ -8,7 +8,7 @@
 
 import
   std/[macros, strutils],
-  ./llvm
+  constantine/platforms/llvm/llvm
 
 # ############################################################
 #
@@ -85,7 +85,7 @@ macro genInstr(body: untyped): untyped =
 
 
     instrBody.add quote do:
-      let `asmString` = if numBits == 64: static(`instr` & "q") & static(" " & `instrParam`)
+      let `asmString` = if `numBits` == 64: static(`instr` & "q") & static(" " & `instrParam`)
                         else: static(`instr` & "l") & static(" " & `instrParam`)
 
     instrBody.add quote do:

@@ -7,10 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./bindings/c_abi,
-  ./llvm, ./ir,
-  ./x86_inlineasm,
-  ../primitives
+  constantine/platforms/llvm/bindings/c_abi,
+  constantine/platforms/llvm/llvm,
+  constantine/platforms/primitives,
+  constantine/math_compiler/ir,
+  ./x86_inlineasm
 
 export x86_inlineasm
 

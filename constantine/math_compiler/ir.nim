@@ -7,7 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  constantine/math/config/[curves, precompute],
+  constantine/named/algebras,
+  constantine/named/deriv/precompute,
   constantine/math/io/io_bigints,
   constantine/platforms/[primitives, bithacks],
   constantine/platforms/llvm/llvm,
@@ -30,6 +31,7 @@ type
 
   Backend* = enum
     bkNvidiaPTX
+    bkX86_64_Linux
 
   FnDef* = tuple[fnTy: TypeRef, fnImpl: ValueRef]
     # calling getTypeOf on a ValueRef function
@@ -51,6 +53,9 @@ proc new*(T: type Assembler_LLVM, backend: Backend, moduleName: cstring): Assemb
     result.module.setTarget("nvptx64-nvidia-cuda")
     # Datalayout for NVVM IR 1.8 (CUDA 11.6)
     result.module.setDataLayout("e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-i128:128:128-f32:32:32-f64:64:64-v16:16:16-v32:32:32-v64:64:64-v128:128:128-n16:32:64")
+  of bkX86_64_Linux:
+    {.warning : "The x86 LLVM backend is incomplete and for research purposes only".}
+    result.module.setTarget("x86_64-pc-linux-gnu")
 
   result.builder = result.ctx.createBuilder()
   result.i1_t = result.ctx.int1_t()
@@ -188,7 +193,7 @@ type
     spareBits*: uint8
 
   CurveMetadata* = object
-    curve*: Curve
+    curve*: Algebra
     prefix*: string
     wordSize*: WordSize
     fp*: FieldConst
