@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ./bindings/llvm_abi {.all.}
+import constantine/platforms/abis/llvm_abi {.all.}
 export llvm_abi
 
 # ############################################################
@@ -48,7 +48,7 @@ proc toBitcode*(m: ModuleRef): seq[byte] =
   copyMem(result[0].addr, mb.getBufferStart(), len)
   mb.dispose()
 
-template verify*(module: ModuleRef, failureAction: VerifierFailureAction) =
+proc verify*(module: ModuleRef, failureAction: VerifierFailureAction) =
   ## Verify the IR code in a module
   var errMsg: LLVMstring
   let err = bool verify(module, failureAction, errMsg)
@@ -68,7 +68,7 @@ proc getIdentifier*(module: ModuleRef): string =
 # Target
 # ------------------------------------------------------------
 
-template toTarget*(triple: cstring): TargetRef =
+proc toTarget*(triple: cstring): TargetRef =
   var target: TargetRef
   var errMsg: LLVMstring
   let err = bool triple.getTargetFromTriple(target, errMsg)
@@ -94,10 +94,16 @@ proc initializeFullNVPTXTarget* {.inline.} =
   initializeNVPTXTargetMC()
   initializeNVPTXAsmPrinter()
 
+proc initializeFullAMDGPUTarget* {.inline.} =
+  initializeAMDGPUTargetInfo()
+  initializeAMDGPUTarget()
+  initializeAMDGPUTargetMC()
+  initializeAMDGPUAsmPrinter()
+
 # Execution Engine
 # ------------------------------------------------------------
 
-template createJITCompilerForModule*(
+proc createJITCompilerForModule*(
        engine: var ExecutionEngineRef,
        module: ModuleRef,
        optLevel: uint32) =
@@ -112,7 +118,7 @@ template createJITCompilerForModule*(
 # Target Machine
 # ------------------------------------------------------------
 
-template emitToFile*(t: TargetMachineRef, m: ModuleRef,
+proc emitToFile*(t: TargetMachineRef, m: ModuleRef,
                  fileName: string, codegen: CodeGenFileType) =
   var errMsg: LLVMstring
   let err = bool targetMachineEmitToFile(t, m, cstring(fileName), codegen, errMsg)
@@ -122,7 +128,7 @@ template emitToFile*(t: TargetMachineRef, m: ModuleRef,
     errMsg.dispose()
     quit 1
 
-template emitToString*(t: TargetMachineRef, m: ModuleRef, codegen: CodeGenFileType): string =
+proc emitToString*(t: TargetMachineRef, m: ModuleRef, codegen: CodeGenFileType): string =
   ## Codegen to string
   var errMsg: LLVMstring
   var mb: MemoryBufferRef

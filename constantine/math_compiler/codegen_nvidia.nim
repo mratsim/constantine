@@ -7,15 +7,15 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  constantine/platforms/llvm/bindings/nvidia_abi {.all.},
-  constantine/platforms/llvm/bindings/c_abi,
+  constantine/platforms/abis/nvidia_abi {.all.},
+  constantine/platforms/abis/c_abi,
   constantine/platforms/llvm/[llvm, nvidia_inlineasm],
   constantine/platforms/primitives,
   ./ir
 
 export
   nvidia_abi, nvidia_inlineasm,
-  Flag, flag
+  Flag, flag, wrapOpenArrayLenType
 
 # ############################################################
 #

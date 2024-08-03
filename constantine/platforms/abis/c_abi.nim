@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import std/macros
-import ../../ast_rebuilder
+import constantine/platforms/ast_rebuilder
 
 # ############################################################
 #
