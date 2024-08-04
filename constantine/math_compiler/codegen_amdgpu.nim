@@ -8,6 +8,7 @@
 
 import
   constantine/platforms/abis/amdgpu_abi {.all.},
+  constantine/platforms/abis/amdcomgr_abi,
   constantine/platforms/abis/c_abi,
   constantine/platforms/llvm/llvm,
   constantine/platforms/primitives,
@@ -65,3 +66,123 @@ proc hipDeviceInit*(deviceID = 0'i32): HipDevice =
   echo "AMD GCN ARCH: ", deviceID.getGcnArchName()
 
   return hipDevice
+
+# ############################################################
+#
+#                   LLVM IR for AMD GPUs
+#
+# ############################################################
+#
+# Note:
+#   __device__ functions for field and elliptic curve arithmetic
+#   might be compiled by default with scalar codegen
+#
+#   We will need to either:
+#   - Derive explicitly a vectorized version of the warp/wave size (32)
+#   - Derive implicitly a vectorized version, probably with __forceinline__
+
+proc wrapInCallableHipKernel*(module: ModuleRef, fn: FnDef) =
+  ## Create a public wrapper of a Hip device function
+  ##
+  ## A function named `addmod` can be found by appending _public
+  ##   check hipModuleGetFunction(fnPointer, cuModule, "addmod_public")
+
+  let pubName = fn.fnImpl.getName() & "_public"
+  let pubFn = module.addFunction(cstring(pubName), fn.fnTy)
+
+  let ctx = module.getContext()
+  let builder = ctx.createBuilder()
+  defer: builder.dispose()
+
+  let blck = ctx.appendBasicBlock(pubFn, "publicKernelBody")
+  builder.positionAtEnd(blck)
+
+  var args = newSeq[ValueRef](fn.fnTy.countParamTypes())
+  for i, arg in mpairs(args):
+    arg = pubFn.getParam(i.uint32)
+  discard builder.call2(fn.fnTy, fn.fnImpl, args)
+
+  # A public kernel must return void
+  builder.retVoid()
+  pubFn.setCallingConvention(AMDGPU_KERNEL)
+
+# ############################################################
+#
+#                      Code generation
+#
+# ############################################################
+
+template check*(status: ComgrStatus) =
+  ## Check the status code of a Comgr operation
+  ## Exit program with error if failure
+
+  let code = status # ensure that the input expression is evaluated once only
+  if code != AMD_COMGR_STATUS_SUCCESS:
+    writeStackTrace()
+    stderr.write(astToStr(status) & " " & $instantiationInfo() & " exited with error: " & $code & '\n')
+    quit 1
+
+
+proc linkAmdGpu*(reloc_obj: seq[byte], gcnArchName: string): seq[byte] {.noInline.} =
+  ## Link a relocatable object code
+  ## into an executable that can be used through hipModuleLoadData
+  var roc: ComgrData
+  check amd_comgr_create_data(AMD_COMGR_DATA_KIND_RELOCATABLE, roc)
+  defer: check amd_comgr_release_data(roc)
+
+  var ai: ComgrActionInfo
+  check amd_comgr_create_action_info(ai)
+  defer: check amd_comgr_destroy_action_info(ai)
+
+  var ds: ComgrDataset
+  check amd_comgr_create_data_set(ds)
+  defer: check amd_comgr_destroy_data_set(ds)
+
+  var dsOut: ComgrDataset
+  check amd_comgr_create_data_set(dsOut)
+  defer: check amd_comgr_destroy_data_set(dsOut)
+
+  check roc.amd_comgr_set_data(reloc_obj.len.csize_t(), reloc_obj[0].addr)
+  check roc.amd_comgr_set_data_name("linkAmdGpu-input.o")
+  check ds.amd_comgr_data_set_add(roc)
+
+  check ai.amd_comgr_action_info_set_isa_name(
+    cstring("amdgcn-amd-amdhsa--" & gcnArchName)
+  )
+
+  check amd_comgr_do_action(
+    AMD_COMGR_ACTION_LINK_RELOCATABLE_TO_EXECUTABLE,
+    info = ai,
+    input = ds,
+    output = dsOut)
+
+  # Extract the executable
+  # ------------------------------------------------
+
+  var exe: ComgrData
+  check amd_comgr_create_data(AMD_COMGR_DATA_KIND_EXECUTABLE, exe)
+  defer: check amd_comgr_release_data(exe)
+
+  check amd_comgr_action_data_get_data(
+    dsOut, AMD_COMGR_DATA_KIND_EXECUTABLE,
+    index = 0, exe)
+
+  # Query the required buffer size
+  var size: csize_t
+  check amd_comgr_get_data(
+    exe, size, nil)
+
+  # Size includes nul char
+  # But we use seq[byte] not a string, so Nim doesn't auto-inster a \0
+  # Hence allocation size is exact.
+  result.setLen(int size)
+
+  check amd_comgr_get_data(
+    exe, size, result[0].addr)
+
+
+# ############################################################
+#
+#                      Code execution
+#
+# ############################################################

@@ -131,7 +131,7 @@ proc tagCudaKernel(module: ModuleRef, fn: FnDef) =
     ]))
   )
 
-proc setCallableCudaKernel*(module: ModuleRef, fn: FnDef) =
+proc wrapInCallableCudaKernel*(module: ModuleRef, fn: FnDef) =
   ## Create a public wrapper of a cuda device function
   ##
   ## A function named `addmod` can be found by appending _public
@@ -202,7 +202,7 @@ proc codegenNvidiaPTX*(asy: Assembler_LLVM, sm: tuple[major, minor: int32]): str
     errMsg.dispose()
     quit 1
 
-  return machine.emitToString(asy.module, AssemblyFile)
+  return machine.emitTo[:string](asy.module, AssemblyFile)
 
 # ############################################################
 #

@@ -128,7 +128,7 @@ proc emitToFile*(t: TargetMachineRef, m: ModuleRef,
     errMsg.dispose()
     quit 1
 
-proc emitToString*(t: TargetMachineRef, m: ModuleRef, codegen: CodeGenFileType): string =
+proc emitTo*[T: string or seq[byte]](t: TargetMachineRef, m: ModuleRef, codegen: CodeGenFileType): T =
   ## Codegen to string
   var errMsg: LLVMstring
   var mb: MemoryBufferRef
@@ -139,10 +139,9 @@ proc emitToString*(t: TargetMachineRef, m: ModuleRef, codegen: CodeGenFileType):
     errMsg.dispose()
     quit 1
   let len = mb.getBufferSize()
-  var emitted = newString(len)
-  copyMem(emitted[0].addr, mb.getBufferStart(), len)
+  result.setLen(len)
+  copyMem(result[0].addr, mb.getBufferStart(), len)
   mb.dispose()
-  emitted
 
 # Builder
 # ------------------------------------------------------------

@@ -24,13 +24,25 @@ proc writeExampleAddMul(ctx: ContextRef, module: ModuleRef, addKernelName, mulKe
 
   const triple = "amdgcn-amd-amdhsa"
 
-  # No mention of datalayout so using default
+  const datalayout1 {.used.} =
+      "e-p:64:64-p1:64:64-p2:32:32-p3:32:32-p4:64:64-p5:32:32-p6:32:32-"               &
+             "i64:64-"                                                                 &
+             "v16:16-v24:32-"                                                          &
+             "v32:32-v48:64-v96:128-v192:256-v256:256-v512:512-v1024:1024-v2048:2048-" &
+             "n32:64-S32-A5-G1-ni:7"
+
+  const datalayout2 =
+      "e-p:64:64-p1:64:64-p2:32:32-p3:32:32-p4:64:64-p5:32:32-p6:32:32-p7:160:256:256:32-p8:128:128-" &
+             "i64:64-"                                                                                &
+             "v16:16-v24:32-v32:32-v48:64-v96:128-v192:256-v256:256-v512:512-v1024:1024-v2048:2048-"  &
+             "n32:64-S32-A5-G1-ni:7:8"
+
 
   # ######################################
   # LLVM IR codegen
 
   module.setTarget(triple)
-  # module.setDataLayout(datalayout)
+  module.setDataLayout(datalayout2)
   let i128 = ctx.int128_t()
   let void_t = ctx.void_t()
 
@@ -49,7 +61,7 @@ proc writeExampleAddMul(ctx: ContextRef, module: ModuleRef, addKernelName, mulKe
     builder.store(sum, r)
     builder.retVoid()
 
-    addKernel.setCallingConvention(AMDGPU_KERNEL)
+    module.wrapInCallableHipKernel((addType, addKernel))
 
   block:
     let mulType = function_t(void_t, [i128.pointer_t(), i128, i128], isVarArg = LlvmBool(false))
@@ -63,7 +75,7 @@ proc writeExampleAddMul(ctx: ContextRef, module: ModuleRef, addKernelName, mulKe
     builder.store(prod, r)
     builder.retVoid()
 
-    mulKernel.setCallingConvention(AMDGPU_KERNEL)
+    module.wrapInCallableHipKernel((mulType, mulKernel))
 
   module.verify(AbortProcessAction)
 
@@ -112,19 +124,20 @@ proc main() =
 
   initializeFullAMDGPUTarget()
   const triple = "amdgcn-amd-amdhsa"
+  let gcnArchName = getGcnArchName(deviceId = 0)
 
   let machine = createTargetMachine(
     target = toTarget(triple),
     triple = triple,
-    cpu = cstring(getGcnArchName(deviceId = 0)),
+    cpu = cstring(gcnArchName),
     features = "",
     level = CodeGenLevelAggressive,
     reloc = RelocDefault,
     codeModel = CodeModelDefault
   )
 
-  let machineCode = machine.emitToString(module, ObjectFile)
-  let assembly = machine.emitToString(module, AssemblyFile)
+  let objectCode = machine.emitTo[:seq[byte]](module, ObjectFile)
+  let assembly = machine.emitTo[:string](module, AssemblyFile)
 
   module.dispose()
   ctx.dispose()
@@ -135,12 +148,14 @@ proc main() =
     echo $assembly
     echo "================="
 
+  let exeCode = objectCode.linkAmdGpu(gcnArchName)
+
   #######################################
   # GPU JIT
   var hipCtx: HipContext
   var hipMod: HipModule
   check hipCtxCreate(hipCtx, 0, hipDevice)
-  check hipModuleLoadData(hipMod, machineCode[0].addr)
+  check hipModuleLoadData(hipMod, exeCode[0].addr)
   let addKernel = hipMod.getHipKernel(addKernelName)
   let mulKernel = hipMod.getHipKernel(mulKernelName)
 
