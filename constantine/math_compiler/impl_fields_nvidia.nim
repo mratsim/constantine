@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../platforms/llvm/llvm,
-  ./ir, ./codegen_nvidia
+  constantine/platforms/llvm/[llvm, asm_nvidia],
+  ./ir
 
 # ############################################################
 #
@@ -40,8 +40,11 @@ import
 # but the carry codegen of madc.hi.cc.u64 has off-by-one
 # - https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
 # - old 32-bit bug: https://forums.developer.nvidia.com/t/wrong-result-returned-by-madc-hi-u64-ptx-instruction-for-specific-operands/196094
+#
+# See instruction throughput
+# - https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#arithmetic-instructions
 
-proc finalSubMayOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array) =
+proc finalSubMayOverflow(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -74,7 +77,7 @@ proc finalSubMayOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, 
   for i in 0 ..< N:
     r[i] = bld.slct(scratch[i], a[i], underflowedModulus)
 
-proc finalSubNoOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array) =
+proc finalSubNoOverflow(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##

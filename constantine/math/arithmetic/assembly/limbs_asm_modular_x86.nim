@@ -80,7 +80,7 @@ proc finalSubMayOverflowImpl*(
       ctx.mov scratch[i], a[i]
     ctx.sbb scratch[i], M[i]
 
-  # If it overflows here, it means that it was
+  # If it underflows here, it means that it was
   # smaller than the modulus and we don't need `scratch`
   ctx.sbb scratchReg, 0
 

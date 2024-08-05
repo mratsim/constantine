@@ -77,12 +77,12 @@ func smul128(a, b: Ct[uint64], hi: var Ct[uint64]): Ct[uint64] {.importc:"_mul12
   ## as we use their unchecked raw representation for cryptography
 
 func smul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.} =
-  ## Extended precision multiplication
+  ## Signed extended precision multiplication
   ## (hi, lo) <- a*b
   ##
   ## Inputs are intentionally unsigned
   ## as we use their unchecked raw representation for cryptography
-  ## 
+  ##
   ## This is constant-time on most hardware
   ## See: https://www.bearssl.org/ctmul.html
   lo = smul128(a, b, hi)

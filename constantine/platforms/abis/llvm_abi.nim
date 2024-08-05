@@ -601,17 +601,17 @@ type
     ##  An instruction builder represents a point within a basic block and is
     ##  the exclusive means of building instructions using the C interface.
 
-  IntPredicate* {.size: sizeof(cint).} = enum
-    IntEQ = 32               ## equal
-    IntNE                    ## not equal
-    IntUGT                   ## unsigned greater than
-    IntUGE                   ## unsigned greater or equal
-    IntULT                   ## unsigned less than
-    IntULE                   ## unsigned less or equal
-    IntSGT                   ## signed greater than
-    IntSGE                   ## signed greater or equal
-    IntSLT                   ## signed less than
-    IntSLE                   ## signed less or equal
+  Predicate* {.size: sizeof(cint).} = enum
+    kEQ = 32               ## equal
+    kNE                    ## not equal
+    kUGT                   ## unsigned greater than
+    kUGE                   ## unsigned greater or equal
+    kULT                   ## unsigned less than
+    kULE                   ## unsigned less or equal
+    kSGT                   ## signed greater than
+    kSGE                   ## signed greater or equal
+    kSLT                   ## signed less than
+    kSLE                   ## signed less or equal
 
   InlineAsmDialect* {.size: sizeof(cint).} = enum
     InlineAsmDialectATT
@@ -675,19 +675,27 @@ proc call2*(
 
 proc add*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildAdd".}
 proc addNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNSWAdd".}
+  ## Addition No Signed Wrap, i.e. guaranteed to not overflow
 proc addNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNUWAdd".}
+  ## Addition No Unsigned Wrap, i.e. guaranteed to not overflow
 
 proc sub*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildSub".}
 proc subNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNSWSub".}
+  ## Substraction No Signed Wrap, i.e. guaranteed to not overflow
 proc subNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNUWSub".}
+  ## Substraction No Unsigned Wrap, i.e. guaranteed to not overflow
 
 proc neg*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNeg".}
 proc negNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNSWNeg".}
+  ## Negation No Signed Wrap, i.e. guaranteed to not overflow
 proc negNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNUWNeg".}
+  ## Negation No Unsigned Wrap, i.e. guaranteed to not overflow
 
 proc mul*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildMul".}
 proc mulNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNSWMul".}
+  ## Multiplication No Signed Wrap, i.e. guaranteed to not overflow
 proc mulNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNUWMul".}
+  ## Multiplication No Unsigned Wrap, i.e. guaranteed to not overflow
 
 proc divU*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildUDiv".}
 proc divU_exact*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildExactUDiv".}
@@ -706,7 +714,7 @@ proc `xor`*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueR
 proc `not`*(builder: BuilderRef, val: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNot".}
 proc select*(builder: BuilderRef, condition, then, otherwise: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildSelect".}
 
-proc icmp*(builder: BuilderRef, op: IntPredicate, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildICmp".}
+proc icmp*(builder: BuilderRef, op: Predicate, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildICmp".}
 
 proc bitcast*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildBitcast".}
 proc trunc*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildTrunc".}

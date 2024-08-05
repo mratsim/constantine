@@ -9,12 +9,12 @@
 import
   constantine/platforms/abis/nvidia_abi {.all.},
   constantine/platforms/abis/c_abi,
-  constantine/platforms/llvm/[llvm, nvidia_inlineasm],
+  constantine/platforms/llvm/llvm,
   constantine/platforms/primitives,
   ./ir
 
 export
-  nvidia_abi, nvidia_inlineasm,
+  nvidia_abi,
   Flag, flag, wrapOpenArrayLenType
 
 # ############################################################

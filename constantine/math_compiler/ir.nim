@@ -265,6 +265,12 @@ func getFieldType*(cm: CurveMetadata, field: Field): TypeRef {.inline.} =
   else:
     return cm.fr.fieldTy
 
+func getWordType*(cm: CurveMetadata, field: Field): TypeRef {.inline.} =
+  if field == fp:
+    return cm.fp.wordTy
+  else:
+    return cm.fr.wordTy
+
 func getNumWords*(cm: CurveMetadata, field: Field): int {.inline.} =
   case field
   of fp:
