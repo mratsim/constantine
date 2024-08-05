@@ -7,15 +7,15 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  constantine/platforms/llvm/bindings/nvidia_abi {.all.},
-  constantine/platforms/llvm/bindings/c_abi,
+  constantine/platforms/abis/nvidia_abi {.all.},
+  constantine/platforms/abis/c_abi,
   constantine/platforms/llvm/[llvm, nvidia_inlineasm],
   constantine/platforms/primitives,
   ./ir
 
 export
   nvidia_abi, nvidia_inlineasm,
-  Flag, flag
+  Flag, flag, wrapOpenArrayLenType
 
 # ############################################################
 #
@@ -131,7 +131,7 @@ proc tagCudaKernel(module: ModuleRef, fn: FnDef) =
     ]))
   )
 
-proc setCallableCudaKernel*(module: ModuleRef, fn: FnDef) =
+proc wrapInCallableCudaKernel*(module: ModuleRef, fn: FnDef) =
   ## Create a public wrapper of a cuda device function
   ##
   ## A function named `addmod` can be found by appending _public
@@ -202,7 +202,7 @@ proc codegenNvidiaPTX*(asy: Assembler_LLVM, sm: tuple[major, minor: int32]): str
     errMsg.dispose()
     quit 1
 
-  return machine.emitToString(asy.module, AssemblyFile)
+  return machine.emitTo[:string](asy.module, AssemblyFile)
 
 # ############################################################
 #

@@ -20,8 +20,9 @@ import ./c_abi
 #
 # ############################################################
 
-static: echo "[Constantine] Using library libcuda.so"
-{.passl: "-L/opt/cuda/lib64 -lcuda".}
+const libPath = "/opt/cuda/lib64/" # For now, only support Linux
+static: echo "[Constantine] Will search Cuda runtime in $LD_LIBRARY_PATH and " & libPath & "libcuda.so"
+const libCuda = "(libcuda.so|" & libPath & "libcuda.so)"
 
 # Cuda offers 2 APIs:
 # - cuda.h               the driver API
@@ -482,7 +483,7 @@ type
   CUstream* = distinct pointer
   CUdeviceptr* = distinct pointer
 
-{.push noconv, importc, dynlib: "libcuda.so".}
+{.push noconv, importc, dynlib: libCuda.}
 
 proc cuInit*(flags: uint32): CUresult
 

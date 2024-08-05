@@ -156,7 +156,7 @@ when isMainModule:
   echo "========================================="
   echo "Assembly\n"
 
-  echo machine.emitToString(asy.module, AssemblyFile)
+  echo machine.emitTo[:string](asy.module, AssemblyFile)
   echo "========================================="
 
   # Output

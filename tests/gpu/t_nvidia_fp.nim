@@ -39,21 +39,21 @@ proc init(T: type CurveMetadata, asy: Assembler_LLVM, curve: static Algebra, wor
 
 proc genFieldAddPTX(asy: Assembler_LLVM, cm: CurveMetadata) =
   let fpAdd = asy.field_add_gen(cm, fp)
-  asy.module.setCallableCudaKernel(fpAdd)
+  asy.module.wrapInCallableCudaKernel(fpAdd)
   let frAdd = asy.field_add_gen(cm, fr)
-  asy.module.setCallableCudaKernel(frAdd)
+  asy.module.wrapInCallableCudaKernel(frAdd)
 
 proc genFieldSubPTX(asy: Assembler_LLVM, cm: CurveMetadata) =
   let fpSub = asy.field_sub_gen(cm, fp)
-  asy.module.setCallableCudaKernel(fpSub)
+  asy.module.wrapInCallableCudaKernel(fpSub)
   let frSub = asy.field_sub_gen(cm, fr)
-  asy.module.setCallableCudaKernel(frSub)
+  asy.module.wrapInCallableCudaKernel(frSub)
 
 proc genFieldMulPTX(asy: Assembler_LLVM, cm: CurveMetadata) =
   let fpMul = asy.field_mul_gen(cm, fp)
-  asy.module.setCallableCudaKernel(fpMul)
+  asy.module.wrapInCallableCudaKernel(fpMul)
   let frMul = asy.field_mul_gen(cm, fr)
-  asy.module.setCallableCudaKernel(frMul)
+  asy.module.wrapInCallableCudaKernel(frMul)
 
 # Init LLVM
 # -------------------------

@@ -6,7 +6,9 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import constantine/platforms/llvm/[llvm, nvidia, bindings/c_abi]
+import
+  constantine/platforms/llvm/llvm,
+  constantine/math_compiler/codegen_nvidia
 
 # ############################################################
 #
@@ -136,7 +138,7 @@ proc ptxCodegenViaLlvmNvptx(module: ModuleRef, sm: tuple[major, minor: int32]): 
     codeModel = CodeModelDefault
   )
 
-  machine.emitToString(module, AssemblyFile)
+  machine.emitTo[:string](module, AssemblyFile)
 
 # ############################################################
 #
@@ -153,7 +155,11 @@ proc writeExampleAddMul(ctx: ContextRef, module: ModuleRef, addKernelName, mulKe
 
   const triple = "nvptx64-nvidia-cuda"
   # Datalayout for NVVM IR 1.8 (CUDA 11.6)
-  const datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-i128:128:128-f32:32:32-f64:64:64-v16:16:16-v32:32:32-v64:64:64-v128:128:128-n16:32:64"
+  const datalayout =
+      "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-i128:128:128-" &
+             "f32:32:32-f64:64:64-" &
+             "v16:16:16-v32:32:32-v64:64:64-v128:128:128-" &
+             "n16:32:64"
 
   # ######################################
   # LLVM IR codegen
@@ -178,7 +184,7 @@ proc writeExampleAddMul(ctx: ContextRef, module: ModuleRef, addKernelName, mulKe
     builder.store(sum, r)
     builder.retVoid()
 
-    module.setCallableCudaKernel((addType, addKernel))
+    module.wrapInCallableCudaKernel((addType, addKernel))
 
   block:
     let mulType = function_t(void_t, [i128.pointer_t(), i128, i128], isVarArg = LlvmBool(false))
@@ -192,7 +198,7 @@ proc writeExampleAddMul(ctx: ContextRef, module: ModuleRef, addKernelName, mulKe
     builder.store(prod, r)
     builder.retVoid()
 
-    module.setCallableCudaKernel((mulType, mulKernel))
+    module.wrapInCallableCudaKernel((mulType, mulKernel))
 
   module.verify(AbortProcessAction)
 
