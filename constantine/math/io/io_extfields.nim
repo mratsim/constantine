@@ -52,6 +52,40 @@ func toHex*(f: ExtensionField, indent = 0, order: static Endianness = bigEndian)
   ##   - no leaks
   result.appendHex(f, indent, order)
 
+func appendDecimal*(accum: var string, f: Fp, indent = 0, order: static Endianness = bigEndian) =
+  accum.add toDecimal(f)
+
+func appendDecimal*(accum: var string, f: ExtensionField, indent = 0, order: static Endianness = bigEndian) =
+  ## Stringify a tower field element to hex.
+  ## Note. Leading zeros are not removed.
+  ## Result is prefixed with 0x
+  ##
+  ## Output will be padded with 0s to maintain constant-time.
+  ##
+  ## CT:
+  ##   - no leaks
+  accum.add static($f.typeof.genericHead() & '(')
+  staticFor i, 0, f.coords.len:
+    when i != 0:
+      accum.add ", "
+    accum.add "\n" & spaces(indent+2) & "c" & $i & ": "
+    when f is Fp2:
+      accum.appendDecimal(f.coords[i], order = order)
+    else:
+      accum.appendDecimal(f.coords[i], indent+2, order)
+  accum.add ")"
+
+func toDecimal*(f: ExtensionField, indent = 0, order: static Endianness = bigEndian): string =
+  ## Stringify a tower field element to hex.
+  ## Note. Leading zeros are not removed.
+  ## Result is prefixed with 0x
+  ##
+  ## Output will be padded with 0s to maintain constant-time.
+  ##
+  ## CT:
+  ##   - no leaks
+  result.appendDecimal(f, indent, order)
+
 func fromHex*(dst: var Fp2, c0, c1: string) =
   ## Convert 2 coordinates to an element of 𝔽p2
   ## with dst = c0 + β * c1
