@@ -121,6 +121,27 @@ type
   R1csCustomGatesList* = object
   R1csCustomGatesApp* = object
 
+  R1CS* = object
+    magic*: array[4, char]
+    version*: uint32
+    numberSections*: uint32
+    header*: Header
+    constraints*: seq[Constraint]
+    w2l*: Wire2Label
+
+
+proc toR1CS*(r1cs: R1csBin): R1CS =
+  result = R1CS(magic: r1cs.magic,
+                version: r1cs.version,
+                numberSections: r1cs.numberSections)
+  for s in r1cs.sections:
+    case s.sectionType
+    of kHeader: result.header = s.header
+    of kConstraints: result.constraints = s.constraints
+    of kWire2LabelId: result.w2l = s.w2l
+    else:
+      echo "Ignoring: ", s.sectionType
+
 proc initSection(kind: R1csSectionKind, size: uint64): Section =
   result = Section(sectionType: kind, size: size)
 
