@@ -43,6 +43,8 @@ import
 #
 # See instruction throughput
 # - https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#arithmetic-instructions
+#
+# We cannot use i256 on Nvidia target: https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/lib/Target/NVPTX/NVPTXISelLowering.cpp#L244-L276
 
 proc finalSubMayOverflow(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array) =
   ## If a >= Modulus: r <- a-M
@@ -168,8 +170,8 @@ proc field_sub_gen*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field): FnDef
   let t = bld.makeArray(fieldTy)
   let N = cm.getNumWords(field)
   let zero = case cm.wordSize
-             of size32: constInt(asy.i32_t, 0)
-             of size64: constInt(asy.i64_t, 0)
+             of w32: constInt(asy.i32_t, 0)
+             of w64: constInt(asy.i64_t, 0)
 
   t[0] = bld.sub_bo(a[0], b[0])
   for i in 1 ..< N:
@@ -261,8 +263,8 @@ proc field_mul_CIOS_sparebit_gen(asy: Assembler_LLVM, cm: CurveMetadata, field: 
   let m0ninv = ValueRef cm.getMontgomeryNegInverse0(field)
   let M = (seq[ValueRef])(cm.getModulus(field))
   let zero = case cm.wordSize
-             of size32: constInt(asy.i32_t, 0)
-             of size64: constInt(asy.i64_t, 0)
+             of w32: constInt(asy.i32_t, 0)
+             of w64: constInt(asy.i64_t, 0)
 
   for i in 0 ..< N:
     # Multiplication

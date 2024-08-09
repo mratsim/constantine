@@ -70,9 +70,9 @@ proc t_field_add(curve: static Algebra) =
   # Codegen
   # -------------------------
   let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & $curve))
-  let cm32 = CurveMetadata.init(asy, curve, size32)
+  let cm32 = CurveMetadata.init(asy, curve, w32)
   asy.genFieldAddPTX(cm32)
-  let cm64 = CurveMetadata.init(asy, curve, size64)
+  let cm64 = CurveMetadata.init(asy, curve, w64)
   asy.genFieldAddPTX(cm64)
 
   let ptx = asy.codegenNvidiaPTX(sm)
@@ -124,9 +124,9 @@ proc t_field_sub(curve: static Algebra) =
   # Codegen
   # -------------------------
   let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & $curve))
-  let cm32 = CurveMetadata.init(asy, curve, size32)
+  let cm32 = CurveMetadata.init(asy, curve, w32)
   asy.genFieldSubPTX(cm32)
-  let cm64 = CurveMetadata.init(asy, curve, size64)
+  let cm64 = CurveMetadata.init(asy, curve, w64)
   asy.genFieldSubPTX(cm64)
 
   let ptx = asy.codegenNvidiaPTX(sm)
@@ -178,14 +178,14 @@ proc t_field_mul(curve: static Algebra) =
   # Codegen
   # -------------------------
   let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & $curve))
-  let cm32 = CurveMetadata.init(asy, curve, size32)
+  let cm32 = CurveMetadata.init(asy, curve, w32)
   asy.genFieldMulPTX(cm32)
 
   # 64-bit integer fused-multiply-add with carry is buggy:
   # https://gist.github.com/mratsim/a34df1e091925df15c13208df7eda569#file-mul-py
   # https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
 
-  # let cm64 = CurveMetadata.init(asy, curve, size64)
+  # let cm64 = CurveMetadata.init(asy, curve, w64)
   # asy.genFieldMulPTX(cm64)
 
   let ptx = asy.codegenNvidiaPTX(sm)

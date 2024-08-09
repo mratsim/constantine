@@ -38,6 +38,7 @@ type
   ContextRef* = distinct pointer
   ModuleRef* = distinct pointer
   TargetRef* = distinct pointer
+  TargetDataRef* = distinct pointer
   ExecutionEngineRef* = distinct pointer
   TargetMachineRef* = distinct pointer
   PassBuilderOptionsRef* = distinct pointer
@@ -186,18 +187,32 @@ type
   CodeGenFileType* {.size: sizeof(cint).} = enum
     AssemblyFile, ObjectFile
 
-  TargetDataRef* = distinct pointer
-  TargetLibraryInfoRef* = distinct pointer
-
 # "<llvm-c/TargetMachine.h>"
 proc createTargetMachine*(
        target: TargetRef, triple, cpu, features: cstring,
        level: CodeGenOptLevel, reloc: RelocMode, codeModel: CodeModel): TargetMachineRef {.importc: "LLVMCreateTargetMachine".}
 proc dispose*(m: TargetMachineRef) {.importc: "LLVMDisposeTargetMachine".}
 
-proc createTargetDataLayout*(t: TargetMachineRef): TargetDataRef {.importc: "LLVMCreateTargetDataLayout".}
+proc getDataLayout*(t: TargetMachineRef): TargetDataRef {.importc: "LLVMCreateTargetDataLayout".}
+proc getDataLayout*(module: ModuleRef): TargetDataRef {.importc: "LLVMGetModuleDataLayout".}
 proc dispose*(m: TargetDataRef) {.importc: "LLVMDisposeTargetData".}
 proc setDataLayout*(module: ModuleRef, dataLayout: TargetDataRef) {.importc: "LLVMSetModuleDataLayout".}
+
+proc getPointerSize*(datalayout: TargetDataRef): cuint {.importc: "LLVMPointerSize".}
+proc getSizeInBits*(datalayout: TargetDataRef, ty: TypeRef): culonglong {.importc: "LLVMSizeOfTypeInBits".}
+  ## Computes the size of a type in bits for a target.
+proc getStoreSize*(datalayout: TargetDataRef, ty: TypeRef): culonglong {.importc: "LLVMStoreSizeOfType".}
+  ## Computes the storage size of a type in bytes for a target.
+proc getAbiSize*(datalayout: TargetDataRef, ty: TypeRef): culonglong {.importc: "LLVMABISizeOfType".}
+  ## Computes the ABI size of a type in bytes for a target.
+
+type
+  ByteOrder {.size: sizeof(cint).} = enum
+    kBigEndian
+    kLittleEndian
+
+proc getEndianness*(datalayout: TargetDataref): ByteOrder {.importc: "LLVMByteOrder".}
+
 
 proc targetMachineEmitToFile*(t: TargetMachineRef, m: ModuleRef, fileName: cstring,
                              codegen: CodeGenFileType, errorMessage: var LLVMstring): LLVMBool {.importc: "LLVMTargetMachineEmitToFile".}
@@ -282,10 +297,14 @@ proc struct_t*(
        elemTypes: openArray[TypeRef],
        packed: LlvmBool): TypeRef {.wrapOpenArrayLenType: cuint, importc: "LLVMStructTypeInContext".}
 proc array_t*(elemType: TypeRef, elemCount: uint32): TypeRef {.importc: "LLVMArrayType".}
+proc vector_t*(elemType: TypeRef, elemCount: uint32): TypeRef {.importc: "LLVMVectorType".}
+  ## Create a SIMD vector type (for SSE, AVX or Neon for example)
 
 proc pointerType(elementType: TypeRef; addressSpace: cuint): TypeRef {.used, importc: "LLVMPointerType".}
 
 proc getElementType*(arrayOrVectorTy: TypeRef): TypeRef {.importc: "LLVMGetElementType".}
+proc getArrayLength*(arrayTy: TypeRef): uint64 {.importc: "LLVMGetArrayLength2".}
+proc getNumElements*(structTy: TypeRef): cuint {.importc: "LLVMCountStructElementTypes".}
 
 # Functions
 # ------------------------------------------------------------
@@ -537,6 +556,44 @@ type
     # The highest possible ID. Must be some 2^k - 1.
     MaxID = 1023
 
+type
+  Linkage {.size: sizeof(cint).} = enum
+    # https://web.archive.org/web/20240224034505/https://bluesadi.me/2024/01/05/Linkage-types-in-LLVM/
+    # Weak linkage means unreferenced globals may not be discarded when linking.
+    #
+    # Also relevant: https://stackoverflow.com/a/55599037
+    #   The necessity of making code relocatable in order allow shared objects to be loaded a different addresses
+    #   in different process means that statically allocated variables,
+    #   whether they have global or local scope,
+    #   can't be accessed with directly with a single instruction on most architectures.
+    #   The only exception I know of is the 64-bit x86 architecture, as you see above.
+    #   It supports memory operands that are both PC-relative and have large 32-bit displacements
+    #   that can reach any variable defined in the same component.
+    linkExternal,                   ## Externally visible function
+    linkAvailableExternally,        ## no description
+    linkOnceAny,                    ## Keep one copy of function when linking (inline)
+    linkOnceODR,                    ## Same, but only replaced by something equivalent. (ODR: one definition rule)
+    linkOnceODRAutoHide,            ## Obsolete
+    linkWeakAny,                    ## Keep one copy of function when linking (weak)
+    linkWeakODR,                    ## Same, but only replaced by something equivalent.
+    linkAppending,                  ## Special purpose, only applies to global arrays
+    linkInternal,                   ## Rename collisions when linking (static functions)
+    linkPrivate,                    ## Like Internal, but omit from symbol table
+    linkDLLImport,                  ## Obsolete
+    linkDLLExport,                  ## Obsolete
+    linkExternalWeak,               ## ExternalWeak linkage description
+    linkGhost,                      ## Obsolete
+    linkCommon,                     ## Tentative definitions
+    linkLinkerPrivate,              ## Like Private, but linker removes.
+    linkLinkerPrivateWeak           ## Like LinkerPrivate, but is weak.
+
+  Visibility {.size: sizeof(cint).} = enum
+    # Note: Function with internal or private linkage must have default visibility
+    visDefault
+    visHidden
+    visProtected
+
+
 proc function_t*(
        returnType: TypeRef,
        paramTypes: openArray[TypeRef],
@@ -546,8 +603,14 @@ proc addFunction*(m: ModuleRef, name: cstring, ty: TypeRef): ValueRef {.importc:
   ## Declare a function `name` in a module.
   ## Returns a handle to specify its instructions
 
+proc getFunction*(m: ModuleRef, name: cstring): ValueRef {.importc: "LLVMGetNamedFunction".}
+  ## Get a function by name from the curent module.
+  ## Return nil if not found.
+
 proc getReturnType*(functionTy: TypeRef): TypeRef {.importc: "LLVMGetReturnType".}
 proc countParamTypes*(functionTy: TypeRef): uint32 {.importc: "LLVMCountParamTypes".}
+
+proc getCalledFunctionType*(fn: ValueRef): TypeRef {.importc: "LLVMGetCalledFunctionType".}
 
 proc getCallingConvention*(function: ValueRef): CallingConvention {.importc: "LLVMGetFunctionCallConv".}
 proc setCallingConvention*(function: ValueRef, cc: CallingConvention) {.importc: "LLVMSetFunctionCallConv".}
@@ -559,6 +622,16 @@ proc setCallingConvention*(function: ValueRef, cc: CallingConvention) {.importc:
 # ############################################################
 
 # {.push header: "<llvm-c/Core.h>".}
+
+proc getGlobal*(module: ModuleRef, name: cstring): ValueRef {.importc: "LLVMGetNamedGlobal".}
+proc addGlobal*(module: ModuleRef, ty: TypeRef, name: cstring): ValueRef {.importc: "LLVMAddGlobal".}
+proc setGlobal*(globalVar: ValueRef, constantVal: ValueRef) {.importc: "LLVMSetInitializer".}
+proc setImmutable*(globalVar: ValueRef, immutable = LlvmBool(true)) {.importc: "LLVMSetGlobalConstant".}
+
+proc setLinkage*(global: ValueRef, linkage: Linkage) {.importc: "LLVMSetLinkage".}
+proc setVisibility*(global: ValueRef, vis: Visibility) {.importc: "LLVMSetVisibility".}
+proc setAlignment*(v: ValueRef, bytes: cuint) {.importc: "LLVMSetAlignment".}
+proc setSection*(global: ValueRef, section: cstring) {.importc: "LLVMSetSection".}
 
 proc getTypeOf*(v: ValueRef): TypeRef {.importc: "LLVMTypeOf".}
 proc getValueName2(v: ValueRef, rLen: var csize_t): cstring {.used, importc: "LLVMGetValueName2".}
@@ -578,6 +651,9 @@ proc toLLVMstring(v: ValueRef): LLVMstring {.used, importc: "LLVMPrintValueToStr
 # https://llvm.org/doxygen/group__LLVMCCoreValueConstant.html
 
 proc constInt(ty: TypeRef, n: culonglong, signExtend: LlvmBool): ValueRef {.used, importc: "LLVMConstInt".}
+proc constIntOfArbitraryPrecision(ty: TypeRef, numWords: cuint, words: ptr uint64): ValueRef {.used, importc: "LLVMConstIntOfArbitraryPrecision".}
+proc constIntOfStringAndSize(ty: TypeRef, text: openArray[char], radix: uint8): ValueRef {.used, importc: "LLVMConstIntOfStringAndSize".}
+
 proc constReal*(ty: TypeRef, n: cdouble): ValueRef {.importc: "LLVMConstReal".}
 
 proc constNull*(ty: TypeRef): ValueRef {.importc: "LLVMConstNull".}
@@ -622,7 +698,7 @@ type
 # Instantiation
 # ------------------------------------------------------------
 
-proc appendBasicBlock*(ctx: ContextRef, fn: ValueRef, name: cstring): BasicBlockRef {.importc: "LLVMAppendBasicBlockInContext".}
+proc appendBasicBlock*(ctx: ContextRef, fn: ValueRef, name: cstring = ""): BasicBlockRef {.importc: "LLVMAppendBasicBlockInContext".}
   ## Append a basic block to the end of a function
 
 proc createBuilder*(ctx: ContextRef): BuilderRef {.importc: "LLVMCreateBuilderInContext".}
@@ -716,7 +792,7 @@ proc select*(builder: BuilderRef, condition, then, otherwise: ValueRef, name: cs
 
 proc icmp*(builder: BuilderRef, op: Predicate, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildICmp".}
 
-proc bitcast*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildBitcast".}
+proc bitcast*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildBitCast".}
 proc trunc*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildTrunc".}
 proc zext*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildZExt".}
   ## Zero-extend

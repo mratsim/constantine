@@ -146,11 +146,14 @@ proc emitTo*[T: string or seq[byte]](t: TargetMachineRef, m: ModuleRef, codegen:
 # Builder
 # ------------------------------------------------------------
 
+proc getCurrentFunction*(builder: BuilderRef): ValueRef =
+  builder.getInsertBlock().getBasicBlockParent()
+
 proc getContext*(builder: BuilderRef): ContextRef =
   # LLVM C API does not expose IRBuilder.getContext()
   # making this unnecessary painful
   # https://github.com/llvm/llvm-project/issues/59875
-  builder.getInsertBlock().getBasicBlockParent().getTypeOf().getContext()
+  builder.getCurrentFunction().getTypeOf().getContext()
 
 # Types
 # ------------------------------------------------------------
@@ -175,15 +178,7 @@ proc function_t*(returnType: TypeRef, paramTypes: openArray[TypeRef]): TypeRef {
 # Values
 # ------------------------------------------------------------
 
-# TODO: remove ConstValueRef
-# - This is used in `selConstraint` in asm_nvidia
-#   to choose the `n` literal constraint.
-#   Instead of inlining as literal and hurting instruction decoding
-#   with large 8 bytes value, we load from const memory.
-
-type
-  ConstValueRef* = distinct ValueRef
-  AnyValueRef* = ValueRef or ConstValueRef
+proc isNil*(v: ValueRef): bool {.borrow.}
 
 proc getName*(v: ValueRef): string =
   var rLen: csize_t
@@ -192,34 +187,6 @@ proc getName*(v: ValueRef): string =
   result = newString(rLen.int)
   copyMem(result[0].addr, rStr, rLen.int)
 
-proc constInt*(ty: TypeRef, n: SomeInteger, signExtend = false): ConstValueRef {.inline.} =
-  ConstValueRef constInt(ty, culonglong(n), LlvmBool(signExtend))
+proc constInt*(ty: TypeRef, n: SomeInteger, signExtend = false): ValueRef {.inline.} =
+  constInt(ty, culonglong(n), LlvmBool(signExtend))
 
-proc getTypeOf*(v: ConstValueRef): TypeRef {.borrow.}
-proc zext*(builder: BuilderRef, val: ConstValueRef, destTy: TypeRef, name: cstring = ""): ValueRef {.inline.} =
-  ## Zero-extend
-  builder.zext(ValueRef val, destTy, name)
-proc sext*(builder: BuilderRef, val: ConstValueRef, destTy: TypeRef, name: cstring = ""): ValueRef {.inline.} =
-  ## Sign-extend
-  builder.sext(ValueRef val, destTy, name)
-
-proc add*(builder: BuilderRef, lhs, rhs: distinct AnyValueRef, name: cstring = ""): ValueRef {.inline.} =
-  builder.add(ValueRef lhs, ValueRef rhs, name)
-proc addNSW*(builder: BuilderRef, lhs, rhs: distinct AnyValueRef, name: cstring = ""): ValueRef {.inline.} =
-  ## Addition No Signed Wrap, i.e. guaranteed to not overflow
-  builder.addNSW(ValueRef lhs, ValueRef rhs, name)
-proc addNUW*(builder: BuilderRef, lhs, rhs: distinct AnyValueRef, name: cstring = ""): ValueRef {.inline.} =
-  ## Addition No Unsigned Wrap, i.e. guaranteed to not overflow
-  builder.addNUW(ValueRef lhs, ValueRef rhs, name)
-
-proc sub*(builder: BuilderRef, lhs, rhs: distinct AnyValueRef, name: cstring = ""): ValueRef {.inline.} =
-  builder.sub(ValueRef lhs, ValueRef rhs, name)
-proc subNSW*(builder: BuilderRef, lhs, rhs: distinct AnyValueRef, name: cstring = ""): ValueRef {.inline.} =
-  ## Substraction No Signed Wrap, i.e. guaranteed to not overflow
-  builder.subNSW(ValueRef lhs, ValueRef rhs, name)
-proc subNUW*(builder: BuilderRef, lhs, rhs: distinct AnyValueRef, name: cstring = ""): ValueRef {.inline.} =
-  ## Substraction No Unsigned Wrap, i.e. guaranteed to not overflow
-  builder.subNUW(ValueRef lhs, ValueRef rhs, name)
-
-proc icmp*(builder: BuilderRef, op: Predicate, lhs, rhs: distinct AnyValueRef, name: cstring = ""): ValueRef {.inline.} =
-  builder.icmp(op, ValueRef lhs, ValueRef rhs, name)

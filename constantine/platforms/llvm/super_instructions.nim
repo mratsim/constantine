@@ -39,7 +39,7 @@ import ./llvm
 #  - https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/test/CodeGen/X86/mulx32.ll
 #  - https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/test/CodeGen/X86/mulx64.ll
 
-# Warning:
+# Warning 1:
 #
 #   There is no guarantee of constant-time with LLVM IR
 #   It MAY introduce branches.
@@ -53,6 +53,16 @@ import ./llvm
 #   - https://github.com/mratsim/constantine/wiki/Constant-time-arithmetics#fighting-the-compiler
 #   - https://blog.cr.yp.to/20240803-clang.html
 #   - https://www.cl.cam.ac.uk/~rja14/Papers/whatyouc.pdf
+#
+# Warning 2:
+#
+#   Unfortunately implementing unrolled bigint arithmetic using word size
+#   is fraught with perils for add-carry / sub-borrow
+#   AMDGPU crash: https://github.com/llvm/llvm-project/issues/102058
+#   ARM64 missed optim: https://github.com/llvm/llvm-project/issues/102062
+#
+#   and while using @llvm.usub.with.overflow.i64 allows ARM64 to solve the missing optimization
+#   it is also missed on AMDGPU (or nvidia)
 
 proc hi(bld: BuilderRef, val: ValueRef, baseTy: TypeRef, oversize: uint32, prefix: string): ValueRef =
   let ctx = bld.getContext()
@@ -69,11 +79,9 @@ proc hi(bld: BuilderRef, val: ValueRef, baseTy: TypeRef, oversize: uint32, prefi
 
   return hi
 
-proc addcarry*(bld: BuilderRef, a, b, carryIn: distinct AnyValueRef): tuple[carryOut, r: ValueRef] =
+proc addcarry*(bld: BuilderRef, a, b, carryIn: ValueRef): tuple[carryOut, r: ValueRef] =
   ## (cOut, result) <- a+b+cIn
-  let ctx = bld.getContext()
   let ty = a.getTypeOf()
-  let bits = ty.getIntTypeWidth()
 
   let add = bld.add(a, b, name = "adc01_")
   let carry0 = bld.icmp(kULT, add, b, name = "adc01c_")
@@ -84,11 +92,9 @@ proc addcarry*(bld: BuilderRef, a, b, carryIn: distinct AnyValueRef): tuple[carr
 
   return (carryOut, adc)
 
-proc subborrow*(bld: BuilderRef, a, b, borrowIn: distinct AnyValueRef): tuple[borrowOut, r: ValueRef] =
+proc subborrow*(bld: BuilderRef, a, b, borrowIn: ValueRef): tuple[borrowOut, r: ValueRef] =
   ## (bOut, result) <- a-b-bIn
-  let ctx = bld.getContext()
   let ty = a.getTypeOf()
-  let bits = ty.getIntTypeWidth()
 
   let sub = bld.sub(a, b, name = "sbb01_")
   let borrow0 = bld.icmp(kULT, a, b, name = "sbb01b_")

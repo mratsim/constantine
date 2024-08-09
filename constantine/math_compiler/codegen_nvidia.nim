@@ -115,22 +115,6 @@ proc cudaDeviceInit*(deviceID = 0'i32): CUdevice =
 #
 # ############################################################
 
-proc tagCudaKernel(module: ModuleRef, fn: FnDef) =
-  ## Tag a function as a Cuda Kernel, i.e. callable from host
-
-  doAssert fn.fnTy.getReturnType().isVoid(), block:
-    "Kernels must not return values but function returns " & $fn.fnTy.getReturnType().getTypeKind()
-
-  let ctx = module.getContext()
-  module.addNamedMetadataOperand(
-    "nvvm.annotations",
-    ctx.asValueRef(ctx.metadataNode([
-      fn.fnImpl.asMetadataRef(),
-      ctx.metadataNode("kernel"),
-      constInt(ctx.int32_t(), 1, LlvmBool(false)).asMetadataRef()
-    ]))
-  )
-
 proc wrapInCallableCudaKernel*(module: ModuleRef, fn: FnDef) =
   ## Create a public wrapper of a cuda device function
   ##
