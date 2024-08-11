@@ -12,7 +12,8 @@ import
   ./platforms/[abstractions, allocs],
   ./serialization/[codecs_status_codes, codecs_bls12_381, endians],
   ./commitments_setups/ethereum_kzg_srs
-  
+  # ./ethereum_eip4844_kzg
+
 export trusted_setup_load, trusted_setup_delete, TrustedSetupFormat, TrustedSetupStatus, EthereumKZGContext
 
 const RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN=asBytes"RCKZGCBATCH__V1_"
@@ -41,55 +42,7 @@ type
   # Validation: x < CELLS_PER_EXT_BLOB
   CellIndex* = uint64 
 
-
-
-
-
-#func divide_polynomial_coeff(a:PolyCoeff,b:PolyCoeff):PolyCoeff=
-
-  # #Long polynomial division for two coefficient form polynomials ``a`` and ``b``
-  # var aCopy = a  # Make a copy since `a` is passed by reference
-  # var apos = len(a.coefs) - 1
-  # var bpos = len(b.coefs) - 1
-  # var diff = apos - bpos
-
-  # while diff>=0:
-  #   var quot :Fr[BLS12_381] = div(a.coefs[apos], b.coefs[bpos]) #from deneb
-  #   result.coefs[diff] = quot
-  #   for i in countdown(bpos, 0):
-  #     aCopy.coefs[diff+i]=(a.coefs[diff+i]-b.coefs[i]*quot+BLS_MODULUS)mod BLS_MODULUS
-  #   apos -= 1
-  #   diff -= 1
-
-  # for i in 0 ..< len(result.coefs):
-  #   result.coefs[i] = result.coefs[i] mod BLS_MODULUS
-
-  # return result
-
-
-## Lagrange interpolation: Finds the lowest degree polynomial that takes the value `ys[i]` at `xs[i]` for all i.
-## Outputs a coefficient form polynomial. Leading coefficients may be zero.
-#func interpolate_polynomial_coeff(xs: Sequence[Fr[BLS12_381]], ys: Sequence[Fr[BLS12_381]]):PolynomialCoeff=
-  # assert len(xs) == len(ys)
-  
-  # var r: PolynomialCoeff
-
-  # for i in 0 ..< len(xs):
-  #   var temp: array[FIELD_ELEMENTS_PER_EXT_BLOB, Fr[BLS12_381]] = [ys[i]]
-  #   var summand:PolyCoeff= temp & [0 | FIELD_ELEMENTS_PER_EXT_BLOB-1]
-  #   for j in 0 ..< len(ys):
-  #     if j != i:
-  #       let weightAdjustment = bls_modular_inverse(int(xs[i]) - int(xs[j]))
-  #       summand = multiply_polynomial_coeff(
-  #         summand, [(BLS_MODULUS-int(weightAdjustment)*int(xs[j]))mod BLS_MODULUS,weightAdjustment]
-  #       )
-  #   r=add_polynomial_coeff(r, summand)
-
-  # return r
-
-
-
-## useful for detecting if memory cleanup us necessary , and check the status of the execution of the function 
+# useful for detecting if memory cleanup us necessary , and check the status of the execution of the function 
 template checkReturn(evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code
   # Beware of resource cleanup like heap allocation, this can early exit the caller.
@@ -137,16 +90,9 @@ template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.}
     of cttCodecEcc_PointAtInfinity:                     discard
 
 
-# from eip4844
-func bytes_to_bls_field(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus =
-  ## Convert untrusted bytes to a trusted and validated BLS scalar field element.
-  ## This function does not accept inputs greater than the BLS modulus.
-  var scalar {.noInit.}: Fr[BLS12_381].getBigInt()
-  let status = scalar.deserialize_scalar(src)
-  if status notin {cttCodecScalar_Success, cttCodecScalar_Zero}:
-    return status
-  dst.fromBig(scalar)
-  return cttCodecScalar_Success
+# from eip4844, import
+# bytes_to_bls_field
+# bls_field_to_bytes
 
 func cell_to_coset_evals(evals: var CosetEvals,cell: Cell): CttCodecEccStatus=
   # Convert an untrusted ``Cell`` into a trusted ``CosetEvals``
@@ -154,7 +100,7 @@ func cell_to_coset_evals(evals: var CosetEvals,cell: Cell): CttCodecEccStatus=
     start: int
     ending: int
     value:Fr[BLS12_381]
-  
+
   let view = cast[ptr array[FIELD_ELEMENTS_PER_CELL, array[32, byte]]](cell.unsafeAddr)
   for i in 0..FIELD_ELEMENTS_PER_CELL:
     start = i*BYTES_PER_FIELD_ELEMENT
@@ -163,7 +109,88 @@ func cell_to_coset_evals(evals: var CosetEvals,cell: Cell): CttCodecEccStatus=
     if status notin {cttCodecScalar_Success, cttCodecScalar_Zero}:
       return cttCodecEcc_PointNotOnCurve
     evals[i]=value
-  
+
   return cttCodecEcc_Success
 
-##
+
+
+func coset_evals_to_cell(dst: var Cell,coset_evals: CosetEvals): CttCodecEccStatus=
+    # Convert a trusted ``CosetEval`` into an untrusted ``Cell``.
+    # for i in 0 ..< FIELD_ELEMENTS_PER_CELL:
+    #     var bytes = bls_field_to_bytes(cosetEvals[i])
+    #     for j in 0 ..< bytes.len:
+    #         dst[i* bytes.len + j] = bytes[j]
+
+    return  cttCodecEcc_Success
+
+
+
+func compute_kzg_proof_multi_impl(dst:var (KZGProof, CosetEvals),poly_coeff: PolyCoeff,zs: Coset)=
+    # Compute a KZG multi-evaluation proof for a set of `k` points.
+
+    # This is done by committing to the following quotient polynomial:
+    #     Q(X) = f(X) - I(X) / Z(X)
+    # Where:
+    #     - I(X) is the degree `k-1` polynomial that agrees with f(x) at all `k` points
+    #     - Z(X) is the degree `k` polynomial that evaluates to zero on all `k` points
+
+    # We further note that since the degree of I(X) is less than the degree of Z(X),
+    # the computation can be simplified in monomial form to Q(X) = f(X) / Z(X)
+    
+
+    # For all points, compute the evaluation of those points
+
+    for i in z:
+      ys[i]=evaluate_polynomialcoeff(polynomial_coeff, z[i])
+
+    # Compute Z(X)
+    denominator_poly = vanishing_polynomialcoeff(zs)
+
+    # Compute the quotient polynomial directly in monomial form
+    quotient_polynomial = divide_polynomialcoeff(polynomial_coeff, denominator_poly)
+
+    return KZGProof(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(quotient_polynomial)], quotient_polynomial)), ys
+
+
+
+func coset_for_cell(var dst: Coset,cell_index: CellIndex)=
+    # Get the coset for a given ``cell_index``.
+    # Precisely, consider the group of roots of unity of order FIELD_ELEMENTS_PER_CELL * CELLS_PER_EXT_BLOB.
+    # Let G = {1, g, g^2, ...} denote its subgroup of order FIELD_ELEMENTS_PER_CELL.
+    # Then, the coset is defined as h * G = {h, hg, hg^2, ...}.
+    # This function, returns the coset.
+
+    assert cell_index < CELLS_PER_EXT_BLOB
+    # confirm if in load_ckzg4844 this is already pre-computed
+    roots_of_unity_brp.computeRootsOfUnity(FIELD_ELEMENTS_PER_EXT_BLOB).bit_reversal_permutation()
+    return Coset(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_index:FIELD_ELEMENTS_PER_CELL * (cell_index + 1)])
+
+func compute_cells_and_kzg_proofs_polynomialcoeff(dst: var (array[CELLS_PER_EXT_BLOB, Cell],array[CELLS_PER_EXT_BLOB,KZGProof]), poly_coeff: PolyCoeff)=
+    # Helper function which computes cells/proofs for a polynomial in coefficient form.
+    var 
+      coset: array[CELLS_PER_EXT_BLOB, Coset]
+      cells: array[CELLS_PER_EXT_BLOB, Cell]
+      proofs:  array[CELLS_PER_EXT_BLOB,KZGProof]
+
+    for i in range(CELLS_PER_EXT_BLOB):
+        coset[i].coset_for_cell(CellIndex(i))
+        var ys:auto
+        (ys,proofs[i]).compute_kzg_proof_multi_impl(polynomial_coeff, coset[i])
+        cells[i].coset_evals_to_cell(ys)
+        proofs[i]=proof
+
+    dst=(cells, proofs)
+    return 
+
+
+# public api method
+func compute_cells_and_kzg_proofs(dst: var (array[CELLS_PER_EXT_BLOB,Cell],array[CELLS_PER_EXT_BLOB,KZGProof]), blob: Blob) =
+    # Compute all the cell proofs for an extended blob. This is an inefficient O(n^2) algorithm,
+    # for performant implementation the FK20 algorithm that runs in O(n log n) should be used instead.
+    assert len(blob) == BYTES_PER_BLOB
+    
+    let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt()], 64)
+    poly.blob_to_bigint_polynomial(blob)
+    poly_coeff.polynomial_eval_to_coeff(poly)
+    dst.compute_cells_and_kzg_proofs_polynomialcoeff(poly_coeff)
+    return 

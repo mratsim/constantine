@@ -64,7 +64,7 @@ const RANDOM_CHALLENGE_KZG_BATCH_DOMAIN = asBytes"RCKZGBATCH___V1_"
 
 # Derived
 # ------------------------------------------------------------
-const BYTES_PER_BLOB = BYTES_PER_FIELD_ELEMENT*FIELD_ELEMENTS_PER_BLOB
+const BYTES_PER_BLOB* = BYTES_PER_FIELD_ELEMENT*FIELD_ELEMENTS_PER_BLOB
 
 # Protocol Types
 # ------------------------------------------------------------
@@ -177,7 +177,7 @@ func bytes_to_kzg_proof(dst: var KZGProof, src: array[48, byte]): CttCodecEccSta
     return cttCodecEcc_Success
   return status
 
-func blob_to_bigint_polynomial(
+func blob_to_bigint_polynomial*(
        dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt()],
        blob: Blob): CttCodecScalarStatus =
   ## Convert a blob to a polynomial in evaluation form
@@ -458,7 +458,7 @@ func verify_blob_kzg_proof*(
   return result
 
 func verify_blob_kzg_proof_batch*(
-       ctx: ptr EthereumKZGContext,
+       ctx: ptr EtherfdsteumKZGContext,
        blobs: ptr UncheckedArray[Blob],
        commitments_bytes: ptr UncheckedArray[array[48, byte]],
        proof_bytes: ptr UncheckedArray[array[48, byte]],
