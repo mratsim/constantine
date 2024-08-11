@@ -458,7 +458,7 @@ func verify_blob_kzg_proof*(
   return result
 
 func verify_blob_kzg_proof_batch*(
-       ctx: ptr EtherfdsteumKZGContext,
+       ctx: ptr EthereumKZGContext,
        blobs: ptr UncheckedArray[Blob],
        commitments_bytes: ptr UncheckedArray[array[48, byte]],
        proof_bytes: ptr UncheckedArray[array[48, byte]],
