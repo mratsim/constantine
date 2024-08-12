@@ -18,6 +18,16 @@ import
 # ############################################################
 
 type
+  AttrKind* = enum
+    # Other important properties like
+    # - norecurse
+    # - memory side-effects memory(argmem: readwrtite)
+    #   can be deduced.
+    kHot,
+    kInline,
+    kAlwaysInline,
+    kNoInline
+
   Assembler_LLVM* = ref object
     ctx*: ContextRef
     module*: ModuleRef
@@ -31,7 +41,9 @@ type
     # It doesn't seem possible to retrieve a function type
     # from its value, so we store them here.
     # If we store the type we might as well store the impl
-    fns: Table[string, tuple[ty: TypeRef, impl: ValueRef]]
+    # and we store whether it's internal to apply the fastcc calling convention
+    fns: Table[string, tuple[ty: TypeRef, impl: ValueRef, internal: bool]]
+    attrs: array[AttrKind, AttributeRef]
 
     # Convenience
     void_t*: TypeRef
@@ -95,6 +107,11 @@ proc new*(T: type Assembler_LLVM, backend: Backend, moduleName: cstring): Assemb
   result.void_t = result.ctx.void_t()
 
   result.configure(backend)
+
+  result.attrs[kHot] = result.ctx.createAttr("hot")
+  result.attrs[kInline] = result.ctx.createAttr("inlinehint")
+  result.attrs[kAlwaysInline] = result.ctx.createAttr("alwaysinline")
+  result.attrs[kNoInline] = result.ctx.createAttr("noinline")
 
 # ############################################################
 #
@@ -333,7 +350,7 @@ proc tagCudaKernel(asy: Assembler_LLVM, fn: ValueRef) =
 
 proc setPublic(asy: Assembler_LLVM, fn: ValueRef) =
   case asy.backend
-  of bkAmdGpu: fn.setCallingConvention(AMDGPU_KERNEL)
+  of bkAmdGpu: fn.setFnCallConv(AMDGPU_KERNEL)
   of bkNvidiaPtx: asy.tagCudaKernel(fn)
   else: discard
 
@@ -432,16 +449,22 @@ macro unpackParams[N: static int](
       let fn = `br`.getCurrentFunction()
       fn.getParam(uint32 `i`)
 
+proc addAttributes(asy: Assembler_LLVM, fn: ValueRef, attrs: set[AttrKind]) =
+  for attr in attrs:
+    fn.addAttribute(kAttrFnIndex, asy.attrs[attr])
+
+  fn.addAttribute(kAttrFnIndex, asy.attrs[kHot])
+
 template llvmFnDef[N: static int](
           asy: Assembler_LLVM,
           name, sectionName: string,
           returnType: TypeRef,
           paramTypes: array[N, TypeRef],
           internal: bool,
+          attrs: set[AttrKind],
           body: untyped) =
   ## This setups common prologue to implement a function in LLVM
   ## Function parameters are available with the `llvmParams` magic variable
-
   let paramsTys = asy.wrapTypesForFnCall(paramTypes)
 
   var fn = asy.module.getFunction(cstring name)
@@ -451,7 +474,7 @@ template llvmFnDef[N: static int](
     let fnTy = function_t(returnType, paramsTys.wrapped)
     fn = asy.module.addFunction(cstring name, fnTy)
 
-    asy.fns[name] = (fnTy, fn)
+    asy.fns[name] = (fnTy, fn, internal)
 
     let blck = asy.ctx.appendBasicBlock(fn)
     asy.br.positionAtEnd(blck)
@@ -465,11 +488,12 @@ template llvmFnDef[N: static int](
     body
 
     if internal:
-      fn.setCallingConvention(Fast)
+      fn.setFnCallConv(Fast)
       fn.setLinkage(linkInternal)
     else:
       asy.setPublic(fn)
     fn.setSection(sectionName)
+    asy.addAttributes(fn, attrs)
 
     asy.br.positionAtEnd(savedLoc)
 
@@ -478,8 +502,9 @@ template llvmInternalFnDef*[N: static int](
           name, sectionName: string,
           returnType: TypeRef,
           paramTypes: array[N, TypeRef],
+          attrs: set[AttrKind] = {},
           body: untyped) =
-  llvmFnDef(asy, name, sectionName, returnType, paramTypes, internal = true, body)
+  llvmFnDef(asy, name, sectionName, returnType, paramTypes, internal = true, attrs, body)
 
 template llvmPublicFnDef*[N: static int](
           asy: Assembler_LLVM,
@@ -487,7 +512,7 @@ template llvmPublicFnDef*[N: static int](
           returnType: TypeRef,
           paramTypes: array[N, TypeRef],
           body: untyped) =
-  llvmFnDef(asy, name, sectionName, returnType, paramTypes, internal = false, body)
+  llvmFnDef(asy, name, sectionName, returnType, paramTypes, internal = false, {}, body)
 
 proc callFn*(
       asy: Assembler_LLVM,
@@ -495,9 +520,12 @@ proc callFn*(
       params: openArray[ValueRef]): ValueRef {.discardable.} =
 
   if asy.fns[name].ty.getReturnType().getTypeKind() == tkVoid:
-    asy.br.call2(asy.fns[name].ty, asy.fns[name].impl, params)
+    result = asy.br.call2(asy.fns[name].ty, asy.fns[name].impl, params)
   else:
-    asy.br.call2(asy.fns[name].ty, asy.fns[name].impl, params, cstring(name))
+    result = asy.br.call2(asy.fns[name].ty, asy.fns[name].impl, params, cstring(name))
+
+  if asy.fns[name].internal:
+    result.setInstrCallConv(Fast)
 
 # ############################################################
 #

@@ -175,6 +175,12 @@ proc array_t*(elemType: TypeRef, elemCount: SomeInteger): TypeRef {.inline.}=
 proc function_t*(returnType: TypeRef, paramTypes: openArray[TypeRef]): TypeRef {.inline.} =
   function_t(returnType, paramTypes, isVarArg = LlvmBool(false))
 
+# Functions
+# ------------------------------------------------------------
+
+proc createAttr*(ctx: ContextRef, name: openArray[char]): AttributeRef =
+  ctx.toAttr(name.toAttrId())
+
 # Values
 # ------------------------------------------------------------
 
@@ -189,4 +195,3 @@ proc getName*(v: ValueRef): string =
 
 proc constInt*(ty: TypeRef, n: SomeInteger, signExtend = false): ValueRef {.inline.} =
   constInt(ty, culonglong(n), LlvmBool(signExtend))
-

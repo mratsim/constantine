@@ -45,6 +45,7 @@ type
   TypeRef* = distinct pointer
   ValueRef* = distinct pointer
   MetadataRef = distinct pointer
+  AttributeRef* = distinct pointer
   LLVMstring = distinct cstring
   ErrorMessageString = distinct cstring
     ## A string with a buffer owned by LLVM
@@ -123,16 +124,19 @@ proc verify(module: ModuleRef, failureAction: VerifierFailureAction, msg: var LL
 
 {.push used.}
 proc initializeX86AsmPrinter() {.importc: "LLVMInitializeX86AsmPrinter".}
+proc initializeX86AsmParser() {.importc: "LLVMInitializeX86AsmParser".}
 proc initializeX86Target() {.importc: "LLVMInitializeX86Target".}
 proc initializeX86TargetInfo() {.importc: "LLVMInitializeX86TargetInfo".}
 proc initializeX86TargetMC() {.importc: "LLVMInitializeX86TargetMC".}
 
 proc initializeNVPTXAsmPrinter() {.importc: "LLVMInitializeNVPTXAsmPrinter".}
+proc initializeNVPTXAsmParser() {.importc: "LLVMInitializeNVPTXAsmParser".}
 proc initializeNVPTXTarget() {.importc: "LLVMInitializeNVPTXTarget".}
 proc initializeNVPTXTargetInfo() {.importc: "LLVMInitializeNVPTXTargetInfo".}
 proc initializeNVPTXTargetMC() {.importc: "LLVMInitializeNVPTXTargetMC".}
 
 proc initializeAMDGPUAsmPrinter() {.importc: "LLVMInitializeAMDGPUAsmPrinter".}
+proc initializeAMDGPUAsmParser() {.importc: "LLVMInitializeAMDGPUAsmParser".}
 proc initializeAMDGPUTarget() {.importc: "LLVMInitializeAMDGPUTarget".}
 proc initializeAMDGPUTargetInfo() {.importc: "LLVMInitializeAMDGPUTargetInfo".}
 proc initializeAMDGPUTargetMC() {.importc: "LLVMInitializeAMDGPUTargetMC".}
@@ -612,8 +616,24 @@ proc countParamTypes*(functionTy: TypeRef): uint32 {.importc: "LLVMCountParamTyp
 
 proc getCalledFunctionType*(fn: ValueRef): TypeRef {.importc: "LLVMGetCalledFunctionType".}
 
-proc getCallingConvention*(function: ValueRef): CallingConvention {.importc: "LLVMGetFunctionCallConv".}
-proc setCallingConvention*(function: ValueRef, cc: CallingConvention) {.importc: "LLVMSetFunctionCallConv".}
+proc getFnCallConv*(function: ValueRef): CallingConvention {.importc: "LLVMGetFunctionCallConv".}
+proc setFnCallConv*(function: ValueRef, cc: CallingConvention) {.importc: "LLVMSetFunctionCallConv".}
+
+proc getInstrCallConv*(instr: ValueRef): CallingConvention {.importc: "LLVMGetInstructionCallConv".}
+proc setInstrCallConv*(instr: ValueRef, cc: CallingConvention) {.importc: "LLVMSetInstructionCallConv".}
+
+type
+  AttributeIndex* {.size: sizeof(cint).} = enum
+    ## Attribute index is either -1 for the function
+    ## 0 for the return value
+    ## or 1..n for each function parameter
+    kAttrFnIndex = -1
+    kAttrRetIndex = 0
+
+proc toAttrId*(name: openArray[char]): cuint {.importc: "LLVMGetEnumAttributeKindForName".}
+proc toAttr*(ctx: ContextRef, attr_id: uint64, val = 0'u64): AttributeRef {.importc: "LLVMCreateEnumAttribute".}
+proc addAttribute*(fn: ValueRef, index: cint, attr: AttributeRef) {.importc: "LLVMAddAttributeAtIndex".}
+proc addAttribute*(fn: ValueRef, index: AttributeIndex, attr: AttributeRef) {.importc: "LLVMAddAttributeAtIndex".}
 
 # ############################################################
 #

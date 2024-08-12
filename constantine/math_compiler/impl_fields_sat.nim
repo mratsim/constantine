@@ -86,7 +86,10 @@ proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M, car
   ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
 
   let name = "_finalsub_mayo_u" & $fd.w & "x" & $fd.numWords
-  asy.llvmInternalFnDef(name, SectionName, asy.void_t, toTypes([r, a, M, carry])):
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a, M, carry]),
+          {kHot, kInline}):
 
     let (rr, aa, MM, carry) = llvmParams
 
@@ -126,7 +129,10 @@ proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Valu
   ## (say using 255 bits for the modulus out of 256 available in words)
 
   let name = "_finalsub_noo_u" & $fd.w & "x" & $fd.numWords
-  asy.llvmInternalFnDef(name, SectionName, asy.void_t, toTypes([r, a, M])):
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a, M]),
+          {kHot, kInline}):
 
     let (rr, aa, MM) = llvmParams
 
@@ -156,7 +162,10 @@ proc modadd*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
   let red = if fd.spareBits >= 1: "noo"
             else: "mayo"
   let name = "_modadd_" & red & "_u" & $fd.w & "x" & $fd.numWords
-  asy.llvmInternalFnDef(name, SectionName, asy.void_t, toTypes([r, a, b, M])):
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a, b, M]),
+          {kHot}):
 
     let (r, aa, bb, M) = llvmParams
 

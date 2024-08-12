@@ -65,8 +65,8 @@ proc t_field_add() =
     target = toTarget(triple),
     triple = triple,
     cpu = "",
-    features = "adx,bmi2", # TODO check the proper way to pass options
-    level = CodeGenLevelAggressive,
+    features = "", # "adx,bmi2", # TODO check the proper way to pass options
+    level = CodeGenLevelDefault,
     reloc = RelocDefault,
     codeModel = CodeModelDefault
   )
@@ -74,7 +74,8 @@ proc t_field_add() =
   let pbo = createPassBuilderOptions()
   pbo.setMergeFunctions()
   let err = asy.module.runPasses(
-    "default<O3>,function-attrs,memcpyopt,sroa,mem2reg,gvn,dse,instcombine,inline,adce",
+    "default<O2>",
+    # "default<O2>,memcpyopt,sroa,mem2reg,function-attrs,inline,gvn,dse,aggressive-instcombine,adce",
     machine,
     pbo
   )
