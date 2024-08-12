@@ -20,7 +20,7 @@ proc genFpAdd*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## and return the corresponding name to call it
 
   let name = fd.name & "_add"
-  asy.llvmPublicFnDef(name, fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy]):
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy]):
     let M = asy.getModulusPtr(fd)
 
     let (r, a, b) = llvmParams

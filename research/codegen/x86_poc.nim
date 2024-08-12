@@ -49,7 +49,7 @@ proc t_field_add() =
     discard asy.genFpAdd(fd)
 
   echo "========================================="
-  echo "LLVM IR\n"
+  echo "LLVM IR unoptimized\n"
 
   echo asy.module
   echo "========================================="
@@ -71,11 +71,33 @@ proc t_field_add() =
     codeModel = CodeModelDefault
   )
 
+  # Due to https://github.com/llvm/llvm-project/issues/102868
+  # We want to reproduce the codegen from llc.cpp
+  # However we can't reproduce the code from either
+  # - LLVM16 https://github.com/llvm/llvm-project/blob/llvmorg-16.0.6/llvm/tools/llc/llc.cpp
+  #   need legacy PassManagerRef and the PassManagerBuilder that interfaces between the
+  #   legacy PssManagerRef and new PassBuilder has been deleted in LLVM17
+  #
+  # - and contrary to what is claimed in https://llvm.org/docs/NewPassManager.html#id2
+  #   the C API of PassBuilderRef is ghost town.
+  #
+  # So we reproduce the optimization passes from
+  # https://reviews.llvm.org/D145835
+
   let pbo = createPassBuilderOptions()
   pbo.setMergeFunctions()
   let err = asy.module.runPasses(
-    "default<O2>",
     # "default<O2>,memcpyopt,sroa,mem2reg,function-attrs,inline,gvn,dse,aggressive-instcombine,adce",
+    "function(require<targetir>,require<targetlibinfo>,require<inliner-size-estimator>,require<memdep>,require<da>)" &
+    ",function(aa-eval)" &
+    ",always-inline,hotcoldsplit,inferattrs,instrprof,recompute-globalsaa" &
+    ",cgscc(argpromotion,function-attrs)" &
+    # ",require<inline-advisor>,partial-inliner,called-value-propagation" &
+    # ",scc-oz-module-inliner,inline-wrapper,module-inline" & # Buggy optimization
+    ",function(verify,loop-mssa(loop-reduce),mergeicmps,expand-memcmp,instsimplify)" &
+    ",function(lower-constant-intrinsics,consthoist,partially-inline-libcalls,ee-instrument<post-inline>,scalarize-masked-mem-intrin,verify)" &
+    ",memcpyopt,sroa,dse,aggressive-instcombine,gvn,ipsccp,deadargelim,adce" &
+    "",
     machine,
     pbo
   )
@@ -86,6 +108,12 @@ proc t_field_add() =
                  " exited with error: " & $cstring(errMsg) & '\n')
     errMsg.dispose()
     quit 1
+
+  echo "========================================="
+  echo "LLVM IR optimized\n"
+
+  echo asy.module
+  echo "========================================="
 
   echo "========================================="
   echo "Assembly\n"

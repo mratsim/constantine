@@ -75,7 +75,7 @@ import
 
 const SectionName = "ctt.fields"
 
-proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M, carry: ValueRef) =
+proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, rr, a, MM, carry: ValueRef) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -85,40 +85,29 @@ proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M, car
   ## To be used when the final substraction can
   ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
 
-  let name = "_finalsub_mayo_u" & $fd.w & "x" & $fd.numWords
-  asy.llvmInternalFnDef(
-          name, SectionName,
-          asy.void_t, toTypes([r, a, M, carry]),
-          {kHot, kInline}):
+  let r = asy.asArray(rr, fd.fieldTy)
+  let M = asy.load2(fd.intBufTy, MM, "M")
 
-    let (rr, aa, MM, carry) = llvmParams
+  let noCarry = asy.br.`not`(carry, "notcarry")
 
-    let r = asy.asArray(rr, fd.fieldTy)
-    let M = asy.load2(fd.intBufTy, MM, "M")
-    # let aPtr = asy.asLlvmIntPtr(aa, fd.intBufTy) # Pointers are opaque in LLVM now
-    let a = asy.load2(fd.intBufTy, aa, "a")
+  # Now substract the modulus, and test a < M
+  # (underflow) with the last borrow.
+  # On x86 at least, LLVM can fuse sub and icmp into sub-with-borrow
+  # if this is inline the caller https://github.com/llvm/llvm-project/issues/102868
+  let a_minus_M = asy.br.sub(a, M, "a_minus_M")
+  let borrow = asy.br.icmp(kULT, a, M, "borrow")
 
-    # Now substract the modulus, and test a < M
-    # (underflow) with the last borrow.
-    # On x86 at least, LLVM can fuse sub and icmp into sub-with-borrow
-    let a_minus_M = asy.br.sub(a, M, "a_minus_M")
-    let borrow = asy.br.icmp(kULT, a, M, "borrow")
+  # Cases:
+  # No carry after a+b, no borrow after a-M -> return a-M
+  # carry after a+b, will borrow after a-M (last bit lost) -> return a-M
+  # carry after a+b, no borrow after a-M -> return a-M
+  # No carry after a+b, borrow after a-M -> return a
+  let ctl = asy.br.`or`(noCarry, borrow, "in_range")
+  let t = asy.br.select(ctl, a, a_minus_M)
 
-    # Cases:
-    # No carry after a+b, no borrow after a-M -> return a-M
-    # carry after a+b, will borrow after a-M (last bit lost) -> return a-M
-    # carry after a+b, no borrow after a-M -> return a-M
-    # No carry after a+b, borrow after a-M -> return a
-    let notBorrow = asy.br.`not`(borrow, "notborrow")
-    let ctl = asy.br.`or`(carry, notBorrow, "needSub")
-    let t = asy.br.select(ctl, a_minus_M, a)
+  asy.store(r, t)
 
-    asy.store(r, t)
-    asy.br.retVoid()
-
-  asy.callFn(name, [r, a, M, carry])
-
-proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: ValueRef) =
+proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, rr, a, MM: ValueRef) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -128,32 +117,19 @@ proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Valu
   ## To be used when the modulus does not use the full bitwidth of the storing words
   ## (say using 255 bits for the modulus out of 256 available in words)
 
-  let name = "_finalsub_noo_u" & $fd.w & "x" & $fd.numWords
-  asy.llvmInternalFnDef(
-          name, SectionName,
-          asy.void_t, toTypes([r, a, M]),
-          {kHot, kInline}):
+  let r = asy.asArray(rr, fd.fieldTy)
+  let M = asy.load2(fd.intBufTy, MM, "M")
 
-    let (rr, aa, MM) = llvmParams
+  # Now substract the modulus, and test a < M
+  # (underflow) with the last borrow
+  # On x86 at least, LLVM can fuse sub and icmp into sub-with-borrow
+  let a_minus_M = asy.br.sub(a, M, "a_minus_M")
+  let borrow = asy.br.icmp(kULT, a, M, "borrow")
 
-    let r = asy.asArray(rr, fd.fieldTy)
-    let M = asy.load2(fd.intBufTy, MM, "M")
-    # Pointers are opaque in LLVM now
-    let a = asy.load2(fd.intBufTy, aa, "a")
+  # If it underflows here a was smaller than the modulus, which is what we want
+  let t = asy.br.select(borrow, a, a_minus_M)
 
-    # Now substract the modulus, and test a < M
-    # (underflow) with the last borrow
-    # On x86 at least, LLVM can fuse sub and icmp into sub-with-borrow
-    let a_minus_M = asy.br.sub(a, M, "a_minus_M")
-    let borrow = asy.br.icmp(kULT, a, M, "borrow")
-
-    # If it underflows here a was smaller than the modulus, which is what we want
-    let t = asy.br.select(borrow, a, a_minus_M)
-
-    asy.store(r, t)
-    asy.br.retVoid()
-
-  asy.callFn(name, [r, a, M])
+  asy.store(r, t)
 
 proc modadd*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
   ## Generate an optimized modular addition kernel
@@ -174,14 +150,12 @@ proc modadd*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
     let b = asy.load2(fd.intBufTy, bb, "b")
 
     let apb = asy.br.add(a, b, "a_plus_b")
-    let t = asy.makeArray(fd.fieldTy)
-    asy.store(t, apb)
 
     if fd.spareBits >= 1:
-      asy.finalSubNoOverflow(fd, r, t.buf, M)
+      asy.finalSubNoOverflow(fd, r, apb, M)
     else:
       let carry = asy.br.icmp(kUlt, apb, b, "overflow")
-      asy.finalSubMayOverflow(fd, r, t.buf, M, carry)
+      asy.finalSubMayOverflow(fd, r, apb, M, carry)
 
     asy.br.retVoid()
 
