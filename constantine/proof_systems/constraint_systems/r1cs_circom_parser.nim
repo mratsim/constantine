@@ -122,6 +122,7 @@ type
   R1csCustomGatesApp* = object
 
   ## XXX: Make this a `R1CS[T]` which takes care of parsing the field elements
+  ## NOTE: For the time being we don't actually use the parsed data
   R1CS* = object
     magic*: array[4, char]
     version*: uint32
