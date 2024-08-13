@@ -121,6 +121,7 @@ type
   R1csCustomGatesList* = object
   R1csCustomGatesApp* = object
 
+  ## XXX: Make this a `R1CS[T]` which takes care of parsing the field elements
   R1CS* = object
     magic*: array[4, char]
     version*: uint32

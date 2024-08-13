@@ -40,10 +40,7 @@ import
      - Content: Each witness element is a 256-bit (32 bytes) unsigned integer in Big Endian format
 ]#
 
-# We use `sortedByIt` to sort the different sections in the file by their
-# `WtnsSectionKind`
 from std / sequtils import filterIt
-from std / algorithm import sortedByIt
 from std / strutils import endsWith
 
 type
@@ -58,7 +55,7 @@ type
     num*: uint32 # number of witness elements
 
   Witness* = object
-    data*: seq[byte]
+    data*: seq[byte] ## Important: The values are *not* Montgomery encoded
 
   Section* = object
     size*: uint64 # NOTE: in the real file the section type is *FIRST* and then the size
@@ -81,6 +78,9 @@ type
                            # the data in the file. Instead, we first record (kind, file position)
                            # of each different section in the file and then parse them in increasing
                            # order of the section types
+
+## XXX: Add `Wtns[T]` type, which takes care of converting field elements and
+## does not contain `seq[Section]` anymore
 
 func header*(wtns: WtnsBin): WitnessHeader =
   result = wtns.sections.filterIt(it.sectionType == kHeader)[0].header
