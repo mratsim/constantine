@@ -50,17 +50,6 @@ proc getWitnesses[Name: static Algebra](ctx: Groth16Prover[Name]): seq[Fr[Name]]
   for i, w in witnesses:
     result[i] = toFr[Name](w.data, isMont = false) ## Improtant: Witness does *not* store numbers in Montgomery rep
 
-proc asEC[Name: static Algebra](pts: seq[seq[byte]], _: typedesc[Fp[Name]]): seq[EC_ShortW_Aff[Fp[Name], G1]] =
-  result = newSeq[EC_ShortW_Aff[Fp[Name], G1]](pts.len)
-  for i, el in pts:
-    result[i] = toEcG1[Name](el)
-
-proc asEC2[Name: static Algebra](pts: seq[seq[byte]], _: typedesc[Fp2[Name]]): seq[EC_ShortW_Aff[Fp2[Name], G2]] =
-  result = newSeq[EC_ShortW_Aff[Fp2[Name], G2]](pts.len)
-  for i, el in pts:
-    result[i] = toEcG2[Name](el)
-
-
 proc calcAp[Name: static Algebra](ctx: Groth16Prover[Name], wt: seq[Fr[Name]]): EC_ShortW_Jac[Fp[Name], G1] =
   # A_p is defined as
   # A_p = α_1 + (Σ_i [W]_i · A_i) + [r] · δ_1
