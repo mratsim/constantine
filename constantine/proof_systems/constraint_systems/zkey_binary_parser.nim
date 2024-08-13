@@ -108,6 +108,9 @@ type
                            # of each different section in the file and then parse them in increasing
                            # order of the section types
 
+## XXX: Add `Zkey[T]` type, which takes care of converting field elements and
+## does not contain `seq[Section]` anymore
+
 func header*(zkey: ZkeyBin): Header =
   result = zkey.sections.filterIt(it.sectionType == kHeader)[0].header
 
