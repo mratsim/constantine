@@ -46,6 +46,8 @@ proc t_field_add() =
       F[0], F[1], F[2],
       v = 1, w = 64)
 
+    asy.definePrimitives(fd)
+
     discard asy.genFpAdd(fd)
 
   echo "========================================="

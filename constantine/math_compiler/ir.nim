@@ -8,8 +8,8 @@
 
 import
   constantine/platforms/bithacks,
-  constantine/platforms/llvm/llvm,
-  std/[tables, macros]
+  constantine/platforms/llvm/[llvm, super_instructions],
+  std/tables
 
 # ############################################################
 #
@@ -112,6 +112,7 @@ proc new*(T: type Assembler_LLVM, backend: Backend, moduleName: cstring): Assemb
   result.attrs[kInline] = result.ctx.createAttr("inlinehint")
   result.attrs[kAlwaysInline] = result.ctx.createAttr("alwaysinline")
   result.attrs[kNoInline] = result.ctx.createAttr("noinline")
+  result.attrs[kNoInline] = result.ctx.createAttr("sret")
 
 # ############################################################
 #
@@ -194,6 +195,10 @@ proc configureField*(ctx: ContextRef,
   result.bits = modBits
   result.spareBits = uint8(next_multiple_wordsize - modBits)
 
+proc definePrimitives*(asy: Assembler_LLVM, fd: FieldDescriptor) =
+  asy.ctx.def_addcarry(asy.module, asy.ctx.int1_t(), fd.wordTy)
+  asy.ctx.def_subborrow(asy.module, asy.ctx.int1_t(), fd.wordTy)
+
 proc wordTy*(fd: FieldDescriptor, value: SomeInteger) =
   constInt(fd.wordTy, value)
 
@@ -249,11 +254,11 @@ proc makeArray*(asy: Assembler_LLVM, elemTy: TypeRef, len: uint32): Array =
 
 proc `[]`*(a: Array, index: SomeInteger): ValueRef {.inline.}=
   # First dereference the array pointer with 0, then access the `index`
-  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.p, [ValueRef constInt(a.int32_t, 0), ValueRef constInt(a.int32_t, uint64 index)])
+  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, [ValueRef constInt(a.int32_t, 0), ValueRef constInt(a.int32_t, uint64 index)])
   a.builder.load2(a.elemTy, pelem)
 
 proc `[]=`*(a: Array, index: SomeInteger, val: ValueRef) {.inline.}=
-  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.p, [ValueRef constInt(a.int32_t, 0), ValueRef constInt(a.int32_t, uint64 index)])
+  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, [ValueRef constInt(a.int32_t, 0), ValueRef constInt(a.int32_t, uint64 index)])
   a.builder.store(val, pelem)
 
 proc store*(asy: Assembler_LLVM, dst: Array, src: Array) {.inline.}=
@@ -385,10 +390,6 @@ proc setPublic(asy: Assembler_LLVM, fn: ValueRef) =
 #
 # Hopefully the compiler will remove the unnecessary lod/store/register movement, especially when inlining.
 
-proc toTypes*[N: static int](v: array[N, ValueRef]): array[N, TypeRef] =
-  for i in 0 ..< v.len:
-    result[i] = v[i].getTypeOf()
-
 proc wrapTypesForFnCall[N: static int](
         asy: AssemblerLLVM,
         paramTypes: array[N, TypeRef]
@@ -432,23 +433,6 @@ proc wrapTypesForFnCall[N: static int](
         result.wrapped[i] = paramTypes[i]
         result.src[i]     = paramTypes[i]
 
-macro unpackParams[N: static int](
-        br: BuilderRef,
-        paramsTys: tuple[wrapped, src: array[N, TypeRef]]): untyped =
-  ## Unpack function parameters.
-  ##
-  ## The new function basic block MUST be setup before calling unpackParams.
-  ##
-  ## In the future we may automatically unwrap types.
-
-  result = nnkPar.newTree()
-  for i in 0 ..< N:
-    result.add quote do:
-      # let tySrc = `paramsTys`.src[`i`]
-      # let tyCC = `paramsTys`.wrapped[`i`]
-      let fn = `br`.getCurrentFunction()
-      fn.getParam(uint32 `i`)
-
 proc addAttributes(asy: Assembler_LLVM, fn: ValueRef, attrs: set[AttrKind]) =
   for attr in attrs:
     fn.addAttribute(kAttrFnIndex, asy.attrs[attr])
@@ -485,6 +469,9 @@ template llvmFnDef[N: static int](
       savedLoc = blck
 
     let llvmParams {.inject.} = unpackParams(asy.br, paramsTys)
+    template tagParameter(idx: int, attr: string) {.inject.} =
+      let a = asy.ctx.createAttr(attr)
+      fn.addAttribute(cint idx, a)
     body
 
     if internal:

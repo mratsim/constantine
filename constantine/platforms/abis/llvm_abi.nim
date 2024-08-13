@@ -299,7 +299,7 @@ proc getIntTypeWidth*(ty: TypeRef): uint32 {.importc: "LLVMGetIntTypeWidth".}
 proc struct_t*(
        ctx: ContextRef,
        elemTypes: openArray[TypeRef],
-       packed: LlvmBool): TypeRef {.wrapOpenArrayLenType: cuint, importc: "LLVMStructTypeInContext".}
+       packed = LlvmBool(false)): TypeRef {.wrapOpenArrayLenType: cuint, importc: "LLVMStructTypeInContext".}
 proc array_t*(elemType: TypeRef, elemCount: uint32): TypeRef {.importc: "LLVMArrayType".}
 proc vector_t*(elemType: TypeRef, elemCount: uint32): TypeRef {.importc: "LLVMVectorType".}
   ## Create a SIMD vector type (for SSE, AVX or Neon for example)
@@ -309,6 +309,7 @@ proc pointerType(elementType: TypeRef; addressSpace: cuint): TypeRef {.used, imp
 proc getElementType*(arrayOrVectorTy: TypeRef): TypeRef {.importc: "LLVMGetElementType".}
 proc getArrayLength*(arrayTy: TypeRef): uint64 {.importc: "LLVMGetArrayLength2".}
 proc getNumElements*(structTy: TypeRef): cuint {.importc: "LLVMCountStructElementTypes".}
+proc getVectorSize*(vecTy: TypeRef): cuint {.importc: "LLVMGetVectorSize".}
 
 # Functions
 # ------------------------------------------------------------
@@ -648,6 +649,8 @@ proc addGlobal*(module: ModuleRef, ty: TypeRef, name: cstring): ValueRef {.impor
 proc setGlobal*(globalVar: ValueRef, constantVal: ValueRef) {.importc: "LLVMSetInitializer".}
 proc setImmutable*(globalVar: ValueRef, immutable = LlvmBool(true)) {.importc: "LLVMSetGlobalConstant".}
 
+proc getGlobalParent*(global: ValueRef): ModuleRef {.importc: "LLVMGetGlobalParent".}
+
 proc setLinkage*(global: ValueRef, linkage: Linkage) {.importc: "LLVMSetLinkage".}
 proc setVisibility*(global: ValueRef, vis: Visibility) {.importc: "LLVMSetVisibility".}
 proc setAlignment*(v: ValueRef, bytes: cuint) {.importc: "LLVMSetAlignment".}
@@ -682,6 +685,15 @@ proc constArray*(
        ty: TypeRef,
        constantVals: openArray[ValueRef],
     ): ValueRef {.wrapOpenArrayLenType: cuint, importc: "LLVMConstArray".}
+
+# Undef & Poison
+# ------------------------------------------------------------
+# https://llvm.org/devmtg/2020-09/slides/Lee-UndefPoison.pdf
+
+proc poison*(ty: TypeRef): ValueRef {.importc: "LLVMGetPoison".}
+proc undef*(ty: TypeRef): ValueRef {.importc: "LLVMGetUndef".}
+
+
 
 # ############################################################
 #
@@ -826,7 +838,7 @@ proc alloca*(builder: BuilderRef, ty: TypeRef, name: cstring = ""): ValueRef {.i
 proc allocaArray*(builder: BuilderRef, ty: TypeRef, length: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildArrayAlloca".}
 
 proc extractValue*(builder: BuilderRef, aggVal: ValueRef, index: uint32, name: cstring = ""): ValueRef {.importc: "LLVMBuildExtractValue".}
-proc insertValue*(builder: BuilderRef, aggVal: ValueRef, eltVal: ValueRef, index: uint32, name: cstring = ""): ValueRef {.discardable, importc: "LLVMBuildInsertValue".}
+proc insertValue*(builder: BuilderRef, aggVal: ValueRef, eltVal: ValueRef, index: uint32, name: cstring = ""): ValueRef {.importc: "LLVMBuildInsertValue".}
 
 proc getElementPtr2*(
        builder: BuilderRef,

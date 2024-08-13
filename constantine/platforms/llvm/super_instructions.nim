@@ -79,31 +79,131 @@ proc hi(bld: BuilderRef, val: ValueRef, baseTy: TypeRef, oversize: uint32, prefi
 
   return hi
 
-proc addcarry*(bld: BuilderRef, a, b, carryIn: ValueRef): tuple[carryOut, r: ValueRef] =
+const SectionName = "ctt.superinstructions"
+
+proc getInstrName(baseName: string, ty: TypeRef): string =
+  var w, v: int # Wordsize and vector size
+  if ty.getTypeKind() == tkInteger:
+    w = int ty.getIntTypeWidth()
+    v = 1
+  elif ty.getTypeKind() == tkVector:
+    v = int ty.getVectorSize()
+    w = int ty.getElementType().getIntTypeWidth()
+  else:
+    doAssert false, "Invalid input type: " & $ty
+
+  return baseName &
+          (if v != 1: "_v" & $v else: "_") &
+          "u" & $w
+
+template defSuperInstruction[N: static int](
+            module: ModuleRef, baseName: string,
+            returnType: TypeRef,
+            paramTypes: array[N, TypeRef],
+            body: untyped) =
+  ## Boilerplate for super instruction definition
+  ## Creates a magic `llvmParams` variable to tuple-destructure
+  ## to access the inputs
+  ## and `br` for building the instructions
+  let ty = paramTypes[0]
+  let name = baseName.getInstrName(ty)
+
+  let ctx = module.getContext()
+  let br {.inject.} = ctx.createBuilder()
+  defer: br.dispose()
+
+  var fn = module.getFunction(cstring name)
+  if fn.pointer.isNil():
+    let fnTy = function_t(returnType, paramTypes)
+    fn = module.addFunction(cstring name, fnTy)
+    let blck = ctx.appendBasicBlock(fn)
+    br.positionAtEnd(blck)
+
+    let llvmParams {.inject.} = unpackParams(br, (paramTypes, paramTypes))
+    template tagParameter(idx: int, attr: string) {.inject, used.} =
+      let a = asy.ctx.createAttr(cstring attr)
+      fn.addAttribute(cint idx, a)
+    body
+
+    fn.setFnCallConv(Fast)
+    fn.setLinkage(linkInternal)
+    fn.setSection(SectionName)
+    fn.addAttribute(kAttrFnIndex, ctx.createAttr("alwaysinline"))
+
+proc def_addcarry*(ctx: ContextRef, m: ModuleRef, carryTy, wordTy: TypeRef) =
+  ## Define (carryOut, result) <- a+b+carryIn
+
+  let retType = ctx.struct_t([carryTy, wordTy])
+  let inType = [wordTy, wordTy, carryTy]
+
+  m.defSuperInstruction("addcarry", retType, inType):
+    let (a, b, carryIn) = llvmParams
+
+    let add = br.add(a, b, name = "a_plus_b")
+    let carry0 = br.icmp(kULT, add, b, name = "carry0")
+    let cIn = br.zext(carryIn, wordTy, name = "carryIn")
+    let adc = br.add(cIn, add, name = "a_plus_b_plus_cIn")
+    let carry1 = br.icmp(kULT, adc, add, name = "carry1")
+    let carryOut = br.`or`(carry0, carry1, name = "carryOut")
+
+    var ret = br.insertValue(poison(retType), adc, 1, "lo")
+    ret = br.insertValue(ret, carryOut, 0, "ret")
+    br.ret(ret)
+
+proc addcarry*(br: BuilderRef, a, b, carryIn: ValueRef): tuple[carryOut, r: ValueRef] =
   ## (cOut, result) <- a+b+cIn
   let ty = a.getTypeOf()
+  let tyC = carryIn.getTypeOf()
+  let name = "addcarry".getInstrName(ty)
 
-  let add = bld.add(a, b, name = "adc01_")
-  let carry0 = bld.icmp(kULT, add, b, name = "adc01c_")
-  let cIn = bld.zext(carryIn, ty, name = "adc2_")
-  let adc = bld.add(cIn, add, name = "adc_")
-  let carry1 = bld.icmp(kULT, adc, add, name = "adc012c_")
-  let carryOut = bld.`or`(carry0, carry1, name = "cOut_")
+  let fn = br.getCurrentModule().getFunction(cstring name)
+  doAssert not fn.pointer.isNil, "Function '" & name & "' does not exist in the module\n"
 
-  return (carryOut, adc)
+  let retTy = br.getContext().struct_t([tyC, ty])
+  let fnTy = function_t(retTy, [ty, ty, tyC])
+  let adc = br.call2(fnTy, fn, [a, b, carryIn], name = "adc")
+  adc.setInstrCallConv(Fast)
+  let lo = br.extractValue(adc, 1, name = "adcLo")
+  let cOut = br.extractValue(adc, 0, name = "adcC")
+  return (cOut, lo)
 
-proc subborrow*(bld: BuilderRef, a, b, borrowIn: ValueRef): tuple[borrowOut, r: ValueRef] =
-  ## (bOut, result) <- a-b-bIn
+
+proc def_subborrow*(ctx: ContextRef, m: ModuleRef, borrowTy, wordTy: TypeRef) =
+  ## Define (borrowOut, result) <- a-b-borrowIn
+
+  let retType = ctx.struct_t([borrowTy, wordTy])
+  let inType = [wordTy, wordTy, borrowTy]
+
+  m.defSuperInstruction("subborrow", retType, inType):
+    let (a, b, borrowIn) = llvmParams
+
+    let sub = br.sub(a, b, name = "a_minus_b")
+    let borrow0 = br.icmp(kULT, a, b, name = "borrow0")
+    let bIn = br.zext(borrowIn, wordTy, name = "borrowIn")
+    let sbb = br.sub(sub, bIn, name = "sbb")
+    let borrow1 = br.icmp(kULT, sub, bIn, name = "borrow1")
+    let borrowOut = br.`or`(borrow0, borrow1, name = "borrowOut")
+
+    var ret = br.insertValue(poison(retType), sbb, 1, "lo")
+    ret = br.insertValue(ret, borrowOut, 0, "ret")
+    br.ret(ret)
+
+proc subborrow*(br: BuilderRef, a, b, borrowIn: ValueRef): tuple[borrowOut, r: ValueRef] =
+  ## (cOut, result) <- a+b+cIn
   let ty = a.getTypeOf()
+  let tyC = borrowIn.getTypeOf()
+  let name = "subborrow".getInstrName(ty)
 
-  let sub = bld.sub(a, b, name = "sbb01_")
-  let borrow0 = bld.icmp(kULT, a, b, name = "sbb01b_")
-  let bIn = bld.zext(borrowIn, ty, name = "sbb2_")
-  let sbb = bld.sub(sub, bIn, name = "sbb_")
-  let borrow1 = bld.icmp(kULT, sub, bIn, name = "sbb012b_")
-  let borrowOut = bld.`or`(borrow0, borrow1, name = "bOut_")
+  let fn = br.getCurrentModule().getFunction(cstring name)
+  doAssert not fn.pointer.isNil, "Function '" & name & "' does not exist in the module\n"
 
-  return (borrowOut, sbb)
+  let retTy = br.getContext().struct_t([tyC, ty])
+  let fnTy = function_t(retTy, [ty, ty, tyC])
+  let sbb = br.call2(fnTy, fn, [a, b, borrowIn], name = "sbb")
+  sbb.setInstrCallConv(Fast)
+  let lo = br.extractValue(sbb, 1, name = "sbbLo")
+  let bOut = br.extractValue(sbb, 0, name = "sbbB")
+  return (bOut, lo)
 
 proc mulExt*(bld: BuilderRef, a, b: ValueRef): tuple[hi, lo: ValueRef] =
   ## Extended precision multiplication

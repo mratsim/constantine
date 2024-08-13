@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import constantine/platforms/abis/llvm_abi {.all.}
+import std/macros
 export llvm_abi
 
 # ############################################################
@@ -155,6 +156,9 @@ proc getContext*(builder: BuilderRef): ContextRef =
   # https://github.com/llvm/llvm-project/issues/59875
   builder.getCurrentFunction().getTypeOf().getContext()
 
+proc getCurrentModule*(builder: BuilderRef): ModuleRef =
+  builder.getCurrentFunction().getGlobalParent()
+
 # Types
 # ------------------------------------------------------------
 
@@ -180,6 +184,27 @@ proc function_t*(returnType: TypeRef, paramTypes: openArray[TypeRef]): TypeRef {
 
 proc createAttr*(ctx: ContextRef, name: openArray[char]): AttributeRef =
   ctx.toAttr(name.toAttrId())
+
+proc toTypes*[N: static int](v: array[N, ValueRef]): array[N, TypeRef] =
+  for i in 0 ..< v.len:
+    result[i] = v[i].getTypeOf()
+
+macro unpackParams*[N: static int](
+        br: BuilderRef,
+        paramsTys: tuple[wrapped, src: array[N, TypeRef]]): untyped =
+  ## Unpack function parameters.
+  ##
+  ## The new function basic block MUST be setup before calling unpackParams.
+  ##
+  ## In the future we may automatically unwrap types.
+
+  result = nnkPar.newTree()
+  for i in 0 ..< N:
+    result.add quote do:
+      # let tySrc = `paramsTys`.src[`i`]
+      # let tyCC = `paramsTys`.wrapped[`i`]
+      let fn = `br`.getCurrentFunction()
+      fn.getParam(uint32 `i`)
 
 # Values
 # ------------------------------------------------------------

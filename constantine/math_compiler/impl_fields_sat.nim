@@ -72,10 +72,13 @@ import
 #
 # and while using @llvm.usub.with.overflow.i64 allows ARM64 to solve the missing optimization
 # it is also missed on AMDGPU (or nvidia)
+#
+# And implementing them with i256 / i384 is similarly tricky
+# https://github.com/llvm/llvm-project/issues/102868
 
 const SectionName = "ctt.fields"
 
-proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, rr, a, MM, carry: ValueRef) =
+proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array, carry: ValueRef) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -84,30 +87,28 @@ proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, rr, a, MM, c
   ##
   ## To be used when the final substraction can
   ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
+  let t = asy.makeArray(fd.fieldTy)
 
-  let r = asy.asArray(rr, fd.fieldTy)
-  let M = asy.load2(fd.intBufTy, MM, "M")
-
-  let noCarry = asy.br.`not`(carry, "notcarry")
+  # Mask: contains 0xFFFF or 0x0000
+  let (_, mask) = asy.br.subborrow(fd.zero, fd.zero, carry)
 
   # Now substract the modulus, and test a < M
-  # (underflow) with the last borrow.
-  # On x86 at least, LLVM can fuse sub and icmp into sub-with-borrow
-  # if this is inline the caller https://github.com/llvm/llvm-project/issues/102868
-  let a_minus_M = asy.br.sub(a, M, "a_minus_M")
-  let borrow = asy.br.icmp(kULT, a, M, "borrow")
+  # (underflow) with the last borrow
+  var b: ValueRef
+  (b, t[0]) = asy.br.subborrow(a[0], M[0], fd.zero_i1)
+  for i in 1 ..< fd.numWords:
+    (b, t[i]) = asy.br.subborrow(a[i], M[i], b)
 
-  # Cases:
-  # No carry after a+b, no borrow after a-M -> return a-M
-  # carry after a+b, will borrow after a-M (last bit lost) -> return a-M
-  # carry after a+b, no borrow after a-M -> return a-M
-  # No carry after a+b, borrow after a-M -> return a
-  let ctl = asy.br.`or`(noCarry, borrow, "in_range")
-  let t = asy.br.select(ctl, a, a_minus_M)
+  # If it underflows here, it means that it was
+  # smaller than the modulus and we don't need `scratch`
+  (b, _) = asy.br.subborrow(mask, fd.zero, b)
+
+  for i in 0 ..< fd.numWords:
+    t[i] = asy.br.select(b, a[i], t[i])
 
   asy.store(r, t)
 
-proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, rr, a, MM: ValueRef) =
+proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -116,18 +117,18 @@ proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, rr, a, MM: Va
   ##
   ## To be used when the modulus does not use the full bitwidth of the storing words
   ## (say using 255 bits for the modulus out of 256 available in words)
-
-  let r = asy.asArray(rr, fd.fieldTy)
-  let M = asy.load2(fd.intBufTy, MM, "M")
+  let t = asy.makeArray(fd.fieldTy)
 
   # Now substract the modulus, and test a < M
   # (underflow) with the last borrow
-  # On x86 at least, LLVM can fuse sub and icmp into sub-with-borrow
-  let a_minus_M = asy.br.sub(a, M, "a_minus_M")
-  let borrow = asy.br.icmp(kULT, a, M, "borrow")
+  var b: ValueRef
+  (b, t[0]) = asy.br.subborrow(a[0], M[0], fd.zero_i1)
+  for i in 1 ..< fd.numWords:
+    (b, t[i]) = asy.br.subborrow(a[i], M[i], b)
 
   # If it underflows here a was smaller than the modulus, which is what we want
-  let t = asy.br.select(borrow, a, a_minus_M)
+  for i in 0 ..< fd.numWords:
+    t[i] = asy.br.select(b, a[i], t[i])
 
   asy.store(r, t)
 
@@ -143,19 +144,26 @@ proc modadd*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
           asy.void_t, toTypes([r, a, b, M]),
           {kHot}):
 
-    let (r, aa, bb, M) = llvmParams
+    tagParameter(1, "sret")
+
+    let (rr, aa, bb, MM) = llvmParams
 
     # Pointers are opaque in LLVM now
-    let a = asy.load2(fd.intBufTy, aa, "a")
-    let b = asy.load2(fd.intBufTy, bb, "b")
+    let r = asy.asArray(rr, fd.fieldTy)
+    let a = asy.asArray(aa, fd.fieldTy)
+    let b = asy.asArray(bb, fd.fieldTy)
+    let M = asy.asArray(MM, fd.fieldTy)
 
-    let apb = asy.br.add(a, b, "a_plus_b")
+    let apb = asy.makeArray(fd.fieldTy)
+    var c: ValueRef
+    (c, apb[0]) = asy.br.addcarry(a[0], b[0], fd.zero_i1)
+    for i in 1 ..< fd.numWords:
+      (c, apb[i]) = asy.br.addcarry(a[i], b[i], c)
 
     if fd.spareBits >= 1:
       asy.finalSubNoOverflow(fd, r, apb, M)
     else:
-      let carry = asy.br.icmp(kUlt, apb, b, "overflow")
-      asy.finalSubMayOverflow(fd, r, apb, M, carry)
+      asy.finalSubMayOverflow(fd, r, apb, M, c)
 
     asy.br.retVoid()
 
