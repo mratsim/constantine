@@ -10,7 +10,9 @@
 #
 import
   ../../serialization/[io_limbs, parsing],
-  constantine/platforms/[fileio, abstractions]
+  constantine/platforms/[fileio, abstractions],
+  ../../named/algebras, # Fr
+  ./groth16_utils
 
 #[
 1. File Header:
@@ -79,6 +81,11 @@ type
                            # of each different section in the file and then parse them in increasing
                            # order of the section types
 
+  Wtns*[Name: static Algebra] = object
+    version*: uint32
+    header*: WitnessHeader
+    witnesses*: seq[Fr[Name]]
+
 ## XXX: Add `Wtns[T]` type, which takes care of converting field elements and
 ## does not contain `seq[Section]` anymore
 
@@ -87,6 +94,18 @@ func header*(wtns: WtnsBin): WitnessHeader =
 
 func witnesses*(wtns: WtnsBin): seq[Witness] =
   result = wtns.sections.filterIt(it.sectionType == kData)[0].wtns
+
+proc getWitnesses[Name: static Algebra](witnesses: seq[Witness]): seq[Fr[Name]] =
+  result = newSeq[Fr[Name]](witnesses.len)
+  for i, w in witnesses:
+    result[i] = toFr[Name](w.data, isMont = false) ## Improtant: Witness does *not* store numbers in Montgomery rep
+
+proc toWtns*[Name: static Algebra](wtns: WtnsBin): Wtns[Name] =
+  result = Wtns[Name](
+    version: wtns.version,
+    header: wtns.header(),
+    witnesses: wtns.witnesses().getWitnesses[:Name]()
+  )
 
 proc initSection(kind: WtnsSectionKind, size: uint64): Section =
   result = Section(sectionType: kind, size: size)
