@@ -10,12 +10,13 @@
 #
 import
   ../../serialization/[io_limbs, parsing],
-  constantine/platforms/[fileio, abstractions]
+  constantine/platforms/[fileio, abstractions],
+  ../../named/algebras, # Fr, Fp
+  ../../math/extension_fields, # Fp2
+  ../../math/elliptic/[ec_shortweierstrass_affine], # EC types
+  ./groth16_utils # to unmarshal data
 
-# We use `sortedByIt` to sort the different sections in the file by their
-# `ZkeySectionKind`
 from std / sequtils import filterIt
-from std / algorithm import sortedByIt
 from std / strutils import endsWith
 
 type
@@ -35,7 +36,7 @@ type
   Header* = object
     proverType*: uint32 ## Must be `1` for Groth16
 
-  Groth16Header* = object
+  Groth16Header_b* = object
     n8q*: uint32 # Size of base field in bytes (4 bytes, unsigned integer)
     q*: seq[byte] # Prime of the base field (n8q bytes)
     n8r*: uint32 # Size of scalar field in bytes (4 bytes, unsigned integer)
@@ -50,28 +51,61 @@ type
     delta1*: seq[byte] # delta in G1 (2 * n8q bytes)
     delta2*: seq[byte] # delta in G2 (4 * n8q bytes)
 
+  Groth16Header*[Name: static Algebra] = object
+    n8q*: uint32 # Size of base field in bytes (4 bytes, unsigned integer)
+    q*: seq[byte] # Prime of the base field (n8q bytes)
+    n8r*: uint32 # Size of scalar field in bytes (4 bytes, unsigned integer)
+    r*: seq[byte] # Prime of the scalar field (n8r bytes)
+    nVars*: uint32 # Total number of variables (4 bytes, unsigned integer)
+    nPublic*: uint32 # Number of public variables (4 bytes, unsigned integer)
+    domainSize*: uint32 # Size of the domain (4 bytes, unsigned integer)
+    alpha1*: EC_ShortW_Aff[Fp[Name], G1]
+    beta1*: EC_ShortW_Aff[Fp[Name], G1]
+    beta2*: EC_ShortW_Aff[Fp2[Name], G2]
+    gamma2*: EC_ShortW_Aff[Fp2[Name], G2]
+    delta1*: EC_ShortW_Aff[Fp[Name], G1]
+    delta2*: EC_ShortW_Aff[Fp2[Name], G2]
 
   ## Generic section containing multiple points on one of the curves. Will be unmarshaled into
   ## points on the correct curve afterwars.
   DataSection* = object
     points*: seq[seq[byte]]
 
-  IC* = DataSection
-  A* = DataSection
-  B1* = DataSection
-  B2* = DataSection
-  C* = DataSection
-  H* = DataSection
+  # `_b` suffix for raw binary
+  ## NOTE: Maybe a `Raw` suffix would be better
+  IC_b* = DataSection
+  A_b*  = DataSection
+  B1_b* = DataSection
+  B2_b* = DataSection
+  C_b*  = DataSection
+  H_b*  = DataSection
 
-  Coefficient* = object
+  IC*[Name : static Algebra] = seq[EC_ShortW_Aff[Fp[Name], G1]]
+  A*[Name  : static Algebra] = seq[EC_ShortW_Aff[Fp[Name], G1]]
+  B1*[Name : static Algebra] = seq[EC_ShortW_Aff[Fp[Name], G1]]
+  B2*[Name : static Algebra] = seq[EC_ShortW_Aff[Fp2[Name], G2]]
+  C*[Name  : static Algebra] = seq[EC_ShortW_Aff[Fp[Name], G1]]
+  H*[Name  : static Algebra] = seq[EC_ShortW_Aff[Fp[Name], G1]]
+
+  Coefficient_b* = object
     matrix*: uint32
     section*: uint32
     index*: uint32
     value*: seq[byte] # n8r bytes
 
-  Coefficients* = object
+  Coefficients_b* = object
     num*: uint32 # number of coefficients
-    cs*: seq[Coefficient]
+    cs*: seq[Coefficient_b]
+
+  Coefficient*[Name: static Algebra] = object
+    matrix*: uint32
+    section*: uint32
+    index*: uint32
+    value*: Fr[Name]
+
+  Coefficients*[Name: static Algebra] = object
+    num*: uint32 # number of coefficients
+    cs*: seq[Coefficient[Name]]
 
   Contributions* = object
     hash*: array[64, byte] # hash of the circuit
@@ -85,17 +119,17 @@ type
     case sectionType*: ZkeySectionKind
     of kInvalid: discard
     of kHeader: header*: Header
-    of kGroth16Header: g16h: Groth16Header
-    of kIC: ic: IC
-    of kCoeffs: coeffs: Coefficients
-    of kA: a: A
-    of kB1: b1: B1
-    of kB2: b2: B2
-    of kC: c: C
-    of kH: h: H
+    of kGroth16Header: g16h: Groth16Header_b
+    of kIC: ic: IC_b
+    of kCoeffs: coeffs: Coefficients_b
+    of kA: a: A_b
+    of kB1: b1: B1_b
+    of kB2: b2: B2_b
+    of kC: c: C_b
+    of kH: h: H_b
     of kContributions: contr: Contributions
 
-  ## `ZkeyBin` is binary compatible with an R1CS binary file. Meaning it follows the structure
+  ## `ZkeyBin` is binary compatible with a `.zkey` binary file. Meaning it follows the structure
   ## of the file (almost) exactly. The only difference is in the section header. The size comes
   ## *after* the kind, which we don't reproduce in `Section` above
   ZkeyBin* = object
@@ -108,33 +142,102 @@ type
                            # of each different section in the file and then parse them in increasing
                            # order of the section types
 
-## XXX: Add `Zkey[T]` type, which takes care of converting field elements and
-## does not contain `seq[Section]` anymore
+  ## `Zkey` is a "typed" version of the binary file, where all field elements have already been
+  ## unmarshalled according to the encoding spec used by SnarkJS.
+  Zkey*[Name: static Algebra] = object
+    version*: uint32
+    header*: Header
+    g16h*: Groth16Header[Name]
+    ic*: IC[Name]
+    coeffs*: Coefficients[Name]
+    A*: A[Name]
+    B1*: B1[Name]
+    B2*: B2[Name]
+    C*: C[Name]
+    H*: H[Name]
+    contr*: Contributions
 
 func header*(zkey: ZkeyBin): Header =
   result = zkey.sections.filterIt(it.sectionType == kHeader)[0].header
 
-func Afield*(zkey: ZkeyBin): A =
+func Afield*(zkey: ZkeyBin): A_b =
   result = zkey.sections.filterIt(it.sectionType == kA)[0].a
 
-func B1field*(zkey: ZkeyBin): B1 =
+func B1field*(zkey: ZkeyBin): B1_b =
   result = zkey.sections.filterIt(it.sectionType == kB1)[0].b1
 
-func B2field*(zkey: ZkeyBin): B2 =
+func B2field*(zkey: ZkeyBin): B2_b =
   result = zkey.sections.filterIt(it.sectionType == kB2)[0].b2
 
-func Cfield*(zkey: ZkeyBin): C =
+func Cfield*(zkey: ZkeyBin): C_b =
   result = zkey.sections.filterIt(it.sectionType == kC)[0].c
 
-func Hfield*(zkey: ZkeyBin): H =
+func Hfield*(zkey: ZkeyBin): H_b =
   result = zkey.sections.filterIt(it.sectionType == kH)[0].h
 
-func coeffs*(zkey: ZkeyBin): Coefficients =
+func coeffs*(zkey: ZkeyBin): Coefficients_b =
   result = zkey.sections.filterIt(it.sectionType == kCoeffs)[0].coeffs
 
-func groth16Header*(zkey: ZkeyBin): Groth16Header =
+func groth16Header*(zkey: ZkeyBin): Groth16Header_b =
   result = zkey.sections.filterIt(it.sectionType == kGroth16Header)[0].g16h
 
+func icField*(zkey: ZkeyBin): IC_b =
+  result = zkey.sections.filterIt(it.sectionType == kIC)[0].ic
+
+func contributions*(zkey: ZkeyBin): Contributions =
+  result = zkey.sections.filterIt(it.sectionType == kContributions)[0].contr
+
+func to*[Name: static Algebra](coefs: Coefficients_b, _: typedesc[Coefficients[Name]]): Coefficients[Name] =
+  result = Coefficients[Name](num: coefs.num,
+                              cs: newSeq[Coefficient[Name]](coefs.num))
+  for i in 0 ..< coefs.num:
+    let
+      m = coefs.cs[i].matrix
+      c = coefs.cs[i].section
+      s = coefs.cs[i].index
+    result.cs[i] = Coefficient[Name](
+      matrix: m, section: c, index: s,
+      value: toFr[Name](coefs.cs[i].value, true)
+    )
+
+proc to*[Name: static Algebra](g16h: Groth16Header_b, _: typedesc[Groth16Header[Name]]): Groth16Header[Name] =
+  let alpha1 = g16h.alpha1.toEcG1[:Name]()
+  let beta1  = g16h.beta1.toEcG1[:Name]()
+  let beta2  = g16h.beta2.toEcG2[:Name]()
+  let gamma2 = g16h.gamma2.toEcG2[:Name]()
+  let delta1 = g16h.delta1.toEcG1[:Name]()
+  let delta2 = g16h.delta2.toEcG2[:Name]()
+
+  result = Groth16Header[Name](
+    n8q: g16h.n8q,
+    q: g16h.q,
+    n8r: g16h.n8r,
+    r: g16h.r,
+    nVars: g16h.nVars,
+    nPublic: g16h.nPublic,
+    domainSize: g16h.domainSize,
+    alpha1: alpha1,
+    beta1: beta1,
+    beta2: beta2,
+    gamma2: gamma2,
+    delta1: delta1,
+    delta2: delta2
+  )
+
+proc toZkey*[Name: static Algebra](zkey: ZkeyBin): Zkey[Name] =
+  result = Zkey[Name](
+    version: zkey.version,
+    header: zkey.header(),
+    g16h: zkey.groth16header().to(Groth16Header[Name]),
+    ic: zkey.icField().points.asEC(Fp[Name]),
+    coeffs: zkey.coeffs().to(Coefficients[Name]),
+    A: zkey.AField().points.asEC(Fp[Name]),
+    B1: zkey.B1Field().points.asEC(Fp[Name]),
+    B2: zkey.B2Field().points.asEC2(Fp2[Name]),
+    C: zkey.CField().points.asEC(Fp[Name]),
+    H: zkey.HField().points.asEC(Fp[Name]),
+    contr: zkey.contributions()
+  )
 
 proc initSection(kind: ZkeySectionKind, size: uint64): Section =
   result = Section(sectionType: kind, size: size)
@@ -159,7 +262,7 @@ proc parseHeader(f: File, h: var Header): bool =
   doAssert h.proverType == 1, "Prover type must be `1` for Groth16, found: " & $h.proverType
   result = true # would have returned before due to `?` otherwise
 
-proc parseGroth16Header(f: File, g16h: var Groth16Header): bool =
+proc parseGroth16Header(f: File, g16h: var Groth16Header_b): bool =
   var buf: seq[byte]
   for field, v in fieldPairs(g16h):
     when typeof(v) is uint32:
@@ -209,7 +312,7 @@ proc parseDatasection(f: File, s: var Section, kind: ZkeySectionKind, size: uint
     raiseAssert "Not a data section: " & $kind
   result = true
 
-proc parseCoefficient(f: File, s: var Coefficient, size: uint64): bool =
+proc parseCoefficient(f: File, s: var Coefficient_b, size: uint64): bool =
   ?f.parseInt(s.matrix, littleEndian)
   ?f.parseInt(s.section, littleEndian)
   ?f.parseInt(s.index, littleEndian)
@@ -217,10 +320,10 @@ proc parseCoefficient(f: File, s: var Coefficient, size: uint64): bool =
   ?f.readInto(s.value)
   result = true
 
-proc parseCoefficients(f: File, s: var Coefficients, zkey: ZkeyBin): bool =
+proc parseCoefficients(f: File, s: var Coefficients_b, zkey: ZkeyBin): bool =
   ?f.parseInt(s.num, littleEndian)
   let g16h = zkey.sections.filterIt(it.sectionType == kGroth16Header)[0].g16h ## XXX: fixme
-  s.cs = newSeq[Coefficient](s.num)
+  s.cs = newSeq[Coefficient_b](s.num)
   for i in 0 ..< s.num: # parse coefficients
     echo "Parsing coefficient with : ", g16h.n8r, " bytes"
     ?f.parseCoefficient(s.cs[i], g16h.n8r)
@@ -274,4 +377,7 @@ proc parseZkeyFile*(path: string): ZkeyBin =
 when isMainModule:
   #echo parseZkeyFile("/tmp/test.zkey")
   #echo parseZkeyFile("/home/basti/org/constantine/moonmath/snarkjs/three_fac/three_fac0000.zkey")
-  echo parseZkeyFile("/home/basti/org/constantine/moonmath/snarkjs/three_fac/three_fac_final.zkey")
+  let zkey = parseZkeyFile("/home/basti/org/constantine/moonmath/snarkjs/three_fac/three_fac_final.zkey")
+  echo zkey
+
+  echo zkey.toZkey[:BN254_Snarks]()
