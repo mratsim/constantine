@@ -53,11 +53,21 @@ proc toEcG2*[Name: static Algebra](s: seq[byte]): EC_ShortW_Aff[Fp2[Name], G2] =
     doAssert isOnCurve(result.x, result.y, G2).bool, "Input point is not on curve!"
 
 ## Currently not used
-proc randomFieldElement*[Name: static Algebra](): Fp[Name] =
-  ## random element in ~Fp[T]~
-  let m = Fp[Name].getModulus()
-  var b: matchingBigInt(Name)
+proc randomFieldElement*[Name: static Algebra](_: typedesc[Fr[Name]]): Fr[Name] =
+  ## random element in ~Fr[Name]~
+  let m = Fr[Name].getModulus()
+  var b: matchingOrderBigInt(Name)
 
-  while b.isZero().bool or (b > m).bool:
+  while b.isZero().bool or (b > m).bool: ## XXX: or just truncate?
     assert b.limbs.sysrand()
   result.fromBig(b)
+
+proc asEC*[Name: static Algebra](pts: seq[seq[byte]], _: typedesc[Fp[Name]]): seq[EC_ShortW_Aff[Fp[Name], G1]] =
+  result = newSeq[EC_ShortW_Aff[Fp[Name], G1]](pts.len)
+  for i, el in pts:
+    result[i] = toEcG1[Name](el)
+
+proc asEC2*[Name: static Algebra](pts: seq[seq[byte]], _: typedesc[Fp2[Name]]): seq[EC_ShortW_Aff[Fp2[Name], G2]] =
+  result = newSeq[EC_ShortW_Aff[Fp2[Name], G2]](pts.len)
+  for i, el in pts:
+    result[i] = toEcG2[Name](el)
