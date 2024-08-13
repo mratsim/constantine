@@ -19,8 +19,8 @@ import ./groth16_utils
 type
   Groth16Prover[Name: static Algebra] = object
     ## XXX: In the future the below should be typed objects that are already unmarshalled!
-    zkey: ZkeyBin
-    wtns: WtnsBin
+    zkey: Zkey[Name]
+    wtns: Wtns[Name]
     r1cs: R1CS
     # secret random values `r`, `s` for the proof
     r: Fr[Name]
@@ -35,7 +35,7 @@ proc randomFieldElement[Name: static Algebra](_: typedesc[Fr[Name]]): Fr[Name] =
     assert b.limbs.sysrand()
   result.fromBig(b)
 
-proc init*[Name: static Algebra](G: typedesc[Groth16Prover[Name]], zkey: ZkeyBin, wtns: WtnsBin, r1cs: R1CS): Groth16Prover[Name] =
+proc init*[Name: static Algebra](G: typedesc[Groth16Prover[Name]], zkey: Zkey[Name], wtns: Wtns[Name], r1cs: R1CS): Groth16Prover[Name] =
   result = Groth16Prover[Name](
     zkey: zkey,
     wtns: wtns,
@@ -44,21 +44,15 @@ proc init*[Name: static Algebra](G: typedesc[Groth16Prover[Name]], zkey: ZkeyBin
     s: randomFieldElement(Fr[Name])
   )
 
-proc getWitnesses[Name: static Algebra](ctx: Groth16Prover[Name]): seq[Fr[Name]] =
-  let witnesses = ctx.wtns.witnesses()
-  result = newSeq[Fr[Name]](witnesses.len)
-  for i, w in witnesses:
-    result[i] = toFr[Name](w.data, isMont = false) ## Improtant: Witness does *not* store numbers in Montgomery rep
-
 proc calcAp[Name: static Algebra](ctx: Groth16Prover[Name], wt: seq[Fr[Name]]): EC_ShortW_Jac[Fp[Name], G1] =
   # A_p is defined as
   # A_p = α_1 + (Σ_i [W]_i · A_i) + [r] · δ_1
   # A_p = alpha1 + sum(A[i] * witness[i] for i in range(zkey.g16h.nVars)) + r * delta1
   # where of course in principle `α_1` is `g_1^{α}` etc.
-  let g16h = ctx.zkey.groth16Header()
+  let g16h = ctx.zkey.g16h
 
-  let alpha1 = g16h.alpha1.toEcG1[:Name]()
-  let delta1 = g16h.delta1.toEcG1[:Name]()
+  let alpha1 = g16h.alpha1
+  let delta1 = g16h.delta1
 
   # Declare `A_p` for the result
   var A_p: EC_ShortW_Jac[Fp[Name], G1]
@@ -67,7 +61,7 @@ proc calcAp[Name: static Algebra](ctx: Groth16Prover[Name], wt: seq[Fr[Name]]): 
   A_p = alpha1.getJacobian + ctx.r * delta1
   echo A_p.toHex()
 
-  let As = ctx.zkey.Afield().points.asEC(Fp[Name])
+  let As = ctx.zkey.A
   doAssert As.len == wt.len
   for i in 0 ..< As.len:
     A_p += wt[i] * As[i]
@@ -85,10 +79,10 @@ proc calcBp[Name: static Algebra](ctx: Groth16Prover[Name], wt: seq[Fr[Name]]): 
   # B_p = beta2 + sum(B2[i] * witness[i] for i in range(zkey.g16h.nVars)) + s * delta2
   # B_p = β_2 + (Σ_i [W]_i · B2_i) + [s] · δ_2
   # where of course in principle `β_1` is `g_1^{β}` etc.
-  let g16h = ctx.zkey.groth16Header()
+  let g16h = ctx.zkey.g16h
 
-  let beta2 = g16h.beta2.toEcG2[:Name]()
-  let delta2 = g16h.delta2.toEcG2[:Name]()
+  let beta2 = g16h.beta2
+  let delta2 = g16h.delta2
 
   # Declare `B_p` for the result
   var B_p: EC_ShortW_Jac[Fp2[Name], G2]
@@ -96,7 +90,7 @@ proc calcBp[Name: static Algebra](ctx: Groth16Prover[Name], wt: seq[Fr[Name]]): 
   # Compute the terms independent of the witnesses
   B_p = beta2.getJacobian + ctx.s * delta2
 
-  let Bs = ctx.zkey.B2field().points.asEC2(Fp2[Name])
+  let Bs = ctx.zkey.B2
 
   doAssert Bs.len == wt.len
   # could compute via MSM
@@ -106,14 +100,14 @@ proc calcBp[Name: static Algebra](ctx: Groth16Prover[Name], wt: seq[Fr[Name]]): 
   result = B_p
 
 proc calcB1[Name: static Algebra](ctx: Groth16Prover[Name], wt: seq[Fr[Name]]): EC_ShortW_Jac[Fp[Name], G1] =
-  let g16h = ctx.zkey.groth16Header()
+  let g16h = ctx.zkey.g16h
 
-  let beta1 = g16h.beta1.toEcG1[:Name]()
-  let delta1 = g16h.delta1.toEcG1[:Name]()
+  let beta1 = g16h.beta1
+  let delta1 = g16h.delta1
   result = beta1.getJacobian + ctx.s * delta1
 
   # Get the B1 data
-  let Bs = ctx.zkey.B1field().points.asEC(Fp[Name])
+  let Bs = ctx.zkey.B1
 
   doAssert Bs.len == wt.len
   for i in 0 ..< Bs.len:
@@ -122,8 +116,8 @@ proc calcB1[Name: static Algebra](ctx: Groth16Prover[Name], wt: seq[Fr[Name]]): 
 proc buildABC[Name: static Algebra](ctx: Groth16Prover[Name], wt: seq[Fr[Name]]): tuple[A, B, C: seq[Fr[Name]]] =
   # Extract required data using accessors
   let
-    coeffs = ctx.zkey.coeffs()
-    g16h = ctx.zkey.groth16Header()
+    coeffs = ctx.zkey.coeffs
+    g16h = ctx.zkey.g16h
     domainSize = g16h.domainSize
     nCoeff = coeffs.num
 
@@ -143,7 +137,7 @@ proc buildABC[Name: static Algebra](ctx: Groth16Prover[Name], wt: seq[Fr[Name]])
       m = coeffs.cs[i].matrix
       c = coeffs.cs[i].section
       s = coeffs.cs[i].index
-      coef = toFr[Name](coeffs.cs[i].value, true, false)
+      coef = coeffs.cs[i].value
     assert s.int < wt.len
     outBuf[m][c] = outBuf[m][c] + coef * wt[s]
 
@@ -205,9 +199,9 @@ proc calcCp[Name: static Algebra](ctx: Groth16Prover[Name], A_p, B1_p: EC_ShortW
     jabc[i] = A[i] * B[i] - C[i]
 
   # Get the C data
-  let Cs = ctx.zkey.Cfield().points.asEC(Fp[Name])
+  let Cs = ctx.zkey.C
   # Get private witnesses
-  let g16h = ctx.zkey.groth16Header()
+  let g16h = ctx.zkey.g16h
   ## XXX: Why is `nPublic` `1` when `Cs.len` ends up as `4` and `nVars` is `6`?
   echo "LEN ? ", Cs.len, " total witnesses? ", wt.len, " public? ", g16h.nPublic, " total? ", g16h.nVars
 
@@ -221,14 +215,14 @@ proc calcCp[Name: static Algebra](ctx: Groth16Prover[Name], A_p, B1_p: EC_ShortW
   for i in 0 ..< Cs.len:
     cw += priv[i] * Cs[i]
 
-  let Hs = ctx.zkey.Hfield().points.asEC(Fp[Name])
+  let Hs = ctx.zkey.H
 
   doAssert Hs.len == jabc.len
   var resH: EC_ShortW_Jac[Fp[Name], G1]
   for i in 0 ..< Hs.len:
     resH += jabc[i] * Hs[i]
 
-  let delta1 = g16h.delta1.toEcG1[:Name]()
+  let delta1 = g16h.delta1
 
   # Declare `C_p` for the result
   var C_p: EC_ShortW_Jac[Fp[Name], G1]
@@ -257,7 +251,7 @@ proc prove[Name: static Algebra](ctx: Groth16Prover[Name]): tuple[A: EC_ShortW_J
   proof = (A_p, B_p, C_p)
   ]#
 
-  let wt = ctx.getWitnesses()
+  let wt = ctx.wtns.witnesses
 
   let A_p  = ctx.calcAp(wt)
   let B2_p = ctx.calcBp(wt)
@@ -268,13 +262,17 @@ proc prove[Name: static Algebra](ctx: Groth16Prover[Name]): tuple[A: EC_ShortW_J
 
 when isMainModule:
 
+  const T = BN254_Snarks
+
   let wtns = parseWtnsFile("/home/basti/org/constantine/moonmath/circom/three_fac_js/witness.wtns")
+    .toWtns[:T]()
   let zkey = parseZkeyFile("/home/basti/org/constantine/moonmath/snarkjs/three_fac/three_fac_final.zkey")
+    .toZkey[:T]()
   let r1cs = parseR1csFile("/home/basti/org/constantine/moonmath/circom/three_fac.r1cs")
     .toR1CS
 
-  const T = BN254_Snarks
-  let g16h = zkey.groth16Header()
+
+  let g16h = zkey.g16h
   ## NOTE: We *expect* all these to be 0, because they are the respective moduli for
   ## `Fp` and `Fr`!
   ## XXX: move to a test case
