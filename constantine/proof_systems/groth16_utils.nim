@@ -14,18 +14,12 @@ proc toFp*[Name: static Algebra](x: seq[byte], isMont = true): Fp[Name] =
   else:
     result.fromBig(b)
 
-proc toFr*[Name: static Algebra](x: seq[byte], isMont = true, isDoubleMont = false): Fr[Name] =
+proc toFr*[Name: static Algebra](x: seq[byte], isMont = true): Fr[Name] =
   let b = matchingOrderBigInt(Name).unmarshal(x.toOpenArray(0, x.len - 1), littleEndian)
   if isMont:
     var bN: typeof(b)
     bN.fromMont(b, Fr[Name].getModulus(), Fr[Name].getNegInvModWord(), Fr[Name].getSpareBits())
     result.fromBig(bN)
-  elif isDoubleMont:
-    var bN: typeof(b)
-    bN.fromMont(b, Fr[Name].getModulus(), Fr[Name].getNegInvModWord(), Fr[Name].getSpareBits())
-    var bNN: typeof(b)
-    bNN.fromMont(bN, Fr[Name].getModulus(), Fr[Name].getNegInvModWord(), Fr[Name].getSpareBits())
-    result.fromBig(bNN)
   else:
     result.fromBig(b)
 
