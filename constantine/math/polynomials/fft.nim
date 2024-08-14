@@ -99,7 +99,6 @@ func fft_internal[EC; bits: static int](
   for i in 0 ..< half:
     # FFT Butterfly
     y_times_root   .scalarMul_vartime(rootsOfUnity[i], output[i+half])
-    ## XXX: is this correct or need to be args exchanged?
     output[i+half] .diff_vartime(output[i], y_times_root)
     output[i]      .sum_vartime(output[i], y_times_root)
 
