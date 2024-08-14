@@ -91,7 +91,6 @@ proc calcBp[Name: static Algebra](ctx: Groth16Prover[Name], wt: seq[Fr[Name]]): 
   B_p = beta2.getJacobian + ctx.s * delta2
 
   let Bs = ctx.zkey.B2
-
   doAssert Bs.len == wt.len
   # could compute via MSM
   for i in 0 ..< Bs.len:
@@ -108,7 +107,6 @@ proc calcB1[Name: static Algebra](ctx: Groth16Prover[Name], wt: seq[Fr[Name]]): 
 
   # Get the B1 data
   let Bs = ctx.zkey.B1
-
   doAssert Bs.len == wt.len
   for i in 0 ..< Bs.len:
     result += wt[i] * Bs[i]
@@ -216,14 +214,12 @@ proc calcCp[Name: static Algebra](ctx: Groth16Prover[Name], A_p, B1_p: EC_ShortW
     cw += priv[i] * Cs[i]
 
   let Hs = ctx.zkey.H
-
   doAssert Hs.len == jabc.len
   var resH: EC_ShortW_Jac[Fp[Name], G1]
   for i in 0 ..< Hs.len:
     resH += jabc[i] * Hs[i]
 
   let delta1 = g16h.delta1
-
   # Declare `C_p` for the result
   var C_p: EC_ShortW_Jac[Fp[Name], G1]
   C_p = ctx.s * A_p + ctx.r * B1_p - (ctx.r * ctx.s) * delta1 + cw + resH
