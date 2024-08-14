@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../platforms/llvm/llvm,
-  ./ir, ./codegen_nvidia
+  constantine/platforms/llvm/[llvm, asm_nvidia],
+  ./ir
 
 # ############################################################
 #
@@ -40,8 +40,13 @@ import
 # but the carry codegen of madc.hi.cc.u64 has off-by-one
 # - https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
 # - old 32-bit bug: https://forums.developer.nvidia.com/t/wrong-result-returned-by-madc-hi-u64-ptx-instruction-for-specific-operands/196094
+#
+# See instruction throughput
+# - https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#arithmetic-instructions
+#
+# We cannot use i256 on Nvidia target: https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/lib/Target/NVPTX/NVPTXISelLowering.cpp#L244-L276
 
-proc finalSubMayOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array) =
+proc finalSubMayOverflow(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -74,7 +79,7 @@ proc finalSubMayOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, 
   for i in 0 ..< N:
     r[i] = bld.slct(scratch[i], a[i], underflowedModulus)
 
-proc finalSubNoOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array) =
+proc finalSubNoOverflow(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -165,8 +170,8 @@ proc field_sub_gen*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field): FnDef
   let t = bld.makeArray(fieldTy)
   let N = cm.getNumWords(field)
   let zero = case cm.wordSize
-             of size32: constInt(asy.i32_t, 0)
-             of size64: constInt(asy.i64_t, 0)
+             of w32: constInt(asy.i32_t, 0)
+             of w64: constInt(asy.i64_t, 0)
 
   t[0] = bld.sub_bo(a[0], b[0])
   for i in 1 ..< N:
@@ -258,8 +263,8 @@ proc field_mul_CIOS_sparebit_gen(asy: Assembler_LLVM, cm: CurveMetadata, field: 
   let m0ninv = ValueRef cm.getMontgomeryNegInverse0(field)
   let M = (seq[ValueRef])(cm.getModulus(field))
   let zero = case cm.wordSize
-             of size32: constInt(asy.i32_t, 0)
-             of size64: constInt(asy.i64_t, 0)
+             of w32: constInt(asy.i32_t, 0)
+             of w64: constInt(asy.i64_t, 0)
 
   for i in 0 ..< N:
     # Multiplication

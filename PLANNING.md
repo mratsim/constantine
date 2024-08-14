@@ -101,6 +101,14 @@ Other tracks are stretch goals, contributions towards them are accepted.
 - introduce batchAffine_vartime
 - Optimized square_repeated in assembly for Montgomery and Crandall/Pseudo-Mersenne primes
 - Optimized elliptic curve directly calling assembly without ADX checks and limited input/output movement in registers or using function multi-versioning.
+- LLVM IR:
+  - use internal or private linkage type
+  - look into calling conventions like "fast" or "Tail fast"
+  - check if returning a value from function is propely optimized
+    compared to in-place result
+  - use readnone (pure) and readmem attribute for functions
+  - look into passing parameter as arrays instead of pointers?
+  - use hot function attribute
 
 ### User Experience track
 

@@ -8,140 +8,121 @@
 
 import
   constantine/platforms/llvm/llvm,
-  constantine/platforms/primitives,
-  constantine/math_compiler/ir,
-  ./x86_instr
+  constantine/math_compiler/[ir, pub_fields]
 
-echo "LLVM JIT compiler: Multiplication with MULX/ADOX/ADCX"
+const Fields = [
+  (
+    "bn254_snarks_fp", 254,
+    "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
+  ),
+  (
+    "bn254_snarks_fr", 254,
+    "30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001"
+  ),
 
-proc big_mul_gen(asy: Assembler_LLVM): FnDef =
+  (
+    "secp256k1_fp", 256,
+    "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"
+  ),
+  (
+    "secp256k1_fr", 256,
+    "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"
+  ),
+  (
+    "bls12_381_fp", 381,
+    "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
+  ),
+  (
+    "bls12_381_fr", 255,
+    "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001"
+  ),
+  (
+    "bls12_377_fp", 377,
+    "01ae3a4617c510eac63b05c06ca1493b1a22d9f300f5138f1ef3622fba094800170b5d44300000008508c00000000001"
+  ),
+  (
+    "bls12_377_fr", 253,
+    "12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000001"
+  ),
+  (
+    "bls24_315_fp", 315,
+    "4c23a02b586d650d3f7498be97c5eafdec1d01aa27a1ae0421ee5da52bde5026fe802ff40300001"
+  ),
+  (
+    "bls12_315_fr", 253,
+    "196deac24a9da12b25fc7ec9cf927a98c8c480ece644e36419d0c5fd00c00001"
+  ),
+  (
+    "bls24_317_fp", 317,
+    "1058CA226F60892CF28FC5A0B7F9D039169A61E684C73446D6F339E43424BF7E8D512E565DAB2AAB"
+  ),
+  (
+    "bls12_317_fr", 255,
+    "443F917EA68DAFC2D0B097F28D83CD491CD1E79196BF0E7AF000000000000001"
+  ),
+]
 
-
-  let procName = "big_mul_64x4"
-  let N = 4
-  let ty = array_t(asy.i64_t, N)
-  let pty = pointer_t(ty)
-
-  let bigMulTy = function_t(asy.void_t, [pty, pty, pty])
-  let bigMulKernel = asy.module.addFunction(cstring procName, bigMulTy)
-  let blck = asy.ctx.appendBasicBlock(bigMulKernel, "bigMulBody")
-  asy.builder.positionAtEnd(blck)
-
-  let bld = asy.builder
-
-  let (hiTy, hiKernel) = asy.defHi(64)
-  proc hi(builder: BuilderRef, a: ValueRef): ValueRef =
-    return builder.call2(
-      hiTy, hiKernel,
-      [a], "hi64_"
-    )
-
-  let (loTy, loKernel) = asy.defLo(64)
-  proc lo(builder: BuilderRef, a: ValueRef): ValueRef =
-    return builder.call2(
-      loTy, loKernel,
-      [a], "lo64_"
-    )
-
-  let (mulExtTy, mulExtKernel) = asy.defMulExt(64)
-  bld.positionAtEnd(blck)
-
-  proc mulx(builder: BuilderRef, a, b: ValueRef): tuple[hi, lo: ValueRef] =
-    # LLVM does not support multipel return value at the moment
-    # https://nondot.org/sabre/LLVMNotes/MultipleReturnValues.txt
-    # So we don't create an LLVM function
-    let t = builder.call2(
-      mulExtTy, mulExtKernel,
-      [a, b], "mulx64_"
-    )
-
-    builder.positionAtEnd(blck)
-    let lo = builder.lo(t)
-    let hi = builder.hi(t)
-    return (hi, lo)
-
-  let r = bld.asArray(bigMulKernel.getParam(0), ty)
-  let a = bld.asArray(bigMulKernel.getParam(1), ty)
-  let b = bld.asArray(bigMulKernel.getParam(2), ty)
-
-  let t = bld.makeArray(ty)
-
-  block: # i = 0
-    # TODO: properly implement add/adc in pure LLVM
-
-    # TODO: ensure flags are cleared properly, compiler might optimize this away
-    t[0] = bld.`xor`(t[0], t[0])
-    let (hi, lo) = bld.mulx(a[0], b[0])
-    r[0] = lo
-    t[0] = hi
-
-    for j in 1 ..< N:
-      let (hi , lo) = bld.mulx(a[j], b[0])
-      t[j] = hi
-      # SHOWSTOPPER: LLVM ERROR: Inline asm not supported by this streamer because we don't have an asm parser for this target
-      discard bld.adcx_rr(t[j-1], lo) # Replace by LLVM IR uadd_with_overflow
-
-    # SHOWSTOPPER: LLVM ERROR: Inline asm not supported by this streamer because we don't have an asm parser for this target
-    discard bld.adcx_rr(t[N-1], 0)
-
-  # TODO: rotate t array
-
-  # TODO: impl i in 1 ..< N
-
-  bld.store(r, t)
-  bld.retVoid()
-  return (bigMulTy, bigMulKernel)
-
-when isMainModule:
-  # It's not the Nvidia PTX backend but it's fine
+proc t_field_add() =
   let asy = Assembler_LLVM.new(bkX86_64_Linux, cstring("x86_poc"))
-  let bigMul = asy.big_mul_gen()
+  for F in Fields:
+    let fd = asy.ctx.configureField(
+      F[0], F[1], F[2],
+      v = 1, w = 64)
 
-  asy.module.verify(AbortProcessAction)
+    asy.definePrimitives(fd)
+
+    discard asy.genFpAdd(fd)
 
   echo "========================================="
-  echo "LLVM IR\n"
+  echo "LLVM IR unoptimized\n"
 
   echo asy.module
   echo "========================================="
 
-
-  var engine: ExecutionEngineRef
-  initializeFullNativeTarget()
-  createJITCompilerForModule(engine, asy.module, optLevel = 0)
-
-  let jitMul = cast[proc(r: var array[4, uint64], a, b: array[4, uint64]){.noconv.}](
-    engine.getFunctionAddress("big_mul_64x4")
-  )
-
-  var r: array[4, uint64]
-  r.jitMul([uint64 1, 2, 3, 4], [uint64 1, 1, 1, 1])
-  echo "jitMul = ", r
-
-  # block:
-  #   Cleanup - Assembler_LLVM is auto-managed
-  #   engine.dispose()  # also destroys the module attached to it, which double_frees Assembler_LLVM asy.module
-  echo "LLVM JIT - calling big_mul_64x4 SUCCESS"
+  asy.module.verify(AbortProcessAction)
 
   # --------------------------------------------
-  # See the assembly- note it might be different from what the JIT compiler did
-
+  # See the assembly - note it might be different from what the JIT compiler did
+  initializeFullNativeTarget()
   const triple = "x86_64-pc-linux-gnu"
 
   let machine = createTargetMachine(
     target = toTarget(triple),
     triple = triple,
     cpu = "",
-    features = "adx,bmi2", # TODO check the proper way to pass options
-    level = CodeGenLevelAggressive,
+    features = "", # "adx,bmi2", # TODO check the proper way to pass options
+    level = CodeGenLevelDefault,
     reloc = RelocDefault,
     codeModel = CodeModelDefault
   )
 
+  # Due to https://github.com/llvm/llvm-project/issues/102868
+  # We want to reproduce the codegen from llc.cpp
+  # However we can't reproduce the code from either
+  # - LLVM16 https://github.com/llvm/llvm-project/blob/llvmorg-16.0.6/llvm/tools/llc/llc.cpp
+  #   need legacy PassManagerRef and the PassManagerBuilder that interfaces between the
+  #   legacy PssManagerRef and new PassBuilder has been deleted in LLVM17
+  #
+  # - and contrary to what is claimed in https://llvm.org/docs/NewPassManager.html#id2
+  #   the C API of PassBuilderRef is ghost town.
+  #
+  # So we somewhat reproduce the optimization passes from
+  # https://reviews.llvm.org/D145835
+
   let pbo = createPassBuilderOptions()
   pbo.setMergeFunctions()
   let err = asy.module.runPasses(
-    "default<O3>,function-attrs,memcpyopt,sroa,mem2reg,gvn,dse,instcombine,inline,adce",
+    # "default<O2>,memcpyopt,sroa,mem2reg,function-attrs,inline,gvn,dse,aggressive-instcombine,adce",
+    "function(require<targetir>,require<targetlibinfo>,require<inliner-size-estimator>,require<memdep>,require<da>)" &
+    ",function(aa-eval)" &
+    ",always-inline,hotcoldsplit,inferattrs,instrprof,recompute-globalsaa" &
+    ",cgscc(argpromotion,function-attrs)" &
+    ",require<inline-advisor>,partial-inliner,called-value-propagation" &
+    ",scc-oz-module-inliner,module-inline" & # Buggy optimization
+    ",function(verify,loop-mssa(loop-reduce),mergeicmps,expand-memcmp,instsimplify)" &
+    ",function(lower-constant-intrinsics,consthoist,partially-inline-libcalls,ee-instrument<post-inline>,scalarize-masked-mem-intrin,verify)" &
+    ",memcpyopt,sroa,dse,aggressive-instcombine,gvn,ipsccp,deadargelim,adce" &
+    "",
     machine,
     pbo
   )
@@ -154,174 +135,35 @@ when isMainModule:
     quit 1
 
   echo "========================================="
+  echo "LLVM IR optimized\n"
+
+  echo asy.module
+  echo "========================================="
+
+  echo "========================================="
   echo "Assembly\n"
 
   echo machine.emitTo[:string](asy.module, AssemblyFile)
   echo "========================================="
 
-  # Output
-  # ------------------------------------------------------------------
+  # var engine: ExecutionEngineRef
+  # initializeFullNativeTarget()
+  # createJITCompilerForModule(engine, asy.module, optLevel = 3)
 
-  #[
-  LLVM JIT compiler: Multiplication with MULX/ADOX/ADCX
-  =========================================
-  LLVM IR
+  # let fn32 = cm32.genSymbol(opFpAdd)
+  # let fn64 = cm64.genSymbol(opFpAdd)
 
-  ; ModuleID = 'x86_poc'
-  source_filename = "x86_poc"
-  target triple = "x86_64-pc-linux-gnu"
+  # let jitFpAdd64 = cast[proc(r: var array[4, uint64], a, b: array[4, uint64]){.noconv.}](
+  #   engine.getFunctionAddress(cstring fn64)
+  # )
 
-  define void @big_mul_64x4(ptr %0, ptr %1, ptr %2) {
-  bigMulBody:
-    %3 = alloca [4 x i64], align 8
-    %4 = getelementptr inbounds [4 x i64], ptr %3, i32 0, i32 0
-    %5 = load i64, ptr %4, align 4
-    %6 = getelementptr inbounds [4 x i64], ptr %3, i32 0, i32 0
-    %7 = load i64, ptr %6, align 4
-    %8 = xor i64 %5, %7
-    %9 = getelementptr inbounds [4 x i64], ptr %3, i32 0, i32 0
-    store i64 %8, ptr %9, align 4
-    %10 = getelementptr inbounds [4 x i64], ptr %1, i32 0, i32 0
-    %11 = load i64, ptr %10, align 4
-    %12 = getelementptr inbounds [4 x i64], ptr %2, i32 0, i32 0
-    %13 = load i64, ptr %12, align 4
-    %mulx64_ = call i128 @hw_mulExt64(i64 %11, i64 %13)
-    %lo64_ = call i64 @hw_lo64(i128 %mulx64_)
-    %hi64_ = call i64 @hw_hi64(i128 %mulx64_)
-    %14 = getelementptr inbounds [4 x i64], ptr %0, i32 0, i32 0
-    store i64 %lo64_, ptr %14, align 4
-    %15 = getelementptr inbounds [4 x i64], ptr %3, i32 0, i32 0
-    store i64 %hi64_, ptr %15, align 4
-    %16 = getelementptr inbounds [4 x i64], ptr %1, i32 0, i32 1
-    %17 = load i64, ptr %16, align 4
-    %18 = getelementptr inbounds [4 x i64], ptr %2, i32 0, i32 0
-    %19 = load i64, ptr %18, align 4
-    %mulx64_1 = call i128 @hw_mulExt64(i64 %17, i64 %19)
-    %lo64_2 = call i64 @hw_lo64(i128 %mulx64_1)
-    %hi64_3 = call i64 @hw_hi64(i128 %mulx64_1)
-    %20 = getelementptr inbounds [4 x i64], ptr %3, i32 0, i32 1
-    store i64 %hi64_3, ptr %20, align 4
-    %21 = getelementptr inbounds [4 x i64], ptr %3, i32 0, i32 0
-    %22 = load i64, ptr %21, align 4
-    %23 = call i64 asm "adcxq %2, %0;", "=r,%0,r"(i64 %22, i64 %lo64_2)
-    %24 = getelementptr inbounds [4 x i64], ptr %1, i32 0, i32 2
-    %25 = load i64, ptr %24, align 4
-    %26 = getelementptr inbounds [4 x i64], ptr %2, i32 0, i32 0
-    %27 = load i64, ptr %26, align 4
-    %mulx64_4 = call i128 @hw_mulExt64(i64 %25, i64 %27)
-    %lo64_5 = call i64 @hw_lo64(i128 %mulx64_4)
-    %hi64_6 = call i64 @hw_hi64(i128 %mulx64_4)
-    %28 = getelementptr inbounds [4 x i64], ptr %3, i32 0, i32 2
-    store i64 %hi64_6, ptr %28, align 4
-    %29 = getelementptr inbounds [4 x i64], ptr %3, i32 0, i32 1
-    %30 = load i64, ptr %29, align 4
-    %31 = call i64 asm "adcxq %2, %0;", "=r,%0,r"(i64 %30, i64 %lo64_5)
-    %32 = getelementptr inbounds [4 x i64], ptr %1, i32 0, i32 3
-    %33 = load i64, ptr %32, align 4
-    %34 = getelementptr inbounds [4 x i64], ptr %2, i32 0, i32 0
-    %35 = load i64, ptr %34, align 4
-    %mulx64_7 = call i128 @hw_mulExt64(i64 %33, i64 %35)
-    %lo64_8 = call i64 @hw_lo64(i128 %mulx64_7)
-    %hi64_9 = call i64 @hw_hi64(i128 %mulx64_7)
-    %36 = getelementptr inbounds [4 x i64], ptr %3, i32 0, i32 3
-    store i64 %hi64_9, ptr %36, align 4
-    %37 = getelementptr inbounds [4 x i64], ptr %3, i32 0, i32 2
-    %38 = load i64, ptr %37, align 4
-    %39 = call i64 asm "adcxq %2, %0;", "=r,%0,r"(i64 %38, i64 %lo64_8)
-    %40 = getelementptr inbounds [4 x i64], ptr %3, i32 0, i32 3
-    %41 = load i64, ptr %40, align 4
-    %42 = call i64 asm "adcxq %2, %0;", "=r,%0,r"(i64 %41, i64 0)
-    %43 = load [4 x i64], ptr %3, align 4
-    store [4 x i64] %43, ptr %0, align 4
-    ret void
-  }
+  # var r: array[4, uint64]
+  # r.jitFpAdd64([uint64 1, 2, 3, 4], [uint64 1, 1, 1, 1])
+  # echo "jitFpAdd64 = ", r
 
-  define i64 @hw_hi64(i128 %0) {
-  hiBody:
-    %1 = lshr i128 %0, 64
-    %2 = trunc i128 %1 to i64
-    ret i64 %2
-  }
+  # # block:
+  # #   Cleanup - Assembler_LLVM is auto-managed
+  # #   engine.dispose()  # also destroys the module attached to it, which double_frees Assembler_LLVM asy.module
+  # echo "LLVM JIT - calling FpAdd64 SUCCESS"
 
-  define i64 @hw_lo64(i128 %0) {
-  loBody:
-    %1 = trunc i128 %0 to i64
-    ret i64 %1
-  }
-
-  define i128 @hw_mulExt64(i64 %0, i64 %1) {
-  mulExtBody:
-    %2 = zext i64 %0 to i128
-    %3 = zext i64 %1 to i128
-    %4 = mul i128 %2, %3
-    ret i128 %4
-  }
-
-  =========================================
-  jitMul = [0, 0, 0, 0]
-  LLVM JIT - calling big_mul_64x4 SUCCESS
-  =========================================
-  Assembly
-
-          .text
-          .file   "x86_poc"
-          .globl  big_mul_64x4
-          .p2align        4, 0x90
-          .type   big_mul_64x4,@function
-  big_mul_64x4:
-          .cfi_startproc
-          movq    %rdx, %rcx
-          movq    (%rdx), %rax
-          mulq    (%rsi)
-          movq    %rdx, %r8
-          movq    %rax, (%rdi)
-          movq    (%rcx), %rcx
-          movq    %rcx, %rax
-          mulq    8(%rsi)
-          movq    %rdx, %r9
-          movq    %rcx, %rax
-          mulq    16(%rsi)
-          movq    %rdx, %r10
-          movq    %rcx, %rax
-          mulq    24(%rsi)
-          movq    %r8, (%rdi)
-          movq    %r9, 8(%rdi)
-          movq    %r10, 16(%rdi)
-          movq    %rdx, 24(%rdi)
-          retq
-  .Lfunc_end0:
-          .size   big_mul_64x4, .Lfunc_end0-big_mul_64x4
-          .cfi_endproc
-
-          .globl  hw_hi64
-          .p2align        4, 0x90
-          .type   hw_hi64,@function
-  hw_hi64:
-          movq    %rsi, %rax
-          retq
-  .Lfunc_end1:
-          .size   hw_hi64, .Lfunc_end1-hw_hi64
-
-          .globl  hw_lo64
-          .p2align        4, 0x90
-          .type   hw_lo64,@function
-  hw_lo64:
-          movq    %rdi, %rax
-          retq
-  .Lfunc_end2:
-          .size   hw_lo64, .Lfunc_end2-hw_lo64
-
-          .globl  hw_mulExt64
-          .p2align        4, 0x90
-          .type   hw_mulExt64,@function
-  hw_mulExt64:
-          movq    %rsi, %rax
-          mulq    %rdi
-          retq
-  .Lfunc_end3:
-          .size   hw_mulExt64, .Lfunc_end3-hw_mulExt64
-
-          .section        ".note.GNU-stack","",@progbits
-
-  =========================================
-  ]#
+t_field_add()

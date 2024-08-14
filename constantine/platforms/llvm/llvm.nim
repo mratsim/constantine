@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import constantine/platforms/abis/llvm_abi {.all.}
+import std/macros
 export llvm_abi
 
 # ############################################################
@@ -146,11 +147,17 @@ proc emitTo*[T: string or seq[byte]](t: TargetMachineRef, m: ModuleRef, codegen:
 # Builder
 # ------------------------------------------------------------
 
+proc getCurrentFunction*(builder: BuilderRef): ValueRef =
+  builder.getInsertBlock().getBasicBlockParent()
+
 proc getContext*(builder: BuilderRef): ContextRef =
   # LLVM C API does not expose IRBuilder.getContext()
   # making this unnecessary painful
   # https://github.com/llvm/llvm-project/issues/59875
-  builder.getInsertBlock().getBasicBlockParent().getTypeOf().getContext()
+  builder.getCurrentFunction().getTypeOf().getContext()
+
+proc getCurrentModule*(builder: BuilderRef): ModuleRef =
+  builder.getCurrentFunction().getGlobalParent()
 
 # Types
 # ------------------------------------------------------------
@@ -172,12 +179,37 @@ proc array_t*(elemType: TypeRef, elemCount: SomeInteger): TypeRef {.inline.}=
 proc function_t*(returnType: TypeRef, paramTypes: openArray[TypeRef]): TypeRef {.inline.} =
   function_t(returnType, paramTypes, isVarArg = LlvmBool(false))
 
+# Functions
+# ------------------------------------------------------------
+
+proc createAttr*(ctx: ContextRef, name: openArray[char]): AttributeRef =
+  ctx.toAttr(name.toAttrId())
+
+proc toTypes*[N: static int](v: array[N, ValueRef]): array[N, TypeRef] =
+  for i in 0 ..< v.len:
+    result[i] = v[i].getTypeOf()
+
+macro unpackParams*[N: static int](
+        br: BuilderRef,
+        paramsTys: tuple[wrapped, src: array[N, TypeRef]]): untyped =
+  ## Unpack function parameters.
+  ##
+  ## The new function basic block MUST be setup before calling unpackParams.
+  ##
+  ## In the future we may automatically unwrap types.
+
+  result = nnkPar.newTree()
+  for i in 0 ..< N:
+    result.add quote do:
+      # let tySrc = `paramsTys`.src[`i`]
+      # let tyCC = `paramsTys`.wrapped[`i`]
+      let fn = `br`.getCurrentFunction()
+      fn.getParam(uint32 `i`)
+
 # Values
 # ------------------------------------------------------------
 
-type
-  ConstValueRef* = distinct ValueRef
-  AnyValueRef* = ValueRef or ConstValueRef
+proc isNil*(v: ValueRef): bool {.borrow.}
 
 proc getName*(v: ValueRef): string =
   var rLen: csize_t
@@ -186,7 +218,5 @@ proc getName*(v: ValueRef): string =
   result = newString(rLen.int)
   copyMem(result[0].addr, rStr, rLen.int)
 
-proc constInt*(ty: TypeRef, n: uint64, signExtend = false): ConstValueRef {.inline.} =
-  ConstValueRef constInt(ty, culonglong(n), LlvmBool(signExtend))
-
-proc getTypeOf*(v: ConstValueRef): TypeRef {.borrow.}
+proc constInt*(ty: TypeRef, n: SomeInteger, signExtend = false): ValueRef {.inline.} =
+  constInt(ty, culonglong(n), LlvmBool(signExtend))

@@ -85,7 +85,7 @@ func muladd2*(hi, lo: var Ct[uint64], a, b, c1, c2: Ct[uint64]) {.inline.}=
       {.emit:["*",lo, " = (NU64)", dblPrec,";"].}
 
 func smul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.} =
-  ## Extended precision multiplication
+  ## Signed extended precision multiplication
   ## (hi, lo) <- a*b
   ##
   ## Inputs are intentionally unsigned
