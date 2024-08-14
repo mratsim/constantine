@@ -14,10 +14,28 @@ import
   ../../named/algebras, # Fr, Fp
   ../../math/extension_fields, # Fp2
   ../../math/elliptic/[ec_shortweierstrass_affine], # EC types
-  ./groth16_utils # to unmarshal data
+  ../groth16_utils # to unmarshal data
 
 from std / sequtils import filterIt
 from std / strutils import endsWith
+
+## Note on the parsing logic:
+##
+## A Zkey file is first parsed into the `ZkeyBin` type. This data type
+## tries to mostly match the binary format of the `.zkey` files.
+## *HOWEVER*, there is no specification for `.zkey` files. *BUT*, if we
+## assume the same general specification holds as for the R1CS binary
+## files (for which
+## https://github.com/iden3/r1csfile/blob/master/doc/r1cs_bin_format.md
+## exists), we must assume that each section can appear in arbitrary
+## order in the binary file. Thus, we use an approach with variant objects
+## and simply a `seq[Section]` for the `ZkeyBin` type. We could either
+## disregard "spec compliance" and just assume the section order is
+## based on the section numbering (i.e. like the `ZkeySectionKind` enum
+## values) or handle different orders during parsing.
+##
+## In the end, we have a curve specific "typed" `Zkey[T]` type, which
+## does away with this approach anyhow.
 
 type
   ZkeySectionKind* = enum # `kInvalid` used to indicate unset & to make the enum work as field discriminator
@@ -157,6 +175,8 @@ type
     H*: H[Name]
     contr*: Contributions
 
+## NOTE: These are rather ugly, but a result of the parsing approach we use.
+## See note at the top of the file.
 func header*(zkey: ZkeyBin): Header =
   result = zkey.sections.filterIt(it.sectionType == kHeader)[0].header
 
@@ -373,11 +393,3 @@ proc parseZkeyFile*(path: string): ZkeyBin =
     result.sections.add s
 
   fileio.close(f)
-
-when isMainModule:
-  #echo parseZkeyFile("/tmp/test.zkey")
-  #echo parseZkeyFile("/home/basti/org/constantine/moonmath/snarkjs/three_fac/three_fac0000.zkey")
-  let zkey = parseZkeyFile("/home/basti/org/constantine/moonmath/snarkjs/three_fac/three_fac_final.zkey")
-  echo zkey
-
-  echo zkey.toZkey[:BN254_Snarks]()
