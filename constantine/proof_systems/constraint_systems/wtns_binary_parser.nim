@@ -12,9 +12,16 @@ import
   ../../serialization/[io_limbs, parsing],
   constantine/platforms/[fileio, abstractions],
   ../../named/algebras, # Fr
-  ./groth16_utils
+  ../groth16_utils
 
 #[
+The following is a rough spec of the witness files. Details may vary for different
+curves (e.g. field witnesse elements may have different sizes).
+
+Given that there is no specification for the `.wtns` file format, we assume it
+is generally treated like the R1CS binary files. See the note at the top of
+`zkey_binary_parser.nim` for more notes.
+
 1. File Header:
    - Magic String:
      - Offset: 0 bytes
@@ -86,9 +93,6 @@ type
     header*: WitnessHeader
     witnesses*: seq[Fr[Name]]
 
-## XXX: Add `Wtns[T]` type, which takes care of converting field elements and
-## does not contain `seq[Section]` anymore
-
 func header*(wtns: WtnsBin): WitnessHeader =
   result = wtns.sections.filterIt(it.sectionType == kHeader)[0].header
 
@@ -98,7 +102,7 @@ func witnesses*(wtns: WtnsBin): seq[Witness] =
 proc getWitnesses[Name: static Algebra](witnesses: seq[Witness]): seq[Fr[Name]] =
   result = newSeq[Fr[Name]](witnesses.len)
   for i, w in witnesses:
-    result[i] = toFr[Name](w.data, isMont = false) ## Improtant: Witness does *not* store numbers in Montgomery rep
+    result[i] = toFr[Name](w.data, isMont = false) ## Important: Witness does *not* store numbers in Montgomery rep
 
 proc toWtns*[Name: static Algebra](wtns: WtnsBin): Wtns[Name] =
   result = Wtns[Name](
@@ -181,6 +185,3 @@ proc parseWtnsFile*(path: string): WtnsBin =
     result.sections.add s
 
   fileio.close(f)
-
-when isMainModule:
-  echo parseWtnsFile("/home/basti/org/constantine/moonmath/circom/three_fac_js/witness.wtns")
