@@ -1,16 +1,16 @@
-import ./r1cs_circom_parser,
-       ./zkey_binary_parser,
-       ./wtns_binary_parser
+import ./constraint_systems/r1cs_circom_parser,
+       ./constraint_systems/zkey_binary_parser,
+       ./constraint_systems/wtns_binary_parser
 
-import ../../math/[arithmetic, extension_fields]
-import ../../math/io/[io_bigints, io_fields, io_ec, io_extfields]
-import ../../platforms/abstractions
-import ../../named/[algebras, properties_fields, properties_curves]
-import ../../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul, ec_scalar_mul_vartime]
-import ../../named/zoo_generators
-import ../../csprngs/sysrand
+import ../math/[arithmetic, extension_fields],
+       ../math/io/[io_bigints, io_fields, io_ec, io_extfields],
+       ../platforms/abstractions,
+       ../named/[algebras, properties_fields, properties_curves],
+       ../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul, ec_scalar_mul_vartime],
+       ../named/zoo_generators,
+       ../csprngs/sysrand
 
-import ../../math/polynomials/[fft_fields, fft_lut]
+import ../math/polynomials/[fft_fields, fft_lut]
 
 from std / math import log2
 
@@ -25,15 +25,6 @@ type
     # secret random values `r`, `s` for the proof
     r: Fr[Name]
     s: Fr[Name]
-
-proc randomFieldElement[Name: static Algebra](_: typedesc[Fr[Name]]): Fr[Name] =
-  ## random element in ~Fp[Name]~
-  let m = Fr[Name].getModulus()
-  var b: matchingOrderBigInt(Name)
-
-  while b.isZero().bool or (b > m).bool: ## XXX: or just truncate?
-    assert b.limbs.sysrand()
-  result.fromBig(b)
 
 proc init*[Name: static Algebra](G: typedesc[Groth16Prover[Name]], zkey: Zkey[Name], wtns: Wtns[Name], r1cs: R1CS): Groth16Prover[Name] =
   result = Groth16Prover[Name](
