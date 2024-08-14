@@ -196,6 +196,11 @@ proc configureField*(ctx: ContextRef,
   result.spareBits = uint8(next_multiple_wordsize - modBits)
 
 proc definePrimitives*(asy: Assembler_LLVM, fd: FieldDescriptor) =
+  asy.ctx.def_llvm_add_overflow(asy.module, fd.wordTy)
+  asy.ctx.def_llvm_add_overflow(asy.module, fd.intBufTy)
+  asy.ctx.def_llvm_sub_overflow(asy.module, fd.wordTy)
+  asy.ctx.def_llvm_sub_overflow(asy.module, fd.intBufTy)
+
   asy.ctx.def_addcarry(asy.module, asy.ctx.int1_t(), fd.wordTy)
   asy.ctx.def_subborrow(asy.module, asy.ctx.int1_t(), fd.wordTy)
 
@@ -524,3 +529,6 @@ proc callFn*(
 
 template load2*(asy: Assembler_LLVM, ty: TypeRef, `ptr`: ValueRef, name: cstring = ""): ValueRef =
   asy.br.load2(ty, `ptr`, name)
+
+template store*(asy: Assembler_LLVM, dst, src: ValueRef, name: cstring = "") =
+  asy.br.store(src, dst)

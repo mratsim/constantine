@@ -36,8 +36,31 @@ const Fields = [
     "bls12_381_fr", 255,
     "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001"
   ),
+  (
+    "bls12_377_fp", 377,
+    "01ae3a4617c510eac63b05c06ca1493b1a22d9f300f5138f1ef3622fba094800170b5d44300000008508c00000000001"
+  ),
+  (
+    "bls12_377_fr", 253,
+    "12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000001"
+  ),
+  (
+    "bls24_315_fp", 315,
+    "4c23a02b586d650d3f7498be97c5eafdec1d01aa27a1ae0421ee5da52bde5026fe802ff40300001"
+  ),
+  (
+    "bls12_315_fr", 253,
+    "196deac24a9da12b25fc7ec9cf927a98c8c480ece644e36419d0c5fd00c00001"
+  ),
+  (
+    "bls24_317_fp", 317,
+    "1058CA226F60892CF28FC5A0B7F9D039169A61E684C73446D6F339E43424BF7E8D512E565DAB2AAB"
+  ),
+  (
+    "bls12_317_fr", 255,
+    "443F917EA68DAFC2D0B097F28D83CD491CD1E79196BF0E7AF000000000000001"
+  ),
 ]
-
 
 proc t_field_add() =
   let asy = Assembler_LLVM.new(bkX86_64_Linux, cstring("x86_poc"))
@@ -83,7 +106,7 @@ proc t_field_add() =
   # - and contrary to what is claimed in https://llvm.org/docs/NewPassManager.html#id2
   #   the C API of PassBuilderRef is ghost town.
   #
-  # So we reproduce the optimization passes from
+  # So we somewhat reproduce the optimization passes from
   # https://reviews.llvm.org/D145835
 
   let pbo = createPassBuilderOptions()
@@ -94,8 +117,8 @@ proc t_field_add() =
     ",function(aa-eval)" &
     ",always-inline,hotcoldsplit,inferattrs,instrprof,recompute-globalsaa" &
     ",cgscc(argpromotion,function-attrs)" &
-    # ",require<inline-advisor>,partial-inliner,called-value-propagation" &
-    # ",scc-oz-module-inliner,inline-wrapper,module-inline" & # Buggy optimization
+    ",require<inline-advisor>,partial-inliner,called-value-propagation" &
+    ",scc-oz-module-inliner,module-inline" & # Buggy optimization
     ",function(verify,loop-mssa(loop-reduce),mergeicmps,expand-memcmp,instsimplify)" &
     ",function(lower-constant-intrinsics,consthoist,partially-inline-libcalls,ee-instrument<post-inline>,scalarize-masked-mem-intrin,verify)" &
     ",memcpyopt,sroa,dse,aggressive-instcombine,gvn,ipsccp,deadargelim,adce" &

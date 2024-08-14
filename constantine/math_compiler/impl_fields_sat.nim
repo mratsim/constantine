@@ -78,7 +78,7 @@ import
 
 const SectionName = "ctt.fields"
 
-proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array, carry: ValueRef) =
+proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, rr, a, M, carry: ValueRef) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -87,28 +87,22 @@ proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Arr
   ##
   ## To be used when the final substraction can
   ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
-  let t = asy.makeArray(fd.fieldTy)
 
   # Mask: contains 0xFFFF or 0x0000
   let (_, mask) = asy.br.subborrow(fd.zero, fd.zero, carry)
 
   # Now substract the modulus, and test a < M
   # (underflow) with the last borrow
-  var b: ValueRef
-  (b, t[0]) = asy.br.subborrow(a[0], M[0], fd.zero_i1)
-  for i in 1 ..< fd.numWords:
-    (b, t[i]) = asy.br.subborrow(a[i], M[i], b)
+  let (borrow, a_minus_M) = asy.br.llvm_sub_overflow(a, M)
 
   # If it underflows here, it means that it was
-  # smaller than the modulus and we don't need `scratch`
-  (b, _) = asy.br.subborrow(mask, fd.zero, b)
+  # smaller than the modulus and we don't need `a-M`
+  let (ctl, _) = asy.br.subborrow(mask, fd.zero, borrow)
 
-  for i in 0 ..< fd.numWords:
-    t[i] = asy.br.select(b, a[i], t[i])
+  let t = asy.br.select(ctl, a, a_minus_M)
+  asy.store(rr, t)
 
-  asy.store(r, t)
-
-proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array) =
+proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, rr, a, M: ValueRef) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -117,20 +111,15 @@ proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Arra
   ##
   ## To be used when the modulus does not use the full bitwidth of the storing words
   ## (say using 255 bits for the modulus out of 256 available in words)
-  let t = asy.makeArray(fd.fieldTy)
 
   # Now substract the modulus, and test a < M
   # (underflow) with the last borrow
-  var b: ValueRef
-  (b, t[0]) = asy.br.subborrow(a[0], M[0], fd.zero_i1)
-  for i in 1 ..< fd.numWords:
-    (b, t[i]) = asy.br.subborrow(a[i], M[i], b)
+  let (borrow, a_minus_M) = asy.br.llvm_sub_overflow(a, M)
 
-  # If it underflows here a was smaller than the modulus, which is what we want
-  for i in 0 ..< fd.numWords:
-    t[i] = asy.br.select(b, a[i], t[i])
-
-  asy.store(r, t)
+  # If it underflows here, it means that it was
+  # smaller than the modulus and we don't need `a-M`
+  let t = asy.br.select(borrow, a, a_minus_M)
+  asy.store(rr, t)
 
 proc modadd*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
   ## Generate an optimized modular addition kernel
@@ -138,7 +127,7 @@ proc modadd*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
 
   let red = if fd.spareBits >= 1: "noo"
             else: "mayo"
-  let name = "_modadd_" & red & "_u" & $fd.w & "x" & $fd.numWords
+  let name = "_modadd_" & red & ".u" & $fd.w & "x" & $fd.numWords
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a, b, M]),
@@ -149,21 +138,15 @@ proc modadd*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
     let (rr, aa, bb, MM) = llvmParams
 
     # Pointers are opaque in LLVM now
-    let r = asy.asArray(rr, fd.fieldTy)
-    let a = asy.asArray(aa, fd.fieldTy)
-    let b = asy.asArray(bb, fd.fieldTy)
-    let M = asy.asArray(MM, fd.fieldTy)
+    let a = asy.load2(fd.intBufTy, aa, "a")
+    let b = asy.load2(fd.intBufTy, bb, "b")
+    let M = asy.load2(fd.intBufTy, MM, "M")
 
-    let apb = asy.makeArray(fd.fieldTy)
-    var c: ValueRef
-    (c, apb[0]) = asy.br.addcarry(a[0], b[0], fd.zero_i1)
-    for i in 1 ..< fd.numWords:
-      (c, apb[i]) = asy.br.addcarry(a[i], b[i], c)
-
+    let (carry, apb) = asy.br.llvm_add_overflow(a, b)
     if fd.spareBits >= 1:
-      asy.finalSubNoOverflow(fd, r, apb, M)
+      asy.finalSubNoOverflow(fd, rr, apb, M)
     else:
-      asy.finalSubMayOverflow(fd, r, apb, M, c)
+      asy.finalSubMayOverflow(fd, rr, apb, M, carry)
 
     asy.br.retVoid()
 
