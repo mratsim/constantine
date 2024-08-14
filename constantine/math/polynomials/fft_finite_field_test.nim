@@ -17,9 +17,6 @@ import
 type
   EC = EC_ShortW_Jac[Fp[BLS6_6], G1]
 
-
-#echo getBigInt(F.Name, kBaseField)
-
 suite "FFT Tests":
   test "FFT over Finite Field Fp[Fake13]":
 

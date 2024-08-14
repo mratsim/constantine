@@ -32,7 +32,7 @@ type
   FFT_Descriptor*[F] = object # `F` is either `Fp[Name]` or `Fr[Name]`
     ## Metadata for FFT on Elliptic Curve
     order*: int
-    rouGen*: F #getBigInt(F)
+    rouGen*: F ## Roots of unity generator based on primitive root of `F`: `ω = g^( (p - 1) // n )`
     rootsOfUnity*: ptr UncheckedArray[getBigInt(F)] # `getBigInt` gives us the right type depending on Fr/Fp
       ## domain, starting and ending with 1, length is cardinality+1
       ## This allows FFT and inverse FFT to use the same buffer for roots.
@@ -42,12 +42,6 @@ func computeRootsOfUnity[F](ctx: var FFT_Descriptor[F], generatorRootOfUnity: au
     doAssert typeof(generatorRootOfUnity) is Fr[F.Name] or typeof(generatorRootOfUnity) is Fp[F.Name]
 
   ctx.rootsOfUnity[0].setOne()
-
-  debugecho "Generator ROU: ", generatorRootOfUnity.toHex()
-  var res = generatorRootOfUnity
-  let p = getBigInt(F).fromDecimal($ctx.order)
-  pow(res, p)
-  debugecho "To pow ? ", res.toHex()
 
   var cur = generatorRootOfUnity
   for i in 1 .. ctx.order:
@@ -64,10 +58,11 @@ func init*[Name: static Algebra](T: type FFT_Descriptor, order: int, generatorRo
 
   result.computeRootsOfUnity(generatorRootOfUnity)
 
-  for i in 0 ..< result.order:
-    debugecho "ω^", i, " = ", result.rootsOfUnity[i].toHex()
-
 proc rootOfUnityGenerator*[F](_: typedesc[F], order: int): F =
+  ## Computes a root of unity generator for the order `n`, using
+  ## `ω = g^( (p - 1) // n )` where `g` is the primitive root
+  ## of the field `F`.
+  ##
   ## `p` = prime of the field (or order of subgroup)
   ## `n` = FFT order
   ## Highlighted the part we compute in each comment.
@@ -79,36 +74,30 @@ proc rootOfUnityGenerator*[F](_: typedesc[F], order: int): F =
 
   # ω = g^( (p - 1) // `n` )
   var n = F.fromInt(order.uint64)
-  #echo "n = ", n.toHex()
   # ω = g^( (p - 1) `// n` )
   n.inv()
-  #echo "Inverted? ", n.toHex()
   # ω = g^( `(p - 1) // n` )
   exponent *= n
-  #echo "Exp? ", exponent.toHex()
 
   var g: F = F.fromUint(primitiveRoot(F.Name).uint64)
-  # ω = `g^( (p - 1) // n` )
+  # ω = `g^( (p - 1) // n )`
   g.pow_vartime(toBig(exponent))
-  #echo "g ? ", g.toHex()
   result = g
 
 proc init*(T: typedesc[FFT_Descriptor], order: int): T =
-  ## For example for GF(13) and n == 4:
-  ## In backticks the part we currently compute
+  ## Initialize an `FFT_Descriptor` for the given `order`. The root of unity generator is
+  ## computed automatically. However, a primitive root is required for the field over which
+  ## the FFT is to be done. See `fft_lut.nim` for definitions and more information.
   let g = rootOfUnityGenerator(T.F, order)
-  #let g2 = scaleToRootOfUnity(T.F.Name) # [28 - order]
-  #for i, el in g2:
-  #  debugecho i, " = ", el.toHex()
   result = T.init(order, g)
 
 func delete*(ctx: FFT_Descriptor) =
   ctx.rootsOfUnity.freeHeapAligned()
 
-proc toFr[S: static int, Name: static Algebra](x: BigInt[S], isMont = true): Fr[Name] =
+proc toFr[S: static int, Name: static Algebra](x: BigInt[S]): Fr[Name] =
   result.fromBig(x)
 
-proc toFp[S: static int, Name: static Algebra](x: BigInt[S], isMont = true): Fp[Name] =
+proc toFp[S: static int, Name: static Algebra](x: BigInt[S]): Fp[Name] =
   result.fromBig(x)
 
 proc toF[F; S: static int](T: typedesc[F], x: BigInt[S]): auto =
@@ -128,10 +117,7 @@ func simpleFT[F; bits: static int](
   var last {.noInit.}, v {.noInit.}: F
 
   var v0w0 {.noinit}: F
-  var v0w0In {.noInit.} = vals[0]
-  static: echo "TYE ??? ", F.Name, " is fp ? ", F is Fp[Fake13]
-  ## XXX: THER IS NO `prod` WITH ONLY 1 EXTRA ARG
-  v0w0.prod(v0w0In, F.toF(rootsOfUnity[0]))
+  v0w0.prod(vals[0], F.toF(rootsOfUnity[0]))
 
   for i in 0 ..< L:
     last = v0w0
@@ -223,7 +209,7 @@ func fft_vartime*[F](vals: openarray[F]): seq[F] =
   result = newSeq[F](order)
   let status = fftDesc.fft_vartime(result, vals)
 
-  doAssert (status == FFTS_Success).bool, "FFT failed."
+  doAssert (status == FFTS_Success).bool, "FFT failed with " & $status
 
 proc ifft_vartime*[F](vals: openarray[F]): seq[F] =
   ## Performs an inverse FFT on the given values and returns a seq of the result.
@@ -236,4 +222,4 @@ proc ifft_vartime*[F](vals: openarray[F]): seq[F] =
   result = newSeq[F](order)
   let status = fftDesc.ifft_vartime(result, vals)
 
-  doAssert (status == FFTS_Success).bool, "FFT failed."
+  doAssert (status == FFTS_Success).bool, "FFT failed with " & $status
