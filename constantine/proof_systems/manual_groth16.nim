@@ -15,15 +15,21 @@ from std / math import log2
 
 import ./groth16_utils
 
+# Export so users can parse files
+export r1cs_circom_parser, zkey_binary_parser, wtns_binary_parser
+export groth16_utils
+export arithmetic, extension_fields, abstractions, io_bigints, io_fields, io_ec, io_extfields
+
 type
-  Groth16Prover[Name: static Algebra] = object
+  Groth16Prover*[Name: static Algebra] = object
     ## XXX: In the future the below should be typed objects that are already unmarshalled!
-    zkey: Zkey[Name]
-    wtns: Wtns[Name]
-    r1cs: R1CS
+    zkey*: Zkey[Name]
+    wtns*: Wtns[Name]
+    r1cs*: R1CS
     # secret random values `r`, `s` for the proof
-    r: Fr[Name]
-    s: Fr[Name]
+    ## XXX: These won't remain public of course
+    r*: Fr[Name]
+    s*: Fr[Name]
 
 proc init*[Name: static Algebra](G: typedesc[Groth16Prover[Name]], zkey: Zkey[Name], wtns: Wtns[Name], r1cs: R1CS): Groth16Prover[Name] =
   result = Groth16Prover[Name](
@@ -215,7 +221,7 @@ proc calcCp[Name: static Algebra](ctx: Groth16Prover[Name], A_p, B1_p: EC_ShortW
   C_p = ctx.s * A_p + ctx.r * B1_p - (ctx.r * ctx.s) * delta1 + cw + resH
   result = C_p
 
-proc prove[Name: static Algebra](ctx: Groth16Prover[Name]): tuple[A: EC_ShortW_Jac[Fp[Name], G1],
+proc prove*[Name: static Algebra](ctx: Groth16Prover[Name]): tuple[A: EC_ShortW_Jac[Fp[Name], G1],
                                                                   B: EC_ShortW_Jac[Fp2[Name], G2],
                                                                   C: EC_ShortW_Jac[Fp[Name], G1]] =
   #[
