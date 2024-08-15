@@ -2,7 +2,9 @@ import ../math/[arithmetic, extension_fields],
        ../math/io/[io_bigints, io_fields, io_ec, io_extfields],
        ../platforms/abstractions,
        ../named/[algebras, properties_fields, properties_curves],
-       ../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul, ec_scalar_mul_vartime]
+       ../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul, ec_scalar_mul_vartime],
+       ../csprngs/sysrand
+
 
 ## Helper constructors for Fp / Fr elements used in Groth16 binary file parsers.
 proc toFp*[Name: static Algebra](x: seq[byte], isMont = true): Fp[Name] =
@@ -61,6 +63,7 @@ proc randomFieldElement*[Name: static Algebra](_: typedesc[Fr[Name]]): Fr[Name] 
   let m = Fr[Name].getModulus()
   var b: matchingOrderBigInt(Name)
 
+  bind sysrand
   while b.isZero().bool or (b > m).bool: ## XXX: or just truncate?
     assert b.limbs.sysrand()
   result.fromBig(b)

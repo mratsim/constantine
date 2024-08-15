@@ -7,8 +7,7 @@ import ../math/[arithmetic, extension_fields],
        ../platforms/abstractions,
        ../named/[algebras, properties_fields, properties_curves],
        ../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul, ec_scalar_mul_vartime],
-       ../named/zoo_generators,
-       ../csprngs/sysrand
+       ../named/zoo_generators
 
 import ../math/polynomials/[fft_fields, fft_lut]
 
