@@ -60,23 +60,26 @@ component main = three_fac() ;
 
 If we save this as ~three_fac.circom~ we can use Circom to generate
 the corresponding R1CS by:
-#+begin_src sh :exports both
+#+begin_src sh :results code :exports both
+cd groth16_files
 circom three_fac.circom --r1cs --wasm --sym
 #+end_src
 
 #+RESULTS:
-| [32mtemplate   | instances[0m:    |                             2 |
-| non-linear       | constraints:       |                             2 |
-| linear           | constraints:       |                             0 |
-| public           | inputs:            |                             0 |
-| private          | inputs:            |                             3 |
-| public           | outputs:           |                             1 |
-| wires:           | 6                  |                               |
-| labels:          | 11                 |                               |
-| [32mWritten    | successfully:[0m |              ./three_fac.r1cs |
-| [32mWritten    | successfully:[0m |               ./three_fac.sym |
-| [32mWritten    | successfully:[0m | ./three_fac_js/three_fac.wasm |
-| [32mEverything | went               |                     okay[0m |
+#+begin_src sh
+template instances: 2
+non-linear constraints: 2
+linear constraints: 0
+public inputs: 0
+private inputs: 3
+public outputs: 1
+wires: 6
+labels: 11
+Written successfully: ./three_fac.r1cs
+Written successfully: ./three_fac.sym
+Written successfully: ./three_fac_js/three_fac.wasm
+Everything went okay
+#+end_src
 
 This produces 3 output files, a ~.r1cs~ file and a ~.sym~
 file. Importantly, it also generates a new directory (in our case
@@ -86,20 +89,20 @@ used to generate a ~.wtns~ file from some inputs used in the proof and
 ~witness_calculator.js~ containing most of the actual logic.
 
 Using SnarkJS we can print information about the R1CS file:
-#+begin_src sh :results drawer :exports both
+#+begin_src sh :results code :exports both
 snarkjs r1cs info groth16_files/three_fac.r1cs
 #+end_src
 
 #+RESULTS:
-:results:
-[32;22m[INFO]  [39;1msnarkJS[0m: Curve: bn-128
-[32;22m[INFO]  [39;1msnarkJS[0m: # of Wires: 6
-[32;22m[INFO]  [39;1msnarkJS[0m: # of Constraints: 2
-[32;22m[INFO]  [39;1msnarkJS[0m: # of Private Inputs: 3
-[32;22m[INFO]  [39;1msnarkJS[0m: # of Public Inputs: 0
-[32;22m[INFO]  [39;1msnarkJS[0m: # of Labels: 11
-[32;22m[INFO]  [39;1msnarkJS[0m: # of Outputs: 1
-:end:
+#+begin_src sh
+[INFO]  snarkJS: Curve: bn-128
+[INFO]  snarkJS: # of Wires: 6
+[INFO]  snarkJS: # of Constraints: 2
+[INFO]  snarkJS: # of Private Inputs: 3
+[INFO]  snarkJS: # of Public Inputs: 0
+[INFO]  snarkJS: # of Labels: 11
+[INFO]  snarkJS: # of Outputs: 1
+#+end_src
 
 where we see the number of produced wires the corresponding algebraic
 circuit has, the number of constraints in the R1CS as well as the
@@ -301,7 +304,7 @@ echo "C_p#16 = ", C_p.toHex()
 echo "C_p#10 = ", C_p.toDecimal()
 #+end_src
 
-:RESULTS:
+#+begin_src 
 A_p#16 = EC_ShortW_Jac[Fp[BN254_Snarks], G1](
   x: 0x0c37654828f4fa92099b6e6bc3ef1e233688e29775ad84a587e3e0a6b94734f5,
   y: 0x2eef49d5d85978033554eeadf6a3af464fd201d8c6687fdb51fc7f1077622d49
@@ -337,6 +340,7 @@ C_p#10 = EC_ShortW_Jac[Fp[BN254_Snarks], G1](
   y: 03285628268350284309020370879913195676683658549907819489051412512121524349470
 )
 :END:
+#+end_src
 
 As we can see when comparing the decimal outputs, the numbers match.
 
