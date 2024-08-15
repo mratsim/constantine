@@ -1,13 +1,5 @@
 import constantine/proof_systems/manual_groth16,
        constantine/named/algebras
-#import ../math/[arithmetic, extension_fields],
-#       ../math/io/[io_bigints, io_fields, io_ec, io_extfields],
-#       ../platforms/abstractions,
-#       ../named/[algebras, properties_fields, properties_curves],
-#       ../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul, ec_scalar_mul_vartime],
-#       ../named/zoo_generators,
-#       ../csprngs/sysrand
-#import ./groth16_utils
 
 const T = BN254_Snarks
 
