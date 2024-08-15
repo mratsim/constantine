@@ -1,0 +1,395 @@
+* Groth16 prover / verifier example
+
+In this example we will go through the full construction of a Groth16
+prove and verification. The current Constantine Groth16 prover logic
+depends on SnarkJS / Circom in order to produce an arithmetic circuit
+of the statement to be proven, turn it into an R1CS, compute its
+witnesses and set up the common reference string. Our logic uses the
+SnarkJS produced ~.r1cs~, ~.zkey~ and ~.wtns~ files as inputs.
+
+** 3-factorization problem description
+
+We will use an example from the Moonmath manual,
+https://github.com/LeastAuthority/moonmath-manual
+namely the "3-factorization problem", starting from example 115 and
+used in further examples building from it throughout the book. The
+idea of the example is simply to build a SNARK, which proves the
+knowledge of three factors of an element from $\mathcal{F}_{13}$, i.e.
+
+\[
+x_1·x_2·x_3 = x_4.
+\]
+
+where $x_1, x_2, x_3$ are hidden witnesses and $x_4$ acts as a public
+instance. In our explanation here we will skip over any manual
+derivations of a possible R1CS, calculation of the QAP (Quadratic
+Arithmetic Program) or algebraic circuits. Instead, we will define the
+problem in Circom and have it generate the R1CS for us.
+
+Note that we will be light on details in some parts, those can be read
+up on in the Moonmath manual. See the list of all related examples in
+Moonmath in sec. [[#sec:3fac_examples]] if you wish to learn more about
+different parts.
+
+** Circom definition
+
+The Circom code to express the problem can be written as follows
+(example 137):
+#+begin_src circom
+template Multiplier() {
+    signal input a ;
+    signal input b ;
+    signal output c ;
+    c <== a*b ;
+}
+template three_fac () {
+    signal input x1 ;
+    signal input x2 ;
+    signal input x3 ;
+    signal output x4 ;
+    component mult1 = Multiplier() ;
+    component mult2 = Multiplier() ;
+    mult1.a <== x1 ;
+    mult1.b <== x2 ;
+    mult2.a <== mult1.c ;
+    mult2.b <== x3 ;
+    x4 <== mult2.c ;
+}
+component main = three_fac() ;
+#+end_src
+
+If we save this as ~three_fac.circom~ we can use Circom to generate
+the corresponding R1CS by:
+#+begin_src sh :exports both
+circom three_fac.circom --r1cs --wasm --sym
+#+end_src
+
+#+RESULTS:
+| [32mtemplate   | instances[0m:    |                             2 |
+| non-linear       | constraints:       |                             2 |
+| linear           | constraints:       |                             0 |
+| public           | inputs:            |                             0 |
+| private          | inputs:            |                             3 |
+| public           | outputs:           |                             1 |
+| wires:           | 6                  |                               |
+| labels:          | 11                 |                               |
+| [32mWritten    | successfully:[0m |              ./three_fac.r1cs |
+| [32mWritten    | successfully:[0m |               ./three_fac.sym |
+| [32mWritten    | successfully:[0m | ./three_fac_js/three_fac.wasm |
+| [32mEverything | went               |                     okay[0m |
+
+This produces 3 output files, a ~.r1cs~ file and a ~.sym~
+file. Importantly, it also generates a new directory (in our case
+called ~three_fac_js~, which contains a ~.wasm~ WebAssembly binary, as
+well as 2 JavaScript source files. ~generate_witness.js~ will later be
+used to generate a ~.wtns~ file from some inputs used in the proof and
+~witness_calculator.js~ containing most of the actual logic.
+
+Using SnarkJS we can print information about the R1CS file:
+#+begin_src sh :results drawer :exports both
+snarkjs r1cs info groth16_files/three_fac.r1cs
+#+end_src
+
+#+RESULTS:
+:results:
+[32;22m[INFO]  [39;1msnarkJS[0m: Curve: bn-128
+[32;22m[INFO]  [39;1msnarkJS[0m: # of Wires: 6
+[32;22m[INFO]  [39;1msnarkJS[0m: # of Constraints: 2
+[32;22m[INFO]  [39;1msnarkJS[0m: # of Private Inputs: 3
+[32;22m[INFO]  [39;1msnarkJS[0m: # of Public Inputs: 0
+[32;22m[INFO]  [39;1msnarkJS[0m: # of Labels: 11
+[32;22m[INFO]  [39;1msnarkJS[0m: # of Outputs: 1
+:end:
+
+where we see the number of produced wires the corresponding algebraic
+circuit has, the number of constraints in the R1CS as well as the
+private and public inputs.
+
+** Common reference string / ~.zkey~ file construction
+
+From here we can use SnarkJS to (please read example 150 for more
+details on these commands):
+1. First perform a "powers of tau" ceremony, where optionally multiple
+   parties can contribute randomness to the common reference string of
+   the τ parameter.
+2. Using the powers of tau, set up a Groth16 prove using our R1CS.
+3. Again, multiple people can contribute randomness to the parameters
+   α, β, γ, δ that are part of the Groth16 common reference string.
+
+For part 1, we perform steps like the following:
+#+begin_src sh
+snarkjs powersoftau new bn128 4 pot4_0000.ptau -v
+snarkjs powersoftau contribute pot4_0000.ptau pot4_0001.ptau -name="1st_cont" -v
+snarkjs powersoftau verify pot4_0001.ptau
+snarkjs powersoftau beacon pot4_0001.ptau pot4_beacon.ptau
+snarkjs powersoftau prepare phase2 pot4_beacon.ptau pot4_final.ptau -v
+snarkjs powersoftau verify pot4_final.ptau
+#+end_src
+
+To set up the Groth16 proof, we run:
+#+begin_src sh
+snarkjs groth16 setup three_fac.r1cs pot4_final.ptau three_fac0000.zkey
+#+end_src
+
+And finally we add randomness to the ~.zkey~ files, finalize,
+verify it and export the verification key as JSON:
+#+begin_src sh
+snarkjs zkey contribute three_fac0000.zkey three_fac0001.zkey -name="1st Contributor Name" -v
+snarkjs zkey verify three_fac.r1cs pot4_final.ptau three_fac0001.zkey
+snarkjs zkey beacon three_fac0001.zkey three_fac_final.zkey 010203040506070809 10 -n="Final Beacon phase2"
+snarkjs zkey verify three_fac.r1cs pot4_final.ptau three_fac_final.zkey
+snarkjs zkey export verificationkey three_fac_final.zkey verification_key.json
+#+end_src
+
+** Witness ~.wtns~ file construction
+
+With this we have 2 of the 3 required inputs to compute a Groth16
+proof in Constantine, the ~.r1cs~ file and the ~.zkey~ file. Now we
+still need a Witness ~.wtns~ file. As alluded to earlier,
+~generate_witness.js~ is used to generate that file. However, to
+generate the file, we first and foremost need to define the private
+witnesses that should be contained in it. In a normal context this
+would be the values the prover intends to proof it as knowledge of. In
+our case here, we will simply use 3 'randomly' chosen integers of the
+field BN254 corresponding to the variables $x_1, x_2, x_3$ and store them in a JSON file:
+
+#+begin_src json
+{
+"x1": 266454826700390499788624045644422204835838308568801104096964341478260924069,
+"x2": 17022543691211744762566166588937408281011290768059146405469762658080007243141,
+"x3": 2169708499392809782734482748125393322939898426476751716891099115492318742078
+}
+#+end_src
+
+Stored as ~input.json~, we then run the JS code using ~node~:
+#+begin_src sh
+cd groth16_files/three_fac_js
+node generate_witness.js three_fac.wasm input.json witness.wtns
+#+end_src
+
+#+RESULTS:
+
+** SnarkJS as a Groth16 prover
+
+Now we can first use SnarkJS to run the Groth16 prover on our files:
+
+#+begin_src sh
+cd groth16_files
+snarkjs groth16 prove three_fac_final.zkey three_fac_js/witness.wtns proof.json public.json
+#+end_src
+which produces ~proof.json~:
+#+begin_src json
+{
+ "pi_a": [
+  "5525629793372463776337933283524928112323589665400780041477380790923758613749",
+  "21229177076048503863699135039723099340209138028149442778064006577287317302601",
+  "1"
+ ],
+ "pi_b": [
+  [
+   "10113559933709853115219982658131344715329670532374721861173670433756614595086",
+   "748111067660143353202076805159132563350177510079329482395824347599610874338"
+  ],
+  [
+   "14193926223452546125681093394065339196897041249946578591171606543100010486627",
+   "871256420758854731396810855688710623510558493821614150596755347032202324148"
+  ],
+  [
+   "1",
+   "0"
+  ]
+ ],
+ "pi_c": [
+  "18517653609733492682442099361591955563405567929398531111532682405176646276349",
+  "17315036348446251361273519572420522936369550153340386126725970444173389652255",
+  "1"
+ ],
+ "protocol": "groth16",
+ "curve": "bn128"
+}
+#+end_src
+and ~public.json~:
+#+begin_src json
+[
+ "9539182767316925183286892436718181010853851464478187124330950611358943415507"
+]
+#+end_src
+
+** Constantine as a Groth16 prover
+
+The Groth16 prover of Constantine lives in
+[[file:../constantine/proof_systems/manual_groth16.nim]]. If we use the
+previously produced ~.r1cs~, ~.zkey~ and ~.wtns~ files to produce a
+Groth16 proof with it, the output numbers will differ from the SnarkJS
+results necessarily. This is because as part of the proving phase, the
+prover chooses two additional random field elements ~r~, ~s~ (or
+sometimes called ~r~ and ~t~). However, in order to make it
+deterministic, we have extracted the random elements from SnarkJS and
+will reuse them in Constantine now.
+
+Let's start by preparing all of our imports:
+#+begin_src nim :tangle groth16_proof_example.nim
+import constantine/proof_systems/manual_groth16,
+       constantine/named/algebras
+#+end_src
+
+The name of the ~alt_bn128~ / ~BN254~ curve in Constantine is
+~BN254_Snarks~. For convenience we will assign it to a shorter constant:
+
+#+begin_src nim :tangle groth16_proof_example.nim
+const T = BN254_Snarks
+#+end_src
+
+Next, we parse the three binary files. The first ~parseFooFile~
+command returns a "raw" binary data file, which contains all field
+elements still as ~seq[byte]~ data. We can convert it to a more
+"typed" expression using ~toFoo~ and handing the target curve:
+
+#+begin_src nim :tangle groth16_proof_example.nim
+let wtns = parseWtnsFile("./groth16_files/three_fac_js/witness.wtns").toWtns[:T]()
+let zkey = parseZkeyFile("./groth16_files/three_fac_final.zkey").toZkey[:T]()
+let r1cs = parseR1csFile("./groth16_files/three_fac.r1cs").toR1CS()
+#+end_src
+
+With these we can construct our Groth16 prover context object:
+
+#+begin_src nim :tangle groth16_proof_example.nim
+var ctx = Groth16Prover[T].init(zkey, wtns, r1cs)
+#+end_src
+
+Now we define the two constants ~r~ and ~s~ based on the bytes
+extracted from SnarkJS and unmarshal them into field elements of the
+G1 subgroup of BN254:
+#+begin_src nim :tangle groth16_proof_example.nim
+const rSJ = @[
+  byte 143,  55, 118,  73,  42, 115,  60,  77,
+  95, 209,  41, 144, 250, 137, 138,  71,
+  176, 242, 186, 232, 179,  30,  88, 255,
+  198, 161, 182, 150, 220, 149,  33,  19
+]
+const sSJ = @[
+  byte 213, 105, 105,  27, 129, 249, 139, 158,
+  221,  68,  37, 163,  59,  71,  19, 108,
+  60, 153, 183, 156,  25, 148,  37,   9,
+  85, 205, 250, 246, 132, 142, 244,  36
+]
+
+# construct the random element `r` from snarkjs "secret" r
+let r = toFr[BN254_Snarks](rSJ)
+# and `s`
+let s = toFr[BN254_Snarks](sSJ)
+#+end_src
+
+Now all we need to do is overwrite the random field elements already
+created. *IMPORTANT: IN A REAL USE CASE YOU WOULD NEVER DO THIS OF COURSE!*
+#+begin_src nim :tangle groth16_proof_example.nim
+ctx.r = r
+ctx.s = s
+#+end_src
+
+Let's run the proof and see if the output matches the SnarkJS output:
+#+begin_src nim :tangle groth16_proof_example.nim :exports both
+let (A_p, B2_p, C_p) = ctx.prove()
+
+echo "A_p#16 = ", A_p.toHex()
+echo "A_p#10 = ", A_p.toDecimal()
+echo "------------------------------"
+echo "B_p#16 = ", B2_p.toHex()
+echo "B_p#10 = ", B2_p.toDecimal()
+echo "------------------------------"
+echo "C_p#16 = ", C_p.toHex()
+echo "C_p#10 = ", C_p.toDecimal()
+#+end_src
+
+:RESULTS:
+A_p#16 = EC_ShortW_Jac[Fp[BN254_Snarks], G1](
+  x: 0x0c37654828f4fa92099b6e6bc3ef1e233688e29775ad84a587e3e0a6b94734f5,
+  y: 0x2eef49d5d85978033554eeadf6a3af464fd201d8c6687fdb51fc7f1077622d49
+)
+A_p#10 = EC_ShortW_Jac[Fp[BN254_Snarks], G1](
+  x: 05525629793372463776337933283524928112323589665400780041477380790923758613749,
+  y: 21229177076048503863699135039723099340209138028149442778064006577287317302601
+)
+------------------------------
+B_p#16 = EC_ShortW_Jac[Fp2[BN254_Snarks], G2](
+  x: Fp2(
+  c0: 0x165c12731d58092618243a9a78339604e2c99771f27afb7f16083a1f5425920e,
+  c1: 0x01a76a75bc51d03cbf331de519dbe6b8b0d5115f4e3cbcc2c0833faba7cc89e2),
+  y: Fp2(
+  c0: 0x1f617a40811c35355866ab3987b0c87e39f84b749fe79489a2a8c1a33642db63,
+  c1: 0x01ed1d18bf3e70d11a0ec6c87da9c8296736fefa40f876ea6ae5d0df4520a8b4)
+)
+B_p#10 = EC_ShortW_Jac[Fp2[BN254_Snarks], G2](
+  x: Fp2(
+  c0: 10113559933709853115219982658131344715329670532374721861173670433756614595086,
+  c1: 00748111067660143353202076805159132563350177510079329482395824347599610874338),
+  y: Fp2(
+  c0: 14193926223452546125681093394065339196897041249946578591171606543100010486627,
+  c1: 00871256420758854731396810855688710623510558493821614150596755347032202324148)
+)
+------------------------------
+C_p#16 = EC_ShortW_Jac[Fp[BN254_Snarks], G1](
+  x: 0x1bb0c6fadbe2fe02b17d3da128f9a0aef119640c09f1ec52e17431115ddcedad,
+  y: 0x07439985d180eaa34951b45d430e02e5ba1bcc4d2b29dffd90171f1aa88c6a1e
+)
+C_p#10 = EC_ShortW_Jac[Fp[BN254_Snarks], G1](
+  x: 12524785304069290509448413767699932740828656355192528146073107099016111123885,
+  y: 03285628268350284309020370879913195676683658549907819489051412512121524349470
+)
+:END:
+
+As we can see when comparing the decimal outputs, the numbers match.
+
+*XXX*: RIGHT NOW C DOES NOT MATCH!
+
+This concludes this very quick introduction on the requirements and
+how to compute a Groth16 proof with Constantine.
+
+** List of all 3-factorization examples in Moonmath
+:PROPERTIES:
+:CUSTOM_ID: sec:3fac_examples
+:END:
+
+Just for reference, the full list of examples about the
+3-factorization problem are (as of Moonmath of
+<2024-08-14 Wed 18:44>) listed below. It is a useful overview to
+understand the relevant steps.
+
+Examples:
+- 115 (Language, L_3,fac)
+- 118 (Decision function, R_3)
+  I_1 = W_1 · W_2 · W_3
+- 120 (R1CS), flatten equation:
+  W_1 · W_2 = W_4
+  W_4 · W_3 = I_1
+- 122 (Explicit R1CS satisfying example)
+- 124 (Algebraic circuit construction)
+  f_3,fac(x_1,x_2,x_3) = MUL(MUL(x_1, x_2), x_3)
+- 126 (Example assignment to algebraic circuit)
+- 128 (Example / note on circuit execution to find input witnesses &
+  compute W_4 by execution)
+- 129 (Transform algebraic circuit back into R1CS following rules)
+- 131 (QAP from R1CS):
+  QAP(R_3.fac_zk ) = {x2 + x + 9, {0, 0, 6x + 10, 0, 0, 7x + 4}, {0, 0, 0, 6x + 10, 7x + 4, 0}, {0, 7x + 4, 0, 0, 0, 6x + 10}}
+- 137 (Circom definition)
+- 139 (PAPER definition -> algebraic circuit)
+- 147 (Groth16 parameters for 3-fac over BLS6-6):
+  Groth_16 − Param(R3. f ac_zk ) = (13, G1 [13], G2 [13], e(·, ·), (13, 15), (7v2 , 16v3 ))
+- 148 (Groth16 via SnarkJS):
+  Statement to use BN254 / alt_bn128 in SnarkJS.
+- 149 (CRS - Transformation of QAP into Common Reference String):
+  - choice of α, β, γ, δ, τ
+    #+begin_quote
+             | (27, 34), (26, 34), (38, 15), (13, 15), (33, 34) , O, (33, 9) |
+    CRS_G1 = | (33, 34), (26, 34), (38, 28), (27, 9) , (26, 34)              |
+
+    CRS_G2 = | (16v , 28v ), (37v , 27v ), (42v , 16v ), 7v , 16v ), (10v, 28v) |
+    #+end_quote
+- 150 (SnarkJS setup for Groth16)
+- 151 (Manual Groth16 prover phase over BLS6-6)
+- 152 (Groth16 prover phase using SnarkJS)
+- 153 (Manual Groth16 verification phase over BLS6-6)
+- 154 (Groth16 verification phase in SnarkJS)
+- 155 (Manual proof simulation trapdoor)
+- 156 (Mention for SnarkJS simulation not implemented)
+      
