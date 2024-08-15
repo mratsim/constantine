@@ -73,7 +73,7 @@ type
     case sectionType*: WtnsSectionKind
     of kInvalid: discard
     of kHeader: header*: WitnessHeader
-    of kData: wtns: seq[Witness]
+    of kData: wtns*: seq[Witness]
 
   ## `WtnsBin` is binary compatible with an Witness binary file. Meaning it follows the structure
   ## of the file (almost) exactly. The only difference is in the section header. The size comes
