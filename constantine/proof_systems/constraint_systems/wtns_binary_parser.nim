@@ -165,8 +165,6 @@ proc parseSection(f: File, wtns: var WtnsBin): Section =
   var kind: WtnsSectionKind
   var size: uint64
   doAssert f.parseSectionKind(kind), "Failed to read section type in section "
-  echo "Got section kind::: ", kind
-
   doAssert f.parseInt(size, littleEndian), "Failed to read section size in section "
 
   result = initSection(kHeader, size)

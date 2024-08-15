@@ -30,7 +30,6 @@ proc toEcG1*[Name: static Algebra](s: seq[byte]): EC_ShortW_Aff[Fp[Name], G1] =
   let y = toFp[Name](s[32 .. ^1])
   result.x = x
   result.y = y
-  echo result.toHex()
   if not bool(result.isNeutral()):
     doAssert isOnCurve(result.x, result.y, G1).bool, "Input point is not on curve!"
 

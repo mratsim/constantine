@@ -320,7 +320,6 @@ proc parseDataSection(f: File, d: var DataSection, sectionSize: uint64, elemSize
 
 proc parseDatasection(f: File, s: var Section, kind: ZkeySectionKind, size: uint64, zkey: var ZkeyBin): bool =
   let g16h = zkey.sections.filterIt(it.sectionType == kGroth16Header)[0].g16h ## XXX: fixme
-  echo "Parsing data section: ", kind
   case kind
   of kIC:            ?f.parseDataSection(s.ic, size, 2 * g16h.n8q)
   of kA:             ?f.parseDataSection(s.a, size, 2 * g16h.n8q)
@@ -345,7 +344,6 @@ proc parseCoefficients(f: File, s: var Coefficients_b, zkey: ZkeyBin): bool =
   let g16h = zkey.sections.filterIt(it.sectionType == kGroth16Header)[0].g16h ## XXX: fixme
   s.cs = newSeq[Coefficient_b](s.num)
   for i in 0 ..< s.num: # parse coefficients
-    echo "Parsing coefficient with : ", g16h.n8r, " bytes"
     ?f.parseCoefficient(s.cs[i], g16h.n8r)
   result = true
 
@@ -373,8 +371,6 @@ proc parseSection(f: File, zkey: var ZkeyBin): Section =
   var kind: ZkeySectionKind
   var size: uint64
   doAssert f.parseSectionKind(kind), "Failed to read section type in section "
-  echo "Got section kind::: ", kind
-
   doAssert f.parseInt(size, littleEndian), "Failed to read section size in section "
 
   result = initSection(kHeader, size)
