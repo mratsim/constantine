@@ -337,6 +337,8 @@ template sumImpl[F; G: static Subgroup](
 
   # if P or R were infinity points they would have spread 0 with Z₁Z₂
   block: # Infinity points
+    bind isNeutral
+    bind ccopy
     o.ccopy(Q, P.isNeutral())
     o.ccopy(P, Q.isNeutral())
 
