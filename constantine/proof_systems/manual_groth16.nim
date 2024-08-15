@@ -18,7 +18,9 @@ import ./groth16_utils
 # Export so users can parse files
 export r1cs_circom_parser, zkey_binary_parser, wtns_binary_parser
 export groth16_utils
-export arithmetic, extension_fields, abstractions, io_bigints, io_fields, io_ec, io_extfields
+export arithmetic, extension_fields, abstractions,
+       io_bigints, io_fields, io_ec, io_extfields,
+       ec_shortweierstrass_affine, ec_shortweierstrass_jacobian
 
 type
   Groth16Prover*[Name: static Algebra] = object
