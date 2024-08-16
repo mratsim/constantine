@@ -220,4 +220,5 @@ func getQuotientPolyInDomain*[N: static int, Field](
       lindom.dom.vanishing_deriv_poly_eval.evals[zIndex],
       lindom.dom.vanishing_deriv_poly_eval_inv.evals[i]
     )
+    ri *= r.evals[i]
     r.evals[zIndex] -= ri

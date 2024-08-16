@@ -470,7 +470,7 @@ suite "IPA proof tests":
         "  computed: " & validIPAproof_bytes2.toHex()
       )
     testIPAProofSerDe()
-      
+
   test "Test for IPA proof consistency":
     proc testIPAProofConsistency()=
       # Common setup
@@ -596,10 +596,6 @@ suite "IPA proof tests":
 # TODO: refactor completely the tests - https://github.com/mratsim/constantine/issues/396
 
 suite "Multiproof Tests":
-  echo "Warning! - Skipping all but serialization tests and Multiproof consistency test due to issues outlined in https://github.com/mratsim/constantine/issues/396"
-  # The comparison between previous and new implementation
-  # can be done as of commit 182c4187ccc0751592fe52e7abaaa51fdde7edd6
-
   test "Test for Multiproof Consistency":
     proc testMultiproofConsistency() =
 
@@ -644,10 +640,10 @@ suite "Multiproof Tests":
       var polys: array[2, PolynomialEval[256, Fr[Banderwagon]]]
       polys[0].evals.testPoly256(testVals1)
       polys[1].evals.testPoly256(testVals2)
-      
+
       var comm_1: EC_TwEdw_Prj[Fp[Banderwagon]]
       CRS.pedersen_commit(comm_1, polys[0])
-      
+
       var comm_2: EC_TwEdw_Prj[Fp[Banderwagon]]
       CRS.pedersen_commit(comm_2, polys[1])
 
@@ -672,153 +668,88 @@ suite "Multiproof Tests":
 
       testMultiproofConsistency()
 
-  # test "Multiproof Creation and Verification (old)":
-  #   proc testMultiproofCreationAndVerification()=
+  test "Multiproof Creation and Verification":
+    proc testMultiproofCreationAndVerification()=
 
-  #     var ipaConfig {.noInit.}: IPASettings
-  #     ipaConfig.genIPAConfig()
+      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
+      CRS.evals.generate_random_points()
 
-  #     var testVals: array[14, int] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
-  #     var poly: array[256, Fr[Banderwagon]]
+      var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
+      domain.setupLinearEvaluationDomain()
 
-  #     poly.testPoly256(testVals)
+      var testVals: array[14, int] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
+      var poly: PolynomialEval[256, Fr[Banderwagon]]
+      poly.evals.testPoly256(testVals)
 
-  #     var prover_comm: EC_P
-  #     prover_comm.multiScalarMul_reference_vartime(poly, ipaConfig.crs)
+      var prover_comm: EC_TwEdw_Prj[Fp[Banderwagon]]
+      CRS.pedersen_commit(prover_comm, poly)
+      var C: EC_TwEdw_Aff[Fp[Banderwagon]]
+      C.affine(prover_comm)
 
-  #     # Prover's view
-  #     var prover_transcript {.noInit.}: sha256
-  #     prover_transcript.initTranscript("multiproof")
+      # Prover's view
+      var prover_transcript {.noInit.}: sha256
+      prover_transcript.initTranscript("multiproof")
 
-  #     var one: Fr[Banderwagon]
-  #     one.setOne()
+      var multiproof {.noInit.}: IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+      CRS.ipa_multi_prove(
+        domain, prover_transcript,
+        multiproof, [poly], [C], [0'u32]
+      )
+      
+      # Verifier's view
+      var verifier_transcript: sha256
+      verifier_transcript.initTranscript("multiproof")
 
-  #     var Cs: seq[EC_P]
-  #     # Large array, need heap allocation.
-  #     var Fs = new array[EthVerkleDomain, array[EthVerkleDomain, Fr[Banderwagon]]]
+      let ok = CRS.ipa_multi_verify(domain, verifier_transcript, [C], [0'u32], [Fr[Banderwagon].fromUint(1'u32)], multiproof)
 
-  #     # TODO: Fs should be of size 1.
-  #     for i in 0 ..< EthVerkleDomain:
-  #       for j in 0 ..< EthVerkleDomain:
-  #         Fs[i][j].setZero()
+      doAssert ok, "Multiproof verification error!"
 
-  #     var Zs: seq[int]
-  #     var Ys: seq[Fr[Banderwagon]]
-
-  #     Cs.add(prover_comm)
-
-  #     Fs[0] = poly
-
-  #     Zs.add(0)
-  #     Ys.add(one)
-
-  #     var multiproof {.noInit.}: MultiProof
-  #     var stat_create_mult: bool
-  #     stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs[], Zs)
-
-  #     doAssert stat_create_mult.bool() == true, "Multiproof creation error!"
-
-  #     var hexproof: VerkleMultiproofSerialized
-  #     discard hexproof.serializeVerkleMultiproof(multiproof)
-  #     debugEcho "hexproof: ", hexproof.toHex()
-
-  #     # Verifier's view
-  #     var verifier_transcript: sha256
-  #     verifier_transcript.initTranscript("multiproof")
-
-  #     var stat_verify_mult: bool
-  #     stat_verify_mult = multiproof.verifyMultiproof(verifier_transcript, ipaConfig, Cs, Ys,Zs)
-
-  #     doAssert stat_verify_mult.bool() == true, "Multiproof verification error!"
-
-  #   testMultiproofCreationAndVerification()
-
-  # test "Multiproof Creation and Verification (new)":
-  #   proc testMultiproofCreationAndVerification()=
-
-  #     var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
-  #     CRS.evals.generate_random_points()
-
-  #     var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
-  #     domain.setupLinearEvaluationDomain()
-
-  #     var testVals: array[14, int] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
-  #     var poly: PolynomialEval[256, Fr[Banderwagon]]
-  #     poly.evals.testPoly256(testVals)
-
-  #     var prover_comm: EC_TwEdw_Prj[Fp[Banderwagon]]
-  #     CRS.pedersen_commit(prover_comm, poly)
-  #     var C: EC_TwEdw_Aff[Fp[Banderwagon]]
-  #     C.affine(prover_comm)
-
-  #     # Prover's view
-  #     var prover_transcript {.noInit.}: sha256
-  #     prover_transcript.initTranscript("multiproof")
-
-  #     var multiproof {.noInit.}: IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
-  #     CRS.ipa_multi_prove(
-  #       domain, prover_transcript,
-  #       multiproof, [poly], [C], [0'u32]
-  #     )
-
-  #     var hexproof: EthVerkleIpaMultiProofBytes
-  #     hexproof.serialize(multiproof)
-  #     debugEcho "hexproof: ", hexproof.toHex()
-
-  #     # Verifier's view
-  #     var verifier_transcript: sha256
-  #     verifier_transcript.initTranscript("multiproof")
-
-  #     let ok = CRS.ipa_multi_verify(domain, verifier_transcript, [C], [0'u32], [Fr[Banderwagon].fromUint(1'u32)], multiproof)
-
-  #     doAssert ok, "Multiproof verification error!"
-
-  #   testMultiproofCreationAndVerification()
+    testMultiproofCreationAndVerification()
 
 # TODO: the following test, extracted from test011 in
 #       https://github.com/jsign/verkle-test-vectors/blob/735b7d6/crypto/clients/go-ipa/crypto_test.go#L320-L326
 #       is incomplete as it does not do negative testing.
 #       but does seems like multiproof verification always return true.
 
-#   test "Verify Multiproof in all Domain and Ranges but one by @Ignacio":
-#     proc testVerifyMultiproofVec()=
+  # test "Verify Multiproof in all Domain and Ranges but one by @Ignacio":
+  #   proc testVerifyMultiproofVec()=
 
-#       var commitment_bytes {.noInit.}: array[32, byte]
-#       commitment_bytes.fromHex(MultiProofPedersenCommitment)
+  #     var commitment_bytes {.noInit.}: array[32, byte]
+  #     commitment_bytes.fromHex(MultiProofPedersenCommitment)
 
-#       var commitment {.noInit.}: EC_P
-#       discard commitment.deserialize(commitment_bytes)
+  #     var commitment {.noInit.}: EC_P
+  #     discard commitment.deserialize(commitment_bytes)
 
-#       var evaluationResultFr {.noInit.}: Fr[Banderwagon]
-#       evaluationResultFr.fromHex(MultiProofEvaluationResult)
+  #     var evaluationResultFr {.noInit.}: Fr[Banderwagon]
+  #     evaluationResultFr.fromHex(MultiProofEvaluationResult)
 
-#       var serializeVerkleMultiproof: VerkleMultiproofSerialized
-#       serializeVerkleMultiproof.fromHex(MultiProofSerializedVec)
+  #     var serializeVerkleMultiproof: VerkleMultiproofSerialized
+  #     serializeVerkleMultiproof.fromHex(MultiProofSerializedVec)
 
-#       var multiproof {.noInit.}: MultiProof
-#       discard multiproof.deserializeVerkleMultiproof(serializeVerkleMultiproof)
+  #     var multiproof {.noInit.}: MultiProof
+  #     discard multiproof.deserializeVerkleMultiproof(serializeVerkleMultiproof)
 
-#       var ipaConfig {.noInit.}: IPASettings
-#       ipaConfig.genIPAConfig()
+  #     var ipaConfig {.noInit.}: IPASettings
+  #     ipaConfig.genIPAConfig()
 
-#       var Cs: array[EthVerkleDomain, EC_P]
-#       var Zs: array[EthVerkleDomain, int]
-#       var Ys: array[EthVerkleDomain, Fr[Banderwagon]]
+  #     var Cs: array[EthVerkleDomain, EC_P]
+  #     var Zs: array[EthVerkleDomain, int]
+  #     var Ys: array[EthVerkleDomain, Fr[Banderwagon]]
 
-#       Cs[0] = commitment
-#       Ys[0] = evaluationResultFr
+  #     Cs[0] = commitment
+  #     Ys[0] = evaluationResultFr
 
-#       for i in 0 ..< EthVerkleDomain:
-#         var tr {.noInit.}: sha256
-#         tr.initTranscript("multiproof")
-#         Zs[0] = i
-#         var ok: bool
-#         ok = multiproof.verifyMultiproof(tr, ipaConfig, Cs, Ys, Zs)
+  #     for i in 0 ..< EthVerkleDomain:
+  #       var tr {.noInit.}: sha256
+  #       tr.initTranscript("multiproof")
+  #       Zs[0] = i
+  #       var ok: bool
+  #       ok = multiproof.verifyMultiproof(tr, ipaConfig, Cs, Ys, Zs)
 
-#         if i == MultiProofEvaluationPoint:
-#           doAssert ok == true, "Issue with Multiproof!"
+  #       if i == MultiProofEvaluationPoint:
+  #         doAssert ok == true, "Issue with Multiproof!"
 
-#     testVerifyMultiproofVec()
+  #   testVerifyMultiproofVec()
 
   test "Multiproof Serialization and Deserialization (Covers IPAProof Serialization and Deserialization as well)":
     proc testMultiproofSerDe() =
