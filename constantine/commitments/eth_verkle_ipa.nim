@@ -938,6 +938,7 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
   #   g₂(t) disagrees with <a, b> inner product in ipa_multi_prove
   # Compute g₂(t) = ∑rⁱ.yᵢ/(t-zᵢ)
   var g2t {.noInit.}: F
+  g2t.setZero()
 
   for i in 0 ..< num_distinct_challenges:
     var tmp {.noInit.}: Fr[Banderwagon]
