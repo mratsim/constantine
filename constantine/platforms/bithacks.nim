@@ -102,7 +102,7 @@ func log2_vartime*[T: SomeUnsignedInt](n: T): T {.inline.} =
     else:
       T(log2_impl_vartime(uint32(n)))
   else:
-    log2_c_compiler_vartime(n)
+    T(log2_c_compiler_vartime(n))
 
 func ctz_impl_vartime(n: uint32): uint32 =
   ## Find the number of trailing zero bits
