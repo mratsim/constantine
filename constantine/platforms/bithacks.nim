@@ -145,7 +145,7 @@ func countTrailingZeroBits_vartime*[T: SomeUnsignedInt](n: T): T {.inline.} =
       else:
         T(ctz_impl_vartime(uint32(n)))
   else:
-    ctz_c_compiler_vartime(n)
+    T(ctz_c_compiler_vartime(n))
 
 func isPowerOf2_vartime*(n: SomeUnsignedInt): bool {.inline.} =
   ## Returns true if n is a power of 2
