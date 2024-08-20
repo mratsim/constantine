@@ -556,6 +556,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Polynomials
   # ----------------------------------------------------------
   ("tests/math_polynomials/t_polynomials.nim", false),
+  ("tests/math_polynomials/t_finite_field_fft.nim", false),
 
   # Protocols
   # ----------------------------------------------------------
@@ -571,6 +572,9 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Proof systems
   # ----------------------------------------------------------
   ("tests/proof_systems/t_r1cs_parser.nim", false),
+  ("tests/proof_systems/t_wtns_parser.nim", false),
+  ("tests/proof_systems/t_zkey_parser.nim", false),
+  ("tests/proof_systems/t_groth16_prover.nim", false),
   ("tests/interactive_proofs/t_multilinear_extensions.nim", false),
 ]
 
