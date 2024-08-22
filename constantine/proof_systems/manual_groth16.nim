@@ -52,21 +52,30 @@ proc calcAp[Name: static Algebra](ctx: Groth16Prover[Name], wt: seq[Fr[Name]]): 
   let alpha1 = g16h.alpha1
   let delta1 = g16h.delta1
 
+  echo "α1: ", alpha1.toHex()
+  echo "δ1: ", delta1.toHex()
+
   # Declare `A_p` for the result
   var A_p: EC_ShortW_Jac[Fp[Name], G1]
 
   # Compute the terms independent of the witnesses
-  A_p = alpha1.getJacobian + ctx.r * delta1
-  echo A_p.toHex()
+  #A_p = alpha1.getJacobian + ctx.r * delta1
+  #echo A_p.toHex()
 
   let As = ctx.zkey.A
   doAssert As.len == wt.len
   for i in 0 ..< As.len:
+    echo "i = ", i, " As[i] = ", As[i].toHex()
     A_p += wt[i] * As[i]
+
+  echo "g^A MSM via loop: ", A_p.toHex()
+  A_p += alpha1.getJacobian + ctx.r * delta1
+
 
   # Via MSM
   var A_p_msm: EC_ShortW_Jac[Fp[Name], G1]
   A_p_msm.multiScalarMul_vartime(wt, As)
+  echo "g^A MSM = ", A_p_msm.toHex()
   A_p_msm += alpha1.getJacobian + ctx.r * delta1
 
   doAssert (A_p == A_p_msm).bool
@@ -135,12 +144,17 @@ proc buildABC[Name: static Algebra](ctx: Groth16Prover[Name], wt: seq[Fr[Name]])
       s = coeffs.cs[i].index
       coef = coeffs.cs[i].value
     assert s.int < wt.len
+    echo "Coef i = ", i, " = ", coef.toHex()
     outBuf[m][c] = outBuf[m][c] + coef * wt[s]
 
   # Compute C polynomial
   for i in 0 ..< domainSize:
     ## XXX: Here this product yields numbers in SnarkJS I cannot reproduce
-    outBuffC[i].prod(outBuffA[i], outBuffB[i])
+    echo "OUTBUF A: ", outBuffA[i].toHex()
+    echo "OUTBUF B: ", outBuffB[i].toHex()
+    #outBuffC[i].prod(outBuffA[i], outBuffB[i])
+    outBuffC[i] = outBuffA[i] * outBuffB[i]
+    echo "OUTBUF C: ", outBuffC[i].toHex()
 
   result = (outBuffA, outBuffB, outBuffC)
 
@@ -189,11 +203,18 @@ proc calcCp[Name: static Algebra](ctx: Groth16Prover[Name], A_p, B1_p: EC_ShortW
   let B = itf(abc[1])
   let C = itf(abc[2])
 
+  for i in 0 ..< A.len:
+    echo "A after itf? ", A[i].toHex()
+  for i in 0 ..< B.len:
+    echo "B after itf? ", B[i].toHex()
+  for i in 0 ..< C.len:
+    echo "C after itf? ", C[i].toHex()
+
   # combine A, B, C again
   var jabc = newSeq[Fr[Name]](A.len)
   for i in 0 ..< jabc.len:
     jabc[i] = A[i] * B[i] - C[i]
-
+    echo "JABC? ", jabc[i].toHex()
   # Get the C data
   let Cs = ctx.zkey.C
   # Get private witnesses
@@ -223,9 +244,9 @@ proc calcCp[Name: static Algebra](ctx: Groth16Prover[Name], A_p, B1_p: EC_ShortW
   C_p = ctx.s * A_p + ctx.r * B1_p - (ctx.r * ctx.s) * delta1 + cw + resH
   result = C_p
 
-proc prove*[Name: static Algebra](ctx: Groth16Prover[Name]): tuple[A: EC_ShortW_Jac[Fp[Name], G1],
-                                                                  B: EC_ShortW_Jac[Fp2[Name], G2],
-                                                                  C: EC_ShortW_Jac[Fp[Name], G1]] =
+proc prove*[Name: static Algebra](ctx: Groth16Prover[Name]): tuple[A: EC_ShortW_Aff[Fp[Name], G1],
+                                                                   B: EC_ShortW_Aff[Fp2[Name], G2],
+                                                                   C: EC_ShortW_Aff[Fp[Name], G1]] =
   #[
   XXX: fix up notation here!
   r = random_scalar_field_element()
@@ -246,13 +267,16 @@ proc prove*[Name: static Algebra](ctx: Groth16Prover[Name]): tuple[A: EC_ShortW_
   ]#
 
   let wt = ctx.wtns.witnesses
+  echo "WITNESS DATA:"
+  for i, el in wt:
+    echo i, " = ", el.toHex()
 
   let A_p  = ctx.calcAp(wt)
   let B2_p = ctx.calcBp(wt)
   let B1_p = ctx.calcB1(wt)
   let C_p  = ctx.calcCp(A_p, B1_p, wt)
 
-  result = (A: A_p, B: B2_p, C: C_p)
+  result = (A: A_p.getAffine(), B: B2_p.getAffine(), C: C_p.getAffine())
 
 when isMainModule:
 
