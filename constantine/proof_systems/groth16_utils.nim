@@ -5,6 +5,19 @@ import ../math/[arithmetic, extension_fields],
        ../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul, ec_scalar_mul_vartime],
        ../csprngs/sysrand
 
+## Read zkey coefficients `C` as montgomery rep `M`, witness data `W` in normal rep `N`
+## This produces the correct zkey coefficients, but wrong `C` in `buildABC`.
+## Proof g^A, g^B are correct.
+const CM_WN* {.booldefine.} = false
+## Read zkey coefficients `C` as montgomery rep `M`, witness data `W` in montgomery rep `M`
+## This produces the correct............
+## No proof is correct.
+const CM_WM* {.booldefine.} = false
+## Read zkey coefficients `C` as double montgomery rep `MM`, witness data `W` in normal rep `N`
+## This produces the correct 3 proof values
+const CMM_WN* {.booldefine.} = false
+
+## What about `CN_WM`?
 
 ## Helper constructors for Fp / Fr elements used in Groth16 binary file parsers.
 proc toFp*[Name: static Algebra](x: seq[byte], isMont = true): Fp[Name] =
@@ -16,12 +29,18 @@ proc toFp*[Name: static Algebra](x: seq[byte], isMont = true): Fp[Name] =
   else:
     result.fromBig(b)
 
-proc toFr*[Name: static Algebra](x: seq[byte], isMont = true): Fr[Name] =
+proc toFr*[Name: static Algebra](x: seq[byte], isMont = true, isDoubleMont = false): Fr[Name] =
   let b = matchingOrderBigInt(Name).unmarshal(x.toOpenArray(0, x.len - 1), littleEndian)
   if isMont:
     var bN: typeof(b)
     bN.fromMont(b, Fr[Name].getModulus(), Fr[Name].getNegInvModWord(), Fr[Name].getSpareBits())
     result.fromBig(bN)
+  elif isDoubleMont:
+    var bN: typeof(b)
+    bN.fromMont(b, Fr[Name].getModulus(), Fr[Name].getNegInvModWord(), Fr[Name].getSpareBits())
+    var bNN: typeof(b)
+    bNN.fromMont(bN, Fr[Name].getModulus(), Fr[Name].getNegInvModWord(), Fr[Name].getSpareBits())
+    result.fromBig(bNN)
   else:
     result.fromBig(b)
 

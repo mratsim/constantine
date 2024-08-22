@@ -99,10 +99,16 @@ func header*(wtns: WtnsBin): WitnessHeader =
 func witnesses*(wtns: WtnsBin): seq[Witness] =
   result = wtns.sections.filterIt(it.sectionType == kData)[0].wtns
 
-proc getWitnesses[Name: static Algebra](witnesses: seq[Witness]): seq[Fr[Name]] =
+proc getWitnesses*[Name: static Algebra](witnesses: seq[Witness]): seq[Fr[Name]] =
   result = newSeq[Fr[Name]](witnesses.len)
   for i, w in witnesses:
-    result[i] = toFr[Name](w.data, isMont = false) ## Important: Witness does *not* store numbers in Montgomery rep
+    when CM_WN or CMM_WN:
+      let isMont = false
+    elif CM_WM:
+      let isMont = true
+    else:
+      {.error: "One case must be active."}
+    result[i] = toFr[Name](w.data, isMont = isMont, isDoubleMont = false) ## Important: Witness does *not* store numbers in Montgomery rep
 
 proc toWtns*[Name: static Algebra](wtns: WtnsBin): Wtns[Name] =
   result = Wtns[Name](
