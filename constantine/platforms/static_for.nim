@@ -20,6 +20,16 @@ proc replaceNodes(ast: NimNode, what: NimNode, by: NimNode): NimNode =
       return node
     of nnkLiterals:
       return node
+
+    # Rebuild untyped AST
+    # --------------------
+    of nnkHiddenStdConv:
+      if node[1].kind == nnkIntLit:
+        return node[1]
+      else:
+        expectKind(node[1], nnkSym)
+        return ident($node[1])
+    # --------------------
     else:
       var rTree = node.kind.newTree()
       for child in node:

@@ -16,7 +16,7 @@ export Fp
 
 when UseASM_X86_64:
   import
-    ./assembly/fp2_asm_x86_adx_bmi2
+    ./assembly/[fp2_asm_x86, fp2_asm_x86_adx_bmi2]
 
 # Note: to avoid burdening the Nim compiler, we rely on generic extension
 # to complain if the base field procedures don't exist
@@ -57,8 +57,8 @@ type
     CubicExt[Fp2[Name]]
 
   Fp12*[Name: static Algebra] =
-    CubicExt[Fp4[Name]]
-    # QuadraticExt[Fp6[Name]]
+    # CubicExt[Fp4[Name]]
+    QuadraticExt[Fp6[Name]]
 
 template c0*(a: ExtensionField): auto =
   a.coords[0]
@@ -79,6 +79,56 @@ template Name*(E: type ExtensionField): Algebra =
 
 template getModulus*(E: type ExtensionField): auto =
   E.F.getModulus()
+
+# ############################################################
+#                                                            #
+#                     Cost functions                         #
+#                                                            #
+# ############################################################
+
+func prefer_3sqr_over_2mul(F: type ExtensionField): bool {.compileTime.} =
+  ## Returns true
+  ## if time(3sqr) < time(2mul) in the extension fields
+
+  let a = default(F)
+  # No shortcut in the VM
+  when a.c0 is Fp12:
+    # Benchmarked on BLS12-381
+    when a.c0.c0 is Fp6:
+      return true
+    elif a.c0.c0 is Fp4:
+      return false
+    else: return false
+  else: return false
+
+func has_large_NR_norm(Name: static Algebra): bool =
+  ## Returns true if the non-residue of the extension fields
+  ## has a large norm
+
+  const j = Name.getNonResidueFp()
+  const u = Name.getNonResidueFp2()[0]
+  const v = Name.getNonResidueFp2()[1]
+
+  const norm2 = u*u + (j*v)*(j*v)
+
+  # Compute integer square root
+  var norm = 0
+  while (norm+1) * (norm+1) <= norm2:
+    norm += 1
+
+  return norm > 5
+
+func has_large_field_elem*(Name: static Algebra): bool =
+  ## Returns true if field element are large
+  ## and necessitate custom routine for assembly in particular
+  let a = default(Fp[Name])
+  return a.mres.limbs.len > 6
+
+# ############################################################
+#                                                            #
+#                     Implementation                         #
+#                                                            #
+# ############################################################
 
 # Initialization
 # -------------------------------------------------------------------
@@ -148,36 +198,56 @@ func ccopy*(a: var ExtensionField, b: ExtensionField, ctl: SecretBool) =
 
 # Abelian group
 # -------------------------------------------------------------------
+func hasFp2x86asm(T: type ExtensionField): bool =
+  T is Fp2 and UseASM_X86_64 and not T.Name.has_large_field_elem()
 
 func neg*(r: var ExtensionField, a: ExtensionField) =
   ## Field out-of-place negation
-  staticFor i, 0, a.coords.len:
-    r.coords[i].neg(a.coords[i])
+  when a.typeof().hasFp2x86asm():
+    r.coords.fp2_neg_asm(a.coords)
+  else:
+    staticFor i, 0, a.coords.len:
+      r.coords[i].neg(a.coords[i])
 
 func neg*(a: var ExtensionField) =
   ## Field in-place negation
-  staticFor i, 0, a.coords.len:
-    a.coords[i].neg()
+  when a.typeof().hasFp2x86asm():
+    a.coords.fp2_neg_asm(a.coords)
+  else:
+    staticFor i, 0, a.coords.len:
+      a.coords[i].neg()
 
 func `+=`*(a: var ExtensionField, b: ExtensionField) =
   ## Addition in the extension field
-  staticFor i, 0, a.coords.len:
-    a.coords[i] += b.coords[i]
+  when a.typeof().hasFp2x86asm():
+    a.coords.fp2_add_asm(a.coords, b.coords)
+  else:
+    staticFor i, 0, a.coords.len:
+      a.coords[i] += b.coords[i]
 
 func `-=`*(a: var ExtensionField, b: ExtensionField) =
   ## Substraction in the extension field
-  staticFor i, 0, a.coords.len:
-    a.coords[i] -= b.coords[i]
+  when a.typeof().hasFp2x86asm():
+    a.coords.fp2_sub_asm(a.coords, b.coords)
+  else:
+    staticFor i, 0, a.coords.len:
+      a.coords[i] -= b.coords[i]
 
 func double*(r: var ExtensionField, a: ExtensionField) =
   ## Field out-of-place doubling
-  staticFor i, 0, a.coords.len:
-    r.coords[i].double(a.coords[i])
+  when a.typeof().hasFp2x86asm():
+    r.coords.fp2_add_asm(a.coords, a.coords)
+  else:
+    staticFor i, 0, a.coords.len:
+      r.coords[i].double(a.coords[i])
 
 func double*(a: var ExtensionField) =
   ## Field in-place doubling
-  staticFor i, 0, a.coords.len:
-    a.coords[i].double()
+  when a.typeof().hasFp2x86asm():
+    a.coords.fp2_add_asm(a.coords, a.coords)
+  else:
+    staticFor i, 0, a.coords.len:
+      a.coords[i].double()
 
 func div2*(a: var ExtensionField) =
   ## Field in-place division by 2
@@ -186,13 +256,19 @@ func div2*(a: var ExtensionField) =
 
 func sum*(r: var ExtensionField, a, b: ExtensionField) =
   ## Sum ``a`` and ``b`` into ``r``
-  staticFor i, 0, a.coords.len:
-    r.coords[i].sum(a.coords[i], b.coords[i])
+  when a.typeof().hasFp2x86asm():
+    r.coords.fp2_add_asm(a.coords, b.coords)
+  else:
+    staticFor i, 0, a.coords.len:
+      r.coords[i].sum(a.coords[i], b.coords[i])
 
 func diff*(r: var ExtensionField, a, b: ExtensionField) =
   ## Diff ``a`` and ``b`` into ``r``
-  staticFor i, 0, a.coords.len:
-    r.coords[i].diff(a.coords[i], b.coords[i])
+  when a.typeof().hasFp2x86asm():
+    r.coords.fp2_sub_asm(a.coords, b.coords)
+  else:
+    staticFor i, 0, a.coords.len:
+      r.coords[i].diff(a.coords[i], b.coords[i])
 
 func conj*(a: var QuadraticExt) =
   ## Computes the conjugate in-place
@@ -691,50 +767,6 @@ func prod2x*(
   r.c0.prod2x(t, NonResidue)
 
 {.pop.} # inline
-
-# ############################################################
-#                                                            #
-#                     Cost functions                         #
-#                                                            #
-# ############################################################
-
-func prefer_3sqr_over_2mul(F: type ExtensionField): bool {.compileTime.} =
-  ## Returns true
-  ## if time(3sqr) < time(2mul) in the extension fields
-
-  let a = default(F)
-  # No shortcut in the VM
-  when a.c0 is Fp12:
-    # Benchmarked on BLS12-381
-    when a.c0.c0 is Fp6:
-      return true
-    elif a.c0.c0 is Fp4:
-      return false
-    else: return false
-  else: return false
-
-func has_large_NR_norm(Name: static Algebra): bool =
-  ## Returns true if the non-residue of the extension fields
-  ## has a large norm
-
-  const j = Name.getNonResidueFp()
-  const u = Name.getNonResidueFp2()[0]
-  const v = Name.getNonResidueFp2()[1]
-
-  const norm2 = u*u + (j*v)*(j*v)
-
-  # Compute integer square root
-  var norm = 0
-  while (norm+1) * (norm+1) <= norm2:
-    norm += 1
-
-  return norm > 5
-
-func has_large_field_elem*(Name: static Algebra): bool =
-  ## Returns true if field element are large
-  ## and necessitate custom routine for assembly in particular
-  let a = default(Fp[Name])
-  return a.mres.limbs.len > 6
 
 # ############################################################
 #                                                            #
