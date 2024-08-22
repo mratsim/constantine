@@ -215,9 +215,17 @@ func to*[Name: static Algebra](coefs: Coefficients_b, _: typedesc[Coefficients[N
       m = coefs.cs[i].matrix
       c = coefs.cs[i].section
       s = coefs.cs[i].index
+    when CM_WN or CM_WM:
+      let isMont = true
+      let isDoubleMont = false
+    elif CMM_WN:
+      let isMont = false
+      let isDoubleMont = true
+    else:
+      {.error: "One case must be active.".}
     result.cs[i] = Coefficient[Name](
       matrix: m, section: c, index: s,
-      value: toFr[Name](coefs.cs[i].value, true)
+      value: toFr[Name](coefs.cs[i].value, isMont = isMont, isDoubleMont = isDoubleMont)
     )
 
 proc to*[Name: static Algebra](g16h: Groth16Header_b, _: typedesc[Groth16Header[Name]]): Groth16Header[Name] =
