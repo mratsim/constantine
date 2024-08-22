@@ -38,6 +38,9 @@ suite "Groth16 prover":
     ctx.r = r
     ctx.s = s
 
+    echo "r = ", ctx.r.toHex()
+    echo "s = ", ctx.s.toHex()
+
     # expected values produced by SnarkJS with these `r`, `s` values
     # x/y coordinates of Fp point on G1 subgroup of EC, corresponding to `g^A_1`
     const ax = "5525629793372463776337933283524928112323589665400780041477380790923758613749"
@@ -90,7 +93,12 @@ suite "Groth16 prover":
     echo "C_p#16 = ", C_p.toHex()
     echo "C_p#10 = ", C_p.toDecimal()
 
-    check (A_p  == aExp.getJacobian).bool
-    check (B2_p == bExp.getJacobian).bool
+    #check (A_p  == aExp.getJacobian).bool
+    #check (B2_p == bExp.getJacobian).bool
+    ### XXX: C currently fails!
+    #check (C_p  == cExp.getJacobian).bool
+
+    check (A_p  == aExp).bool
+    check (B2_p == bExp).bool
     ## XXX: C currently fails!
-    check (C_p  == cExp.getJacobian).bool
+    check (C_p  == cExp).bool
