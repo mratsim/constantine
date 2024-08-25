@@ -1,4 +1,4 @@
-import
+import 
   std/typetraits,
 
   constantine/named/algebras,
@@ -11,11 +11,8 @@ import
   ./hashes,
   ./platforms/[abstractions, allocs],
   ./serialization/[codecs_status_codes, codecs_bls12_381, endians],
-  ./commitments_setups/ethereum_kzg_srs
-  # ./ethereum_eip4844_kzg
-
-export trusted_setup_load, trusted_setup_delete, TrustedSetupFormat, TrustedSetupStatus, EthereumKZGContext
-
+  ./ethereum_eip4844_kzg
+  
 const RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN=asBytes"RCKZGCBATCH__V1_"
 const FIELD_ELEMENTS_PER_BLOB=128
 const FIELD_ELEMENTS_PER_CELL=64
@@ -34,97 +31,43 @@ type
   # A polynomial in coefficient form
   PolyCoeff = PolynomialCoef[FIELD_ELEMENTS_PER_EXT_BLOB,Fr[BLS12_381]]
   # The evaluation domain of a cell
-  Coset* = distinct array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]] 
+  Coset* = array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]] 
   # The internal representation of a cell (the evaluations over its Coset)
-  CosetEvals* = distinct array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]]
+  CosetEvals* = array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]]
   # The unit of blob data that can come with its own KZG proof
   Cell* = array[BYTES_PER_CELL, byte]
   # Validation: x < CELLS_PER_EXT_BLOB
   CellIndex* = uint64 
 
-# useful for detecting if memory cleanup us necessary , and check the status of the execution of the function 
-template checkReturn(evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
-  # Translate codec status code to KZG status code
-  # Beware of resource cleanup like heap allocation, this can early exit the caller.
-  block:
-    let status = evalExpr # Ensure single evaluation
-    case status
-    of cttCodecScalar_Success:                          discard
-    of cttCodecScalar_Zero:                             discard
-    of cttCodecScalar_ScalarLargerThanCurveOrder:       return cttEthKzg_ScalarLargerThanCurveOrder
-
-template checkReturn(evalExpr: CttCodecEccStatus): untyped {.dirty.} =
-  # Translate codec status code to KZG status code
-  # Beware of resource cleanup like heap allocation, this can early exit the caller.
-  block:
-    let status = evalExpr # Ensure single evaluation
-    case status
-    of cttCodecEcc_Success:                             discard
-    of cttCodecEcc_InvalidEncoding:                     return cttEthKzg_EccInvalidEncoding
-    of cttCodecEcc_CoordinateGreaterThanOrEqualModulus: return cttEthKzg_EccCoordinateGreaterThanOrEqualModulus
-    of cttCodecEcc_PointNotOnCurve:                     return cttEthKzg_EccPointNotOnCurve
-    of cttCodecEcc_PointNotInSubgroup:                  return cttEthKzg_EccPointNotInSubGroup
-    of cttCodecEcc_PointAtInfinity:                     discard
-
-template check(Section: untyped, evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
-  # Translate codec status code to KZG status code
-  # Exit current code block
-  block:
-    let status = evalExpr # Ensure single evaluation
-    case status
-    of cttCodecScalar_Success:                          discard
-    of cttCodecScalar_Zero:                             discard
-    of cttCodecScalar_ScalarLargerThanCurveOrder:       result = cttEthKzg_ScalarLargerThanCurveOrder; break Section
-
-template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.} =
-  # Translate codec status code to KZG status code
-  # Exit current code block
-  block:
-    let status = evalExpr # Ensure single evaluation
-    case status
-    of cttCodecEcc_Success:                             discard
-    of cttCodecEcc_InvalidEncoding:                     result = cttEthKzg_EccInvalidEncoding; break Section
-    of cttCodecEcc_CoordinateGreaterThanOrEqualModulus: result = cttEthKzg_EccCoordinateGreaterThanOrEqualModulus; break Section
-    of cttCodecEcc_PointNotOnCurve:                     result = cttEthKzg_EccPointNotOnCurve; break Section
-    of cttCodecEcc_PointNotInSubgroup:                  result = cttEthKzg_EccPointNotInSubGroup; break Section
-    of cttCodecEcc_PointAtInfinity:                     discard
-
-
 # from eip4844, import
 # bytes_to_bls_field
 # bls_field_to_bytes
 
-func cell_to_coset_evals(evals: var CosetEvals,cell: Cell): CttCodecEccStatus=
+func cell_to_coset_evals(evals:var CosetEvals,cell: Cell): CttCodecEccStatus=
   # Convert an untrusted ``Cell`` into a trusted ``CosetEvals``
-  var 
-    start: int
-    ending: int
-    value:Fr[BLS12_381]
-
-  let view = cast[ptr array[FIELD_ELEMENTS_PER_CELL, array[32, byte]]](cell.unsafeAddr)
-  for i in 0..FIELD_ELEMENTS_PER_CELL:
-    start = i*BYTES_PER_FIELD_ELEMENT
-    ending = (i+1)*BYTES_PER_FIELD_ELEMENT
-    var status= value.bytes_to_bls_field(view[i])
+  var temp: Fr[BLS12_381]
+  let view = cast[array[FIELD_ELEMENTS_PER_CELL, array[32, byte]]](cell.unsafeAddr)
+  for i in 0..<FIELD_ELEMENTS_PER_CELL:
+    let status = bytes_to_bls_field(temp,view[i])
     if status notin {cttCodecScalar_Success, cttCodecScalar_Zero}:
       return cttCodecEcc_PointNotOnCurve
-    evals[i]=value
-
+    evals[i]=temp
   return cttCodecEcc_Success
 
 
 
 func coset_evals_to_cell(dst: var Cell,coset_evals: CosetEvals): CttCodecEccStatus=
     # Convert a trusted ``CosetEval`` into an untrusted ``Cell``.
-    # for i in 0 ..< FIELD_ELEMENTS_PER_CELL:
-    #     var bytes = bls_field_to_bytes(cosetEvals[i])
-    #     for j in 0 ..< bytes.len:
-    #         dst[i* bytes.len + j] = bytes[j]
+    let temp = allocHeapAligned(array[FIELD_ELEMENTS_PER_CELL, array[32,byte]], 64)
+    for i in 0..<FIELD_ELEMENTS_PER_CELL:
+      temp[i].fromDigest(cosetEvals[i])
+ 
+    dst= cast[Cell](temp.unsafeAddr)
 
     return  cttCodecEcc_Success
 
 
-
+# to do
 func compute_kzg_proof_multi_impl(dst:var (KZGProof, CosetEvals),poly_coeff: PolyCoeff,zs: Coset)=
     # Compute a KZG multi-evaluation proof for a set of `k` points.
 
@@ -152,19 +95,20 @@ func compute_kzg_proof_multi_impl(dst:var (KZGProof, CosetEvals),poly_coeff: Pol
     return KZGProof(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(quotient_polynomial)], quotient_polynomial)), ys
 
 
-
+# to do
 func coset_for_cell(var dst: Coset,cell_index: CellIndex)=
     # Get the coset for a given ``cell_index``.
     # Precisely, consider the group of roots of unity of order FIELD_ELEMENTS_PER_CELL * CELLS_PER_EXT_BLOB.
     # Let G = {1, g, g^2, ...} denote its subgroup of order FIELD_ELEMENTS_PER_CELL.
     # Then, the coset is defined as h * G = {h, hg, hg^2, ...}.
     # This function, returns the coset.
-
-    assert cell_index < CELLS_PER_EXT_BLOB
+  static:
+    doAssert cell_index < CELLS_PER_EXT_BLOB
     # confirm if in load_ckzg4844 this is already pre-computed
-    roots_of_unity_brp.computeRootsOfUnity(FIELD_ELEMENTS_PER_EXT_BLOB).bit_reversal_permutation()
+    (roots_of_unity_brp.computeRootsOfUnity(FIELD_ELEMENTS_PER_EXT_BLOB)).bit_reversal_permutation()
     return Coset(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_index:FIELD_ELEMENTS_PER_CELL * (cell_index + 1)])
 
+#to do
 func compute_cells_and_kzg_proofs_polynomialcoeff(dst: var (array[CELLS_PER_EXT_BLOB, Cell],array[CELLS_PER_EXT_BLOB,KZGProof]), poly_coeff: PolyCoeff)=
     # Helper function which computes cells/proofs for a polynomial in coefficient form.
     var 
@@ -182,7 +126,7 @@ func compute_cells_and_kzg_proofs_polynomialcoeff(dst: var (array[CELLS_PER_EXT_
     dst=(cells, proofs)
     return 
 
-
+#to do
 # public api method
 func compute_cells_and_kzg_proofs(dst: var (array[CELLS_PER_EXT_BLOB,Cell],array[CELLS_PER_EXT_BLOB,KZGProof]), blob: Blob) =
     # Compute all the cell proofs for an extended blob. This is an inefficient O(n^2) algorithm,

@@ -151,7 +151,7 @@ func bytes_to_bls_bigint(dst: var Fr[BLS12_381].getBigInt(), src: array[32, byte
     return status
   return cttCodecScalar_Success
 
-func bytes_to_bls_field(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus =
+func bytes_to_bls_field*(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus =
   ## Convert untrusted bytes to a trusted and validated BLS scalar field element.
   ## This function does not accept inputs greater than the BLS modulus.
   var scalar {.noInit.}: Fr[BLS12_381].getBigInt()
