@@ -121,7 +121,7 @@ proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, rr, a, M: Val
   let t = asy.br.select(borrow, a, a_minus_M)
   asy.store(rr, t)
 
-proc modadd*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
+proc modadd_sat(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) {.used.} =
   ## Generate an optimized modular addition kernel
   ## with parameters `a, b, modulus: Limbs -> Limbs`
 

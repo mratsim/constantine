@@ -98,9 +98,9 @@ macro genInstr(body: untyped): untyped =
     instrBody.add quote do:
       let `ctx` {.used.} = builder.getContext()
       # lhs: ValueRef or uint32 or uint64
-      let `numBits` = when `lhs` is ValueRef|ConstValueRef: `lhs`.getTypeOf().getIntTypeWidth()
+      let `numBits` = when `lhs` is ValueRef: `lhs`.getTypeOf().getIntTypeWidth()
                       else: 8*sizeof(`lhs`)
-      let `regTy` = when `lhs` is ValueRef|ConstValueRef: `lhs`.getTypeOf()
+      let `regTy` = when `lhs` is ValueRef: `lhs`.getTypeOf()
                     elif `lhs` is uint32: `ctx`.int32_t()
                     elif `lhs` is uint64: `ctx`.int64_t()
                     else: {.error "Unsupported input type " & $typeof(`lhs`).}
@@ -225,8 +225,7 @@ macro genInstr(body: untyped): untyped =
       # else: constInt(uint64(op))
       opArray.add nnkWhenStmt.newTree(
           nnkElifBranch.newTree(nnkInfix.newTree(ident"is", op, bindSym"ValueRef"), op),
-          nnkElifBranch.newTree(nnkInfix.newTree(ident"is", op, bindSym"ConstValueRef"), newCall(ident"ValueRef", op)),
-          nnkElse.newTree(newCall(ident"ValueRef", newCall(ident"constInt", regTy, newCall(ident"uint64", op))))
+          nnkElse.newTree(newCall(ident"constInt", regTy, newCall(ident"uint64", op)))
         )
     # builder.call2(ty, inlineASM, [lhs, rhs], name)
     instrBody.add newCall(
@@ -249,14 +248,14 @@ macro genInstr(body: untyped): untyped =
           opDefs.add newIdentDefs(
             operands[i],
             nnkInfix.newTree(ident"or",
-              nnkInfix.newTree(ident"or", ident"AnyValueRef", ident"uint32"),
+              nnkInfix.newTree(ident"or", ident"ValueRef", ident"uint32"),
               ident"uint64")
           )
         elif constraint == "rn":
           opDefs.add newIdentDefs(
             operands[i],
             nnkInfix.newTree(ident"or",
-              ident"AnyValueRef",
+              ident"ValueRef",
               ident"uint32")
           )
         else:
