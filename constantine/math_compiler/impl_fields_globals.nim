@@ -157,8 +157,7 @@ proc getM0ninv*(asy: Assembler_LLVM, fd: FieldDescriptor): ValueRef =
         fd.wordTy
       )
 
-
-  return m0ninv
+  return asy.load2(fd.wordTy, m0ninv, "m0ninv")
 
 when isMainModule:
   let asy = Assembler_LLVM.new("test_module", bkX86_64_Linux)

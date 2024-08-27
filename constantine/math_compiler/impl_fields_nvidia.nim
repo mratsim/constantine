@@ -192,7 +192,7 @@ proc mtymul_CIOS_sparebit(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: 
   ## with parameters `a, b, modulus: Limbs -> Limbs`
 
   let name =
-    if finalReduce and fd.spareBits >= 2:
+    if not finalReduce and fd.spareBits >= 2:
       "_mty_mulur.u" & $fd.w & "x" & $fd.numWords & "b2"
     else:
       doAssert fd.spareBits >= 1
@@ -337,6 +337,8 @@ proc mtymul_CIOS_sparebit(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: 
 
     asy.store(r, t)
     asy.br.retVoid()
+
+  asy.callFn(name, [r, a, b, M])
 
 proc mtymul_nvidia(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef, finalReduce = true) {.used.} =
   ## Generate an optimized modular addition kernel

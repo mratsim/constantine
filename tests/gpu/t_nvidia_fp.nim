@@ -15,7 +15,7 @@ import
   constantine/platforms/static_for,
   constantine/named/algebras,
   constantine/math/arithmetic,
-  constantine/math/io/io_bigints,
+  constantine/math/io/[io_bigints, io_fields],
   constantine/math_compiler/[ir, pub_fields, codegen_nvidia],
   # Test utilities
   helpers/prng_unsafe
@@ -48,8 +48,6 @@ template gen_binop_test(
   proc testName[Name: static Algebra](field: type FF[Name], wordSize: int) =
     # Codegen
     # -------------------------
-    static: debugEcho field
-
     let name = if field is Fp: $Name & "_fp"
               else: $Name & "_fr"
     let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & name & $wordSize))
@@ -89,7 +87,7 @@ template gen_binop_test(
 
 gen_binop_test(t_field_add, genFpAdd, sum)
 gen_binop_test(t_field_sub, genFpSub, diff)
-# gen_binop_test(t_field_mul, genFpMul, prod)
+gen_binop_test(t_field_mul, genFpMul, prod)
 
 proc main() =
   const curves = [
@@ -115,20 +113,26 @@ proc main() =
           t_field_add(Fp[curve], wordSize)
         test "Nvidia GPU field substraction 𝔽p " & $wordSize & "-bit for " & $curve:
           t_field_sub(Fp[curve], wordSize)
-        # test "Nvidia GPU field multiplication 𝔽p " & $wordSize & "-bit for " & $curve:
-        #   # 64-bit integer fused-multiply-add with carry is buggy:
-        #   # https://gist.github.com/mratsim/a34df1e091925df15c13208df7eda569#file-mul-py
-        #   # https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
-        #   t_field_mul(Fp[curve], wordSize)
+        test "Nvidia GPU field multiplication 𝔽p " & $wordSize & "-bit for " & $curve:
+          if wordSize == 64:
+            skip()
+            # 64-bit integer fused-multiply-add with carry is buggy:
+            # https://gist.github.com/mratsim/a34df1e091925df15c13208df7eda569#file-mul-py
+            # https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
+          else:
+            t_field_mul(Fp[curve], wordSize)
 
         test "Nvidia GPU field addition 𝔽r " & $wordSize & "-bit for " & $curve:
           t_field_add(Fr[curve], wordSize)
         test "Nvidia GPU field substraction 𝔽r " & $wordSize & "-bit for " & $curve:
           t_field_sub(Fr[curve], wordSize)
-        # test "Nvidia GPU field multiplication 𝔽r " & $wordSize & "-bit for " & $curve:
-        #   # 64-bit integer fused-multiply-add with carry is buggy:
-        #   # https://gist.github.com/mratsim/a34df1e091925df15c13208df7eda569#file-mul-py
-        #   # https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
-        #   t_field_mul(Fr[curve], wordSize)
+        test "Nvidia GPU field multiplication 𝔽r " & $wordSize & "-bit for " & $curve:
+          if wordSize == 64:
+            skip()
+            # 64-bit integer fused-multiply-add with carry is buggy:
+            # https://gist.github.com/mratsim/a34df1e091925df15c13208df7eda569#file-mul-py
+            # https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
+          else:
+            t_field_mul(Fr[curve], wordSize)
 
 main()
