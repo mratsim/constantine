@@ -69,45 +69,6 @@ proc hipDeviceInit*(deviceID = 0'i32): HipDevice =
 
 # ############################################################
 #
-#                   LLVM IR for AMD GPUs
-#
-# ############################################################
-#
-# Note:
-#   __device__ functions for field and elliptic curve arithmetic
-#   might be compiled by default with scalar codegen
-#
-#   We will need to either:
-#   - Derive explicitly a vectorized version of the warp/wave size (32)
-#   - Derive implicitly a vectorized version, probably with __forceinline__
-
-proc wrapInCallableHipKernel*(module: ModuleRef, fn: FnDef) =
-  ## Create a public wrapper of a Hip device function
-  ##
-  ## A function named `addmod` can be found by appending _public
-  ##   check hipModuleGetFunction(fnPointer, cuModule, "addmod_public")
-
-  let pubName = fn.fnImpl.getName() & "_public"
-  let pubFn = module.addFunction(cstring(pubName), fn.fnTy)
-
-  let ctx = module.getContext()
-  let builder = ctx.createBuilder()
-  defer: builder.dispose()
-
-  let blck = ctx.appendBasicBlock(pubFn, "publicKernelBody")
-  builder.positionAtEnd(blck)
-
-  var args = newSeq[ValueRef](fn.fnTy.countParamTypes())
-  for i, arg in mpairs(args):
-    arg = pubFn.getParam(i.uint32)
-  discard builder.call2(fn.fnTy, fn.fnImpl, args)
-
-  # A public kernel must return void
-  builder.retVoid()
-  pubFn.setCallingConvention(AMDGPU_KERNEL)
-
-# ############################################################
-#
 #                      Code generation
 #
 # ############################################################

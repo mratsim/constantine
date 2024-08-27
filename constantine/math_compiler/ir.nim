@@ -259,11 +259,11 @@ proc makeArray*(asy: Assembler_LLVM, elemTy: TypeRef, len: uint32): Array =
 
 proc `[]`*(a: Array, index: SomeInteger): ValueRef {.inline.}=
   # First dereference the array pointer with 0, then access the `index`
-  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, [ValueRef constInt(a.int32_t, 0), ValueRef constInt(a.int32_t, uint64 index)])
+  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, [constInt(a.int32_t, 0), constInt(a.int32_t, uint64 index)])
   a.builder.load2(a.elemTy, pelem)
 
 proc `[]=`*(a: Array, index: SomeInteger, val: ValueRef) {.inline.}=
-  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, [ValueRef constInt(a.int32_t, 0), ValueRef constInt(a.int32_t, uint64 index)])
+  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, [constInt(a.int32_t, 0), constInt(a.int32_t, uint64 index)])
   a.builder.store(val, pelem)
 
 proc store*(asy: Assembler_LLVM, dst: Array, src: Array) {.inline.}=
@@ -345,9 +345,10 @@ proc defineGlobalConstant*(
 proc tagCudaKernel(asy: Assembler_LLVM, fn: ValueRef) =
   ## Tag a function as a Cuda Kernel, i.e. callable from host
 
-  let returnTy = fn.getTypeOf().getReturnType()
-  doAssert returnTy.isVoid(), block:
-    "Kernels must not return values but function returns " & $returnTy.getTypeKind()
+  # We cannot get the full function type from its impl so we cannot do this check.
+  # let returnTy = fn.getTypeOf().getReturnType()
+  # doAssert returnTy.isVoid(), block:
+  #   "Kernels must not return values but function returns " & $returnTy.getTypeKind()
 
   asy.module.addNamedMetadataOperand(
     "nvvm.annotations",
@@ -360,8 +361,11 @@ proc tagCudaKernel(asy: Assembler_LLVM, fn: ValueRef) =
 
 proc setPublic(asy: Assembler_LLVM, fn: ValueRef) =
   case asy.backend
-  of bkAmdGpu: fn.setFnCallConv(AMDGPU_KERNEL)
-  of bkNvidiaPtx: asy.tagCudaKernel(fn)
+  of bkAmdGpu:
+    fn.setFnCallConv(AMDGPU_KERNEL)
+  of bkNvidiaPtx:
+    # asy.tagCudaKernel(fn)
+    fn.setFnCallConv(PTX_Kernel)
   else: discard
 
 # ############################################################
@@ -474,7 +478,7 @@ template llvmFnDef[N: static int](
       savedLoc = blck
 
     let llvmParams {.inject.} = unpackParams(asy.br, paramsTys)
-    template tagParameter(idx: int, attr: string) {.inject.} =
+    template tagParameter(idx: int, attr: string) {.inject, used.} =
       let a = asy.ctx.createAttr(attr)
       fn.addAttribute(cint idx, a)
     body
@@ -484,7 +488,7 @@ template llvmFnDef[N: static int](
       fn.setLinkage(linkInternal)
     else:
       asy.setPublic(fn)
-    fn.setSection(sectionName)
+    fn.setSection(cstring sectionName)
     asy.addAttributes(fn, attrs)
 
     asy.br.positionAtEnd(savedLoc)

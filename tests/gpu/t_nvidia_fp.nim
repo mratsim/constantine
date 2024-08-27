@@ -14,9 +14,9 @@ import
   constantine/platforms/llvm/llvm,
   constantine/platforms/static_for,
   constantine/named/algebras,
-  constantine/math/io/io_bigints,
   constantine/math/arithmetic,
-  constantine/math_compiler/[ir, impl_fields_nvidia, codegen_nvidia],
+  constantine/math/io/[io_bigints, io_fields],
+  constantine/math_compiler/[ir, pub_fields, codegen_nvidia],
   # Test utilities
   helpers/prng_unsafe
 
@@ -27,33 +27,6 @@ echo "\n------------------------------------------------------\n"
 echo "test_nvidia_fp xoshiro512** seed: ", seed
 
 const Iters = 10
-
-proc init(T: type CurveMetadata, asy: Assembler_LLVM, curve: static Algebra, wordSize: WordSize): T =
-  CurveMetadata.init(
-      asy.ctx,
-      $curve & "_", wordSize,
-      fpBits = uint32 Fp[curve].bits(),
-      fpMod = Fp[curve].getModulus().toHex(),
-      frBits = uint32 Fr[curve].bits(),
-      frMod = Fr[curve].getModulus().toHex())
-
-proc genFieldAddPTX(asy: Assembler_LLVM, cm: CurveMetadata) =
-  let fpAdd = asy.field_add_gen(cm, fp)
-  asy.module.wrapInCallableCudaKernel(fpAdd)
-  let frAdd = asy.field_add_gen(cm, fr)
-  asy.module.wrapInCallableCudaKernel(frAdd)
-
-proc genFieldSubPTX(asy: Assembler_LLVM, cm: CurveMetadata) =
-  let fpSub = asy.field_sub_gen(cm, fp)
-  asy.module.wrapInCallableCudaKernel(fpSub)
-  let frSub = asy.field_sub_gen(cm, fr)
-  asy.module.wrapInCallableCudaKernel(frSub)
-
-proc genFieldMulPTX(asy: Assembler_LLVM, cm: CurveMetadata) =
-  let fpMul = asy.field_mul_gen(cm, fp)
-  asy.module.wrapInCallableCudaKernel(fpMul)
-  let frMul = asy.field_mul_gen(cm, fr)
-  asy.module.wrapInCallableCudaKernel(frMul)
 
 # Init LLVM
 # -------------------------
@@ -66,173 +39,55 @@ var sm: tuple[major, minor: int32]
 check cuDeviceGetAttribute(sm.major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, cudaDevice)
 check cuDeviceGetAttribute(sm.minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, cudaDevice)
 
-proc t_field_add(curve: static Algebra) =
-  # Codegen
-  # -------------------------
-  let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & $curve))
-  let cm32 = CurveMetadata.init(asy, curve, w32)
-  asy.genFieldAddPTX(cm32)
-  let cm64 = CurveMetadata.init(asy, curve, w64)
-  asy.genFieldAddPTX(cm64)
-
-  let ptx = asy.codegenNvidiaPTX(sm)
-
-  # GPU exec
-  # -------------------------
-  var cuCtx: CUcontext
-  var cuMod: CUmodule
-  check cuCtxCreate(cuCtx, 0, cudaDevice)
-  check cuModuleLoadData(cuMod, ptx)
-  defer:
-    check cuMod.cuModuleUnload()
-    check cuCtx.cuCtxDestroy()
-
-  let fpAdd32 = cuMod.getCudaKernel(cm32, opFpAdd)
-  let fpAdd64 = cuMod.getCudaKernel(cm64, opFpAdd)
-  let frAdd32 = cuMod.getCudaKernel(cm32, opFrAdd)
-  let frAdd64 = cuMod.getCudaKernel(cm64, opFrAdd)
-
-  # Fp
-  for i in 0 ..< Iters:
-    let a = rng.random_long01Seq(Fp[curve])
-    let b = rng.random_long01Seq(Fp[curve])
-
-    var rCPU, rGPU_32, rGPU_64: Fp[curve]
-
-    rCPU.sum(a, b)
-    fpAdd32.exec(rGPU_32, a, b)
-    fpAdd64.exec(rGPU_64, a, b)
-
-    doAssert bool(rCPU == rGPU_32)
-    doAssert bool(rCPU == rGPU_64)
-
-  # Fr
-  for i in 0 ..< Iters:
-    let a = rng.random_long01Seq(Fr[curve])
-    let b = rng.random_long01Seq(Fr[curve])
-
-    var rCPU, rGPU_32, rGPU_64: Fr[curve]
-
-    rCPU.sum(a, b)
-    frAdd32.exec(rGPU_32, a, b)
-    frAdd64.exec(rGPU_64, a, b)
-
-    doAssert bool(rCPU == rGPU_32)
-    doAssert bool(rCPU == rGPU_64)
-
-proc t_field_sub(curve: static Algebra) =
-  # Codegen
-  # -------------------------
-  let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & $curve))
-  let cm32 = CurveMetadata.init(asy, curve, w32)
-  asy.genFieldSubPTX(cm32)
-  let cm64 = CurveMetadata.init(asy, curve, w64)
-  asy.genFieldSubPTX(cm64)
-
-  let ptx = asy.codegenNvidiaPTX(sm)
-
-  # GPU exec
-  # -------------------------
-  var cuCtx: CUcontext
-  var cuMod: CUmodule
-  check cuCtxCreate(cuCtx, 0, cudaDevice)
-  check cuModuleLoadData(cuMod, ptx)
-  defer:
-    check cuMod.cuModuleUnload()
-    check cuCtx.cuCtxDestroy()
-
-  let fpSub32 = cuMod.getCudaKernel(cm32, opFpSub)
-  let fpSub64 = cuMod.getCudaKernel(cm64, opFpSub)
-  let frSub32 = cuMod.getCudaKernel(cm32, opFrSub)
-  let frSub64 = cuMod.getCudaKernel(cm64, opFrSub)
-
-  # Fp
-  for i in 0 ..< Iters:
-    let a = rng.random_long01Seq(Fp[curve])
-    let b = rng.random_long01Seq(Fp[curve])
-
-    var rCPU, rGPU_32, rGPU_64: Fp[curve]
-
-    rCPU.diff(a, b)
-    fpSub32.exec(rGPU_32, a, b)
-    fpSub64.exec(rGPU_64, a, b)
-
-    doAssert bool(rCPU == rGPU_32)
-    doAssert bool(rCPU == rGPU_64)
-
-  # Fr
-  for i in 0 ..< Iters:
-    let a = rng.random_long01Seq(Fr[curve])
-    let b = rng.random_long01Seq(Fr[curve])
-
-    var rCPU, rGPU_32, rGPU_64: Fr[curve]
-
-    rCPU.diff(a, b)
-    frSub32.exec(rGPU_32, a, b)
-    frSub64.exec(rGPU_64, a, b)
-
-    doAssert bool(rCPU == rGPU_32)
-    doAssert bool(rCPU == rGPU_64)
-
-proc t_field_mul(curve: static Algebra) =
-  # Codegen
-  # -------------------------
-  let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & $curve))
-  let cm32 = CurveMetadata.init(asy, curve, w32)
-  asy.genFieldMulPTX(cm32)
-
-  # 64-bit integer fused-multiply-add with carry is buggy:
-  # https://gist.github.com/mratsim/a34df1e091925df15c13208df7eda569#file-mul-py
-  # https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
-
-  # let cm64 = CurveMetadata.init(asy, curve, w64)
-  # asy.genFieldMulPTX(cm64)
-
-  let ptx = asy.codegenNvidiaPTX(sm)
-
-  # GPU exec
-  # -------------------------
-  var cuCtx: CUcontext
-  var cuMod: CUmodule
-  check cuCtxCreate(cuCtx, 0, cudaDevice)
-  check cuModuleLoadData(cuMod, ptx)
-  defer:
-    check cuMod.cuModuleUnload()
-    check cuCtx.cuCtxDestroy()
-
-  let fpMul32 = cuMod.getCudaKernel(cm32, opFpMul)
-  let frMul32 = cuMod.getCudaKernel(cm32, opFrMul)
-  # let fpMul64 = cuMod.getCudaKernel(cm64, opFpMul)
-  # let frMul64 = cuMod.getCudaKernel(cm64, opFrMul)
-
-  # Fp
-  for i in 0 ..< Iters:
-    let a = rng.random_long01Seq(Fp[curve])
-    let b = rng.random_long01Seq(Fp[curve])
+template gen_binop_test(
+      testName: untyped,
+      kernGenerator: untyped,
+      cpuFn: untyped) =
 
 
-    var rCPU, rGPU_32: Fp[curve] # rGPU_64
+  proc testName[Name: static Algebra](field: type FF[Name], wordSize: int) =
+    # Codegen
+    # -------------------------
+    let name = if field is Fp: $Name & "_fp"
+              else: $Name & "_fr"
+    let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & name & $wordSize))
+    let fd = asy.ctx.configureField(
+      name, field.bits(),
+      field.getModulus().toHex(),
+      v = 1, w = wordSize
+    )
 
-    rCPU.prod(a, b)
-    fpMul32.exec(rGPU_32, a, b)
-    # fpMul64.exec(rGPU_64, a, b)
+    asy.definePrimitives(fd)
 
-    doAssert bool(rCPU == rGPU_32)
-    # doAssert bool(rCPU == rGPU_64)
+    let kernName = asy.kernGenerator(fd)
+    let ptx = asy.codegenNvidiaPTX(sm)
 
-  # Fr
-  for i in 0 ..< Iters:
-    let a = rng.random_long01Seq(Fr[curve])
-    let b = rng.random_long01Seq(Fr[curve])
+    # GPU exec
+    # -------------------------
+    var cuCtx: CUcontext
+    var cuMod: CUmodule
+    check cuCtxCreate(cuCtx, 0, cudaDevice)
+    check cuModuleLoadData(cuMod, ptx)
+    defer:
+      check cuMod.cuModuleUnload()
+      check cuCtx.cuCtxDestroy()
 
-    var rCPU, rGPU_32: Fr[curve] # rGPU_64
+    let kernel = cuMod.getCudaKernel(kernName)
 
-    rCPU.prod(a, b)
-    frMul32.exec(rGPU_32, a, b)
-    # frMul64.exec(rGPU_64, a, b)
+    for i in 0 ..< Iters:
+      let a = rng.random_long01Seq(field)
+      let b = rng.random_long01Seq(field)
 
-    doAssert bool(rCPU == rGPU_32)
-    # doAssert bool(rCPU == rGPU_64)
+      var rCPU, rGPU: field
+
+      rCPU.cpuFn(a, b)
+      kernel.exec(rGPU, a, b)
+
+      doAssert bool(rCPU == rGPU)
+
+gen_binop_test(t_field_add, genFpAdd, sum)
+gen_binop_test(t_field_sub, genFpSub, diff)
+gen_binop_test(t_field_mul, genFpMul, prod)
 
 proc main() =
   const curves = [
@@ -253,11 +108,31 @@ proc main() =
   suite "[Nvidia GPU] Field Arithmetic":
     staticFor i, 0, curves.len:
       const curve = curves[i]
-      test "Nvidia GPU field addition       (𝔽p, 𝔽r) for " & $curve:
-        t_field_add(curve)
-      test "Nvidia GPU field substraction   (𝔽p, 𝔽r) for " & $curve:
-        t_field_sub(curve)
-      test "Nvidia GPU field multiplication (𝔽p, 𝔽r) for " & $curve:
-        t_field_mul(curve)
+      for wordSize in [32, 64]:
+        test "Nvidia GPU field addition 𝔽p " & $wordSize & "-bit for " & $curve:
+          t_field_add(Fp[curve], wordSize)
+        test "Nvidia GPU field substraction 𝔽p " & $wordSize & "-bit for " & $curve:
+          t_field_sub(Fp[curve], wordSize)
+        test "Nvidia GPU field multiplication 𝔽p " & $wordSize & "-bit for " & $curve:
+          if wordSize == 64:
+            skip()
+            # 64-bit integer fused-multiply-add with carry is buggy:
+            # https://gist.github.com/mratsim/a34df1e091925df15c13208df7eda569#file-mul-py
+            # https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
+          else:
+            t_field_mul(Fp[curve], wordSize)
+
+        test "Nvidia GPU field addition 𝔽r " & $wordSize & "-bit for " & $curve:
+          t_field_add(Fr[curve], wordSize)
+        test "Nvidia GPU field substraction 𝔽r " & $wordSize & "-bit for " & $curve:
+          t_field_sub(Fr[curve], wordSize)
+        test "Nvidia GPU field multiplication 𝔽r " & $wordSize & "-bit for " & $curve:
+          if wordSize == 64:
+            skip()
+            # 64-bit integer fused-multiply-add with carry is buggy:
+            # https://gist.github.com/mratsim/a34df1e091925df15c13208df7eda569#file-mul-py
+            # https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
+          else:
+            t_field_mul(Fr[curve], wordSize)
 
 main()

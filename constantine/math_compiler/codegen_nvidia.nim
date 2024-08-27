@@ -111,37 +111,6 @@ proc cudaDeviceInit*(deviceID = 0'i32): CUdevice =
 
 # ############################################################
 #
-#                   LLVM IR for Nvidia GPUs
-#
-# ############################################################
-
-proc wrapInCallableCudaKernel*(module: ModuleRef, fn: FnDef) =
-  ## Create a public wrapper of a cuda device function
-  ##
-  ## A function named `addmod` can be found by appending _public
-  ##   check cuModuleGetFunction(fnPointer, cuModule, "addmod_public")
-
-  let pubName = fn.fnImpl.getName() & "_public"
-  let pubFn = module.addFunction(cstring(pubName), fn.fnTy)
-
-  let ctx = module.getContext()
-  let builder = ctx.createBuilder()
-  defer: builder.dispose()
-
-  let blck = ctx.appendBasicBlock(pubFn, "publicKernelBody")
-  builder.positionAtEnd(blck)
-
-  var args = newSeq[ValueRef](fn.fnTy.countParamTypes())
-  for i, arg in mpairs(args):
-    arg = pubFn.getParam(i.uint32)
-  discard builder.call2(fn.fnTy, fn.fnImpl, args)
-
-  # A public kernel must return void
-  builder.retVoid()
-  module.tagCudaKernel((fn.fnTy, pubFn))
-
-# ############################################################
-#
 #                      Code generation
 #
 # ############################################################
@@ -194,9 +163,7 @@ proc codegenNvidiaPTX*(asy: Assembler_LLVM, sm: tuple[major, minor: int32]): str
 #
 # ############################################################
 
-proc getCudaKernel*(cuMod: CUmodule, cm: CurveMetadata, opcode: Opcode): CUfunction =
-  # Public kernels are appended _public
-  let fnName = cm.genSymbol(opcode) & "_public"
+proc getCudaKernel*(cuMod: CUmodule, fnName: string): CUfunction =
   check cuModuleGetFunction(result, cuMod, fnName)
 
 proc exec*[T](jitFn: CUfunction, r: var T, a, b: T) =
