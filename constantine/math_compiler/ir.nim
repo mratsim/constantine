@@ -484,7 +484,7 @@ template llvmFnDef[N: static int](
       fn.setLinkage(linkInternal)
     else:
       asy.setPublic(fn)
-    fn.setSection(sectionName)
+    fn.setSection(cstring sectionName)
     asy.addAttributes(fn, attrs)
 
     asy.br.positionAtEnd(savedLoc)

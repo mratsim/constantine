@@ -8,7 +8,8 @@
 
 import
   constantine/platforms/llvm/llvm,
-  constantine/math_compiler/codegen_nvidia
+  constantine/platforms/abis/nvidia_abi {.all.},
+  constantine/platforms/abis/c_abi
 
 # ############################################################
 #
@@ -79,7 +80,17 @@ proc nvvmGetProgramLog*(prog: NvvmProgram; buffer: ptr char): NvvmResult
 #
 # ############################################################
 
-template check*(status: NvvmResult) =
+template check(status: CUresult) =
+  ## Check the status code of a CUDA operation
+  ## Exit program with error if failure
+
+  let code = status # ensure that the input expression is evaluated once only
+  if code != CUDA_SUCCESS:
+    writeStackTrace()
+    stderr.write(astToStr(status) & " " & $instantiationInfo() & " exited with error: " & $code & '\n')
+    quit 1
+
+template check(status: NvvmResult) =
   let code = status # Assign so execution is done once only.
   if code != NVVM_SUCCESS:
     stderr.write astToStr(status) & " " & $instantiationInfo() & " exited with error: " & $code
@@ -148,6 +159,22 @@ proc ptxCodegenViaLlvmNvptx(module: ModuleRef, sm: tuple[major, minor: int32]): 
 
 echo "Nvidia JIT compiler Hello World"
 
+proc tagCudaKernel(module: ModuleRef, fnTy: TypeRef, fnImpl: ValueRef) =
+  ## Tag a function as a Cuda Kernel, i.e. callable from host
+
+  doAssert fnTy.getReturnType().isVoid(), block:
+    "Kernels must not return values but function returns " & $fnTy.getReturnType().getTypeKind()
+
+  let ctx = module.getContext()
+  module.addNamedMetadataOperand(
+    "nvvm.annotations",
+    ctx.asValueRef(ctx.metadataNode([
+      fnImpl.asMetadataRef(),
+      ctx.metadataNode("kernel"),
+      constInt(ctx.int32_t(), 1, LlvmBool(false)).asMetadataRef()
+    ]))
+  )
+
 proc writeExampleAddMul(ctx: ContextRef, module: ModuleRef, addKernelName, mulKernelName: string) =
 
   # ######################################
@@ -175,7 +202,7 @@ proc writeExampleAddMul(ctx: ContextRef, module: ModuleRef, addKernelName, mulKe
   block:
     let addType = function_t(void_t, [i128.pointer_t(), i128, i128], isVarArg = LlvmBool(false))
     let addKernel = module.addFunction(addKernelName, addType)
-    let blck = ctx.appendBasicBlock(addKernel, "addBody")
+    let blck = ctx.appendBasicBlock(addKernel)
     builder.positionAtEnd(blck)
     let r = addKernel.getParam(0)
     let a = addKernel.getParam(1)
@@ -184,12 +211,12 @@ proc writeExampleAddMul(ctx: ContextRef, module: ModuleRef, addKernelName, mulKe
     builder.store(sum, r)
     builder.retVoid()
 
-    module.wrapInCallableCudaKernel((addType, addKernel))
+    module.tagCudaKernel(addType, addKernel)
 
   block:
     let mulType = function_t(void_t, [i128.pointer_t(), i128, i128], isVarArg = LlvmBool(false))
     let mulKernel = module.addFunction(mulKernelName, mulType)
-    let blck = ctx.appendBasicBlock(mulKernel, "mulBody")
+    let blck = ctx.appendBasicBlock(mulKernel)
     builder.positionAtEnd(blck)
     let r = mulKernel.getParam(0)
     let a = mulKernel.getParam(1)
@@ -198,7 +225,7 @@ proc writeExampleAddMul(ctx: ContextRef, module: ModuleRef, addKernelName, mulKe
     builder.store(prod, r)
     builder.retVoid()
 
-    module.wrapInCallableCudaKernel((mulType, mulKernel))
+    module.tagCudaKernel(mulType, mulKernel)
 
   module.verify(AbortProcessAction)
 
@@ -228,7 +255,33 @@ type
     PTXviaLlvmNvptx
 
 proc getCudaKernel(cuMod: CUmodule, fnName: string): CUfunction =
-  check cuModuleGetFunction(result, cuMod, fnName & "_public")
+  check cuModuleGetFunction(result, cuMod, fnName[0].unsafeAddr)
+
+proc cudaDeviceInit(deviceID = 0'i32): CUdevice =
+
+  check cuInit(deviceID.uint32)
+
+  var devCount: int32
+  check cuDeviceGetCount(devCount)
+  if devCount == 0:
+    echo "cudaDeviceInit error: no devices supporting CUDA"
+    quit 1
+
+  var cuDevice: CUdevice
+  check cuDeviceGet(cuDevice, deviceID)
+  var name = newString(128)
+  check cuDeviceGetName(name[0].addr, name.len.int32, cuDevice)
+  echo "Using CUDA Device [", deviceID, "]: ", cstring(name)
+
+  var major, minor: int32
+  check cuDeviceGetAttribute(major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, cuDevice)
+  check cuDeviceGetAttribute(minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, cuDevice)
+  echo "Compute Capability: SM ", major, ".", minor
+  if major < 6:
+    echo "Error: Device ",deviceID," is not sm_60 (Pascal generation, GTX 1080) or later"
+    quit 1
+
+  return cuDevice
 
 proc main(backend: CodegenBackend) =
 
@@ -271,7 +324,7 @@ proc main(backend: CodegenBackend) =
   var cuCtx: CUcontext
   var cuMod: CUmodule
   check cuCtxCreate(cuCtx, 0, cudaDevice)
-  check cuModuleLoadData(cuMod, ptx)
+  check cuModuleLoadData(cuMod, ptx[0].unsafeAddr)
   let addKernel = cuMod.getCudaKernel(addKernelName)
   let mulKernel = cuMod.getCudaKernel(mulKernelName)
 
@@ -323,9 +376,10 @@ proc main(backend: CodegenBackend) =
   check cuCtxDestroy(cuCtx)
   cuCtx = CUcontext(nil)
 
-echo "\n\nCompilation via Nvidia NVVM\n###########################\n"
-main(PTXviaNvidiaNvvm)
-echo "\n\nEnd: Compilation via Nvidia NVVM\n################################"
+# echo "\n\nCompilation via Nvidia NVVM\n###########################\n"
+# main(PTXviaNvidiaNvvm)
+# echo "\n\nEnd: Compilation via Nvidia NVVM\n################################"
+echo "[Skip] Compilation via Nvidia NVVM, incompatibilities between LLVM IR and NVVM IR"
 
 echo "\n\nCompilation via LLVM NVPTX\n##########################\n"
 main(PTXviaLlvmNvptx)
