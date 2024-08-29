@@ -82,13 +82,13 @@ func millerLoopAddchain*(
   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 16, add = false) # 0b1101001000000001000000000000000000000000000000010000000000000000
 
 func cycl_exp_by_curve_param_div2*(
-       r: var Fp12[BLS12_381], a: Fp12[BLS12_381],
+       r: var AnyFp12[BLS12_381], a: AnyFp12[BLS12_381],
        invert = BLS12_381_pairing_ate_param_isNeg) {.meter.} =
   ## f^(x/2) with x the curve parameter
   ## For BLS12_381 f^-0xd201000000010000 = 0b1101001000000001000000000000000000000000000000010000000000000000
 
   # Squarings accumulator
-  var s{.noInit.}: Fp12[BLS12_381]
+  var s{.noInit.}: typeof(r)
 
   r.cyclotomic_exp_compressed(s, a, [16-1, 32, 9])
   s.cycl_sqr_repeated(3)
@@ -102,13 +102,13 @@ func cycl_exp_by_curve_param_div2*(
     r.cyclotomic_inv()
 
 func cycl_exp_by_curve_param*(
-       r: var Fp12[BLS12_381], a: Fp12[BLS12_381],
+       r: var AnyFp12[BLS12_381], a: AnyFp12[BLS12_381],
        invert = BLS12_381_pairing_ate_param_isNeg) {.meter.} =
   ## f^x with x the curve parameter
   ## For BLS12_381 f^-0xd201000000010000
 
   # Squarings accumulator
-  var s{.noInit.}: Fp12[BLS12_381]
+  var s{.noInit.}: typeof(r)
 
   r.cyclotomic_exp_compressed(s, a, [16, 32, 9])
   s.cycl_sqr_repeated(3)

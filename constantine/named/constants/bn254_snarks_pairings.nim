@@ -41,7 +41,7 @@ const BN254_Snarks_pairing_finalexponent* = block:
 # operations compared to NAF, and can we combine the saved EC[Fp2] accumulators?
 
 func cycl_exp_by_curve_param*(
-       r: var Fp12[BN254_Snarks], a: Fp12[BN254_Snarks],
+       r: var AnyFp12[BN254_Snarks], a: AnyFp12[BN254_Snarks],
        invert = BN254_Snarks_pairing_ate_param_isNeg) =
   ## f^u with u the curve parameter
   ## For BN254_Snarks f^0x44e992b44a6909f1
@@ -50,17 +50,17 @@ func cycl_exp_by_curve_param*(
   # addchain search -add 3622 -double 1696 "0x44e992b44a6909f1"
   var # Hopefully the compiler optimizes away unused Fp12
       # because those are huge
-    x10       {.noInit.}: Fp12[BN254_Snarks]
-    x100      {.noInit.}: Fp12[BN254_Snarks]
-    x1000     {.noInit.}: Fp12[BN254_Snarks]
-    x10000    {.noInit.}: Fp12[BN254_Snarks]
-    x10001    {.noInit.}: Fp12[BN254_Snarks]
-    x10011    {.noInit.}: Fp12[BN254_Snarks]
-    x10100    {.noInit.}: Fp12[BN254_Snarks]
-    x11001    {.noInit.}: Fp12[BN254_Snarks]
-    x100010   {.noInit.}: Fp12[BN254_Snarks]
-    x100111   {.noInit.}: Fp12[BN254_Snarks]
-    x101001   {.noInit.}: Fp12[BN254_Snarks]
+    x10       {.noInit.}: r.typeof()
+    x100      {.noInit.}: r.typeof()
+    x1000     {.noInit.}: r.typeof()
+    x10000    {.noInit.}: r.typeof()
+    x10001    {.noInit.}: r.typeof()
+    x10011    {.noInit.}: r.typeof()
+    x10100    {.noInit.}: r.typeof()
+    x11001    {.noInit.}: r.typeof()
+    x100010   {.noInit.}: r.typeof()
+    x100111   {.noInit.}: r.typeof()
+    x101001   {.noInit.}: r.typeof()
 
   x10       .cyclotomic_square(a)
   x100      .cyclotomic_square(x10)

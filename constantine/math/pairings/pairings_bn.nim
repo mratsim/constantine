@@ -48,7 +48,7 @@ export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11
 # ----------------------------------------------------------------
 
 func millerLoopGenericBN*[Name](
-       f: var Fp12[Name],
+       f: var AnyFp12[Name],
        Q: EC_ShortW_Aff[Fp2[Name], G2],
        P: EC_ShortW_Aff[Fp[Name], G1],
      ) {.meter.} =
@@ -67,7 +67,7 @@ func millerLoopGenericBN*[Name](
   f.millerCorrectionBN(T, Q, P)
 
 func millerLoopGenericBN*[Name](
-       f: var Fp12[Name],
+       f: var AnyFp12[Name],
        Qs: ptr UncheckedArray[EC_ShortW_Aff[Fp2[Name], G2]],
        Ps: ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]],
        N: int
@@ -95,7 +95,7 @@ func finalExpGeneric[Name: static Algebra](f: var Fp12[Name]) =
   f.pow_vartime(Name.pairing(finalexponent), window = 3)
 
 func pairing_bn_reference*[Name](
-       gt: var Fp12[Name],
+       gt: var AnyFp12[Name],
        P: EC_ShortW_Aff[Fp[Name], G1],
        Q: EC_ShortW_Aff[Fp2[Name], G2]) =
   ## Compute the optimal Ate Pairing for BN curves
@@ -109,7 +109,7 @@ func pairing_bn_reference*[Name](
 # Optimized pairing implementation
 # ----------------------------------------------------------------
 
-func finalExpHard_BN*[Name: static Algebra](f: var Fp12[Name]) {.meter.} =
+func finalExpHard_BN*[Name: static Algebra](f: var AnyFp12[Name]) {.meter.} =
   ## Hard part of the final exponentiation
   ## Specialized for BN curves
   ##
@@ -125,7 +125,7 @@ func finalExpHard_BN*[Name: static Algebra](f: var Fp12[Name]) {.meter.} =
   # memory saving optimization
   # as that variant has an exponentiation by -2u-1
   # that requires another addition chain
-  var t0 {.noInit.}, t1 {.noinit.}, t2 {.noinit.}, t3 {.noinit.}, t4 {.noinit.}: Fp12[Name]
+  var t0 {.noInit.}, t1 {.noinit.}, t2 {.noinit.}, t3 {.noinit.}, t4 {.noinit.}: typeof(f)
 
   t0.cycl_exp_by_curve_param(f, invert = false)  # t0 = f^|u|
   t0.cyclotomic_square()       # t0 = f^2|u|
@@ -162,7 +162,7 @@ func finalExpHard_BN*[Name: static Algebra](f: var Fp12[Name]) {.meter.} =
   f *= t0                      # r = f^(λ₀ + λ₁p + λ₂p² + λ₃p³) = f^((p⁴-p²+1)/r)
 
 func pairing_bn*[Name](
-       gt: var Fp12[Name],
+       gt: var AnyFp12[Name],
        P: EC_ShortW_Aff[Fp[Name], G1],
        Q: EC_ShortW_Aff[Fp2[Name], G2]) {.meter.} =
   ## Compute the optimal Ate Pairing for BN curves
@@ -176,7 +176,7 @@ func pairing_bn*[Name](
   gt.finalExpHard_BN()
 
 func pairing_bn*[Name: static Algebra](
-       gt: var Fp12[Name],
+       gt: var AnyFp12[Name],
        Ps: ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]],
        Qs: ptr UncheckedArray[EC_ShortW_Aff[Fp2[Name], G2]],
        len: int) {.meter.} =
@@ -193,7 +193,7 @@ func pairing_bn*[Name: static Algebra](
   gt.finalExpHard_BN()
 
 func pairing_bn*[Name: static Algebra](
-       gt: var Fp12[Name],
+       gt: var AnyFp12[Name],
        Ps: openArray[EC_ShortW_Aff[Fp[Name], G1]],
        Qs: openArray[EC_ShortW_Aff[Fp2[Name], G2]]) {.inline.} =
   ## Compute the optimal Ate Pairing for BLS12 curves

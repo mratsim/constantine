@@ -76,7 +76,7 @@ func millerLoopAddchain*(
   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 1)               # 0b100001010000100011
   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 46, add = true)  # 0b1000010100001000110000000000000000000000000000000000000000000001
 
-func cycl_exp_by_curve_param*(r: var Fp12[BLS12_377], a: Fp12[BLS12_377], invert = BLS12_377_pairing_ate_param_isNeg) =
+func cycl_exp_by_curve_param*(r: var AnyFp12[BLS12_377], a: AnyFp12[BLS12_377], invert = BLS12_377_pairing_ate_param_isNeg) =
   ## f^x with x the curve parameter
   ## For BLS12_377 f^0x8508c00000000001
   r.cycl_sqr_repeated(a, 5)

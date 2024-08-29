@@ -13,7 +13,7 @@ import
   constantine/math/extension_fields,
   constantine/named/zoo_pairings
 
-func pairing*[Name: static Algebra](gt: var Fp12[Name], P, Q: auto) {.inline.} =
+func pairing*[Name: static Algebra](gt: var AnyFp12[Name], P, Q: auto) {.inline.} =
   when family(Name) == BarretoNaehrig:
     pairing_bn(gt, P, Q)
   elif family(Name) == BarretoLynnScott:
@@ -21,7 +21,7 @@ func pairing*[Name: static Algebra](gt: var Fp12[Name], P, Q: auto) {.inline.} =
   else:
     {.error: "Pairing not implemented for " & $Name.}
 
-func millerLoop*[Name: static Algebra](gt: var Fp12[Name], Q, P: auto, n: int) {.inline.} =
+func millerLoop*[Name: static Algebra](gt: var AnyFp12[Name], Q, P: auto, n: int) {.inline.} =
   when Name == BN254_Snarks:
     gt.millerLoopGenericBN(Q, P, n)
   else:
@@ -29,7 +29,7 @@ func millerLoop*[Name: static Algebra](gt: var Fp12[Name], Q, P: auto, n: int) {
 
 export finalExpEasy
 
-func finalExpHard*[Name: static Algebra](gt: var Fp12[Name]) {.inline.} =
+func finalExpHard*[Name: static Algebra](gt: var AnyFp12[Name]) {.inline.} =
   when family(Name) == BarretoNaehrig:
     gt.finalExpHard_BN()
   elif family(Name) == BarretoLynnScott:
@@ -37,6 +37,6 @@ func finalExpHard*[Name: static Algebra](gt: var Fp12[Name]) {.inline.} =
   else:
     {.error: "Final Exponentiation not implemented for " & $Name.}
 
-func finalExp*[Name: static Algebra](gt: var Fp12[Name]){.inline.} =
+func finalExp*[Name: static Algebra](gt: var AnyFp12[Name]){.inline.} =
   gt.finalExpEasy()
   gt.finalExpHard()
