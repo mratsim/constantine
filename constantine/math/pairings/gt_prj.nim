@@ -17,7 +17,7 @@ import constantine/math/io/io_extfields
 
 # ############################################################
 #                                                            #
-#             Projective 𝔾ₜ & Extension Fields                    #
+#             Projective 𝔾ₜ & Extension Fields               #
 #                                                            #
 # ############################################################
 
@@ -235,3 +235,129 @@ func square_prj*[Name: static Algebra](
   r.c1 += rr[1]
 
   r.c2 = rr[2]           # 5S+17A+2D+1m+3i
+
+# Torus-based Cryptography for 𝔾ₜ
+# ===============================
+#
+# See paper XXX
+#
+# T₂(𝔽p6) compression
+# -------------------
+#
+# By moving to a torus we can do 𝔾ₜ with just a single 𝔽p6 element
+# similar to elliptic curve, to delay costly inversion we keep track an accumulator
+# variable as well.
+# We use (x, z) coordinates for this projective coordinate system
+#
+# T₆(𝔽p2) compression
+# -------------------
+#
+# Besides a factor 2 compression, we can actually do a factor 3 compression
+# for 𝔾ₜ with the following direct 𝔽p2 -> 𝔽p12 towering:
+#
+#   ɑ = a + bv = (a₀+a₁u+a₂u²) + (b₀+b₁u+b₂u²)v
+#
+# can be compressed into the representation
+#   c = -(a+1)/b = c₀+c₁u+c₂u²
+# with 3c₀c₁ - 3(t+1)c₂ - 1 = 0
+#
+# We do not use it for compute but it's an option for serialization.
+
+type
+  T2Prj*[F] {.borrow: `.`.} = distinct QuadraticExt[F]
+    ## Torus of degree 2 over F
+    ##
+    ## From a GT element of the form
+    ## a + bv
+    ##
+    ## Store x = -(a+1)/b
+    ## and   z = 1 for affine
+
+  T2Aff*[F] = distinct F
+    ## Torus of degree 2 over F
+    ##
+    ## From a GT element of the form
+    ## a + bv
+    ##
+    ## Store x = -(a+1)/b
+
+template x[F](a: T2Prj[F]): F = a.coords[0]
+template z[F](a: T2Prj[F]): F = a.coords[1]
+
+proc fromGT_vartime*[F](r: var T2Aff[F], a: QuadraticExt[F]) =
+  var t {.noInit.}, one {.noInit.}: F
+  t.inv_vartime(a.c1)
+  one.setOne()
+  F(r).sum(a.c0, one)
+  F(r).neg()
+  F(r) *= t
+
+proc fromGT_vartime*[F](r: var T2Prj[F], a: QuadraticExt[F]) =
+  var t {.noInit.}: F
+  t.inv_vartime(a.c1)
+  r.z.setOne()
+  r.x.sum(a.c0, r.z)
+  r.x.neg()
+  r.x *= t
+
+proc fromTorus2_vartime*[F](r: var QuadraticExt[F], a: T2Aff[F]) =
+  var num {.noInit.}, den {.noInit.}: typeof(r)
+
+  num.c0 = F a
+  num.c1.setMinusOne()
+  den.c0 = F a
+  den.c1.setOne()
+  den.inv_vartime()
+  r.prod(num, den)
+
+proc fromTorus2_vartime*[F](r: var QuadraticExt[F], a: T2Prj[F]) =
+  type QF = QuadraticExt[F]
+
+  var t0 {.noInit.}, t1 {.noInit.}: QF
+  t0.conj(QF(a))
+  t1.inv_vartime(t0)
+  t1.conj()
+
+  r.prod(t0, t1)
+
+proc mixedProd*[F](r: var T2Prj[F], a: T2Prj[F], b: T2Aff[F]) =
+  ## Multiplication on a torus.
+  ## b MUST be in the cyclotomic subgroup
+
+  var u0 {.noInit.}, u1 {.noInit.}: F
+  u0.prod(a.x, F b)
+  u1.prod(a.z, F b)
+
+  r.x.prod(a.z, NonResidue)
+  r.x += u0
+  r.z.sum(u1, a.x)
+
+proc affineProd*[F](r: var T2Prj[F], a, b: T2Aff[F]) =
+  r.z.sum(F a, F b)
+  r.x.prod(F a, F b)
+
+  var snr {.noInit.}: typeof(r.x.c1)
+  snr.setOne()
+  r.x.c1 += snr
+
+proc affineSquare*[F](r: var T2Prj[F], a: T2Aff[F]) =
+
+  r.z.double(F a)
+  r.x.square(F a)
+
+  var snr {.noInit.}: typeof(r.x.c1)
+  snr.setOne()
+  r.x.c1 += snr
+
+proc prod*[F](r: var T2Prj[F], a, b: T2Prj[F]) {.inline.} =
+  type QF = QuadraticExt[F]
+  QF(r).prod(QF a, QF b)
+
+proc square*[F](r: var T2Prj[F], a, b: T2Prj[F]) {.inline.} =
+  type QF = QuadraticExt[F]
+  QF(r).square(QF a)
+
+proc inv*[F](r: var T2Prj[F], a: T2Prj[F]) {.inline.} =
+  # Cyclotomic inversion on a Torus
+  r.x.neg(a.x)
+  r.z = a.z

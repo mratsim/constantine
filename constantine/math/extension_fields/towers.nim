@@ -59,6 +59,11 @@ type
     CubicExt[Fp4[Name]]
     # QuadraticExt[Fp6[Name]]
 
+  AnyFp12*[Name: static Algebra] =
+    QuadraticExt[Fp6[Name]] or
+    CubicExt[Fp4[Name]]
+    ## Towering agnostic Fp12
+
 template c0*(a: ExtensionField): auto =
   a.coords[0]
 template c1*(a: ExtensionField): auto =

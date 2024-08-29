@@ -84,7 +84,7 @@ func millerLoopAddchain*(
     f.millerCorrectionBN(Ts[i], Qs[i], Ps[i])
 
 func cycl_exp_by_curve_param*(
-       r: var Fp12[BN254_Nogami], a: Fp12[BN254_Nogami],
+       r: var AnyFp12[BN254_Nogami], a: AnyFp12[BN254_Nogami],
        invert = BN254_Nogami_pairing_ate_param_isNeg) =
   ## f^u with u the curve parameter
   ## For BN254_Nogami f^-0x4080000000000001 = 0b100000010000000000000000000000000000000000000000000000000000001
