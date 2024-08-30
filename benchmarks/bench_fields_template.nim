@@ -40,7 +40,11 @@ macro fixFieldDisplay(T: typedesc): untyped =
   # we get the Curve ID instead of the curve name.
   let instantiated = T.getTypeInst()
   var name = $instantiated[1][0] # 𝔽p
-  name.add "[" & $Algebra(instantiated[1][1].intVal) & "]"
+  if instantiated[1][1].kind == nnkIntLit:
+    name.add "[" & $Algebra(instantiated[1][1].intVal) & "]"
+  else:
+    name.add "[" & $instantiated[1][1][0] # QuadraticExt[𝔽p6[
+    name.add "[" & $Algebra(instantiated[1][1][1].intVal) & "]]"
   result = newLit name
 
 template bench*(op: string, T: typedesc, iters: int, body: untyped): untyped =

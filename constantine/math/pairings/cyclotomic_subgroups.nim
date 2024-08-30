@@ -425,7 +425,7 @@ func isInCyclotomicSubgroup*[Name](a: Fp6[Name]): SecretBool =
 func isInCyclotomicSubgroup*[Name](a: AnyFp12[Name]): SecretBool =
   ## Check if a ∈ Fpⁿ: a^Φₙ(p) = 1
   ## Φ₁₂(p) = p⁴-p²+1
-  var t{.noInit.}, p2{.noInit.}: AnyFp12[Name]
+  var t{.noInit.}, p2{.noInit.}: typeof(a)
 
   p2.frobenius_map(a, 2) # a^(p²)
   t.frobenius_map(p2, 2) # a^(p⁴)
