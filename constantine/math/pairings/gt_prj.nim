@@ -361,3 +361,88 @@ proc inv*[F](r: var T2Prj[F], a: T2Prj[F]) {.inline.} =
   # Cyclotomic inversion on a Torus
   r.x.neg(a.x)
   r.z = a.z
+
+# Batched conversions
+# -------------------
+
+proc batchFromGT_vartime*[F](dst: var openArray[T2Aff[F]],
+                             src: openArray[QuadraticExt[F]]) =
+  ## Batch conversion to Torus
+  ##
+  ## This requires all `src` to be different from 0.
+  ## This is always true for elements in 𝔾ₜ.
+  ##
+  ## This replaces all inversions but one (on 𝔽p6 for 𝔾ₜ in 𝔽p12)
+  ## by 3 multiplications.
+  ##
+  ## Note: on 𝔽p6, the ratio of inversion I/M is about 3.8
+  ## so this is about a ~25% speedup
+
+  debug: doAssert dst.len == src.len
+
+  F(dst[0]) = src[0].c1
+  for i in 1 ..< dst.len:
+    F(dst[i]).prod(F dst[i-1], src[i].c1)
+
+  var accInv {.noInit.}: F
+  accInv.inv_vartime(F dst[dst.len-1])
+
+  for i in countdown(dst.len-1, 1):
+    # Compute inverse
+    F(dst[i]).prod(accInv, F dst[i-1])
+    # Next iteration
+    accInv *= src[i].c1
+
+  F(dst[0]) = accInv
+
+  var minusOne {.noInit.}: F
+  minusOne.setMinusOne()
+
+  for i in 0 ..< dst.len:
+    var t {.noInit.}: F
+    t.diff(minusOne, src[i].c0)
+    F(dst[i]) *= t
+
+proc batchFromTorus2_vartime*[F](dst: var openArray[QuadraticExt[F]],
+                                 src: openArray[T2Prj[F]]) =
+  ## Batch conversion to 𝔾ₜ
+  ##
+  ## This requires all `src` to be different from 0.
+  ## This is always true for elements in 𝔾ₜ.
+  ##
+  ## This replaces all inversions but one (on 𝔽p12 for 𝔾ₜ in 𝔽p12)
+  ## by 3 multiplications.
+  ##
+  ## Note: on 𝔽p12, the ratio of inversion I/M is about 3
+  ## so this has likely no speedup, and is not trivial to parallelize
+  debug: doAssert dst.len == src.len
+
+  # We consciously choose to recompute conj(src[i]) to avoid an allocation
+  # On BLS12-381, src[i] elements are 12*48 bytes = 576 bytes
+  type QF = QuadraticExt[F]
+
+  dst[0].conj(QF src[0])
+  for i in 1 ..< dst.len:
+    var ti {.noInit.}: QF
+    ti.conj(QF src[i])
+    dst[i].prod(dst[i-1], ti)
+
+  var accInv{.noInit.}: QF
+  accInv.inv(dst[dst.len-1])
+
+  for i in countdown(dst.len-1, 1):
+    # Compute inverse
+    dst[i].prod(accInv, dst[i-1])
+    # Conjugate it
+    dst[i].conj()
+    # Next iteration
+    var ti {.noInit.}: QF
+    ti.conj(QF src[i])
+    accInv *= ti
+    # Finalize conversion
+    dst[i] *= ti
+
+  dst[0].conj(accInv)
+  var t {.noInit.}: QF
+  t.conj(QF src[0])
+  dst[0] *= t

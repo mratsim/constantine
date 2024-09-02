@@ -17,6 +17,7 @@ import
   ./bench_blueprint
 
 const Iters = 100_000
+const BatchIters = 1_000
 const AvailableCurves = [
   BLS12_381,
   # BN254_Snarks
@@ -125,6 +126,43 @@ proc gtFromTorus(C: static Algebra, iters: int) =
   bench("𝔾ₜ <- T₂(𝔽p6) conversion", Quad[Fp6[C]], iters):
     r.fromTorus2_vartime(t)
 
+proc torusFromGtMultiNaive(C: static Algebra, batchSize, iters: int) =
+  var r = newSeq[T2Aff[Fp6[C]]](batchSize)
+  var xx = newSeq[Quad[Fp6[C]]](batchSize)
+  for x in xx.mitems():
+    x = rng.random_gt(Quad[Fp6[C]])
+  bench("T₂(𝔽p6) <- 𝔾ₜ multi-conversion naive - " & $batchSize, Quad[Fp6[C]], iters):
+    for i in 0 ..< batchSize:
+      r[i].fromGT_vartime(xx[i])
+
+proc torusFromGtMultiBatch(C: static Algebra, batchSize, iters: int) =
+  var r = newSeq[T2Aff[Fp6[C]]](batchSize)
+  var xx = newSeq[Quad[Fp6[C]]](batchSize)
+  for x in xx.mitems():
+    x = rng.random_gt(Quad[Fp6[C]])
+  bench("T₂(𝔽p6) <- 𝔾ₜ multi-conversion batched - " & $batchSize, Quad[Fp6[C]], iters):
+    r.batchFromGT_vartime(xx)
+
+proc gtFromTorus2MultiNaive(C: static Algebra, batchSize, iters: int) =
+  var tt = newSeq[T2Prj[Fp6[C]]](batchSize)
+  var aa = newSeq[Quad[Fp6[C]]](batchSize)
+  for a in aa.mitems():
+    a = rng.random_gt(Quad[Fp6[C]])
+  for i in 0 ..< batchSize:
+    tt[i].fromGT_vartime(aa[i])
+  bench("𝔾ₜ <- T₂(𝔽p6) multi-conversion naive - " & $batchSize, Quad[Fp6[C]], iters):
+    aa.batchfromTorus2_vartime(tt)
+
+proc gtFromTorus2MultiBatch(C: static Algebra, batchSize, iters: int) =
+  var tt = newSeq[T2Aff[Fp6[C]]](batchSize)
+  var aa = newSeq[Quad[Fp6[C]]](batchSize)
+  for a in aa.mitems():
+    a = rng.random_gt(Quad[Fp6[C]])
+  tt.batchFromGT_vartime(aa)
+  bench("𝔾ₜ <- T₂(𝔽p6) multi-conversion batched - " & $batchSize, Quad[Fp6[C]], iters):
+    for i in 0 ..< batchSize:
+      aa[i].fromTorus2_vartime(tt[i])
+
 proc mulT2_aff(C: static Algebra, iters: int) =
   let a = rng.random_gt(Quad[Fp6[C]])
   let b = rng.random_gt(Quad[Fp6[C]])
@@ -204,6 +242,12 @@ proc main() =
     separator()
     torusFromGt(curve, Iters)
     gtFromTorus(curve, Iters)
+    separator()
+    torusFromGtMultiNaive(curve, batchSize = 256, BatchIters)
+    torusFromGtMultiBatch(curve, batchSize = 256, BatchIters)
+    gtFromTorus2MultiNaive(curve, batchSize = 256, BatchIters)
+    gtFromTorus2MultiBatch(curve, batchSize = 256, BatchIters)
+    separator()
     mulT2_aff(curve, Iters)
     mulT2_mix(curve, Iters)
     mulT2_prj(curve, Iters)
