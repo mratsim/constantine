@@ -32,6 +32,8 @@ echo "𝔾ₜ projective", " xoshiro512** seed: ", seed
 
 
 const Fp6iters = 10
+const BatchIters = 1
+const BatchSize = 256
 
 suite "𝔽p6 projective over 𝔽p2":
   test "Select check from Magma":
@@ -288,6 +290,66 @@ suite "Torus-based Cryptography for 𝔾ₜ, T₂(𝔽p6) compression":
         r.fromTorus2_vartime(r_tprj)
 
         doAssert bool r == r_gt
+
+    test(BN254_Nogami)
+    # test(BN254_Snarks)
+    test(BLS12_381)
+
+  # ====================================================================================
+
+  test "Batch conversion: T₂(𝔽p6) <- 𝔾ₜ":
+    proc test(Name: static Algebra) =
+      for i in 0 ..< BatchIters:
+        type F6 = Fp6[Name]
+        type MyFp12 = QuadraticExt[F6] # Even if we choose to Fp2 -> Fp4 -> Fp12
+                                              # we want this test to pass
+
+        var aa = newSeq[MyFp12](BatchSize)
+        for a in aa.mitems():
+          a = rng.random_gt(MyFp12)
+
+        var r_batch = newSeq[T2Aff[F6]](BatchSize)
+        var r_expected = newSeq[T2Aff[F6]](BatchSize)
+
+        for i in 0 ..< BatchSize:
+          r_expected[i].fromGT_vartime(aa[i])
+
+        r_batch.batchFromGT_vartime(aa)
+
+        for i in 0 ..< BatchSize:
+          doAssert bool(F6(r_batch[i]) == F6(r_expected[i])), block:
+            "\niteration " & $i & ":\n" &
+            "  found: " & F6(r_batch[i]).toHex(indent = 12) & "\n" &
+            "  expected: " & F6(r_expected[i]).toHex(indent = 12) & "\n"
+
+    test(BN254_Nogami)
+    # test(BN254_Snarks)
+    test(BLS12_381)
+
+  test "Batch conversion: 𝔾ₜ <- T₂(𝔽p6)":
+    proc test(Name: static Algebra) =
+      for i in 0 ..< BatchIters:
+        type F6 = Fp6[Name]
+        type MyFp12 = QuadraticExt[F6] # Even if we choose to Fp2 -> Fp4 -> Fp12
+                                              # we want this test to pass
+
+        var aa = newSeq[MyFp12](BatchSize)
+        for a in aa.mitems():
+          a = rng.random_gt(MyFp12)
+
+        var t2s = newSeq[T2Prj[F6]](BatchSize)
+
+        for i in 0 ..< BatchSize:
+          t2s[i].fromGT_vartime(aa[i])
+
+        var aa_batch = newSeq[MyFp12](BatchSize)
+        aa_batch.batchFromTorus2_vartime(t2s)
+
+        for i in 0 ..< BatchSize:
+          doAssert bool(aa[i] == aa_batch[i]), block:
+            "\niteration " & $i & ":\n" &
+            "  found: " & aa_batch[i].toHex(indent = 12) & "\n" &
+            "  expected: " & aa[i].toHex(indent = 12) & "\n"
 
     test(BN254_Nogami)
     # test(BN254_Snarks)
