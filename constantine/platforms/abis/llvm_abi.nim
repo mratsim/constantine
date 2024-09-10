@@ -760,6 +760,19 @@ proc getInsertBlock(builder: BuilderRef): BasicBlockRef {.used, importc: "LLVMGe
 proc getBasicBlockParent*(blck: BasicBlockRef): ValueRef {.importc: "LLVMGetBasicBlockParent".}
   ## Obtains the function to which a basic block belongs
 
+proc phi*(builder: BuilderRef, ty: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildPhi".}
+proc condBr*(builder: BuilderRef, ifCond: ValueRef, then, els: BasicBlockRef) {.importc: "LLVMBuildCondBr".}
+proc br*(builder: BuilderRef, dest: BasicBlockRef) {.importc: "LLVMBuildBr".}
+proc addIncoming*(phi: ValueRef, incomingVals: ptr UncheckedArray[ValueRef], incomingBlks: ptr UncheckedArray[BasicBlockRef], count: uint32) {.importc: "LLVMAddIncoming".}
+
+proc addIncoming*(phi: ValueRef, incomingVal: ValueRef, incomingBlk: BasicBlockRef) =
+  let iv = [incomingVal]; let ib = [incomingBlk]
+  ## NOTE: Could of course also just mark `addIncoming` as receiving `ptr T` instead
+  template toPOA(x): untyped =
+    type T = typeof(x[0])
+    cast[ptr UncheckedArray[T]](addr x)
+  phi.addIncoming(toPOA iv, toPOA ib, 1)
+
 # Inline Assembly
 # ------------------------------------------------------------
 proc getInlineAsm*(
