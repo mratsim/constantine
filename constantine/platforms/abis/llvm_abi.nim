@@ -725,6 +725,8 @@ type
     InlineAsmDialectATT
     InlineAsmDialectIntel
 
+proc isNil*(v: BasicBlockRef): bool {.borrow.}
+
 # "<llvm-c/Core.h>"
 
 # Instantiation
