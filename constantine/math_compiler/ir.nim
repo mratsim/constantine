@@ -460,7 +460,7 @@ template llvmFnDef[N: static int](
   ## Function parameters are available with the `llvmParams` magic variable
   let paramsTys = asy.wrapTypesForFnCall(paramTypes)
 
-  var fn = asy.module.getFunction(cstring name)
+  var fn {.inject.} = asy.module.getFunction(cstring name)
   if fn.pointer.isNil():
     var savedLoc = asy.br.getInsertBlock()
 
