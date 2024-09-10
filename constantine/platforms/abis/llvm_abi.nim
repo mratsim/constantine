@@ -795,10 +795,10 @@ proc subNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): Value
 proc subNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNUWSub".}
   ## Substraction No Unsigned Wrap, i.e. guaranteed to not overflow
 
-proc neg*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNeg".}
-proc negNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNSWNeg".}
+proc neg*(builder: BuilderRef, operand: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNeg".}
+proc negNSW*(builder: BuilderRef, operand: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNSWNeg".}
   ## Negation No Signed Wrap, i.e. guaranteed to not overflow
-proc negNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNUWNeg".}
+proc negNUW*(builder: BuilderRef, operand: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNUWNeg".}
   ## Negation No Unsigned Wrap, i.e. guaranteed to not overflow
 
 proc mul*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildMul".}
