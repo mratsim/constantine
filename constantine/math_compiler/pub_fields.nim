@@ -30,7 +30,7 @@ proc genFpAdd*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   return name
 
 proc genFpSub*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
-  ## Generate a public field substraction proc
+  ## Generate a public field subtraction proc
   ## with signature
   ##   void name(FieldType r, FieldType a, FieldType b)
   ## with r the result and a, b the operands
@@ -47,7 +47,7 @@ proc genFpSub*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   return name
 
 proc genFpMul*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
-  ## Generate a public field substraction proc
+  ## Generate a public field multiplication proc
   ## with signature
   ##   void name(FieldType r, FieldType a, FieldType b)
   ## with r the result and a, b the operands

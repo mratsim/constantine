@@ -49,7 +49,7 @@ template gen_binop_test(
     # Codegen
     # -------------------------
     let name = if field is Fp: $Name & "_fp"
-              else: $Name & "_fr"
+               else: $Name & "_fr"
     let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & name & $wordSize))
     let fd = asy.ctx.configureField(
       name, field.bits(),
