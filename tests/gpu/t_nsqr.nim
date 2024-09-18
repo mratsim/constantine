@@ -41,7 +41,7 @@ proc execNsqr*[T](jitFn: CUfunction, r: var T; a: T) =
 
   # We assume that all arguments are passed by reference in the Cuda kernel, hence the need for GPU alloc.
 
-  var rGPU, aGPU, bGPU, cGPU: CUdeviceptr
+  var rGPU, aGPU: CUdeviceptr
   check cuMemAlloc(rGPU, csize_t sizeof(r))
   check cuMemAlloc(aGPU, csize_t sizeof(a))
 
@@ -61,8 +61,6 @@ proc execNsqr*[T](jitFn: CUfunction, r: var T; a: T) =
 
   check cuMemFree(rGPU)
   check cuMemFree(aGPU)
-  check cuMemFree(bGPU)
-  check cuMemFree(cGPU)
 
 # Init LLVM
 # -------------------------
