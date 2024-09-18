@@ -107,21 +107,37 @@ proc genFpSub*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
   return name
 
+proc mul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) {.used.} =
+  ## Generate an internal field multiplication proc
+  ## with signature
+  ##   void name(FieldType r, FieldType a, FieldType b)
+  ## with r the result and a, b the operands
+  ## and return the corresponding name to call it
+  let name = fd.name & "_mul_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a, b]),
+          {kHot}):
+    tagParameter(1, "sret")
+    let M = asy.getModulusPtr(fd)
+
+    let (ri, ai, bi) = llvmParams
+    asy.mtymul(fd, ri, ai, bi, M) # TODO: for now we only suport Montgomery representation
+    asy.br.retVoid()
+  asy.callFn(name, [r, a, b])
+
 proc genFpMul*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## Generate a public field multiplication proc
   ## with signature
   ##   void name(FieldType r, FieldType a, FieldType b)
   ## with r the result and a, b the operands
   ## and return the corresponding name to call it
-
   let name = fd.name & "_mul"
   asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy]):
     let M = asy.getModulusPtr(fd)
-
     let (r, a, b) = llvmParams
-    asy.mtymul(fd, r, a, b, M) # TODO: for now we only suport Montgomery representation
+    asy.mul_internal(fd, r, a, b)
     asy.br.retVoid()
-
   return name
 
 proc ccopy_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a, b, c: ValueRef) {.used.} =
