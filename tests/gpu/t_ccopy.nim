@@ -15,7 +15,7 @@ import
   constantine/platforms/llvm/llvm,
   constantine/math_compiler/[ir, pub_fields, codegen_nvidia]
 
-proc execCond*[T](jitFn: CUfunction, r: var T; a, b: T; c: SecretBool) =
+proc execCond*[T](jitFn: CUfunction, r: var T; a: T; c: SecretBool) =
   ## Execute a binary operation in the form r <- op(a, b, c) with `c` a condition
   ## on Nvidia GPU
   # The execution wrapper provided are mostly for testing and debugging low-level kernels
@@ -44,13 +44,12 @@ proc execCond*[T](jitFn: CUfunction, r: var T; a, b: T; c: SecretBool) =
   var rGPU, aGPU, bGPU, cGPU: CUdeviceptr
   check cuMemAlloc(rGPU, csize_t sizeof(r))
   check cuMemAlloc(aGPU, csize_t sizeof(a))
-  check cuMemAlloc(bGPU, csize_t sizeof(b))
 
   echo "The secret bool is ? ", c.bool
+  check cuMemcpyHtoD(rGPU, r.addr, csize_t sizeof(r))
   check cuMemcpyHtoD(aGPU, a.addr, csize_t sizeof(a))
-  check cuMemcpyHtoD(bGPU, b.addr, csize_t sizeof(b))
 
-  let params = [pointer(rGPU.addr), pointer(aGPU.addr), pointer(bGPU.addr), pointer(c.addr)]
+  let params = [pointer(rGPU.addr), pointer(aGPU.addr), pointer(c.addr)]
 
   check cuLaunchKernel(
           jitFn,
@@ -131,11 +130,11 @@ proc testName[Name: static Algebra](field: type FF[Name], wordSize: int, a, b: F
   template executeCompare(cond): untyped {.dirty.} =
     var rCPU, rGPU: field
     rCPU = a
-    rGPU = a # irrelevant for CUDA
+    rGPU = a
 
     rCPU.ccopy(b, SecretBool(cond))
 
-    kernel.execCond(rGPU, a, b, cond)
+    kernel.execCond(rGPU, b, cond)
 
     echo rCPU.toHex()
     echo rGPU.toHex()
