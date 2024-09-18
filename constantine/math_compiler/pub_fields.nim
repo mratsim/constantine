@@ -238,19 +238,52 @@ proc genFpNsqr*(asy: Assembler_LLVM, fd: FieldDescriptor, count: int): string =
     asy.nsqr_internal(fd, r, a, count)
     asy.br.retVoid()
   return name
+
+proc isZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} =
+  ## Generate an internal field isZero proc
+  ## with signature
+  ##   void name(*bool r, FieldType a)
+  ## with r the result and a the operand
+  ## and return the corresponding name to call it
+  let name = fd.name & "_isZero_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a]),
+          {kHot}):
+    tagParameter(1, "sret")
     let M = asy.getModulusPtr(fd)
 
-    let rA = asy.asArray(r, fd.fieldTy)
-    let aA = asy.asArray(a, fd.fieldTy)
-    for i in 0 ..< fd.numWords:
-      rA[i] = aA[i]
+    let (ri, ai) = llvmParams
+    let aA = asy.asArray(ai, fd.fieldTy)
 
-    # `r` now stores `a`
-    for i in countdown(count, 1):
-      # `mtymul` does not touch `r` until the end to store the result. It uses a temporary
-      # buffer internally. So we can just pass `r` 3 times!
-      asy.mtymul(fd, r, r, r, M)
+    # Determine if `a == 0`
+    ## XXX: Make this work, pass number to bool as return
+    ## Then we can use this *maybe* in ~neg~ above!
+    var isZero = aA[0]
+    for i in 1 ..< fd.numWords:
+      isZero = asy.br.`or`(isZero, aA[i])
 
+    # create an int1 bool indicating if isZero is not zero: `notZero = isZero != 0`
+    let cZeroW = constInt(fd.wordTy, 0)
+    let isZeroI1 = asy.br.icmp(kEQ, isZero, cZeroW)
+
+    asy.store(ri, isZeroI1)
+    asy.br.retVoid()
+
+  asy.callFn(name, [r, a])
+
+proc genFpIsZero*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
+  ## Generate a public field isZero proc
+  ## with signature
+  ##   void name(*bool r, FieldType a)
+  ## with r the result and a the operand
+  ## and return the corresponding name to call it
+
+  let name = fd.name & "_isZero"
+  let ptrBool = pointer_t(asy.ctx.int1_t())
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [ptrBool, fd.fieldTy]):
+    let (r, a) = llvmParams
+    asy.isZero_internal(fd, r, a)
     asy.br.retVoid()
 
   return name
