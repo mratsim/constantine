@@ -226,29 +226,47 @@ proc genFpNeg*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
   return name
 
-proc genFpCNeg*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
-  ## Generate a conditional public field negation
+proc cneg_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef) {.used.} =
+  ## Generate an internal conditional out of place field negation
   ## with signature
   ##   `void name(FieldType r, FieldType a, bool condition)`
   ## with `r` the resulting negated field element.
+  ## The negation is only performed if `condition` is `true`.
   ##
   ## Returns the corresponding name to call it
-  let name = fd.name & "_cneg"
+  let name = fd.name & "_cneg_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a, c]),
+          {kHot}):
 
-  let fnNeg = asy.genFpNeg(fd)
-  let fnCcopy = asy.genFpCcopy(fd)
-
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int1_t()]):
-    let (r, a, c) = llvmParams
+    tagParameter(1, "sret")
+    let (ri, ai, ci) = llvmParams
     let M = asy.getModulusPtr(fd)
 
     # first call the regular negation
-    asy.neg_internal(fd, r, a)
+    asy.neg_internal(fd, ri, ai)
     # now ccopy
-    asy.ccopy_internal(fd, r, a, r, c)
+    asy.ccopy_internal(fd, ri, ai, asy.br.`not`(ci))
 
     asy.br.retVoid()
 
+  asy.callFn(name, [r, a, c])
+
+
+proc genFpCNeg*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
+  ## Generate an internal conditional out of place field negation
+  ## with signature
+  ##   `void name(FieldType r, FieldType a, bool condition)`
+  ## with `r` the resulting negated field element.
+  ## The negation is only performed if `condition` is `true`.
+  ##
+  ## Returns the corresponding name to call it
+  let name = fd.name & "_cneg"
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int1_t()]):
+    let (r, a, c) = llvmParams
+    asy.cneg_internal(fd, r, a, c)
+    asy.br.retVoid()
   return name
 
 template genCountdownLoop(asy: Assembler_LLVM, fn, initialValue: ValueRef, body: untyped): untyped =
