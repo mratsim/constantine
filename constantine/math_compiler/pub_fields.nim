@@ -69,52 +69,51 @@ proc genFpMul*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
   return name
 
-proc ccopy_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, c: ValueRef) {.used.} =
+proc ccopy_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a, b, c: ValueRef) {.used.} =
   ## Generate an internal field conditional copy proc
   ## with signature
-  ##   `void name(FieldType r, FieldType a, FieldType b, bool condition)`
-  ## with `r` the resulting field element, `a` and `b` field field elements.
-  ## If `condition` is `true`:  `b` is copied into `r`
-  ## if `condition` is `false`: `a` is copied into `r`
+  ##   `void name(FieldType a, FieldType b, bool condition)`
+  ## with `a` and `b` field field elements and `condition`.
+  ## If `condition` is `true`:  `b` is copied into `a`
+  ## if `condition` is `false`: `a` is left unmodified.
   ##
   ## Generates a call, so that we one can use this proc as part of another (public)
   ## procedure.
   let name = fd.name & "_ccopy_internal"
   asy.llvmInternalFnDef(
           name, SectionName,
-          asy.void_t, toTypes([r, a, b, c]),
+          asy.void_t, toTypes([a, b, c]),
           {kHot}):
 
     tagParameter(1, "sret")
-    let (ri, ai, bi, condition) = llvmParams
+    let (ai, bi, condition) = llvmParams
     # Assuming fd.numWords is the number of limbs in the field element
     let aA = asy.asArray(ai, fd.fieldTy)
     let bA = asy.asArray(bi, fd.fieldTy)
-    let rA = asy.asArray(ri, fd.fieldTy)
 
     for i in 0 ..< fd.numWords:
       # `select` uses `bA` if `condition == true`, else `aA`
       ## XXX: Could also use nvidia PTX `slct` instead?
       let resultLimb = asy.br.select(condition, bA[i], aA[i])
-      rA[i] = resultLimb
+      aA[i] = resultLimb
 
     asy.br.retVoid()
-  asy.callFn(name, [r, a, b, c])
+  asy.callFn(name, [a, b, c])
 
 proc genFpCcopy*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## Generate a public field conditional copy proc
   ## with signature
-  ##   `void name(FieldType r, FieldType a, FieldType b, bool condition)`
-  ## with `r` the resulting field element, `a` and `b` field field elements.
-  ## If `condition` is `true`:  `b` is copied into `r`
-  ## if `condition` is `false`: `a` is copied into `r`
+  ##   `void name(FieldType a, FieldType b, bool condition)`
+  ## with `a` and `b` field field elements and `condition`.
+  ## If `condition` is `true`:  `b` is copied into `a`
+  ## if `condition` is `false`: `a` is left unmodified.
   ##
   ## Returns the corresponding name to call it
   let name = fd.name & "_ccopy"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy, asy.ctx.int1_t()]):
-    let (r, a, b, condition) = llvmParams
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int1_t()]):
+    let (a, b, condition) = llvmParams
 
-    asy.ccopy_internal(fd, r, a, b, condition)
+    asy.ccopy_internal(fd, a, b, condition)
 
     asy.br.retVoid()
 
