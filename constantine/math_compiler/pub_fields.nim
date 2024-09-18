@@ -190,6 +190,38 @@ proc genFpCcopy*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
   return name
 
+proc nsqr_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef, count: int) {.used.} =
+  ## Generate an internal CT nsqr procedure
+  ## with signature
+  ##   `void name(FieldType r, FieldType a)`
+  ## with `r` the resulting field element, `a` the element to be (n-) squared.
+  ##
+  ## Generates a call, so that we one can use this proc as part of another (public)
+  ## procedure.
+  let name = fd.name & "_nsqr" & $count & "_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a]),
+          {kHot}):
+    tagParameter(1, "sret")
+
+    let (ri, ai) = llvmParams
+    let M = asy.getModulusPtr(fd)
+
+    let rA = asy.asArray(ri, fd.fieldTy)
+    let aA = asy.asArray(ai, fd.fieldTy)
+    for i in 0 ..< fd.numWords:
+      rA[i] = aA[i]
+
+    # `r` now stores `a`
+    for i in countdown(count, 1):
+      # `mtymul` does not touch `r` until the end to store the result. It uses a temporary
+      # buffer internally. So we can just pass `r` 3 times!
+      asy.mtymul(fd, ri, ri, ri, M)
+
+    asy.br.retVoid()
+  asy.callFn(name, [r, a])
+
 proc genFpNsqr*(asy: Assembler_LLVM, fd: FieldDescriptor, count: int): string =
   ## Generate a public field n-square proc
   ## with signature
@@ -203,6 +235,9 @@ proc genFpNsqr*(asy: Assembler_LLVM, fd: FieldDescriptor, count: int): string =
   asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy]):
     ## We can just reuse `mtymul`
     let (r, a) = llvmParams
+    asy.nsqr_internal(fd, r, a, count)
+    asy.br.retVoid()
+  return name
     let M = asy.getModulusPtr(fd)
 
     let rA = asy.asArray(r, fd.fieldTy)
