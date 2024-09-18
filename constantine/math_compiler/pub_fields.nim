@@ -72,6 +72,26 @@ proc genFpAdd*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
   return name
 
+proc sub_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) {.used.} =
+  ## Generate an internal field subtraction proc
+  ## with signature
+  ##   void name(FieldType r, FieldType a, FieldType b)
+  ## with r the result and a, b the operands
+  ## and return the corresponding name to call it
+  let name = fd.name & "_sub_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a, b]),
+          {kHot}):
+    tagParameter(1, "sret")
+    let M = asy.getModulusPtr(fd)
+
+    let (ri, ai, bi) = llvmParams
+    asy.modsub(fd, ri, ai, bi, M)
+    asy.br.retVoid()
+
+  asy.callFn(name, [r, a, b])
+
 proc genFpSub*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## Generate a public field subtraction proc
   ## with signature
@@ -81,10 +101,8 @@ proc genFpSub*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
   let name = fd.name & "_sub"
   asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy]):
-    let M = asy.getModulusPtr(fd)
-
     let (r, a, b) = llvmParams
-    asy.modsub(fd, r, a, b, M)
+    asy.sub_internal(fd, r, a, b)
     asy.br.retVoid()
 
   return name
