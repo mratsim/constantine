@@ -17,6 +17,43 @@ import
 ## Section name used for `llvmInternalFnDef`
 const SectionName = "ctt.pub_fields"
 
+proc setZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.used.} =
+  ## Generate an internal field setZero
+  ## with signature
+  ##   void name(FieldType r, FieldType a)
+  ## with r the element to be zeroed.
+  ## and return the corresponding name to call it
+  let name = fd.name & "_setZero_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r]),
+          {kHot}):
+    tagParameter(1, "sret")
+    let M = asy.getModulusPtr(fd)
+
+    let ri = llvmParams
+    let rA = asy.asField(fd, ri)
+    for i in 0 ..< fd.numWords:
+      rA[i] = constInt(fd.wordTy, 0)
+
+    asy.br.retVoid()
+
+  asy.callFn(name, [r])
+
+proc genFpSetZero*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
+  ## Generate a public field subtraction proc
+  ## with signature
+  ##   void name(FieldType r, FieldType a, FieldType b)
+  ## with r the element to be zeroed.
+  ## and return the corresponding name to call it
+
+  let name = fd.name & "_setZero"
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy]):
+    let r = llvmParams
+    asy.setZero_internal(fd, r)
+    asy.br.retVoid()
+
+  return name
 
 proc genFpAdd*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## Generate a public field addition proc
