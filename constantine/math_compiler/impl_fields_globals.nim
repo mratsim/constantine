@@ -100,6 +100,83 @@ func checkValidModulus(M: BigNum) =
     "    Modulus '0x" & M.toHexLlvm() & "' is declared with " & $M.bits &
     " bits but uses " & $(msb + wordBitwidth * uint32(M.limbs.len - 1)) & " bits."
 
+func checkOdd[T](a: T) =
+  doAssert bool(a and 1), "Internal Error: the modulus must be odd to use the Montgomery representation."
+
+func checkOdd(M: BigNum) =
+  checkOdd(M.limbs[0])
+
+# BigNum operations
+# ------------------------------------------------
+
+template Widths(): untyped {.dirty.} =
+  when T is uint32:
+    const
+      HalfWidth = 16
+      HalfBase = (1'u32 shl HalfWidth)
+      HalfMask = HalfBase - 1
+  elif T is uint64:
+    const
+      HalfWidth = 32
+      HalfBase = (1'u64 shl HalfWidth)
+      HalfMask = HalfBase - 1
+  else:
+    {.error: "Invalid type for BigNum.".}
+
+func hi[T: DynWord](n: T): T =
+  Widths()
+  result = n shr HalfWidth
+
+func lo[T: DynWord](n: T): T =
+  Widths()
+  result = n and HalfMask
+
+func split[T: DynWord](n: T): tuple[hi, lo: T] =
+  result.hi = n.hi
+  result.lo = n.lo
+
+func merge[T: DynWord](hi, lo: T): T =
+  when T is uint32:
+    const HalfWidth = 16
+  else: # uint64
+    const HalfWidth = 32
+  (hi shl HalfWidth) or lo
+
+func addC[T: DynWord](cOut, sum: var T, a, b, cIn: T) =
+  # Add with carry, fallback for the Compile-Time VM
+  # (CarryOut, Sum) <- a + b + CarryIn
+  let (aHi, aLo) = split(a)
+  let (bHi, bLo) = split(b)
+  let tLo = aLo + bLo + cIn
+  let (cLo, rLo) = split(tLo)
+  let tHi = aHi + bHi + cLo
+  let (cHi, rHi) = split(tHi)
+  cOut = cHi
+  sum = merge(rHi, rLo)
+
+func add[T: DynWord](a: var BigNum[T], w: T): bool =
+  ## Limbs addition, add a number that fits in a word
+  ## Returns the carry
+  var carry, sum: T
+  addC(carry, sum, T(a.limbs[0]), w, carry)
+  a.limbs[0] = sum
+  for i in 1 ..< a.limbs.len:
+    let ai = T(a.limbs[i])
+    addC(carry, sum, ai, 0, carry)
+    a.limbs[i] = sum
+
+  result = bool(carry)
+
+func shiftRight*[T: DynWord](a: var BigNum[T], k: int) =
+  ## Shift right by k.
+  ##
+  ## k MUST be less than the base word size (2^32 or 2^64)
+  const wordBitwidth = sizeof(T) * 8
+  for i in 0 ..< a.limbs.len-1:
+    a.limbs[i] = (a.limbs[i] shr k) or (a.limbs[i+1] shl (wordBitWidth - k))
+  a.limbs[a.limbs.len-1] = a.limbs[a.limbs.len-1] shr k
+
+
 # Fields metadata
 # ------------------------------------------------
 
@@ -116,6 +193,23 @@ func negInvModWord[T](M: BigNum[T]): T =
   ## µ ≡ -1/M[0] (mod 2^64)
   checkValidModulus(M)
   return M.limbs[0].negInvModWord()
+
+func primePlus1div2*[T: DynWord](P: BigNum[T]): BigNum[T] =
+  ## Compute (P+1)/2, assumes P is odd
+  ## For use in constant-time modular inversion
+  ##
+  ## Warning ⚠️: Result is in the canonical domain (not Montgomery)
+  checkOdd(P)
+
+  # (P+1)/2 = P/2 + 1 if P is odd,
+  # this avoids overflowing if the prime uses all bits
+  # i.e. in the form (2^64)ʷ - 1 or (2^32)ʷ - 1
+
+  result = P
+  result.shiftRight(1)
+  let carry = result.add(1)
+  doAssert not carry
+
 
 # ############################################################
 #
