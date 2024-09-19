@@ -22,7 +22,8 @@ proc setZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.
   ## with signature
   ##   void name(FieldType r, FieldType a)
   ## with r the element to be zeroed.
-  ## and return the corresponding name to call it
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
   let name = fd.name & "_setZero_internal"
   asy.llvmInternalFnDef(
           name, SectionName,
@@ -55,6 +56,27 @@ proc genFpSetZero*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
   return name
 
+proc add_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) {.used.} =
+  ## Generate an internal field addition proc
+  ## with signature
+  ##   void name(FieldType r, FieldType a, FieldType b)
+  ## with r the result and a, b the operands
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
+  let name = fd.name & "_add_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a, b]),
+          {kHot}):
+    tagParameter(1, "sret")
+    let M = asy.getModulusPtr(fd)
+
+    let (ri, ai, bi) = llvmParams
+    asy.modadd(fd, ri, ai, bi, M)
+    asy.br.retVoid()
+
+  asy.callFn(name, [r, a, b])
+
 proc genFpAdd*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## Generate a public field addition proc
   ## with signature
@@ -67,42 +89,7 @@ proc genFpAdd*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
     let M = asy.getModulusPtr(fd)
 
     let (r, a, b) = llvmParams
-    asy.modadd(fd, r, a, b, M)
-    asy.br.retVoid()
-
-  return name
-
-proc sub_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) {.used.} =
-  ## Generate an internal field subtraction proc
-  ## with signature
-  ##   void name(FieldType r, FieldType a, FieldType b)
-  ## with r the result and a, b the operands
-  ## and return the corresponding name to call it
-  let name = fd.name & "_sub_internal"
-  asy.llvmInternalFnDef(
-          name, SectionName,
-          asy.void_t, toTypes([r, a, b]),
-          {kHot}):
-    tagParameter(1, "sret")
-    let M = asy.getModulusPtr(fd)
-
-    let (ri, ai, bi) = llvmParams
-    asy.modsub(fd, ri, ai, bi, M)
-    asy.br.retVoid()
-
-  asy.callFn(name, [r, a, b])
-
-proc genFpSub*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
-  ## Generate a public field subtraction proc
-  ## with signature
-  ##   void name(FieldType r, FieldType a, FieldType b)
-  ## with r the result and a, b the operands
-  ## and return the corresponding name to call it
-
-  let name = fd.name & "_sub"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy]):
-    let (r, a, b) = llvmParams
-    asy.sub_internal(fd, r, a, b)
+    asy.add_internal(fd, r, a, b)
     asy.br.retVoid()
 
   return name
@@ -112,7 +99,8 @@ proc mul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) 
   ## with signature
   ##   void name(FieldType r, FieldType a, FieldType b)
   ## with r the result and a, b the operands
-  ## and return the corresponding name to call it
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
   let name = fd.name & "_mul_internal"
   asy.llvmInternalFnDef(
           name, SectionName,
@@ -148,8 +136,7 @@ proc ccopy_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a, b, c: ValueRef
   ## If `condition` is `true`:  `b` is copied into `a`
   ## if `condition` is `false`: `a` is left unmodified.
   ##
-  ## Generates a call, so that we one can use this proc as part of another (public)
-  ## procedure.
+  ## Generates a call, so that we one can use this proc as part of another procedure.
   let name = fd.name & "_ccopy_internal"
   asy.llvmInternalFnDef(
           name, SectionName,
@@ -196,8 +183,7 @@ proc nsqr_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef, co
   ##   `void name(FieldType r, FieldType a)`
   ## with `r` the resulting field element, `a` the element to be (n-) squared.
   ##
-  ## Generates a call, so that we one can use this proc as part of another (public)
-  ## procedure.
+  ## Generates a call, so that we one can use this proc as part of another procedure.
   let name = fd.name & "_nsqr" & $count & "_internal"
   asy.llvmInternalFnDef(
           name, SectionName,
@@ -244,7 +230,8 @@ proc isZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) 
   ## with signature
   ##   void name(*bool r, FieldType a)
   ## with r the result and a the operand
-  ## and return the corresponding name to call it
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
   let name = fd.name & "_isZero_internal"
   asy.llvmInternalFnDef(
           name, SectionName,
@@ -294,8 +281,7 @@ proc neg_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.u
   ##   `void name(FieldType r, FieldType a)`
   ## with `r` the resulting negated field element.
   ##
-  ## Generates a call, so that we one can use this proc as part of another (public)
-  ## procedure.
+  ## Generates a call, so that we one can use this proc as part of another procedure.
   let name = fd.name & "_neg_internal"
   asy.llvmInternalFnDef(
           name, SectionName,
@@ -372,7 +358,7 @@ proc cneg_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef)
   ## with `r` the resulting negated field element.
   ## The negation is only performed if `condition` is `true`.
   ##
-  ## Returns the corresponding name to call it
+  ## Generates a call, so that we one can use this proc as part of another procedure.
   let name = fd.name & "_cneg_internal"
   asy.llvmInternalFnDef(
           name, SectionName,
@@ -391,7 +377,6 @@ proc cneg_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef)
     asy.br.retVoid()
 
   asy.callFn(name, [r, a, c])
-
 
 proc genFpCNeg*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## Generate an internal conditional out of place field negation
