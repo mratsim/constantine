@@ -333,6 +333,70 @@ proc store*(asy: Assembler_LLVM, dst: Array, src: ValueRef) {.inline.}=
   doAssert asy.byteOrder == kLittleEndian
   asy.br.store(src, dst.buf)
 
+# Representation of elliptic curve points in Jacobian coordinates.
+# Essentially just an array of 3 field elements
+
+import std / typetraits
+type
+  Field* {.borrow: `.`.} = distinct Array
+    #ar: Array
+    #len:
+
+proc `[]`*(a: Field, index: SomeInteger): ValueRef = distinctBase(a)[index]
+proc `[]=`*(a: Field, index: SomeInteger, val: ValueRef) = distinctBase(a)[index] = val
+
+proc asField*(br: BuilderRef, a: ValueRef, fieldTy: TypeRef): Field =
+  result = Field(br.asArray(a, fieldTy))
+proc asField*(asy: Assembler_LLVM, a: ValueRef, fieldTy: TypeRef): Field =
+  asy.br.asField(a, fieldTy)
+proc asField*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef): Field =
+  asy.br.asField(a, fd.fieldTy)
+
+proc newField*(asy: Assembler_LLVM, fd: FieldDescriptor): Field =
+  ## Use field descriptor for size etc?
+  result = Field(asy.makeArray(fd.fieldTy))
+
+proc store*(asy: Assembler_LLVM, dst: Field, src: Field) =
+  ## Stores the `dst` in `src`. Both must correspond to the same field of course.
+  assert dst.arrayTy.getArrayLength() == src.arrayTy.getArrayLength()
+  for i in 0 ..< dst.arrayTy.getArrayLength:
+    dst[i] = src[i]
+
+type
+  EcPoint* {.borrow: `.`.} = distinct Array
+
+proc asEcPoint*(asy: Assembler_LLVM, arrayPtr: ValueRef, arrayTy: TypeRef): EcPoint =
+  ## We construct the EC point of 3 arrays by first converting the input pointer
+  ## into an array itself. Then we get the indices corresponding to the beginning
+  ## of each of (X, Y, Z) coordinates and finally construct the final array and
+  ## assign them.
+  ##
+  ## `arrayTy` is an `array[FieldTy, 3]` where `FieldTy` itsel is an array of
+  ## `array[WordTy, NumWords]`.
+
+  result = EcPoint(asy.asArray(arrayPtr, arrayTy))
+
+proc newEcPoint*(asy: Assembler_LLVM, ed: CurveDescriptor): EcPoint =
+  ## Use field descriptor for size etc?
+  result = EcPoint(asy.makeArray(ed.curveTy))
+
+func getIdx*(br: BuilderRef, ec: EcPoint, idx: int): Field =
+  let pelem = distinctBase(ec).getElementPtr(0, idx)
+  #let el = distinctBase(ec)[idx]
+  debugecho "TYPE ? ", $getTypeOf(pelem)
+  result = br.asField(pelem, ec.elemTy) #getTypeOf(pelem))
+
+func getX*(ec: EcPoint): Field = ec.builder.getIdx(ec, 0)
+func getY*(ec: EcPoint): Field = ec.builder.getIdx(ec, 1)
+func getZ*(ec: EcPoint): Field = ec.builder.getIdx(ec, 2)
+
+proc store*(asy: Assembler_LLVM, dst: EcPoint, src: EcPoint) =
+  ## Stores the `dst` in `src`. Both must correspond to the same field of course.
+  assert dst.arrayTy.getArrayLength() == src.arrayTy.getArrayLength()
+  asy.store(dst.getX(), src.getX())
+  asy.store(dst.getY(), src.getY())
+  asy.store(dst.getZ(), src.getZ())
+
 # Conversion to native LLVM int
 # -------------------------------
 
