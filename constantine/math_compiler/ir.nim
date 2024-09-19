@@ -308,13 +308,20 @@ proc makeArray*(asy: Assembler_LLVM, elemTy: TypeRef, len: uint32): Array =
     int32_t: arrayTy.getContext().int32_t()
   )
 
+proc getElementPtr(a: Array, indices: varargs[int]): ValueRef =
+  ## Helper to get an element pointer from a (nested) array.
+  var idxs = newSeq[ValueRef](indices.len)
+  for i, idx in indices:
+    idxs[i] = constInt(a.int32_t, idx)
+  result = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, idxs)
+
 proc `[]`*(a: Array, index: SomeInteger): ValueRef {.inline.}=
   # First dereference the array pointer with 0, then access the `index`
-  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, [constInt(a.int32_t, 0), constInt(a.int32_t, uint64 index)])
+  let pelem = a.getElementPtr(0, index.int)
   a.builder.load2(a.elemTy, pelem)
 
 proc `[]=`*(a: Array, index: SomeInteger, val: ValueRef) {.inline.}=
-  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, [constInt(a.int32_t, 0), constInt(a.int32_t, uint64 index)])
+  let pelem = a.getElementPtr(0, index.int)
   a.builder.store(val, pelem)
 
 proc store*(asy: Assembler_LLVM, dst: Array, src: Array) {.inline.}=
