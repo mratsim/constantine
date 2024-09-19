@@ -9,6 +9,7 @@
 import
   constantine/platforms/bithacks,
   constantine/platforms/llvm/[llvm, super_instructions],
+  constantine/named/deriv/parser_fields, # types for curve definition
   std/tables
 
 # ############################################################
@@ -206,6 +207,50 @@ proc definePrimitives*(asy: Assembler_LLVM, fd: FieldDescriptor) =
 
 proc wordTy*(fd: FieldDescriptor, value: SomeInteger) =
   constInt(fd.wordTy, value)
+
+type
+  ## XXX: For now we barely use any of these fields!
+  CurveDescriptor* = object
+    name*: string # of the curve
+    fd*: FieldDescriptor # of the underlying field
+    family*: CurveFamily
+    modulus*: string # Modulus as Big-Endian uppercase hex, NOT prefixed with 0x
+    modulusBitWidth*: uint32
+    order*: string
+    orderBitWidth*: uint32
+
+    cofactor*: string
+    eqForm*: CurveEquationForm
+
+    coef_a*: uint32
+    coef_b*: uint32
+
+    nonResidueFp*: uint32
+    nonResidueFp2*: uint32
+
+    embeddingDegree*: uint32
+    sexticTwist*: SexticTwist
+
+    curveTy*: TypeRef # type of EC point in Jacobian coordinates
+
+proc configureCurve*(ctx: ContextRef,
+      name: string,
+      modBits: int, modulus: string,
+      v, w: int): CurveDescriptor =
+  ## Configure a curve descriptor with:
+  ## - v: vector length
+  ## - w: base word size in bits
+  ## - a `modulus` of bitsize `modBits`
+  ##
+  ## - Name is a prefix for example
+  ##   `mycurve_fp_`
+  result.name = "curve_" & name
+  result.fd = configureField(ctx, name, modBits, modulus, v, w)
+  # Array of 3 arrays, one for each field type
+  result.curveTy = array_t(result.fd.fieldTy, 3)
+
+proc definePrimitives*(asy: Assembler_LLVM, ed: CurveDescriptor) =
+  asy.definePrimitives(ed.fd)
 
 # ############################################################
 #
