@@ -177,6 +177,159 @@ proc genFpCcopy*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
   return name
 
+
+proc cadd_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef) {.used.} =
+  ## Generate an internal field conditional in-place addition proc
+  ## with signature
+  ##   void name(FieldType r, FieldType a, bool condition)
+  ## `a` is added from `r` only if the `condition` is `true`.
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
+  let name = fd.name & "_cadd_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a, c]),
+          {kHot}):
+    tagParameter(1, "sret")
+    let M = asy.getModulusPtr(fd)
+
+    let (ri, ai, ci) = llvmParams
+    let t = asy.newField(fd)          # temp field for `add`
+    let aA = asy.asField(fd, ai)
+    asy.add_internal(fd, t.buf, ri, ai)   # `t = r + b`
+    asy.ccopy_internal(fd, ai, t.buf, ci) # `a.ccopy(t, condition)`
+
+    asy.br.retVoid()
+
+  asy.callFn(name, [r, a, c])
+
+proc genFpCadd*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
+  ## Generate a public field conditional in-place addition proc
+  ## with signature
+  ##   void name(FieldType r, FieldType a, bool condition)
+  ## `a` is added from `r` only if the `condition` is `true`.
+  ##
+  ## and return the corresponding name to call it
+
+  let name = fd.name & "_add"
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int1_t()]):
+    let (r, a, c) = llvmParams
+    asy.cadd_internal(fd, r, a, c)
+    asy.br.retVoid()
+
+  return name
+
+proc sub_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) {.used.} =
+  ## Generate an internal field subtraction proc
+  ## with signature
+  ##   void name(FieldType r, FieldType a, FieldType b)
+  ## with r the result and a, b the operands
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
+  let name = fd.name & "_sub_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a, b]),
+          {kHot}):
+    tagParameter(1, "sret")
+    let M = asy.getModulusPtr(fd)
+
+    let (ri, ai, bi) = llvmParams
+    asy.modsub(fd, ri, ai, bi, M)
+    asy.br.retVoid()
+
+  asy.callFn(name, [r, a, b])
+
+proc genFpSub*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
+  ## Generate a public field subtraction proc
+  ## with signature
+  ##   void name(FieldType r, FieldType a, FieldType b)
+  ## with r the result and a, b the operands
+  ## and return the corresponding name to call it
+
+  let name = fd.name & "_sub"
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy]):
+    let (r, a, b) = llvmParams
+    asy.sub_internal(fd, r, a, b)
+    asy.br.retVoid()
+
+  return name
+
+proc csub_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef) {.used.} =
+  ## Generate an internal field conditional in-place subtraction proc
+  ## with signature
+  ##   void name(FieldType r, FieldType a, bool condition)
+  ## `a` is subtracted from `r` only if the `condition` is `true`.
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
+  let name = fd.name & "_csub_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a, c]),
+          {kHot}):
+    tagParameter(1, "sret")
+    let M = asy.getModulusPtr(fd)
+
+    let (ri, ai, ci) = llvmParams
+    let t = asy.newField(fd)          # temp field for `sub`
+    asy.sub_internal(fd, t.buf, ri, ai)   # `t = r - b`
+    asy.ccopy_internal(fd, ri, t.buf, ci) # `r.ccopy(t, condition)`
+
+    asy.br.retVoid()
+
+  asy.callFn(name, [r, a, c])
+
+proc genFpCsub*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
+  ## Generate a public field conditional in-place subtraction proc
+  ## with signature
+  ##   void name(FieldType r, FieldType a, bool condition)
+  ## `a` is subtracted from `r` only if the `condition` is `true`.
+  ##
+  ## and return the corresponding name to call it
+
+  let name = fd.name & "_sub"
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int1_t()]):
+    let (r, a, c) = llvmParams
+    asy.csub_internal(fd, r, a, c)
+    asy.br.retVoid()
+
+  return name
+
+proc double_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} =
+  ## Generate an internal out-of-place double procedure
+  ## with signature
+  ##   `void name(FieldType r, FieldType a)`
+  ## with `r` the resulting field element, `a` the element to be doubled
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
+  let name = fd.name & "_double_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a]),
+          {kHot}):
+    tagParameter(1, "sret")
+
+    let (ri, ai) = llvmParams
+    asy.add_internal(fd, ri, ai, ai) # `r = a + a`
+
+    asy.br.retVoid()
+  asy.callFn(name, [r, a])
+
+proc genFpDouble*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
+  ## Generate an internal out-of-place double procedure
+  ## with signature
+  ##   `void name(FieldType r, FieldType a)`
+  ## with `r` the resulting field element, `a` the element to be doubled
+  ##
+  ## Returns the corresponding name to call it
+  let name = fd.name & "_double"
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy]):
+    ## We can just reuse `mtymul`
+    let (r, a) = llvmParams
+    asy.double_internal(fd, r, a)
+    asy.br.retVoid()
+  return name
+
 proc nsqr_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef, count: int) {.used.} =
   ## Generate an internal CT nsqr procedure
   ## with signature
@@ -271,6 +424,48 @@ proc genFpIsZero*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [ptrBool, fd.fieldTy]):
     let (r, a) = llvmParams
     asy.isZero_internal(fd, r, a)
+    asy.br.retVoid()
+
+  return name
+
+proc isOdd_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} =
+  ## Generate an internal field isOdd proc
+  ## with signature
+  ##   void name(*bool r, FieldType a)
+  ## with r the result and a the operand
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
+  let name = fd.name & "_isOdd_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a]),
+          {kHot}):
+    tagParameter(1, "sret")
+
+    let (ri, ai) = llvmParams
+    let aA = asy.asArray(ai, fd.fieldTy)
+
+    # Check if the least significant bit of the first word is 1
+    let lsb = asy.br.and(aA[0], constInt(fd.wordTy, 1))
+    let isOddI1 = asy.br.icmp(kNE, lsb, constInt(fd.wordTy, 0))
+
+    asy.store(ri, isOddI1)
+    asy.br.retVoid()
+
+  asy.callFn(name, [r, a])
+
+proc genFpIsOdd*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
+  ## Generate a public field isOdd proc
+  ## with signature
+  ##   void name(*bool r, FieldType a)
+  ## with r the result and a the operand
+  ## and return the corresponding name to call it
+
+  let name = fd.name & "_isOdd"
+  let ptrBool = pointer_t(asy.ctx.int1_t())
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [ptrBool, fd.fieldTy]):
+    let (r, a) = llvmParams
+    asy.isOdd_internal(fd, r, a)
     asy.br.retVoid()
 
   return name
@@ -455,4 +650,93 @@ proc genFpNsqrRT*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
       asy.mtymul(fd, r, r, r, M)
 
     asy.br.retVoid()
+  return name
+
+proc shiftRight_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a, k: ValueRef) {.used.} =
+  ## Generate an internal field in-place shiftRight proc
+  ## with signature
+  ##   void name(FieldType a, i32 k)
+  ## where a is the operand to be shifted and k is the shift amount
+  let name = fd.name & "_shiftRight_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([a, k]),
+          {kHot}):
+    let (ai, ki) = llvmParams
+    let aA = asy.asArray(ai, fd.fieldTy)
+
+    let wordBitWidth = constInt(fd.wordTy, fd.w)
+    let shiftLeft = asy.br.sub(wordBitWidth, ki)
+
+    # Process all but the last word
+    for i in 0 ..< fd.numWords - 1:
+      let current = aA[i]
+      let next = aA[i + 1]
+
+      let rightPart = asy.br.lshr(current, ki)
+      let leftPart = asy.br.lshl(next, shiftLeft)
+      let result = asy.br.`or`(rightPart, leftPart)
+
+      aA[i] = result
+
+    # Handle the last word
+    let lastIndex = fd.numWords - 1
+    aA[lastIndex] = asy.br.lshr(aA[lastIndex], ki)
+
+    asy.br.retVoid()
+
+  asy.callFn(name, [a, k])
+
+proc genFpShiftRight*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
+  ## Generate a public field in-place shiftRight proc
+  ## with signature
+  ##   void name(FieldType a, i32 k)
+  ## where a is the operand to be shifted and k is the shift amount
+  ## and return the corresponding name to call it
+
+  let name = fd.name & "_shiftRight"
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, asy.ctx.int32_t()]):
+    let (a, k) = llvmParams
+    asy.shiftRight_internal(fd, a, k)
+    asy.br.retVoid()
+
+  return name
+
+proc div2_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef) {.used.} =
+  ## Generate an internal field in-place div2 proc
+  ## with signature
+  ##   void name(FieldType a, i32 k)
+  ## where a is the operand to be divided by 2.
+  let name = fd.name & "_div2_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([a]),
+          {kHot}):
+    let ai = llvmParams
+    #let aA = asy.asField(fd, ai)
+
+    var wasOdd = asy.br.alloca(asy.ctx.int1_t())
+    asy.isOdd_internal(fd, wasOdd, ai)
+    asy.shiftRight_internal(fd, ai, constInt(fd.wordTy, 1))
+
+    let pp1d2 = asy.getPrimePlus1div2Ptr(fd)
+    asy.cadd_internal(fd, ai, pp1d2, asy.load2(asy.ctx.int1_t(), wasOdd))
+
+    asy.br.retVoid()
+
+  asy.callFn(name, [a])
+
+proc genFpDiv2*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
+  ## Generate a public field in-place div2 proc
+  ## with signature
+  ##   void name(FieldType a, i32 k)
+  ## where a is the operand to be shifted and k is the shift amount
+  ## and return the corresponding name to call it
+
+  let name = fd.name & "_div2"
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy]):
+    let a = llvmParams
+    asy.div2_internal(fd, a)
+    asy.br.retVoid()
+
   return name
