@@ -230,6 +230,23 @@ proc getModulusPtr*(asy: Assembler_LLVM, fd: FieldDescriptor): ValueRef =
     )
   return M
 
+proc getPrimePlus1div2Ptr*(asy: Assembler_LLVM, fd: FieldDescriptor): ValueRef =
+  let pp1d2name = fd.name & "_pp1d2"
+  var pp1d2 = asy.module.getGlobal(cstring pp1d2name)
+  if pp1d2.isNil():
+    ## NOTE: Construction of bigint in LLVM happens based on uint64 regardless of
+    ## word size on device.
+    let M = BigNum[uint64].fromHex(fd.bits, fd.modulus)
+    let Mpp1d2 = M.primePlus1div2()
+    pp1d2 = asy.defineGlobalConstant(
+      name = pp1d2name,
+      section = fd.name,
+      constIntOfArbitraryPrecision(fd.intBufTy, cuint Mpp1d2.limbs.len, Mpp1d2.limbs[0].addr),
+      fd.intBufTy,
+      alignment = 64
+    )
+    return pp1d2
+
 proc getM0ninv*(asy: Assembler_LLVM, fd: FieldDescriptor): ValueRef =
   let m0ninvname = fd.name & "_m0ninv"
   var m0ninv = asy.module.getGlobal(cstring m0ninvname)
