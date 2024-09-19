@@ -274,14 +274,20 @@ type
     elemTy: TypeRef
     int32_t: TypeRef
 
-proc asArray*(asy: Assembler_LLVM, arrayPtr: ValueRef, arrayTy: TypeRef): Array =
+proc `[]`*(a: Array, index: SomeInteger): ValueRef {.inline.}
+proc `[]=`*(a: Array, index: SomeInteger, val: ValueRef) {.inline.}
+
+proc asArray*(br: BuilderRef, arrayPtr: ValueRef, arrayTy: TypeRef): Array =
   Array(
-    builder: asy.br,
+    builder: br,
     buf: arrayPtr,
     arrayTy: arrayTy,
     elemTy: arrayTy.getElementType(),
     int32_t: arrayTy.getContext().int32_t()
   )
+
+proc asArray*(asy: Assembler_LLVM, arrayPtr: ValueRef, arrayTy: TypeRef): Array =
+  asy.br.asArray(arrayPtr, arrayTy)
 
 proc makeArray*(asy: Assembler_LLVM, arrayTy: TypeRef): Array =
   Array(
