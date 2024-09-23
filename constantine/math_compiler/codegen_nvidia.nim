@@ -11,6 +11,8 @@ import
   constantine/platforms/abis/c_abi,
   constantine/platforms/llvm/llvm,
   constantine/platforms/primitives,
+  constantine/named/algebras,
+  constantine/math/elliptic/ec_shortweierstrass_jacobian,
   ./ir,
   std / macros # for `execCuda`
 
@@ -413,3 +415,116 @@ macro execCuda*(jitFn: CUfunction,
       )
     )
 
+# ############################################################
+#
+#                   Compilation helper
+#
+# ############################################################
+
+type
+  ## The type for all the public `genPubX` procedures for fields in `pub_fields.nim`
+  FieldFnGenerator = proc(asy: Assembler_LLVM, fd: FieldDescriptor): string
+  CurveFnGenerator = proc(asy: Assembler_LLVM, ed: CurveDescriptor): string
+
+  NvidiaAssemblerObj* = object
+    sm*: tuple[major, minor: int32] # compute capability version
+    device*: CUdevice
+
+    asy*: Assembler_LLVM
+    fd*: FieldDescriptor
+    ed*: CurveDescriptor
+
+    cuCtx*: CUcontext
+    cuMod*: CUmodule
+
+  NvidiaAssembler* = ref NvidiaAssemblerObj
+
+proc `=destroy`*(nv: NvidiaAssemblerObj) =
+  ## XXX: Need to also call the finalizer for `asy` in the future!
+  check nv.cuMod.cuModuleUnload()
+  check nv.cuCtx.cuCtxDestroy()
+
+proc initNvAsm*[Name: static Algebra](field: type FF[Name], wordSize: int = 32, backend = bkNvidiaPTX): NvidiaAssembler =
+  ## Constructs an `NvidiaAssembler` object, which compiles code for the Nvidia target
+  ## using the LLVM backend.
+  result = NvidiaAssembler()
+
+  # Init LLVM
+  # -------------------------
+  initializeFullNVPTXTarget()
+
+  # Init GPU
+  # -------------------------
+  result.device = cudaDeviceInit()
+
+  check cuDeviceGetAttribute(result.sm.major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, result.device)
+  check cuDeviceGetAttribute(result.sm.minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, result.device)
+
+  # Codegen
+  # -------------------------
+  let name = if field is Fp: $Name & "_fp"
+             else: $Name & "_fr"
+  result.asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("nvidia_" & name & $wordSize))
+  result.fd = result.asy.ctx.configureField(
+    name, field.bits(),
+    field.getModulus().toHex(),
+    v = 1, w = wordSize
+  )
+  result.asy.definePrimitives(result.fd)
+
+proc initNvAsm*[Name: static Algebra](field: type EC_ShortW_Jac[Fp[Name], G1], wordSize: int = 32, backend = bkNvidiaPTX): NvidiaAssembler =
+  ## Constructs an `NvidiaAssembler` object, which compiles code for the Nvidia target
+  ## using the LLVM backend.
+  result = NvidiaAssembler()
+
+  # Init LLVM
+  # -------------------------
+  initializeFullNVPTXTarget()
+
+  # Init GPU
+  # -------------------------
+  result.device = cudaDeviceInit()
+
+  check cuDeviceGetAttribute(result.sm.major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, result.device)
+  check cuDeviceGetAttribute(result.sm.minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, result.device)
+
+  # Codegen
+  # -------------------------
+  let name = if field is Fp: $Name & "_fp"
+             else: $Name & "_fr"
+  result.asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("nvidia_" & name & $wordSize))
+  result.ed = result.asy.ctx.configureCurve(
+    name, Fp[Name].bits(),
+    Fp[Name].getModulus().toHex(),
+    v = 1, w = wordSize
+  )
+  result.fd = result.ed.fd
+  result.asy.definePrimitives(result.ed)
+
+proc compile*(nv: NvidiaAssembler, kernName: string): CUfunction =
+  ## Overload of `compile` below.
+  ## Call this version if you have manually used the Assembler_LLVM object
+  ## to build instructions and have a kernel name you wish to compile.
+  let ptx = nv.asy.codegenNvidiaPTX(nv.sm) # convert to PTX
+
+  # GPU exec
+  # -------------------------
+  check cuCtxCreate(nv.cuCtx, 0, nv.device)
+  check cuModuleLoadData(nv.cuMod, ptx)
+  # will be cleaned up when `NvidiaAssembler` goes out of scope
+
+  result = nv.cuMod.getCudaKernel(kernName)
+
+proc compile*(nv: NvidiaAssembler, fn: FieldFnGenerator): CUfunction =
+  ## Given a function that generates code for a finite field operation, compile
+  ## that function on the given Nvidia target and return a CUDA function.
+  # execute the `fn`
+  let kernName = nv.asy.fn(nv.fd)
+  result = nv.compile(kernName)
+
+proc compile*(nv: NvidiaAssembler, fn: CurveFnGenerator): CUfunction =
+  ## Given a function that generates code for an elliptic curve operation, compile
+  ## that function on the given Nvidia target and return a CUDA function.
+  # execute the `fn`
+  let kernName = nv.asy.fn(nv.ed)
+  result = nv.compile(kernName)
