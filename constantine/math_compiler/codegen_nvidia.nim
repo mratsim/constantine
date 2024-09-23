@@ -11,7 +11,8 @@ import
   constantine/platforms/abis/c_abi,
   constantine/platforms/llvm/llvm,
   constantine/platforms/primitives,
-  ./ir
+  ./ir,
+  std / macros # for `execCuda`
 
 export
   nvidia_abi,
@@ -215,3 +216,200 @@ proc exec*[T](jitFn: CUfunction, r: var T, a, b: T) =
   check cuMemFree(rGPU)
   check cuMemFree(aGPU)
   check cuMemFree(bGPU)
+
+proc getTypes(n: NimNode): seq[NimNode] =
+  case n.kind
+  of nnkIdent, nnkSym: result.add getTypeInst(n)
+  of nnkBracket, nnkTupleConstr, nnkPar:
+    for el in n:
+      result.add getTypes(el)
+  else:
+    error("Arguments to `execCuda` must be given as a bracket or tuple. Instead: " & $n.treerepr)
+
+proc requiresCopy(n: NimNode): bool =
+  ## Returns `true` if the given type is not a trivial data type, which implies
+  ## it will require copying its value manually.
+  case n.typeKind
+  of ntyBool, ntyChar, ntyInt .. ntyUint64: # range includes all floats
+    result = false
+  else:
+    result = true
+
+proc getIdent(n: NimNode): NimNode =
+  ## Generate a `GPU` suffixed ident
+  doAssert n.kind in {nnkIdent, nnkSym}, "No, was: " & $n.treerepr
+  result = ident(n.strVal & "GPU")
+
+proc determineDevicePtrs(r, i: NimNode, iTypes: seq[NimNode]): seq[(NimNode, NimNode)] =
+  ## Returns the device pointer ident and its associated original symbol.
+  for el in r:
+    #if not el.requiresCopy:
+    #  error("The argument for `res`: " & $el.repr & " of type: " & $el.getTypeImpl().treerepr &
+    #    " does not require copying. This is not allowed for return values.")
+    result.add (getIdent(el), el)
+  for idx in 0 ..< i.len:
+    let input = i[idx]
+    let t = iTypes[idx]
+    if t.requiresCopy():
+      result.add (getIdent(input), input)
+
+proc assembleParams(r, i: NimNode, iTypes: seq[NimNode]): seq[NimNode] =
+  ## Returns all parameters. Depending on whether they require copies or
+  ## are `res` parameters, either the input parameter or the `GPU` parameter.
+  for el in r: # for `res` we always copy!
+    result.add getIdent(el)
+  for idx in 0 ..< i.len:
+    let input = i[idx]
+    let t = iTypes[idx]
+    if t.requiresCopy():
+      result.add getIdent(input)
+    else:
+      result.add input
+
+# little helper macro constructors
+template check(arg): untyped = nnkCall.newTree(ident"check", arg)
+template size(arg): untyped = nnkCall.newTree(ident"sizeof", arg)
+template address(arg): untyped = nnkCall.newTree(ident"addr", arg)
+template csize_t(arg): untyped = nnkCall.newTree(ident"csize_t", arg)
+template pointer(arg): untyped = nnkCall.newTree(ident"pointer", arg)
+
+proc genParams(pId, r, i: NimNode, iTypes: seq[NimNode]): NimNode =
+  ## Generates the parameter `params` variable
+  let ps = assembleParams(r, i, iTypes)
+  result = nnkBracket.newTree()
+  for p in ps:
+    result.add pointer(address p)
+  result = nnkLetSection.newTree(
+    nnkIdentDefs.newTree(pId, newEmptyNode(), result)
+  )
+
+proc maybeWrap(n: NimNode): NimNode =
+  if n.kind in {nnkIdent, nnkSym}:
+    result = nnkBracket.newTree(n)
+  else:
+    result = n
+
+proc endianCheck(): NimNode =
+  result = quote do:
+    static: doAssert cpuEndian == littleEndian, block:
+      # From https://developer.nvidia.com/cuda-downloads?target_os=Linux
+      # Supported architectures for Cuda are:
+      # x86-64, PowerPC 64 little-endian, ARM64 (aarch64)
+      # which are all little-endian at word-level.
+      #
+      # Due to limbs being also stored in little-endian, on little-endian host
+      # the CPU and GPU will have the same binary representation
+      # whether we use 32-bit or 64-bit words, so naive memcpy can be used for parameter passing.
+
+      "Most CPUs (x86-64, ARM) are little-endian, as are Nvidia GPUs, which allows naive copying of parameters.\n" &
+      "Your architecture '" & $hostCPU & "' is big-endian and GPU offloading is unsupported on it."
+
+macro execCuda*(jitFn: CUfunction,
+                res: typed,
+                inputs: typed): untyped =
+  ## Given a CUDA function, execute the kernel. Copies all non trivial data types to
+  ## to the GPU via `cuMemcpyHtoD`. Any argument given as `res` will be copied back
+  ## from the GPU after kernel execution finishes.
+  ##
+  ## IMPORTANT:
+  ## The arguments passed to the CUDA kernel will be in the order in which they are
+  ## given to the macro. This especially means `res` arguments will be passed first.
+  ##
+  ## Example:
+  ## ```nim
+  ## execCuda(fn, res = [r, s], inputs = [a, b, c]
+  ## ```
+  ## will pass the parameters as `[r, s, a, b, c]`.
+  ##
+  ## We do not perform any checks on whether the given types are valid as arguments to
+  ## the CUDA target! Also, all arguments given as `res` are expected to be copied.
+  ## To return a value for a simple data type, use a `ptr X` type.
+  ##
+  ## We also copy all `res` data to the GPU, so that a return value can also be used
+  ## as an input.
+  ##
+  ## NOTE: This function is mainly intended for convenient execution of a single kernel
+
+  # XXX: we could check for inputs that are literals and produce local variables so
+  # that we can pass them by reference
+
+  # Maybe wrap individually given arguments in a `[]` bracket, e.g.
+  # `execCuda(res = foo, inputs = bar)`
+  let res = maybeWrap res
+  let inputs = maybeWrap inputs
+
+  result = newStmtList()
+  result.add endianCheck()
+
+  # get the types of the inputs
+  let rTypes = getTypes(res)
+  let iTypes = getTypes(inputs)
+
+  # determine all required `CUdeviceptr`
+  let devPtrs = determineDevicePtrs(res, inputs, iTypes)
+
+  # generate device pointers, allocate memory and copy data
+  for x in devPtrs:
+    # `var rGPU: CUdeviceptr`
+    result.add nnkVarSection.newTree(
+      nnkIdentDefs.newTree(
+        x[0],
+        ident"CUdeviceptr",
+        newEmptyNode()
+      )
+    )
+
+    # `check cuMemAlloc(rGPU, csize_t sizeof(r))`
+    result.add(
+      check nnkCall.newTree(
+        ident"cuMemAlloc",
+        x[0],
+        csize_t size(x[1])
+      )
+    )
+    # `check cuMemcpyHtoD(aGPU, a.addr, csize_t sizeof(a))`
+    result.add(
+      check nnkCall.newTree(
+        ident"cuMemcpyHtoD",
+        x[0],
+        address x[1],
+        csize_t size(x[1])
+      )
+    )
+
+  # assemble the parameters
+  let pId = ident"params"
+  let params = genParams(pId, res, inputs, iTypes)
+  result.add params
+
+  # launch the kernel
+  result.add quote do:
+    check cuLaunchKernel(
+            `jitFn`,
+            1, 1, 1, # grid(x, y, z)
+            1, 1, 1, # block(x, y, z)
+            sharedMemBytes = 0,
+            CUstream(nil),
+      `pId`[0].unsafeAddr, nil)
+
+  # copy back results
+  let devPtrsRes = determineDevicePtrs(res, nnkBracket.newTree(), @[])
+  for x in devPtrsRes:
+    result.add(
+      check nnkCall.newTree(
+        ident"cuMemcpyDtoH",
+        address x[1],
+        x[0],
+        csize_t size(x[1])
+      )
+    )
+
+  # free memory
+  for x in devPtrs:
+    result.add(
+      check nnkCall.newTree(
+        ident"cuMemFree",
+        x[0]
+      )
+    )
+
