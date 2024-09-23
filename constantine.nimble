@@ -612,7 +612,17 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 ]
 
 const testDescNvidia: seq[string] = @[
+  "tests/gpu/t_load_store.nim",
   "tests/gpu/t_nvidia_fp.nim",
+  "tests/gpu/t_mul.nim",
+  "tests/gpu/t_neg.nim",
+  "tests/gpu/t_ccopy.nim",
+  "tests/gpu/t_cneg.nim",
+  "tests/gpu/t_nsqr.nim",
+  "tests/gpu/t_nsqr_rt.nim",
+  "tests/gpu/t_ec_jac_coords.nim",
+  "tests/gpu/t_ec_sum_port.nim",
+  "tests/gpu/t_ec_sum.nim"
 ]
 
 const testDescThreadpool: seq[string] = @[
