@@ -40,90 +40,11 @@ proc genGetY*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
 proc genGetZ*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
   result = asy.genGetComponent(ed, getZ)
 
-proc exec*[T; U](jitFn: CUfunction, r: var T; a: U) =
-  # The execution wrapper provided are mostly for testing and debugging low-level kernels
-  # that serve as building blocks, like field addition or multiplication.
-  # They aren't parallelizable so we are not concern about the grid and block size.
-  # We also aren't concerned about the cuda stream when testing.
-  #
-  # This is not the case for production kernels (multi-scalar-multiplication, FFT)
-  # as we want to execute kernels asynchronously then merge results which might require multiple streams.
-
-  static: doAssert cpuEndian == littleEndian, block:
-    # From https://developer.nvidia.com/cuda-downloads?target_os=Linux
-    # Supported architectures for Cuda are:
-    # x86-64, PowerPC 64 little-endian, ARM64 (aarch64)
-    # which are all little-endian at word-level.
-    #
-    # Due to limbs being also stored in little-endian, on little-endian host
-    # the CPU and GPU will have the same binary representation
-    # whether we use 32-bit or 64-bit words, so naive memcpy can be used for parameter passing.
-
-    "Most CPUs (x86-64, ARM) are little-endian, as are Nvidia GPUs, which allows naive copying of parameters.\n" &
-    "Your architecture '" & $hostCPU & "' is big-endian and GPU offloading is unsupported on it."
-
-  # We assume that all arguments are passed by reference in the Cuda kernel, hence the need for GPU alloc.
-
-  var rGPU, aGPU: CUdeviceptr
-  check cuMemAlloc(rGPU, csize_t sizeof(r))
-  check cuMemAlloc(aGPU, csize_t sizeof(a))
-
-  check cuMemcpyHtoD(aGPU, a.addr, csize_t sizeof(a))
-
-  let params = [pointer(rGPU.addr), pointer(aGPU.addr)]
-
-  check cuLaunchKernel(
-          jitFn,
-          1, 1, 1, # grid(x, y, z)
-          1, 1, 1, # block(x, y, z)
-          sharedMemBytes = 0,
-          CUstream(nil),
-          params[0].unsafeAddr, nil)
-
-  check cuMemcpyDtoH(r.addr, rGPU, csize_t sizeof(r))
-
-  check cuMemFree(rGPU)
-  check cuMemFree(aGPU)
-
-# Init LLVM
-# -------------------------
-initializeFullNVPTXTarget()
-
-# Init GPU
-# -------------------------
-let cudaDevice = cudaDeviceInit()
-var sm: tuple[major, minor: int32]
-check cuDeviceGetAttribute(sm.major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, cudaDevice)
-check cuDeviceGetAttribute(sm.minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, cudaDevice)
-
 template test[Name: static Algebra](field: type FF[Name], wordSize: int, a: EC_ShortW_Jac[field, G1], fn, cpuField: untyped): untyped =
   # Codegen
   # -------------------------
-  let name = if field is Fp: $Name & "_fp"
-             else: $Name & "_fr"
-  let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & name & $wordSize))
-  let ed = asy.ctx.configureCurve(
-    name, field.bits(),
-    field.getModulus().toHex(),
-    v = 1, w = wordSize
-  )
-
-  asy.definePrimitives(ed)
-
-  let kernName = asy.fn(ed)
-  let ptx = asy.codegenNvidiaPTX(sm)
-
-  # GPU exec
-  # -------------------------
-  var cuCtx: CUcontext
-  var cuMod: CUmodule
-  check cuCtxCreate(cuCtx, 0, cudaDevice)
-  check cuModuleLoadData(cuMod, ptx)
-  defer:
-    check cuMod.cuModuleUnload()
-    check cuCtx.cuCtxDestroy()
-
-  let kernel = cuMod.getCudaKernel(kernName)
+  let nv = initNvAsm(EC_ShortW_Jac[field, G1], wordSize)
+  let kernel = nv.compile(fn)
 
   # For CPU:
   var rCPU: field
@@ -131,7 +52,7 @@ template test[Name: static Algebra](field: type FF[Name], wordSize: int, a: EC_S
 
   # For GPU:
   var rGPU: field
-  kernel.exec(rGPU, a)
+  kernel.execCuda(rGPU, a)
 
   echo "Input: ", a.toHex()
   echo "CPU:   ", rCPU.toHex()

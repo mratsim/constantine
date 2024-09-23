@@ -47,9 +47,8 @@ proc genStoreBoolPtr*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   return name
 
 proc execCondWorks*(jitFn: CUfunction, r: var bool; c: bool) =
-  var rGPU, cGPU: CUdeviceptr
+  var rGPU: CUdeviceptr
   check cuMemAlloc(rGPU, csize_t sizeof(r))
-  #check cuMemAlloc(cGPU, csize_t sizeof(c))
   # no copy to GPU, only allocate
   let params = [pointer(rGPU.addr), pointer(c.addr)]
 
@@ -62,9 +61,7 @@ proc execCondWorks*(jitFn: CUfunction, r: var bool; c: bool) =
           params[0].unsafeAddr, nil)
 
   check cuMemcpyDtoH(r.addr, rGPU, csize_t sizeof(r))
-
   check cuMemFree(rGPU)
-  check cuMemFree(cGPU)
 
 proc execCondBroken*(jitFn: CUfunction, r: var bool; c: bool) =
   var rGPU, cGPU: CUdeviceptr
@@ -98,7 +95,7 @@ var sm: tuple[major, minor: int32]
 check cuDeviceGetAttribute(sm.major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, cudaDevice)
 check cuDeviceGetAttribute(sm.minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, cudaDevice)
 
-proc testName(wordSize: int, krn: KernelGen, execKrn: ExecKernel) =
+proc testName(wordSize: int, krn: KernelGen, execKrn: ExecKernel, inputNeedsPtr: bool) =
   # Codegen
   # -------------------------
   let name = "store_load"
@@ -127,5 +124,16 @@ proc testName(wordSize: int, krn: KernelGen, execKrn: ExecKernel) =
   kernel.execKrn(res, cond)
   echo "Bool result ? ", res, " from : ", cond
 
-testName(64, genStoreBool, execCondWorks)
-testName(64, genStoreBoolPtr, execCondBroken)
+  # Now verify also works using `execCuda`
+  if inputNeedsPtr:
+    ## If we need to pass an argument as a `ptr` type for the kernel, we also
+    ## need to make sure we pass that argument to `inputs` either as a `ptr`
+    ## or a `ref`!
+    var condPtr: ref bool = new bool
+    condPtr[] = cond
+    kernel.execCuda(res = [res], inputs = [condPtr])
+  else:
+    kernel.execCuda(res = [res], inputs = [cond])
+
+testName(64, genStoreBool, execCondWorks, false) # `cond` passed without copy to kernel
+testName(64, genStoreBoolPtr, execCondBroken, true) # `cond` passed with copy to kernel as pointer
