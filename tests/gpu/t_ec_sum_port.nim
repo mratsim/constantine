@@ -6,6 +6,26 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+##[
+
+NOTE:
+
+This test case was used to port the `sumImpl` template implementation for CPU targets from
+`ec_shortweierstrass_jacobian.nim` to the LLVM based GPU target.
+
+It contains multiple commented out lines of proc signatures, input types and many `asy.store`
+instructions. By using `asy.store` and adjusting the return type of the LLVM based procedure,
+(i.e. the first argument in the following line from below:
+
+`asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ed.curveTy, ed.curveTy, ed.curveTy]):`
+                                                          ^--- First argument == return type
+
+and adjusting the `cpuSumImpl` below to return the 'same' value, one can compare all intermediary
+results line by line to verify correctness. Porting the entire code first and then trying
+to pin down small bugs is a lot more bothersome.
+
+]##
+
 import
   # Internal
   constantine/named/algebras,
