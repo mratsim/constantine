@@ -14,7 +14,7 @@ import
   constantine/math/elliptic/ec_shortweierstrass_jacobian,
   constantine/platforms/abstractions,
   constantine/platforms/llvm/llvm,
-  constantine/math_compiler/[ir, pub_fields, pub_curves, codegen_nvidia, impl_fields_globals],
+  constantine/math_compiler/[ir, pub_fields, pub_curves_jacobian, codegen_nvidia, impl_fields_globals],
   # Test utilities
   helpers/prng_unsafe
 
@@ -24,7 +24,7 @@ template genGetComponent*(asy: Assembler_LLVM, ed: CurveDescriptor, fn: typed): 
     let M = asy.getModulusPtr(ed.fd)
     let (r, a) = llvmParams
 
-    let ec = asy.asEcPoint(a, ed.curveTy)
+    let ec = asy.asEcPointJac(a, ed.curveTy)
     let rA = asy.asField(r, ed.fd.fieldTy)
 
     let x = fn(ec)

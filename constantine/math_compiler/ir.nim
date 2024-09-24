@@ -10,7 +10,7 @@ import
   constantine/platforms/bithacks,
   constantine/platforms/llvm/[llvm, super_instructions],
   constantine/named/deriv/parser_fields, # types for curve definition
-  std/tables
+  std/[tables, typetraits]
 
 # ############################################################
 #
@@ -231,7 +231,9 @@ type
     embeddingDegree*: uint32
     sexticTwist*: SexticTwist
 
-    curveTy*: TypeRef # type of EC point in Jacobian coordinates
+    curveTyAff*: TypeRef # type of EC point in Affine coordinates
+    curveTy*: TypeRef # type of EC point in Jacobian and Projective coordinates
+                      # Their individual values differ, but both have (X,Y,Z) FF coords
 
 proc configureCurve*(ctx: ContextRef,
       name: string,
@@ -248,6 +250,8 @@ proc configureCurve*(ctx: ContextRef,
   result.fd = configureField(ctx, name, modBits, modulus, v, w)
   # Array of 3 arrays, one for each field type
   result.curveTy = array_t(result.fd.fieldTy, 3)
+  # Array of 2 arrays for affine coords
+  result.curveTyAff = array_t(result.fd.fieldTy, 2)
 
 proc definePrimitives*(asy: Assembler_LLVM, ed: CurveDescriptor) =
   asy.definePrimitives(ed.fd)
@@ -268,10 +272,10 @@ proc definePrimitives*(asy: Assembler_LLVM, ed: CurveDescriptor) =
 
 type
   Array* = object
-    builder: BuilderRef
+    builder*: BuilderRef
     buf*: ValueRef
-    arrayTy: TypeRef
-    elemTy: TypeRef
+    arrayTy*: TypeRef
+    elemTy*: TypeRef
     int32_t: TypeRef
 
 proc `[]`*(a: Array, index: SomeInteger): ValueRef {.inline.}
@@ -308,7 +312,7 @@ proc makeArray*(asy: Assembler_LLVM, elemTy: TypeRef, len: uint32): Array =
     int32_t: arrayTy.getContext().int32_t()
   )
 
-proc getElementPtr(a: Array, indices: varargs[int]): ValueRef =
+proc getElementPtr*(a: Array, indices: varargs[int]): ValueRef =
   ## Helper to get an element pointer from a (nested) array.
   var idxs = newSeq[ValueRef](indices.len)
   for i, idx in indices:
@@ -333,14 +337,8 @@ proc store*(asy: Assembler_LLVM, dst: Array, src: ValueRef) {.inline.}=
   doAssert asy.byteOrder == kLittleEndian
   asy.br.store(src, dst.buf)
 
-# Representation of elliptic curve points in Jacobian coordinates.
-# Essentially just an array of 3 field elements
-
-import std / typetraits
-type
-  Field* {.borrow: `.`.} = distinct Array
-    #ar: Array
-    #len:
+# Representation of a finite field point with some utilities
+type Field* {.borrow: `.`.} = distinct Array
 
 proc `[]`*(a: Field, index: SomeInteger): ValueRef = distinctBase(a)[index]
 proc `[]=`*(a: Field, index: SomeInteger, val: ValueRef) = distinctBase(a)[index] = val
@@ -361,41 +359,6 @@ proc store*(asy: Assembler_LLVM, dst: Field, src: Field) =
   assert dst.arrayTy.getArrayLength() == src.arrayTy.getArrayLength()
   for i in 0 ..< dst.arrayTy.getArrayLength:
     dst[i] = src[i]
-
-type
-  EcPoint* {.borrow: `.`.} = distinct Array
-
-proc asEcPoint*(asy: Assembler_LLVM, arrayPtr: ValueRef, arrayTy: TypeRef): EcPoint =
-  ## We construct the EC point of 3 arrays by first converting the input pointer
-  ## into an array itself. Then we get the indices corresponding to the beginning
-  ## of each of (X, Y, Z) coordinates and finally construct the final array and
-  ## assign them.
-  ##
-  ## `arrayTy` is an `array[FieldTy, 3]` where `FieldTy` itsel is an array of
-  ## `array[WordTy, NumWords]`.
-
-  result = EcPoint(asy.asArray(arrayPtr, arrayTy))
-
-proc newEcPoint*(asy: Assembler_LLVM, ed: CurveDescriptor): EcPoint =
-  ## Use field descriptor for size etc?
-  result = EcPoint(asy.makeArray(ed.curveTy))
-
-func getIdx*(br: BuilderRef, ec: EcPoint, idx: int): Field =
-  let pelem = distinctBase(ec).getElementPtr(0, idx)
-  #let el = distinctBase(ec)[idx]
-  debugecho "TYPE ? ", $getTypeOf(pelem)
-  result = br.asField(pelem, ec.elemTy) #getTypeOf(pelem))
-
-func getX*(ec: EcPoint): Field = ec.builder.getIdx(ec, 0)
-func getY*(ec: EcPoint): Field = ec.builder.getIdx(ec, 1)
-func getZ*(ec: EcPoint): Field = ec.builder.getIdx(ec, 2)
-
-proc store*(asy: Assembler_LLVM, dst: EcPoint, src: EcPoint) =
-  ## Stores the `dst` in `src`. Both must correspond to the same field of course.
-  assert dst.arrayTy.getArrayLength() == src.arrayTy.getArrayLength()
-  asy.store(dst.getX(), src.getX())
-  asy.store(dst.getY(), src.getY())
-  asy.store(dst.getZ(), src.getZ())
 
 # Conversion to native LLVM int
 # -------------------------------

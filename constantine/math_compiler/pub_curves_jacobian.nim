@@ -13,10 +13,40 @@ import
   ./ir,
   ./pub_fields,
   ./impl_fields_globals,
-  ./impl_fields_dispatch
+  ./impl_fields_dispatch,
+  std / typetraits # for distinctBase
 
 ## Section name used for `llvmInternalFnDef`
-const SectionName = "ctt.pub_curves"
+const SectionName = "ctt.pub_curves_jacobian"
+
+type
+  EcPointJac* {.borrow: `.`.} = distinct Array
+
+proc asEcPointJac*(asy: Assembler_LLVM, arrayPtr: ValueRef, arrayTy: TypeRef): EcPointJac =
+  ## Constructs an elliptic curve point in Jacobian coordinates from an array pointer.
+  ##
+  ## `arrayTy` is an `array[FieldTy, 3]` where `FieldTy` itsel is an array of
+  ## `array[WordTy, NumWords]`.
+  result = EcPointJac(asy.asArray(arrayPtr, arrayTy))
+
+proc newEcPointJac*(asy: Assembler_LLVM, ed: CurveDescriptor): EcPointJac =
+  ## Use field descriptor for size etc?
+  result = EcPointJac(asy.makeArray(ed.curveTy))
+
+func getIdx*(br: BuilderRef, ec: EcPointJac, idx: int): Field =
+  let pelem = distinctBase(ec).getElementPtr(0, idx)
+  result = br.asField(pelem, ec.elemTy)
+
+func getX*(ec: EcPointJac): Field = ec.builder.getIdx(ec, 0)
+func getY*(ec: EcPointJac): Field = ec.builder.getIdx(ec, 1)
+func getZ*(ec: EcPointJac): Field = ec.builder.getIdx(ec, 2)
+
+proc store*(asy: Assembler_LLVM, dst: EcPointJac, src: EcPointJac) =
+  ## Stores the `dst` in `src`. Both must correspond to the same field of course.
+  assert dst.arrayTy.getArrayLength() == src.arrayTy.getArrayLength()
+  asy.store(dst.getX(), src.getX())
+  asy.store(dst.getY(), src.getY())
+  asy.store(dst.getZ(), src.getZ())
 
 proc isNeutral_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, a: ValueRef) {.used.} =
   ## Generate an internal elliptic curve point isNeutral proc
@@ -33,7 +63,7 @@ proc isNeutral_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, a: ValueRe
     tagParameter(1, "sret")
 
     let (ri, ai) = llvmParams
-    let aEc = asy.asEcPoint(ai, ed.curveTy)
+    let aEc = asy.asEcPointJac(ai, ed.curveTy)
 
     let z = aEc.getZ()
     asy.isZero_internal(ed.fd, ri, z.buf)
@@ -58,6 +88,56 @@ proc genEcIsNeutral*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
 
   return name
 
+## XXX: This needs `setOne` for finite fields, which is non trivial
+#func setNeutral*(P: var EC_ShortW_Jac) {.inline.} =
+#  ## Set P to the neutral element / identity element
+#  ## i.e. ∀Q, P+Q == Q
+#  ## For Short Weierstrass curves, this is the infinity point.
+#  P.x.setOne()
+#  P.y.setOne()
+#  P.z.setZero()
+#
+#proc setNeutral_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r: ValueRef) {.used.} =
+#  ## Generate an internal elliptic curve point setNeutral proc
+#  ## with signature
+#  ##   void name(CurveType r)
+#  ## with r the point to be 'neutralized'.
+#  ##
+#  ## Generates a call, so that we one can use this proc as part of another procedure.
+#  let name = ed.name & "_setNeutral_internal"
+#  asy.llvmInternalFnDef(
+#          name, SectionName,
+#          asy.void_t, toTypes([r, a]),
+#          {kHot}):
+#    tagParameter(1, "sret")
+#
+#    let (ri, ai) = llvmParams
+#    let aEc = asy.asEcPointJac(ai, ed.curveTy)
+#
+#    let z = aEc.getZ()
+#    asy.isZero_internal(ed.fd, ri, z.buf)
+#
+#    asy.br.retVoid()
+#
+#  asy.callFn(name, [r, a])
+#
+#proc genEcSetNeutral*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
+#  ## Generate a public elliptic curve point setNeutral proc
+#  ## with signature
+#  ##   void name(*bool r, CurveType a)
+#  ## with r the result and a the operand
+#  ## and return the corresponding name to call it
+#
+#  let name = ed.name & "_setNeutral"
+#  let ptrBool = pointer_t(asy.ctx.int1_t())
+#  asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ptrBool, ed.curveTy]):
+#    let (r, a) = llvmParams
+#    asy.setNeutral_internal(ed, r, a)
+#    asy.br.retVoid()
+#
+#  return name
+
+
 proc ccopy_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, a, b, c: ValueRef) {.used.} =
   ## Generate an internal elliptic curve point ccopy proc
   ## with signature
@@ -75,8 +155,8 @@ proc ccopy_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, a, b, c: ValueRef
     tagParameter(1, "sret")
 
     let (ai, bi, ci) = llvmParams
-    let aEc = asy.asEcPoint(ai, ed.curveTy)
-    let bEc = asy.asEcPoint(bi, ed.curveTy)
+    let aEc = asy.asEcPointJac(ai, ed.curveTy)
+    let bEc = asy.asEcPointJac(bi, ed.curveTy)
 
     asy.ccopy_internal(ed.fd, aEc.getX().buf, bEc.getX().buf, ci)
     asy.ccopy_internal(ed.fd, aEc.getY().buf, bEc.getY().buf, ci)
@@ -118,7 +198,7 @@ proc neg_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, a: ValueRef) {.used
     tagParameter(1, "sret")
 
     let ai = llvmParams
-    let aEc = asy.asEcPoint(ai, ed.curveTy)
+    let aEc = asy.asEcPointJac(ai, ed.curveTy)
     ## XXX: maybe need to copy aEc?
     asy.neg_internal(ed.fd, aEc.getY().buf, aEc.getY().buf)
 
@@ -156,7 +236,7 @@ proc cneg_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, a, c: ValueRef) {.
     tagParameter(1, "sret")
 
     let (ai, ci) = llvmParams
-    let aEc = asy.asEcPoint(ai, ed.curveTy)
+    let aEc = asy.asEcPointJac(ai, ed.curveTy)
     ## XXX: maybe need to copy aEc?
     asy.cneg_internal(ed.fd, aEc.getY().buf, aEc.getY().buf, ci)
 
@@ -197,18 +277,18 @@ proc sum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: ValueRef) 
           {kHot}):
     tagParameter(1, "sret")
     let (ri, pi, qi) = llvmParams
-    let Q = asy.asEcPoint(qi, ed.curveTy)
-    let P = asy.asEcPoint(pi, ed.curveTy)
-    let rA = asy.asEcPoint(ri, ed.curveTy)
+    let Q = asy.asEcPointJac(qi, ed.curveTy)
+    let P = asy.asEcPointJac(pi, ed.curveTy)
+    let rA = asy.asEcPointJac(ri, ed.curveTy)
 
     ## Helper templates to allow the logic below to be roughly equivalent to the regular
     ## CPU code in `ec_shortweierstrass_jacobian.nim`.
 
     ## XXX: These helpers will likely become either a template to be used in other EC
-    ## procs in the near term or exported templates using the `Field` and `EcPoint` types
+    ## procs in the near term or exported templates using the `Field` and `EcPointJac` types
     ## for overload resolution in the longer term. Still, the explicit `asy/ed` dependencies
     ## makes it difficult to provide a clean API without -- effectively -- hacky templates,
-    ## unless we absorb not only the `Builder` in the `Field` / `EcPoint` objects, but also
+    ## unless we absorb not only the `Builder` in the `Field` / `EcPointJac` objects, but also
     ## the full `asy`/`ed` types as refs. It is an option though.
 
     # For finite field points
@@ -246,11 +326,11 @@ proc sum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: ValueRef) 
       asy.isNeutral_internal(ed, res, x.buf)
       res
 
-    template ccopy(x, y: EcPoint, c): untyped = asy.ccopy_internal(ed, x.buf, y.buf, derefBool c)
+    template ccopy(x, y: EcPointJac, c): untyped = asy.ccopy_internal(ed, x.buf, y.buf, derefBool c)
 
-    template x(ec: EcPoint): Field = ec.getX()
-    template y(ec: EcPoint): Field = ec.getY()
-    template z(ec: EcPoint): Field = ec.getZ()
+    template x(ec: EcPointJac): Field = ec.getX()
+    template y(ec: EcPointJac): Field = ec.getY()
+    template z(ec: EcPointJac): Field = ec.getZ()
 
     ## XXX: Required to extent for coefA != 0!
     when false:
@@ -367,7 +447,7 @@ proc sum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: ValueRef) 
     # - R_or_M is set with R (add) or M (dbl)
     # - HHH_or_Mpre contains HHH (add) or garbage precomputation (dbl)
     # - V_or_S is set with V = U₁*HH (add) or S = X₁*YY (dbl)
-    var o = asy.newEcPoint(ed)
+    var o = asy.newEcPointJac(ed)
     block: # Finishing line
       var t = asy.newField(ed.fd)
       t.double(V_or_S)
@@ -428,17 +508,17 @@ proc double_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p: ValueRef) 
           {kHot}):
     tagParameter(1, "sret")
     let (ri, pi) = llvmParams
-    let P = asy.asEcPoint(pi, ed.curveTy)
-    let rA = asy.asEcPoint(ri, ed.curveTy)
+    let P = asy.asEcPointJac(pi, ed.curveTy)
+    let rA = asy.asEcPointJac(ri, ed.curveTy)
 
     ## Helper templates to allow the logic below to be roughly equivalent to the regular
     ## CPU code in `ec_shortweierstrass_jacobian.nim`.
 
     ## XXX: These helpers will likely become either a template to be used in other EC
-    ## procs in the near term or exported templates using the `Field` and `EcPoint` types
+    ## procs in the near term or exported templates using the `Field` and `EcPointJac` types
     ## for overload resolution in the longer term. Still, the explicit `asy/ed` dependencies
     ## makes it difficult to provide a clean API without -- effectively -- hacky templates,
-    ## unless we absorb not only the `Builder` in the `Field` / `EcPoint` objects, but also
+    ## unless we absorb not only the `Builder` in the `Field` / `EcPointJac` objects, but also
     ## the full `asy`/`ed` types as refs. It is an option though.
 
     # For finite field points
@@ -457,9 +537,9 @@ proc double_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p: ValueRef) 
     template `*=`(x: Field, b: static int): untyped = asy.scalarMul_internal(ed.fd, x.buf, b)
 
     # For EC points
-    template x(ec: EcPoint): Field = ec.getX()
-    template y(ec: EcPoint): Field = ec.getY()
-    template z(ec: EcPoint): Field = ec.getZ()
+    template x(ec: EcPointJac): Field = ec.getX()
+    template y(ec: EcPointJac): Field = ec.getY()
+    template z(ec: EcPointJac): Field = ec.getZ()
 
     var
       A = asy.newField(ed.fd)
