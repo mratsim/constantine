@@ -306,32 +306,7 @@ proc endianCheck(): NimNode =
       "Most CPUs (x86-64, ARM) are little-endian, as are Nvidia GPUs, which allows naive copying of parameters.\n" &
       "Your architecture '" & $hostCPU & "' is big-endian and GPU offloading is unsupported on it."
 
-macro execCuda*(jitFn: CUfunction,
-                res: typed,
-                inputs: typed): untyped =
-  ## Given a CUDA function, execute the kernel. Copies all non trivial data types to
-  ## to the GPU via `cuMemcpyHtoD`. Any argument given as `res` will be copied back
-  ## from the GPU after kernel execution finishes.
-  ##
-  ## IMPORTANT:
-  ## The arguments passed to the CUDA kernel will be in the order in which they are
-  ## given to the macro. This especially means `res` arguments will be passed first.
-  ##
-  ## Example:
-  ## ```nim
-  ## execCuda(fn, res = [r, s], inputs = [a, b, c]
-  ## ```
-  ## will pass the parameters as `[r, s, a, b, c]`.
-  ##
-  ## We do not perform any checks on whether the given types are valid as arguments to
-  ## the CUDA target! Also, all arguments given as `res` are expected to be copied.
-  ## To return a value for a simple data type, use a `ptr X` type.
-  ##
-  ## We also copy all `res` data to the GPU, so that a return value can also be used
-  ## as an input.
-  ##
-  ## NOTE: This function is mainly intended for convenient execution of a single kernel
-
+proc execCudaImpl(jitFn, res, inputs: NimNode): NimNode =
   # XXX: we could check for inputs that are literals and produce local variables so
   # that we can pass them by reference
 
@@ -414,6 +389,38 @@ macro execCuda*(jitFn: CUfunction,
         x[0]
       )
     )
+
+macro execCuda*(jitFn: CUfunction,
+                res: typed,
+                inputs: typed): untyped =
+  ## Given a CUDA function, execute the kernel. Copies all non trivial data types to
+  ## to the GPU via `cuMemcpyHtoD`. Any argument given as `res` will be copied back
+  ## from the GPU after kernel execution finishes.
+  ##
+  ## IMPORTANT:
+  ## The arguments passed to the CUDA kernel will be in the order in which they are
+  ## given to the macro. This especially means `res` arguments will be passed first.
+  ##
+  ## Example:
+  ## ```nim
+  ## execCuda(fn, res = [r, s], inputs = [a, b, c]
+  ## ```
+  ## will pass the parameters as `[r, s, a, b, c]`.
+  ##
+  ## We do not perform any checks on whether the given types are valid as arguments to
+  ## the CUDA target! Also, all arguments given as `res` are expected to be copied.
+  ## To return a value for a simple data type, use a `ptr X` type.
+  ##
+  ## We also copy all `res` data to the GPU, so that a return value can also be used
+  ## as an input.
+  ##
+  ## NOTE: This function is mainly intended for convenient execution of a single kernel
+  result = execCudaImpl(jitFn, res, inputs)
+
+macro execCuda*(jitFn: CUfunction,
+                res: typed): untyped =
+  ## Overload of the above for empty `inputs`
+  result = execCudaImpl(jitFn, res, nnkBracket.newTree())
 
 # ############################################################
 #
