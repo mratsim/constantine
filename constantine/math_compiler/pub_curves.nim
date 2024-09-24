@@ -413,3 +413,115 @@ proc genEcSum*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
     asy.sum_internal(ed, ri, pi, qi)
     asy.br.retVoid()
   result = name
+
+proc double_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p: ValueRef) =
+  ## Generate an internal elliptic curve point doubling procedure
+  ## with signature
+  ##   `void name(CurveType r, CurveType p)`
+  ## with `p` the EC point to be doubled and stored in `r`.
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
+  let name = ed.name & "_double_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, p]),
+          {kHot}):
+    tagParameter(1, "sret")
+    let (ri, pi) = llvmParams
+    let P = asy.asEcPoint(pi, ed.curveTy)
+    let rA = asy.asEcPoint(ri, ed.curveTy)
+
+    ## Helper templates to allow the logic below to be roughly equivalent to the regular
+    ## CPU code in `ec_shortweierstrass_jacobian.nim`.
+
+    ## XXX: These helpers will likely become either a template to be used in other EC
+    ## procs in the near term or exported templates using the `Field` and `EcPoint` types
+    ## for overload resolution in the longer term. Still, the explicit `asy/ed` dependencies
+    ## makes it difficult to provide a clean API without -- effectively -- hacky templates,
+    ## unless we absorb not only the `Builder` in the `Field` / `EcPoint` objects, but also
+    ## the full `asy`/`ed` types as refs. It is an option though.
+
+    # For finite field points
+    template square(res, y): untyped = asy.nsqr_internal(ed.fd, res.buf, y.buf, count = 1)
+    template square(x): untyped = square(x, x)
+    template prod(res, x, y): untyped = asy.mul_internal(ed.fd, res.buf, x.buf, y.buf)
+    template diff(res, x, y): untyped = asy.sub_internal(ed.fd, res.buf, x.buf, y.buf)
+    template double(res, x): untyped = asy.double_internal(ed.fd, res.buf, x.buf)
+    template double(x): untyped = double(x, x)
+    template add(res, x, y): untyped = asy.add_internal(ed.fd, res.buf, x.buf, y.buf)
+
+    template `*=`(x, y: Field): untyped = x.prod(x, y)
+    template `+=`(x, y: Field): untyped = x.add(x, y)
+    template `-=`(x, y: Field): untyped = x.diff(x, y)
+
+    template `*=`(x: Field, b: static int): untyped = asy.scalarMul_internal(ed.fd, x.buf, b)
+
+    # For EC points
+    template x(ec: EcPoint): Field = ec.getX()
+    template y(ec: EcPoint): Field = ec.getY()
+    template z(ec: EcPoint): Field = ec.getZ()
+
+    var
+      A = asy.newField(ed.fd)
+      B = asy.newField(ed.fd)
+      C = asy.newField(ed.fd)
+
+    # "dbl-2009-l" doubling formula - https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
+    #
+    #     Cost: 2M + 5S + 6add + 3*2 + 1*3 + 1*8.
+    #     Source: 2009.04.01 Lange.
+    #     Explicit formulas:
+    #
+    #           A = X₁²
+    #           B = Y₁²
+    #           C = B²
+    #           D = 2*((X₁+B)²-A-C)
+    #           E = 3*A
+    #           F = E²
+    #           X₃ = F-2*D
+    #           Y₃ = E*(D-X₃)-8*C
+    #           Z₃ = 2*Y₁*Z₁
+    #
+    A.square(P.x)
+    B.square(P.y)
+    C.square(B)
+    B += P.x
+    # aliasing: we don't use P.x anymore
+
+    B.square()
+    B -= A
+    B -= C
+    B.double()         # D = 2*((X₁+B)²-A-C)
+    A *= 3             # E = 3*A
+    rA.x.square(A)      # F = E²
+
+    rA.x -= B
+    rA.x -= B           # X₃ = F-2*D
+
+    B -= rA.x           # (D-X₃)
+    A *= B             # E*(D-X₃)
+    C *= 8
+
+    rA.z.prod(P.z, P.y)
+    rA.z.double()       # Z₃ = 2*Y₁*Z₁
+    # aliasing: we don't use P.y, P.z anymore
+
+    rA.y.diff(A, C)     # Y₃ = E*(D-X₃)-8*C
+
+    asy.br.retVoid()
+
+  asy.callFn(name, [r, p])
+
+proc genEcDouble*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
+  ## Generate a publc elliptic curve point doubling proc
+  ## with signature
+  ##   `void name(CurveType r, CurveType p)`
+  ## with `p` the EC point to be doubled and stored in `r`.
+  ##
+  ## Returns the name of the produced kernel to call it.
+  let name = ed.name & "_double"
+  asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ed.curveTy, ed.curveTy]):
+    let (ri, pi) = llvmParams
+    asy.double_internal(ed, ri, pi)
+    asy.br.retVoid()
+  result = name
