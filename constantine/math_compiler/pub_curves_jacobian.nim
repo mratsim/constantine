@@ -30,6 +30,14 @@ proc asEcPointJac*(asy: Assembler_LLVM, arrayPtr: ValueRef, arrayTy: TypeRef): E
   ## `array[WordTy, NumWords]`.
   result = EcPointJac(asy.asArray(arrayPtr, arrayTy))
 
+proc asEcPointJac*(asy: Assembler_LLVM, ed: CurveDescriptor, arrayPtr: ValueRef): EcPointJac =
+  ## Constructs an elliptic curve point in Jacobian coordinates from an array pointer,
+  ## taking the required `arrayTy` from the `CurveDescriptor`.
+  ##
+  ## `arrayTy` is an `array[FieldTy, 3]` where `FieldTy` itsel is an array of
+  ## `array[WordTy, NumWords]`.
+  result = EcPointJac(asy.asArray(arrayPtr, ed.curveTy))
+
 proc newEcPointJac*(asy: Assembler_LLVM, ed: CurveDescriptor): EcPointJac =
   ## Use field descriptor for size etc?
   result = EcPointJac(asy.makeArray(ed.curveTy))
