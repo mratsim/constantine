@@ -107,7 +107,7 @@ proc genEcIsNeutral*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
 
   let name = ed.name & "aff_isNeutral"
   let ptrBool = pointer_t(asy.ctx.int1_t())
-  asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ptrBool, ed.curveTy]):
+  asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ptrBool, ed.curveTyAff]):
     let (r, a) = llvmParams
     asy.isNeutral_internal(ed, r, a)
     asy.br.retVoid()
