@@ -354,7 +354,7 @@ proc newField*(asy: Assembler_LLVM, fd: FieldDescriptor): Field =
   ## Use field descriptor for size etc?
   result = Field(asy.makeArray(fd.fieldTy))
 
-proc store*(asy: Assembler_LLVM, dst: Field, src: Field) =
+proc store*(dst: Field, src: Field) =
   ## Stores the `dst` in `src`. Both must correspond to the same field of course.
   assert dst.arrayTy.getArrayLength() == src.arrayTy.getArrayLength()
   for i in 0 ..< dst.arrayTy.getArrayLength:

@@ -41,12 +41,12 @@ func getX*(ec: EcPointJac): Field = ec.builder.getIdx(ec, 0)
 func getY*(ec: EcPointJac): Field = ec.builder.getIdx(ec, 1)
 func getZ*(ec: EcPointJac): Field = ec.builder.getIdx(ec, 2)
 
-proc store*(asy: Assembler_LLVM, dst: EcPointJac, src: EcPointJac) =
+proc store*(dst: EcPointJac, src: EcPointJac) =
   ## Stores the `dst` in `src`. Both must correspond to the same field of course.
   assert dst.arrayTy.getArrayLength() == src.arrayTy.getArrayLength()
-  asy.store(dst.getX(), src.getX())
-  asy.store(dst.getY(), src.getY())
-  asy.store(dst.getZ(), src.getZ())
+  store(dst.getX(), src.getX())
+  store(dst.getY(), src.getY())
+  store(dst.getZ(), src.getZ())
 
 proc isNeutral_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, a: ValueRef) {.used.} =
   ## Generate an internal elliptic curve point isNeutral proc
@@ -398,14 +398,14 @@ proc sum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: ValueRef) 
       var
         a = asy.newField(ed.fd)
         b = asy.newField(ed.fd)
-      asy.store(a, H)
-      asy.store(b, HH_or_YY)
+      store(a, H)
+      store(b, HH_or_YY)
       a.ccopy(P.x, isDbl)           # H or X₁
       b.ccopy(P.x, isDbl)           # HH or X₁
       HHH_or_Mpre.prod(a, b)        # HHH or X₁²
 
       var M = asy.newField(ed.fd)
-      asy.store(M, HHH_or_Mpre) # Assuming on doubling path
+      store(M, HHH_or_Mpre) # Assuming on doubling path
       M.div2()                      #  X₁²/2
       M += HHH_or_Mpre              # 3X₁²/2
       R_or_M.ccopy(M, isDbl)
@@ -462,7 +462,7 @@ proc sum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: ValueRef) 
       HHH_or_Mpre *= S1                  # HHH*S1 (add) or YY² (dbl)
       o.y -= HHH_or_Mpre                 # Y₃ = R(V-X₃)-S₁*HHH (add) or M(S-X₃)-YY² (dbl)
 
-      asy.store(t, Q.z)                  # `t = Q.z`
+      store(t, Q.z)                      # `t = Q.z`
       t.ccopy(H_or_Y, isDbl)             # Z₂ (add) or Y₁ (dbl)
       t.prod(t, P.z)                     # Z₁Z₂ (add) or Y₁Z₁ (dbl)
       o.z.prod(t, H_or_Y)                # Z₁Z₂H (add) or garbage (dbl)
@@ -473,7 +473,7 @@ proc sum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: ValueRef) 
       o.ccopy(Q, P.isNeutral())
       o.ccopy(P, Q.isNeutral())
 
-    asy.store(rA, o)                     # `r = o`
+    store(rA, o)                         # `r = o`
 
     asy.br.retVoid()
 
