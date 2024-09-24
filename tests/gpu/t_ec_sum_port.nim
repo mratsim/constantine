@@ -108,28 +108,28 @@ proc genSumImpl*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
         S2   = asy.newField(ed.fd)
 
       Z2Z2.square(Q.z) # , skipFinalSub = true)
-      #asy.store(rA, Z2Z2)
+      #store(rA, Z2Z2)
       S1.prod(Q.z, Z2Z2) #, skipFinalSub = true)
-      #asy.store(rA, S1)
+      #store(rA, S1)
       S1 *= P.y           # S₁ = Y₁*Z₂³
       #S1.prod(S1, P.y)
-      #asy.store(rA, S1)
+      #store(rA, S1)
       U1.prod(P.x, Z2Z2)  # U₁ = X₁*Z₂²
-      #asy.store(rA, U1)
+      #store(rA, U1)
 
       Z1Z1.square(P.z) # , skipFinalSub = not CoefA_eq_minus3)
-      #asy.store(rA, Z1Z1)
+      #store(rA, Z1Z1)
       S2.prod(P.z, Z1Z1)#, skipFinalSub = true)
-      #asy.store(rA, S2)
+      #store(rA, S2)
       S2 *= Q.y           # S₂ = Y₂*Z₁³
-      #asy.store(rA, S2)
+      #store(rA, S2)
       U2.prod(Q.x, Z1Z1)  # U₂ = X₂*Z₁²
-      #asy.store(rA, U2)
+      #store(rA, U2)
 
       H.diff(U2, U1)      # H = U₂-U₁
-      #asy.store(rA, H)
+      #store(rA, H)
       R.diff(S2, S1)      # R = S₂-S₁
-      #asy.store(rA, R)
+      #store(rA, R)
 
     # Exceptional cases
     # Expressing H as affine, if H == 0, P == Q or -Q
@@ -143,7 +143,7 @@ proc genSumImpl*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
     # asy.setZero_internal(ed.fd, R.buf)
 
     let isDbl = H.isZero() and R.isZero()
-    #asy.store(ri, isDbl)
+    #store(ri, isDbl)
 
     # Rename buffers under the form (add_or_dbl)
     template R_or_M: untyped = R
@@ -154,37 +154,37 @@ proc genSumImpl*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
       HHH_or_Mpre = asy.newField(ed.fd)
 
     H_or_Y.ccopy(P.y, isDbl) # H         (add) or Y₁        (dbl)
-    #asy.store(rA, H_or_Y)
+    #store(rA, H_or_Y)
     HH_or_YY.square(H_or_Y)  # H²        (add) or Y₁²       (dbl)
-    #asy.store(rA, HH_or_YY)
+    #store(rA, HH_or_YY)
     #
     V_or_S.ccopy(P.x, isDbl) # U₁        (add) or X₁        (dbl)
-    #asy.store(rA, V_or_S)
+    #store(rA, V_or_S)
     V_or_S *= HH_or_YY       # V = U₁*HH (add) or S = X₁*YY (dbl)
-    #asy.store(rA, V_or_S)
+    #store(rA, V_or_S)
 
     # Block for `coefA == 0`
     block: # Compute M for doubling
       var
         a = asy.newField(ed.fd)
         b = asy.newField(ed.fd)
-      asy.store(a, H)
-      asy.store(b, HH_or_YY)
+      store(a, H)
+      store(b, HH_or_YY)
       a.ccopy(P.x, isDbl)           # H or X₁
-      #asy.store(rA, a)
+      #store(rA, a)
       b.ccopy(P.x, isDbl)           # HH or X₁
-      #asy.store(rA, b)
+      #store(rA, b)
       HHH_or_Mpre.prod(a, b)        # HHH or X₁²
-      #asy.store(rA, HHH_or_Mpre)
+      #store(rA, HHH_or_Mpre)
       #
       var M = asy.newField(ed.fd)
-      asy.store(M, HHH_or_Mpre) # Assuming on doubling path
+      store(M, HHH_or_Mpre) # Assuming on doubling path
       M.div2()                      #  X₁²/2
-      #asy.store(rA, M)
+      #store(rA, M)
       M += HHH_or_Mpre              # 3X₁²/2
-      #asy.store(rA, M)
+      #store(rA, M)
       R_or_M.ccopy(M, isDbl)
-      #asy.store(rA, R_or_M)
+      #store(rA, R_or_M)
 
     # Let's count our horses, at this point:
     # - R_or_M is set with R (add) or M (dbl)
@@ -194,47 +194,47 @@ proc genSumImpl*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
     block: # Finishing line
       var t = asy.newField(ed.fd)
       t.double(V_or_S)
-      #asy.store(rA, t)
+      #store(rA, t)
       o.x.square(R_or_M)
-      #asy.store(rA, o.x)
+      #store(rA, o.x)
       o.x -= t                           # X₃ = R²-2*V (add) or M²-2*S (dbl)
-      #asy.store(rA, o.x)
+      #store(rA, o.x)
       o.x.csub(HHH_or_Mpre, not isDbl)   # X₃ = R²-HHH-2*V (add) or M²-2*S (dbl)
-      #asy.store(rA, o.x)
+      #store(rA, o.x)
 
       V_or_S -= o.x                      # V-X₃ (add) or S-X₃ (dbl)
-      #asy.store(rA, V_or_S)
+      #store(rA, V_or_S)
       o.y.prod(R_or_M, V_or_S)           # Y₃ = R(V-X₃) (add) or M(S-X₃) (dbl)
-      #asy.store(rA, o.y)
+      #store(rA, o.y)
       HHH_or_Mpre.ccopy(HH_or_YY, isDbl) # HHH (add) or YY (dbl)
-      #asy.store(rA, HHH_or_Mpre)
+      #store(rA, HHH_or_Mpre)
       S1.ccopy(HH_or_YY, isDbl)          # S1 (add) or YY (dbl)
-      #asy.store(rA, S1)
+      #store(rA, S1)
       HHH_or_Mpre *= S1                  # HHH*S1 (add) or YY² (dbl)
-      #asy.store(rA, HHH_or_Mpre)
+      #store(rA, HHH_or_Mpre)
       o.y -= HHH_or_Mpre                 # Y₃ = R(V-X₃)-S₁*HHH (add) or M(S-X₃)-YY² (dbl)
-      #asy.store(rA, o.y)
+      #store(rA, o.y)
 
-      asy.store(t, Q.z) # t = Q.z
-      #asy.store(rA, t)
+      store(t, Q.z) # t = Q.z
+      #store(rA, t)
       t.ccopy(H_or_Y, isDbl)             # Z₂ (add) or Y₁ (dbl)
-      #asy.store(rA, t)
+      #store(rA, t)
       t.prod(t, P.z) #, true)               # Z₁Z₂ (add) or Y₁Z₁ (dbl)
-      #asy.store(rA, t)
+      #store(rA, t)
       o.z.prod(t, H_or_Y)                # Z₁Z₂H (add) or garbage (dbl)
-      #asy.store(rA, o.z)
+      #store(rA, o.z)
       o.z.ccopy(t, isDbl)                # Z₁Z₂H (add) or Y₁Z₁ (dbl)
-      #asy.store(rA, o.z)
+      #store(rA, o.z)
 
 
     # if P or R were infinity points they would have spread 0 with Z₁Z₂
     block: # Infinity points
       o.ccopy(Q, P.isNeutral())
-      #asy.store(rA, o)
+      #store(rA, o)
       o.ccopy(P, Q.isNeutral())
-      #asy.store(rA, o)
+      #store(rA, o)
 
-    asy.store(rA, o) # r = o
+    store(rA, o) # r = o
 
     asy.br.retVoid()
 

@@ -42,7 +42,7 @@ proc setZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.
   asy.callFn(name, [r])
 
 proc genFpSetZero*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
-  ## Generate a public field subtraction proc
+  ## Generate a public field setZero procedure
   ## with signature
   ##   void name(FieldType r)
   ## with r the element to be zeroed.
