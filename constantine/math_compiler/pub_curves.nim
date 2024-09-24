@@ -103,6 +103,83 @@ proc genEcCcopy*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
 
   return name
 
+proc neg_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, a: ValueRef) {.used.} =
+  ## Generate an internal elliptic curve point negation proc
+  ## with signature
+  ##   `void name(CurveType a)`
+  ## with `a` the EC point to be negated.
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
+  let name = ed.name & "_neg_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([a]),
+          {kHot}):
+    tagParameter(1, "sret")
+
+    let ai = llvmParams
+    let aEc = asy.asEcPoint(ai, ed.curveTy)
+    ## XXX: maybe need to copy aEc?
+    asy.neg_internal(ed.fd, aEc.getY().buf, aEc.getY().buf)
+
+    asy.br.retVoid()
+
+  asy.callFn(name, [a])
+
+proc genEcNeg*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
+  ## Generate a public elliptic curve point neg proc
+  ## with signature
+  ##   `void name(CurveType a)`
+  ## with `a` the EC curve point to be negated.
+  ## and return the corresponding name to call it
+
+  let name = ed.name & "_neg"
+  asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ed.curveTy]):
+    let a = llvmParams
+    asy.neg_internal(ed, a)
+    asy.br.retVoid()
+
+  return name
+
+proc cneg_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, a, c: ValueRef) {.used.} =
+  ## Generate an internal elliptic curve point conditional negation proc
+  ## with signature
+  ##   `void name(CurveType a, bool condition)`
+  ## with `a` the EC curve point to be negated if `condition` is true.
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
+  let name = ed.name & "_cneg_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([a, c]),
+          {kHot}):
+    tagParameter(1, "sret")
+
+    let (ai, ci) = llvmParams
+    let aEc = asy.asEcPoint(ai, ed.curveTy)
+    ## XXX: maybe need to copy aEc?
+    asy.cneg_internal(ed.fd, aEc.getY().buf, aEc.getY().buf, ci)
+
+    asy.br.retVoid()
+
+  asy.callFn(name, [a, c])
+
+proc genEcCneg*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
+  ## Generate a public elliptic curve point conditional neg proc
+  ## with signature
+  ##   `void name(CurveType a, bool condition)`
+  ## with `a` the EC curve point to be negated if `condition` is true.
+  ## Returns the name to call the kernel.
+
+  let name = ed.name & "_neg"
+  asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ed.curveTy, asy.ctx.int1_t()]):
+    let (a, c) = llvmParams
+    asy.cneg_internal(ed, a, c)
+    asy.br.retVoid()
+
+  return name
+
+
 proc sum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: ValueRef) =
   ## Generate an internal elliptic curve point addition proc
   ## with signature
