@@ -56,6 +56,44 @@ proc genFpSetZero*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
   return name
 
+proc setOne_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.used.} =
+  ## Generate an internal field setOne
+  ## with signature
+  ##   void name(FieldType r)
+  ## with `r` the element to be set to 1 in Montgomery form.
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
+  let name = fd.name & "_setOne_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r]),
+          {kHot}):
+    tagParameter(1, "sret")
+    let M = asy.getModulusPtr(fd)
+    let mOne = asy.getMontyOnePtr(fd)
+
+    let ri = llvmParams
+    asy.store(ri, mOne)
+
+    asy.br.retVoid()
+
+  asy.callFn(name, [r])
+
+proc genFpSetOne*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
+  ## Generate a public field setOne procedure
+  ## with signature
+  ##   void name(FieldType r)
+  ## with `r` the element to be set to 1 in Montgomery form.
+  ## and return the corresponding name to call it
+
+  let name = fd.name & "_setOne"
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy]):
+    let r = llvmParams
+    asy.setOne_internal(fd, r)
+    asy.br.retVoid()
+
+  return name
+
 proc add_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) {.used.} =
   ## Generate an internal field addition proc
   ## with signature
@@ -173,6 +211,65 @@ proc genFpCcopy*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
     asy.ccopy_internal(fd, a, b, condition)
 
+    asy.br.retVoid()
+
+  return name
+
+proc csetZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, c: ValueRef) {.used.} =
+  ## Generate an internal field conditional setZero
+  ## with signature
+  ##   void name(FieldType r, bool condition)
+  ## with `r` the element to be set to 1 in Montgomery form, if
+  ## the `condition` is `true`.
+  ##
+  ## Generates a call, so that we zero can use this proc as part of another procedure.
+  let name = fd.name & "_csetZero_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, c]),
+          {kHot}):
+    tagParameter(1, "sret")
+    let M = asy.getModulusPtr(fd)
+
+    let (ri, ci) = llvmParams
+
+    # NOTE: We could follow the algorithm used for the BigInt
+    # limbs, but we can also just combine `setZero_internal`
+    # with a ccopy.
+    ## XXX: port the below
+    var zero = asy.newField(fd)
+    asy.setZero_internal(fd, zero.buf)
+    asy.ccopy_internal(fd, ri, zero.buf, ci)
+
+    when false:
+      # func csetZero*(a: var Limbs, ctl: SecretBool) =
+      #   ## Set ``a`` to 0 if ``ctl`` is true
+      #   let mask = -(SecretWord(ctl) xor One)
+      #   for i in 0 ..< a.len:
+      #     a[i] = a[i] and mask
+
+      # extend `int1_t` to `fd.wordTy`
+      let cond = asy.br.zext(ci, fd.wordTy)
+      # `xor` with `1`
+      let One = constInt(fd.wordTy, 1)
+      var mask = X
+    asy.br.retVoid()
+
+  asy.callFn(name, [r, c])
+
+proc genFpCsetZero*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
+  ## Generate a public field conditional setZero
+  ## with signature
+  ##   void name(FieldType r, bool condition)
+  ## with `r` the element to be set to 1 in Montgomery form, if
+  ## the `condition` is `true`.
+  ##
+  ## Returns the name of the kernel to call it.
+
+  let name = fd.name & "_csetZero"
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, asy.ctx.int1_t()]):
+    let (r, c) = llvmParams
+    asy.csetZero_internal(fd, r, c)
     asy.br.retVoid()
 
   return name
