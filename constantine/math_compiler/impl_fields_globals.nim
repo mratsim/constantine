@@ -154,6 +154,19 @@ func addC[T: DynWord](cOut, sum: var T, a, b, cIn: T) =
   cOut = cHi
   sum = merge(rHi, rLo)
 
+func subB[T: DynWord](bOut, diff: var T, a, b, bIn: T) =
+  # Substract with borrow, fallback for the Compile-Time VM
+  # (BorrowOut, Sum) <- a - b - BorrowIn
+  Widths()
+  let (aHi, aLo) = split(a)
+  let (bHi, bLo) = split(b)
+  let tLo = HalfBase + aLo - bLo - bIn
+  let (noBorrowLo, rLo) = split(tLo)
+  let tHi = HalfBase + aHi - bHi - T(noBorrowLo == 0)
+  let (noBorrowHi, rHi) = split(tHi)
+  bOut = T(noBorrowHi == 0)
+  diff = merge(rHi, rLo)
+
 func add[T: DynWord](a: var BigNum[T], w: T): bool =
   ## Limbs addition, add a number that fits in a word
   ## Returns the carry
@@ -176,11 +189,85 @@ func shiftRight*[T: DynWord](a: var BigNum[T], k: int) =
     a.limbs[i] = (a.limbs[i] shr k) or (a.limbs[i+1] shl (wordBitWidth - k))
   a.limbs[a.limbs.len-1] = a.limbs[a.limbs.len-1] shr k
 
+func dbl[T: DynWord](a: var BigNum[T]): bool =
+  ## In-place multiprecision double
+  ##   a -> 2a
+  var carry, sum: T
+  for i in 0 ..< a.limbs.len:
+    let ai = T(a.limbs[i])
+    addC(carry, sum, ai, ai, carry)
+    a.limbs[i] = sum
+
+  result = bool carry
+
+func csub[T: DynWord](a: var BigNum[T], b: BigNum[T], ctl: bool): bool =
+  ## In-place optional substraction
+  ##
+  ## It is NOT constant-time and is intended
+  ## only for compile-time precomputation
+  ## of non-secret data.
+  var borrow, diff: T
+  for i in 0 ..< a.limbs.len:
+    let ai = T(a.limbs[i])
+    let bi = T(b.limbs[i])
+    subB(borrow, diff, ai, bi, borrow)
+    if ctl:
+      a.limbs[i] = diff
+
+  result = bool borrow
+
+func doubleMod[T: DynWord](a: var BigNum[T], M: BigNum[T]) =
+  ## In-place modular double
+  ##   a -> 2a (mod M)
+  ##
+  ## It is NOT constant-time and is intended
+  ## only for compile-time precomputation
+  ## of non-secret data.
+  var ctl = dbl(a)
+  ctl = ctl or not a.csub(M, false)
+  discard csub(a, M, ctl)
+
+func r_powmod[T: DynWord](n: static int, M: BigNum[T]): BigNum[T] =
+  ## Returns the Montgomery domain magic constant for the input modulus:
+  ##
+  ##   R ≡ R (mod M) with R = (2^WordBitWidth)^numWords
+  ##   or
+  ##   R² ≡ R² (mod M) with R = (2^WordBitWidth)^numWords
+  ##
+  ## Assuming a field modulus of size 256-bit with 63-bit words, we require 5 words
+  ##   R² ≡ ((2^63)^5)^2 (mod M) = 2^630 (mod M)
+
+  # Algorithm
+  # Bos and Montgomery, Montgomery Arithmetic from a Software Perspective
+  # https://eprint.iacr.org/2017/1057.pdf
+  #
+  # For R = r^n = 2^wn and 2^(wn − 1) ≤ N < 2^wn
+  # r^n = 2^63 in on 64-bit and w the number of words
+  #
+  # 1. C0 = 2^(wn - 1), the power of two immediately less than N
+  # 2. for i in 1 ... wn+1
+  #      Ci = C(i-1) + C(i-1) (mod M)
+  #
+  # Thus: C(wn+1) ≡ 2^(wn+1) C0 ≡ 2^(wn + 1) 2^(wn - 1) ≡ 2^(2wn) ≡ (2^wn)^2 ≡ R² (mod M)
+
+  checkOdd(M)
+  checkValidModulus(M)
+
+  let
+    wordBitwidth = sizeof(T) * 8
+    w = M.limbs.len
+    msb = M.bits-1 - uint32(wordBitWidth * (w - 1))
+    start = uint32((w - 1) * wordBitWidth) + msb
+    stop = uint32 n*wordBitWidth*w
+
+  result.limbs[M.limbs.len-1] = T(1) shl msb # C0 = 2^(wn-1), the power of 2 immediatly less than the modulus
+  for _ in start ..< stop:
+    result.doubleMod(M)
 
 # Fields metadata
 # ------------------------------------------------
 
-func negInvModWord[T](M: BigNum[T]): T =
+func negInvModWord[T: DynWord](M: BigNum[T]): T =
   ## Returns the Montgomery domain magic constant for the input modulus:
   ##
   ##   µ ≡ -1/M[0] (mod SecretWord)
@@ -210,6 +297,10 @@ func primePlus1div2*[T: DynWord](P: BigNum[T]): BigNum[T] =
   let carry = result.add(1)
   doAssert not carry
 
+func montyOne*[T: DynWord](M: BigNum[T]): BigNum[T] =
+  ## Returns "1 (mod M)" in the Montgomery domain.
+  ## This is equivalent to R (mod M) in the natural domain
+  r_powmod(1, M)
 
 # ############################################################
 #
@@ -246,6 +337,23 @@ proc getPrimePlus1div2Ptr*(asy: Assembler_LLVM, fd: FieldDescriptor): ValueRef =
       alignment = 64
     )
     return pp1d2
+
+proc getMontyOnePtr*(asy: Assembler_LLVM, fd: FieldDescriptor): ValueRef =
+  let mOneName = fd.name & "_montyOne"
+  var mOne = asy.module.getGlobal(cstring mOneName)
+  if mOne.isNil():
+    ## NOTE: Construction of bigint in LLVM happens based on uint64 regardless of
+    ## word size on device.
+    let M = BigNum[uint64].fromHex(fd.bits, fd.modulus)
+    let MmOne = M.montyOne()
+    mOne = asy.defineGlobalConstant(
+      name = mOneName,
+      section = fd.name,
+      constIntOfArbitraryPrecision(fd.intBufTy, cuint MmOne.limbs.len, MmOne.limbs[0].addr),
+      fd.intBufTy,
+      alignment = 64
+    )
+    return mOne
 
 proc getM0ninv*(asy: Assembler_LLVM, fd: FieldDescriptor): ValueRef =
   let m0ninvname = fd.name & "_m0ninv"
