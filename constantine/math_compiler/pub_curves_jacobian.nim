@@ -57,24 +57,34 @@ proc store*(dst: EcPointJac, src: EcPointJac) =
   store(dst.getY(), src.getY())
   store(dst.getZ(), src.getZ())
 
-proc fromAffine_impl*(asy: Assembler_LLVM, ed: CurveDescriptor, jac: var EcPointJac, aff: EcPointAff) =
-  template x(ec: EcPointJac | EcPointAff): Field = ec.getX()
-  template y(ec: EcPointJac | EcPointAff): Field = ec.getY()
-  template z(ec: EcPointJac): Field = ec.getZ()
-
-  template setOne(x): untyped = asy.setOne_internal(ed.fd, x.buf)
-  template derefBool(x): untyped = asy.load2(asy.ctx.int1_t(), x)
-  template csetZero(x, c): untyped = asy.csetZero_internal(ed.fd, x.buf, derefBool c)
+template ellipticOps*(asy: Assembler_LLVM, ed: CurveDescriptor): untyped =
+  ## This template can be used to make operations on `Field` elements
+  ## more convenient.
+  ## XXX: extend to include all ops
+  # Boolean checks
+  template isNeutral(res, x): untyped = asy.isNeutral_internal(ed, res, x.buf)
   template isNeutral(x): untyped =
     var res = asy.br.alloca(asy.ctx.int1_t())
     asy.isNeutral_internal(ed, res, x.buf)
     res
 
+  # Conditional ops
+  template ccopy(x, y: EcPointJac, c): untyped = asy.ccopy_internal(ed, x.buf, y.buf, derefBool c)
+
+  # Accessors
+  template x(ec: EcPointJac | EcPointAff): Field = ec.getX()
+  template y(ec: EcPointJac | EcPointAff): Field = ec.getY()
+  template z(ec: EcPointJac): Field = ec.getZ()
+
+proc fromAffine_impl*(asy: Assembler_LLVM, ed: CurveDescriptor, jac: var EcPointJac, aff: EcPointAff) =
+  # Inject templates for convenient access
+  fieldOps(asy, ed.fd)
+  ellipticOps(asy, ed)
+
   jac.x.store(aff.x)
   jac.y.store(aff.y)
   jac.z.setOne()
   jac.z.csetZero(aff.isNeutral())
-
 
 proc fromAffine_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, j, a: ValueRef) =
   ## Given an EC point in affine coordinates, converts the point to
@@ -111,7 +121,6 @@ proc genEcFromAffine*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
     asy.br.retVoid()
 
   return name
-
 
 proc isNeutral_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, a: ValueRef) {.used.} =
   ## Generate an internal elliptic curve point isNeutral proc
@@ -356,46 +365,10 @@ proc sum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: ValueRef) 
     ## unless we absorb not only the `Builder` in the `Field` / `EcPointJac` objects, but also
     ## the full `asy`/`ed` types as refs. It is an option though.
 
-    # For finite field points
-    template square(res, y): untyped = asy.nsqr_internal(ed.fd, res.buf, y.buf, count = 1)
-    template prod(res, x, y): untyped = asy.mul_internal(ed.fd, res.buf, x.buf, y.buf)
-    template diff(res, x, y): untyped = asy.sub_internal(ed.fd, res.buf, x.buf, y.buf)
-    template add(res, x, y): untyped = asy.add_internal(ed.fd, res.buf, x.buf, y.buf)
-    template double(res, x): untyped = asy.double_internal(ed.fd, res.buf, x.buf)
-    template isZero(res, x): untyped = asy.isZero_internal(ed.fd, res, x.buf)
-    template isZero(x): untyped =
-      var res = asy.br.alloca(asy.ctx.int1_t())
-      asy.isZero_internal(ed.fd, res, x.buf)
-      res
-    template ccopy(x, y: Field, c): untyped = asy.ccopy_internal(ed.fd, x.buf, y.buf, c)
-    template div2(x): untyped = asy.div2_internal(ed.fd, x.buf)
-    template csub(x, y, c): untyped = asy.csub_internal(ed.fd, x.buf, y.buf, c)
-
-    template `not`(x: ValueRef): untyped = asy.br.`not`(x)
-
-    template `*=`(x, y: Field): untyped = x.prod(x, y)
-    template `+=`(x, y: Field): untyped = x.add(x, y)
-    template `-=`(x, y: Field): untyped = x.diff(x, y)
-
-    template derefBool(x): untyped = asy.load2(asy.ctx.int1_t(), x)
-
-    template `and`(x, y): untyped =
-      var res = asy.br.alloca(asy.ctx.int1_t())
-      res = asy.br.`and`(derefBool x, derefBool y)
-      res
-
-    # For EC points
-    template isNeutral(res, x): untyped = asy.isNeutral_internal(ed, res, x.buf)
-    template isNeutral(x): untyped =
-      var res = asy.br.alloca(asy.ctx.int1_t())
-      asy.isNeutral_internal(ed, res, x.buf)
-      res
-
-    template ccopy(x, y: EcPointJac, c): untyped = asy.ccopy_internal(ed, x.buf, y.buf, derefBool c)
-
-    template x(ec: EcPointJac): Field = ec.getX()
-    template y(ec: EcPointJac): Field = ec.getY()
-    template z(ec: EcPointJac): Field = ec.getZ()
+    # Make finite field point operations nicer
+    fieldOps(asy, ed.fd)
+    # And EC points
+    ellipticOps(asy, ed)
 
     ## XXX: Required to extent for coefA != 0!
     when false:
@@ -586,25 +559,10 @@ proc double_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p: ValueRef) 
     ## unless we absorb not only the `Builder` in the `Field` / `EcPointJac` objects, but also
     ## the full `asy`/`ed` types as refs. It is an option though.
 
-    # For finite field points
-    template square(res, y): untyped = asy.nsqr_internal(ed.fd, res.buf, y.buf, count = 1)
-    template square(x): untyped = square(x, x)
-    template prod(res, x, y): untyped = asy.mul_internal(ed.fd, res.buf, x.buf, y.buf)
-    template diff(res, x, y): untyped = asy.sub_internal(ed.fd, res.buf, x.buf, y.buf)
-    template double(res, x): untyped = asy.double_internal(ed.fd, res.buf, x.buf)
-    template double(x): untyped = double(x, x)
-    template add(res, x, y): untyped = asy.add_internal(ed.fd, res.buf, x.buf, y.buf)
-
-    template `*=`(x, y: Field): untyped = x.prod(x, y)
-    template `+=`(x, y: Field): untyped = x.add(x, y)
-    template `-=`(x, y: Field): untyped = x.diff(x, y)
-
-    template `*=`(x: Field, b: static int): untyped = asy.scalarMul_internal(ed.fd, x.buf, b)
-
-    # For EC points
-    template x(ec: EcPointJac): Field = ec.getX()
-    template y(ec: EcPointJac): Field = ec.getY()
-    template z(ec: EcPointJac): Field = ec.getZ()
+    # Make operations more convenient, for fields:
+    fieldOps(asy, ed.fd)
+    # and for EC points
+    ellipticOps(asy, ed)
 
     var
       A = asy.newField(ed.fd)
