@@ -17,6 +17,67 @@ import
 ## Section name used for `llvmInternalFnDef`
 const SectionName = "ctt.pub_fields"
 
+template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} =
+  ## This template can be used to make operations on `Field` elements
+  ## more convenient.
+
+  ## Note: This is handled via these templates, due to the Assembler_LLVM and
+  ## (to a lesser extent) `FieldDescriptor` dependency.
+  ## We could partially solve that by having `_impl` procs for every operation,
+  ## which _only_ contains the inner code for the `llvmInternalFnDef` code.
+  ## Thay way we could call _that_ function in these templates, which would
+  ## be independent of the `asy`.
+  ## For the `FieldDescriptor` we could anyhow (mostly?) resuse the `BuilderRef`
+  ## that is part of the `Array` object (which `Field` is a `distinct` to).
+
+  ## XXX: extend to include all ops
+  # Boolean checks
+  template isZero(res, x: Field): untyped  = asy.isZero_internal(fd, res, x.buf)
+  template isZero(x: Field): untyped =
+    var res = asy.br.alloca(asy.ctx.int1_t())
+    asy.isZero_internal(fd, res, x.buf)
+    res
+
+  # Boolean logic
+  template `not`(x: ValueRef): untyped     = asy.br.`not`(x)
+  template derefBool(x: ValueRef): untyped = asy.load2(asy.ctx.int1_t(), x)
+  template `and`(x, y): untyped           =
+    var res = asy.br.alloca(asy.ctx.int1_t())
+    res = asy.br.`and`(derefBool x, derefBool y)
+    res
+
+  # Mutators
+  template setZero(x: Field): untyped      = asy.setZero_internal(fd, x.buf)
+  template setOne(x: Field): untyped       = asy.setZero_internal(fd, x.buf)
+  template neg(res, y: Field): untyped     = asy.neg_internal(fd, res.buf, y.buf)
+
+  # Conditional setters
+  template csetZero(x: Field, c): untyped  = asy.csetZero_internal(fd, x.buf, derefBool c)
+
+  # Basic arithmetic
+  template sum(res, x, y: Field): untyped  = asy.add_internal(fd, res.buf, x.buf, y.buf)
+  template add(res, x, y: Field): untyped  = asy.add_internal(fd, res.buf, x.buf, y.buf)
+  template diff(res, x, y: Field): untyped = asy.sub_internal(fd, res.buf, x.buf, y.buf)
+  template prod(res, x, y: Field): untyped = asy.mul_internal(fd, res.buf, x.buf, y.buf)
+
+  # Conditional arithmetic
+  template cadd(x, y: Field, c): untyped   = asy.cadd_internal(fd, x.buf, y.buf, c)
+  template csub(x, y: Field, c): untyped   = asy.csub_internal(fd, x.buf, y.buf, c)
+  template ccopy(x, y: Field, c): untyped  = asy.ccopy_internal(fd, x.buf, y.buf, c)
+
+  # Extended arithmetic
+  template square(res, y: Field): untyped  = asy.nsqr_internal(fd, res.buf, y.buf, count = 1)
+  template square(x): untyped              = square(x, x)
+  template double(res, x: Field): untyped  = asy.double_internal(fd, res.buf, x.buf)
+  template double(x: Field): untyped       = asy.double_internal(fd, x.buf, x.buf)
+  template div2(x: Field): untyped         = asy.div2_internal(fd, x.buf)
+
+  # Mutating assignment ops
+  template `*=`(x, y: Field): untyped      = x.prod(x, y)
+  template `+=`(x, y: Field): untyped      = x.add(x, y)
+  template `-=`(x, y: Field): untyped      = x.diff(x, y)
+  template `*=`(x: Field, b: static int): untyped = asy.scalarMul_internal(fd, x.buf, b)
+
 proc setZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.used.} =
   ## Generate an internal field setZero
   ## with signature
@@ -855,15 +916,10 @@ proc scalarMul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef, 
           {kHot}):
     let ai = llvmParams
 
-    let a = asy.asField(fd, ai) # shadow `a` argument of proc
+    # Make field ops convenient:
+    fieldOps(asy, fd)
 
-    template neg(res, y): untyped = asy.neg_internal(fd, res.buf, y.buf)
-    template setZero(x): untyped = asy.setZero_internal(fd, x.buf)
-    template double(res, x): untyped = asy.double_internal(fd, res.buf, x.buf)
-    template double(x): untyped = asy.double_internal(fd, x.buf, x.buf)
-    template diff(res, x, y): untyped = asy.sub_internal(fd, res.buf, x.buf, y.buf)
-    template sum(res, x, y): untyped = asy.add_internal(fd, res.buf, x.buf, y.buf)
-    template `+=`(res, x): untyped = asy.add_internal(fd, res.buf, res.buf, x.buf)
+    let a = asy.asField(fd, ai) # shadow `a` argument of proc
 
     const negate = b < 0
     const b = if negate: -b
