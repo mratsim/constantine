@@ -20,7 +20,7 @@ const SectionName = "ctt.pub_fields"
 proc setZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.used.} =
   ## Generate an internal field setZero
   ## with signature
-  ##   void name(FieldType r, FieldType a)
+  ##   void name(FieldType r)
   ## with r the element to be zeroed.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
@@ -44,7 +44,7 @@ proc setZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.
 proc genFpSetZero*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## Generate a public field subtraction proc
   ## with signature
-  ##   void name(FieldType r, FieldType a, FieldType b)
+  ##   void name(FieldType r)
   ## with r the element to be zeroed.
   ## and return the corresponding name to call it
 
@@ -737,6 +737,136 @@ proc genFpDiv2*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy]):
     let a = llvmParams
     asy.div2_internal(fd, a)
+    asy.br.retVoid()
+
+  return name
+
+proc scalarMul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef, b: static int) =
+  ## Multiplication by a small integer known at compile-time
+  ## with signature
+  ##   void name(FieldType a)
+  ## where `a` is the operand to be multiplied by the statically known `b`.
+  ## `a` is modified in place, i.e. akin to `*=`.
+  ##
+  ## Direct port of the code in `finite_fields.nim`.
+
+  # NOTE: This implementation could take a Nim RT `b` of course
+  let name = fd.name & "_scalarMul_" & $b & "_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([a]),
+          {kHot}):
+    let ai = llvmParams
+
+    let a = asy.asField(fd, ai) # shadow `a` argument of proc
+
+    template neg(res, y): untyped = asy.neg_internal(fd, res.buf, y.buf)
+    template setZero(x): untyped = asy.setZero_internal(fd, x.buf)
+    template double(res, x): untyped = asy.double_internal(fd, res.buf, x.buf)
+    template double(x): untyped = asy.double_internal(fd, x.buf, x.buf)
+    template diff(res, x, y): untyped = asy.sub_internal(fd, res.buf, x.buf, y.buf)
+    template sum(res, x, y): untyped = asy.add_internal(fd, res.buf, x.buf, y.buf)
+    template `+=`(res, x): untyped = asy.add_internal(fd, res.buf, res.buf, x.buf)
+
+    const negate = b < 0
+    const b = if negate: -b
+              else: b
+    when negate:
+      a.neg(a)
+    when b == 0:
+      a.setZero()
+    elif b == 1:
+      discard # nothing to do!
+    elif b == 2:
+      a.double()
+    elif b == 3:
+      var t = asy.newField(fd)
+      t.double(a)
+      a += t
+    elif b == 4:
+      a.double()
+      a.double()
+    elif b == 5:
+      var t = asy.newField(fd)
+      t.double(a)
+      t.double()
+      a += t
+    elif b == 6:
+      var t = asy.newField(fd)
+      t.double(a)
+      t += a # 3
+      a.double(t)
+    elif b == 7:
+      var t = asy.newField(fd)
+      t.double(a)
+      t.double()
+      t.double()
+      a.diff(t, a)
+    elif b == 8:
+      a.double()
+      a.double()
+      a.double()
+    elif b == 9:
+      var t = asy.newField(fd)
+      t.double(a)
+      t.double()
+      t.double()
+      a.sum(t, a)
+    elif b == 10:
+      var t = asy.newField(fd)
+      t.double(a)
+      t.double()
+      a += t     # 5
+      a.double()
+    elif b == 11:
+      var t = asy.newField(fd)
+      t.double(a)
+      t += a       # 3
+      t.double()   # 6
+      t.double()   # 12
+      a.diff(t, a) # 11
+    elif b == 12:
+      var t = asy.newField(fd)
+      t.double(a)
+      t += a       # 3
+      t.double()   # 6
+      a.double(t)   # 12
+    elif b == 15:
+      var t = asy.newField(fd)
+      t.double(a)
+      t += a       # 3
+      a.double(t)  # 6
+      a.double()   # 12
+      a += t       # 15
+    elif b == 21:
+      var t = asy.newField(fd)
+      t.double(a)
+      t.double()   # 4
+      t += a       # 5
+      t.double()   # 10
+      t.double()   # 20
+      a += t       # 21
+
+    else:
+      {.error: "Multiplication by this small int not implemented".}
+
+    asy.br.retVoid()
+
+  asy.callFn(name, [a])
+
+proc genFpScalarMul*(asy: Assembler_LLVM, fd: FieldDescriptor, b: static int): string =
+  ## Multiplication by a small integer known at compile-time
+  ## with signature
+  ##   void name(FieldType a)
+  ## where `a` is the operand to be multiplied by the statically known `b`.
+  ## `a` is modified in place, i.e. akin to `*=`.
+  ##
+  ## Returns the corresponding name to call it.
+
+  let name = fd.name & "_scalarMul_" & $b
+  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy]):
+    let a = llvmParams
+    asy.scalarMul_internal(fd, a, b)
     asy.br.retVoid()
 
   return name
