@@ -34,7 +34,7 @@ import
   constantine/math/elliptic/ec_shortweierstrass_jacobian,
   constantine/platforms/abstractions,
   constantine/platforms/llvm/llvm,
-  constantine/math_compiler/[ir, pub_fields, pub_curves, codegen_nvidia, impl_fields_globals],
+  constantine/math_compiler/[ir, pub_fields, pub_curves_jacobian, codegen_nvidia, impl_fields_globals],
   # Test utilities
   helpers/prng_unsafe
 
@@ -46,9 +46,9 @@ proc genSumImpl*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
   asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ed.curveTy, ed.curveTy, ed.curveTy]):
     let (ri, pi, qi) = llvmParams
     # Assuming fd.numWords is the number of limbs in the field element
-    let Q = asy.asEcPoint(qi, ed.curveTy)
-    let P = asy.asEcPoint(pi, ed.curveTy)
-    let rA = asy.asEcPoint(ri, ed.curveTy)
+    let Q = asy.asEcPointJac(qi, ed.curveTy)
+    let P = asy.asEcPointJac(pi, ed.curveTy)
+    let rA = asy.asEcPointJac(ri, ed.curveTy)
     #let rA = asy.asField(ri, ed.fd.fieldTy)
 
     ## XXX: For now we just port the coefA == 0 branch!
@@ -94,11 +94,11 @@ proc genSumImpl*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
       asy.isNeutral_internal(ed, res, x.buf)
       res
 
-    template ccopy(x, y: EcPoint, c): untyped = asy.ccopy_internal(ed, x.buf, y.buf, derefBool c)
+    template ccopy(x, y: EcPointJac, c): untyped = asy.ccopy_internal(ed, x.buf, y.buf, derefBool c)
 
-    template x(ec: EcPoint): Field = ec.getX()
-    template y(ec: EcPoint): Field = ec.getY()
-    template z(ec: EcPoint): Field = ec.getZ()
+    template x(ec: EcPointJac): Field = ec.getX()
+    template y(ec: EcPointJac): Field = ec.getY()
+    template z(ec: EcPointJac): Field = ec.getZ()
 
 
     block: # Addition-only, check for exceptional cases
@@ -190,7 +190,7 @@ proc genSumImpl*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
     # - R_or_M is set with R (add) or M (dbl)
     # - HHH_or_Mpre contains HHH (add) or garbage precomputation (dbl)
     # - V_or_S is set with V = U₁*HH (add) or S = X₁*YY (dbl)
-    var o = asy.newEcPoint(ed)
+    var o = asy.newEcPointJac(ed)
     block: # Finishing line
       var t = asy.newField(ed.fd)
       t.double(V_or_S)
