@@ -57,6 +57,62 @@ proc store*(dst: EcPointJac, src: EcPointJac) =
   store(dst.getY(), src.getY())
   store(dst.getZ(), src.getZ())
 
+proc fromAffine_impl*(asy: Assembler_LLVM, ed: CurveDescriptor, jac: var EcPointJac, aff: EcPointAff) =
+  template x(ec: EcPointJac | EcPointAff): Field = ec.getX()
+  template y(ec: EcPointJac | EcPointAff): Field = ec.getY()
+  template z(ec: EcPointJac): Field = ec.getZ()
+
+  template setOne(x): untyped = asy.setOne_internal(ed.fd, x.buf)
+  template derefBool(x): untyped = asy.load2(asy.ctx.int1_t(), x)
+  template csetZero(x, c): untyped = asy.csetZero_internal(ed.fd, x.buf, derefBool c)
+  template isNeutral(x): untyped =
+    var res = asy.br.alloca(asy.ctx.int1_t())
+    asy.isNeutral_internal(ed, res, x.buf)
+    res
+
+  jac.x.store(aff.x)
+  jac.y.store(aff.y)
+  jac.z.setOne()
+  jac.z.csetZero(aff.isNeutral())
+
+
+proc fromAffine_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, j, a: ValueRef) =
+  ## Given an EC point in affine coordinates, converts the point to
+  ## Jacobian coordinates as `jac`.
+  let name = ed.name & "_fromAffine_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([j, a]),
+          {kHot}):
+    tagParameter(1, "sret")
+
+    let (ji, ai) = llvmParams
+    var jac = asy.asEcPointJac(ed, ji)
+    let aff = asy.asEcPointAff(ed, ai)
+
+    asy.fromAffine_impl(ed, jac, aff)
+
+    asy.br.retVoid()
+
+  asy.callFn(name, [j, a])
+
+proc genEcFromAffine*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
+  ## Generate a public elliptic curve point `fromAffine` proc
+  ## with signature
+  ##   void name(CurveTypeJac r, CurveTypeAff a)
+  ## with r the result and a the input in affine coordinates
+  ## and return the corresponding name to call it
+
+  let name = ed.name & "_isNeutral"
+  let ptrBool = pointer_t(asy.ctx.int1_t())
+  asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ed.curveTy, ed.curveTyAff]):
+    let (jac, aff) = llvmParams
+    asy.fromAffine_internal(ed, jac, aff)
+    asy.br.retVoid()
+
+  return name
+
+
 proc isNeutral_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, a: ValueRef) {.used.} =
   ## Generate an internal elliptic curve point isNeutral proc
   ## with signature
