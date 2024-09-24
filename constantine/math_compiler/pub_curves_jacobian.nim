@@ -12,6 +12,7 @@ import
   constantine/platforms/llvm/[llvm, asm_nvidia],
   ./ir,
   ./pub_fields,
+  ./pub_curves_affine,
   ./impl_fields_globals,
   ./impl_fields_dispatch,
   std / typetraits # for distinctBase
