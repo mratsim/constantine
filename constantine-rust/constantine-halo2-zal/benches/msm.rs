@@ -17,7 +17,7 @@ use constantine_halo2_zal::CttEngine;
 
 use halo2curves::bn256::{Fr as Scalar, G1Affine as Point};
 use halo2curves::ff::Field;
-use halo2curves::msm::best_multiexp;
+use halo2curves::msm::msm_best;
 use halo2curves::zal::MsmAccel;
 
 use rayon::current_thread_index;
@@ -94,7 +94,7 @@ fn msm(c: &mut Criterion) {
                 assert!(k < 64);
                 let n: usize = 1 << k;
                 b.iter(|| {
-                    best_multiexp(&coeffs[..n], &bases[..n]);
+                    msm_best(&coeffs[..n], &bases[..n]);
                 })
             })
             .sample_size(SAMPLE_SIZE);
