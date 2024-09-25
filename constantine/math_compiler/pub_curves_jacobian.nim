@@ -114,7 +114,6 @@ proc genEcFromAffine*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
   ## and return the corresponding name to call it
 
   let name = ed.name & "_isNeutral"
-  let ptrBool = pointer_t(asy.ctx.int1_t())
   asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ed.curveTy, ed.curveTyAff]):
     let (jac, aff) = llvmParams
     asy.fromAffine_internal(ed, jac, aff)
