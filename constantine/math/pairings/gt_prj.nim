@@ -283,8 +283,32 @@ type
 
 template x[F](a: T2Prj[F]): F = a.coords[0]
 template z[F](a: T2Prj[F]): F = a.coords[1]
+template `x=`[F](a: var T2Prj[F], v: F) = a.coords[0] = v
+template `z=`[F](a: var T2Prj[F], v: F) = a.coords[1] = v
+
+proc setNeutral*[F](a: var T2Aff[F]) =
+  # We special-case the neutral element to 0
+  # TODO: this is in case an element of the Torus might be compressed
+  # to coordinate 1
+  # TODO: Can a GT element of the form a + bv have a == 0?
+  F(a).setZero()
+
+proc isNeutral*[F](a: T2Aff[F]): SecretBool =
+  F(a).isZero()
+
+proc setNeutral*(a: var T2Prj) =
+  a.x.setOne()
+  a.z.setZero()
+
+proc isNeutral*(a: T2Prj): SecretBool =
+  a.z.isZero()
 
 proc fromGT_vartime*[F](r: var T2Aff[F], a: QuadraticExt[F]) =
+  # Special case identity element
+  if bool a.isNeutral():
+    r.setNeutral()
+    return
+
   var t {.noInit.}, one {.noInit.}: F
   t.inv_vartime(a.c1)
   one.setOne()
@@ -293,6 +317,11 @@ proc fromGT_vartime*[F](r: var T2Aff[F], a: QuadraticExt[F]) =
   F(r) *= t
 
 proc fromGT_vartime*[F](r: var T2Prj[F], a: QuadraticExt[F]) =
+  # Special case identity element
+  if bool a.isOne():
+    r.setNeutral()
+    return
+
   var t {.noInit.}: F
   t.inv_vartime(a.c1)
   r.z.setOne()
@@ -301,8 +330,13 @@ proc fromGT_vartime*[F](r: var T2Prj[F], a: QuadraticExt[F]) =
   r.x *= t
 
 proc fromTorus2_vartime*[F](r: var QuadraticExt[F], a: T2Aff[F]) =
-  var num {.noInit.}, den {.noInit.}: typeof(r)
 
+  # Special case identity element
+  if bool a.isNeutral():
+    r.setNeutral()
+    return
+
+  var num {.noInit.}, den {.noInit.}: typeof(r)
   num.c0 = F a
   num.c1.setMinusOne()
   den.c0 = F a
@@ -311,6 +345,12 @@ proc fromTorus2_vartime*[F](r: var QuadraticExt[F], a: T2Aff[F]) =
   r.prod(num, den)
 
 proc fromTorus2_vartime*[F](r: var QuadraticExt[F], a: T2Prj[F]) =
+
+  # Special case identity element
+  if bool a.isNeutral():
+    r.setOne()
+    return
+
   type QF = QuadraticExt[F]
 
   var t0 {.noInit.}, t1 {.noInit.}: QF
@@ -320,9 +360,25 @@ proc fromTorus2_vartime*[F](r: var QuadraticExt[F], a: T2Prj[F]) =
 
   r.prod(t0, t1)
 
-proc mixedProd*[F](r: var T2Prj[F], a: T2Prj[F], b: T2Aff[F]) =
+proc fromAffine_vartime*[F](r: var T2Prj[F], a: T2Aff[F]) =
+  mixin `x=`
+  if bool a.isNeutral():
+    r.setNeutral()
+  else:
+    r.coords[0] = F(a) # r.x doesn't work despite bind, mixin, exports and usual generic sandwich workarounds
+    r.z.setOne()
+
+proc mixedProd_vartime*[F](r: var T2Prj[F], a: T2Prj[F], b: T2Aff[F]) =
   ## Multiplication on a torus.
   ## b MUST be in the cyclotomic subgroup
+
+  # Special case identity element
+  if bool a.isNeutral():
+    r.fromAffine_vartime(b) # handles b == 1 as well
+    return
+  if bool b.isNeutral():
+    r = a
+    return
 
   var u0 {.noInit.}, u1 {.noInit.}: F
   u0.prod(a.x, F b)
@@ -332,7 +388,16 @@ proc mixedProd*[F](r: var T2Prj[F], a: T2Prj[F], b: T2Aff[F]) =
   r.x += u0
   r.z.sum(u1, a.x)
 
-proc affineProd*[F](r: var T2Prj[F], a, b: T2Aff[F]) =
+proc affineProd_vartime*[F](r: var T2Prj[F], a, b: T2Aff[F]) =
+
+  # Special case identity element
+  if bool a.isNeutral():
+    r.fromAffine_vartime(b) # handles b == 1 as well
+    return
+  if bool b.isNeutral():
+    r.fromAffine_vartime(a)
+    return
+
   r.z.sum(F a, F b)
   r.x.prod(F a, F b)
 
@@ -340,7 +405,12 @@ proc affineProd*[F](r: var T2Prj[F], a, b: T2Aff[F]) =
   snr.setOne()
   r.x.c1 += snr
 
-proc affineSquare*[F](r: var T2Prj[F], a: T2Aff[F]) =
+proc affineSquare_vartime*[F](r: var T2Prj[F], a: T2Aff[F]) =
+
+  # Special case identity element
+  if bool a.isNeutral():
+    r.setNeutral()
+    return
 
   r.z.double(F a)
   r.x.square(F a)
@@ -357,8 +427,22 @@ proc square*[F](r: var T2Prj[F], a: T2Prj[F]) {.inline.} =
   type QF = QuadraticExt[F]
   QF(r).square(QF a)
 
+template cyclotomic_square*[F](r: var T2Prj[F], a: T2Prj[F]) =
+  # Alias
+  r.square(a)
+
+template cyclotomic_square*[F](a: var T2Prj[F]) =
+  # Alias
+  a.square(a)
+
+proc inv*[F](r: var T2Aff[F], a: T2Aff[F]) {.inline.} =
+  ## Cyclotomic inversion on a Torus
+  # Note: for neutral element this is valid only
+  # if the implementation uses 0 as special-value
+  F(r).neg(F(a))
+
 proc inv*[F](r: var T2Prj[F], a: T2Prj[F]) {.inline.} =
-  # Cyclotomic inversion on a Torus
+  ## Cyclotomic inversion on a Torus
   r.x.neg(a.x)
   r.z = a.z
 
@@ -377,6 +461,8 @@ proc batchFromGT_vartime*[F](dst: var openArray[T2Aff[F]],
   ##
   ## Note: on 𝔽p6, the ratio of inversion I/M is about 3.8
   ## so this is about a ~25% speedup
+
+  # TODO: handle neutral element
 
   debug: doAssert dst.len == src.len
 
@@ -415,6 +501,8 @@ proc batchFromTorus2_vartime*[F](dst: var openArray[QuadraticExt[F]],
   ##
   ## Note: on 𝔽p12, the ratio of inversion I/M is about 3
   ## so this has likely no speedup, and is not trivial to parallelize
+
+  # TODO: handle neutral element
   debug: doAssert dst.len == src.len
 
   # We consciously choose to recompute conj(src[i]) to avoid an allocation
@@ -446,3 +534,16 @@ proc batchFromTorus2_vartime*[F](dst: var openArray[QuadraticExt[F]],
   var t {.noInit.}: QF
   t.conj(QF src[0])
   dst[0] *= t
+
+
+when isMainModule:
+  var a, c: QuadraticExt[Fp6[BLS12_381]]
+  var b: T2Prj[Fp6[BLS12_381]]
+
+  a.setOne()
+  b.fromGT_vartime(a)
+  c.fromTorus2_vartime(b)
+
+  echo "a: ", a.toHex(indent = 4)
+  echo "b: ", QuadraticExt[Fp6[BLS12_381]](b).toHex(indent = 4)
+  echo "c: ", c.toHex(indent = 4)
