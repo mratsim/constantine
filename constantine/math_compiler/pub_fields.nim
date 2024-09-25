@@ -48,7 +48,7 @@ template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} 
 
   # Mutators
   template setZero(x: Field): untyped      = asy.setZero_internal(fd, x.buf)
-  template setOne(x: Field): untyped       = asy.setZero_internal(fd, x.buf)
+  template setOne(x: Field): untyped       = asy.setOne_internal(fd, x.buf)
   template neg(res, y: Field): untyped     = asy.neg_internal(fd, res.buf, y.buf)
 
   # Conditional setters
