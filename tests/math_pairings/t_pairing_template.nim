@@ -217,7 +217,7 @@ proc runGTexponentiationTests*(GT: typedesc, iters: int) =
 
 proc runGTmultiexpTests*[N: static int](GT: typedesc, num_points: array[N, int], iters: int) =
   var rng: RngState
-  let timeseed = uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  let timeseed = 1727299797 # uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   seed(rng, timeseed)
   echo "\n------------------------------------------------------\n"
   echo "test_pairing_",$GT.Name,"_gt_multiexp xoshiro512** seed: ", timeseed
@@ -242,11 +242,11 @@ proc runGTmultiexpTests*[N: static int](GT: typedesc, num_points: array[N, int],
 
         var mexp_ref, mexp_ref_torus, mexp_opt: GT
         mexp_ref.multiExp_reference_vartime(elems, exponents, useTorus = false)
-        # mexp_ref_torus.multiExp_reference_vartime(elems, exponents, useTorus = true)
+        mexp_ref_torus.multiExp_reference_vartime(elems, exponents, useTorus = true)
         mexp_opt.multiExp_vartime(elems, exponents)
 
         doAssert bool(naive == mexp_ref)
-        # doAssert bool(naive == mexp_ref_torus)
+        doAssert bool(naive == mexp_ref_torus)
         doAssert bool(naive == mexp_opt)
 
         stdout.write '.'

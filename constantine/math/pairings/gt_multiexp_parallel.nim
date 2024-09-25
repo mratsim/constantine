@@ -122,8 +122,8 @@ proc applyEndomorphism_parallel[bits: static int, GT](
   ## Returns a new triplet (endoElems, endoExpos, N)
   ## endoElems and endoExpos MUST be freed afterwards
 
-  const M = when Gt is Fp6:  2
-            elif Gt is Fp12: 4
+  const M = when Gt.Name.getEmbeddingDegree() == 6:  2
+            elif Gt.Name.getEmbeddingDegree() == 12: 4
             else: {.error: "Unconfigured".}
 
   const L = Fr[Gt.Name].bits().computeEndoRecodedLength(M)
