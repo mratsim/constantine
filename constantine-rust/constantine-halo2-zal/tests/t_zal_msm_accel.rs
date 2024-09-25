@@ -16,7 +16,7 @@ use halo2_middleware::halo2curves::bn256;
 use halo2_middleware::halo2curves::ff::Field;
 use halo2_middleware::halo2curves::group::prime::PrimeCurveAffine;
 use halo2_middleware::halo2curves::group::{Curve, Group};
-use halo2_middleware::halo2curves::msm::best_multiexp;
+use halo2_middleware::halo2curves::msm::msm_best;
 use halo2_middleware::zal::traits::MsmAccel;
 
 #[test]
@@ -42,7 +42,7 @@ fn run_msm_zal(min_k: usize, max_k: usize) {
         let scalars = &scalars[..1 << k];
 
         let t0 = start_timer!(|| format!("freestanding msm k={}", k));
-        let e0 = best_multiexp(scalars, points);
+        let e0 = msm_best(scalars, points);
         end_timer!(t0);
 
         let engine = CttEngine::new(hardware::get_num_threads_os());

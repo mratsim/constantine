@@ -155,7 +155,7 @@ mod tests {
     use halo2curves::ff::Field;
     use halo2curves::group::prime::PrimeCurveAffine;
     use halo2curves::group::{Curve, Group};
-    use halo2curves::msm::best_multiexp;
+    use halo2curves::msm::msm_best;
     use halo2curves::zal::MsmAccel;
 
     #[test]
@@ -181,7 +181,7 @@ mod tests {
             let scalars = &scalars[..1 << k];
 
             let t0 = start_timer!(|| format!("freestanding msm k={}", k));
-            let e0 = best_multiexp(scalars, points);
+            let e0 = msm_best(scalars, points);
             end_timer!(t0);
 
             let engine = CttEngine::new(num_cpus::get());
