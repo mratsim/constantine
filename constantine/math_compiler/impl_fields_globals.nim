@@ -260,6 +260,7 @@ func r_powmod[T: DynWord](n: static int, M: BigNum[T]): BigNum[T] =
     start = uint32((w - 1) * wordBitWidth) + msb
     stop = uint32 n*wordBitWidth*w
 
+  result.limbs = newSeq[T](M.limbs.len)
   result.limbs[M.limbs.len-1] = T(1) shl msb # C0 = 2^(wn-1), the power of 2 immediatly less than the modulus
   for _ in start ..< stop:
     result.doubleMod(M)
