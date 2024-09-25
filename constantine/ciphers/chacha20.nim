@@ -28,7 +28,7 @@ template rotl(x, n: uint32): uint32 =
   # We always use it with constants in 0 ..< 32
   # so no undefined behaviour.
   (x shl n) or (x shr (32 - n))
-template `^=`(x: var uint32, y: uint32) =
+template `^=`[T: uint32|byte](x: var T, y: T) =
   x = x xor y
 template `<<<=`(x: var uint32, n: uint32) =
   x = x.rotl(n)
