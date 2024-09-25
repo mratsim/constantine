@@ -28,11 +28,11 @@ macro_rules! test_dir {
 }
 
 const AGGREGATE_VERIFY_TESTS: &str = concat!(test_dir!(), "aggregate_verify/*");
-const AGGREGATE_TESTS: &str = concat!(test_dir!(), "aggregate/*");
+// const AGGREGATE_TESTS: &str = concat!(test_dir!(), "aggregate/*");
 const DESERIALIZATION_G1_TESTS: &str = concat!(test_dir!(), "deserialization_G1/*");
 const BATCH_VERIFY_TESTS: &str = concat!(test_dir!(), "batch_verify/*");
 const FAST_AGGREGATE_VERIFY_TESTS: &str = concat!(test_dir!(), "fast_aggregate_verify/*");
-const HASH_TO_G2_TESTS: &str = concat!(test_dir!(), "hash_to_G2/*");
+// const HASH_TO_G2_TESTS: &str = concat!(test_dir!(), "hash_to_G2/*");
 const DESERIALIZATION_G2_TESTS: &str = concat!(test_dir!(), "deserialization_G2/*");
 const VERIFY_TESTS: &str = concat!(test_dir!(), "verify/*");
 const SIGN_TESTS: &str = concat!(test_dir!(), "sign/*");
@@ -294,7 +294,7 @@ fn t_sign() {
         match skey {
             Err(_e) => {
                 // empty output due to `null` JSON value
-                let (Some(tout), Some(tmsg)) =
+                let (Some(tout), Some(_)) =
                     (test.output.opt_bytes.0, test.input.message.opt_bytes.0)
                 else {
                     assert!(false);

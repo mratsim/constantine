@@ -59,6 +59,7 @@ const FAIL_MAP_FP2_TO_G2_BLS_TESTS: &str =
 
 type HexString = String;
 
+#[allow(dead_code, non_snake_case)]
 #[derive(Deserialize, Debug)]
 struct PrecompileTest {
     Input: HexString,
@@ -238,17 +239,17 @@ fn t_map_fp_to_g1_bls_tests() {
     t_generate(test_name, evm_bls12381_map_fp_to_g1);
 }
 #[test]
-fn t_fail_map_fp_to_G1_bls_tests() {
+fn t_fail_map_fp_to_g1_bls_tests() {
     let test_name = FAIL_MAP_FP_TO_G1_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_map_fp_to_g1);
 }
 #[test]
-fn t_map_fp2_to_G2_bls_tests() {
+fn t_map_fp2_to_g2_bls_tests() {
     let test_name = MAP_FP2_TO_G2_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_map_fp2_to_g2);
 }
 #[test]
-fn t_fail_map_fp2_to_G2_bls_tests() {
+fn t_fail_map_fp2_to_g2_bls_tests() {
     let test_name = FAIL_MAP_FP2_TO_G2_BLS_TESTS.to_string();
     t_generate(test_name, evm_bls12381_map_fp2_to_g2);
 }
