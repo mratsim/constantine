@@ -131,10 +131,15 @@ proc setOne_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.u
           {kHot}):
     tagParameter(1, "sret")
     let M = asy.getModulusPtr(fd)
-    let mOne = asy.getMontyOnePtr(fd)
-
     let ri = llvmParams
-    asy.store(ri, mOne)
+    let rF = asy.asField(fd, ri)
+
+    let mOne = asy.getMontyOnePtr(fd)
+    let mF = asy.asField(fd, mOne)
+
+    # Need to call `store` for `Field`, which actually copies
+    # the full data!
+    store(rF, mF)
 
     asy.br.retVoid()
 
