@@ -54,6 +54,21 @@ proc store*(dst: EcPointAff, src: EcPointAff) =
   store(dst.getX(), src.getX())
   store(dst.getY(), src.getY())
 
+template ellipticAffOps*(asy: Assembler_LLVM, ed: CurveDescriptor): untyped =
+  ## This template can be used to make operations on `Field` elements
+  ## more convenient.
+  ## XXX: extend to include all ops
+  # Boolean checks
+  template isNeutral(res, x: EcPointAff): untyped = asy.isNeutralAff_internal(ed, res, x.buf)
+  template isNeutral(x: EcPointAff): untyped =
+    var res = asy.br.alloca(asy.ctx.int1_t())
+    asy.isNeutralAff_internal(ed, res, x.buf)
+    res
+
+  # Accessors
+  template x(ec: EcPointAff): Field = ec.getX()
+  template y(ec: EcPointAff): Field = ec.getY()
+
 proc isNeutralAff_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, a: ValueRef) {.used.} =
   ## Generate an internal elliptic curve point isNeutral proc
   ## with signature
@@ -68,18 +83,9 @@ proc isNeutralAff_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, a: Valu
           {kHot}):
     tagParameter(1, "sret")
 
-    template isZero(res, x): untyped = asy.isZero_internal(ed.fd, res, x.buf)
-    template isZero(x): untyped =
-      var res = asy.br.alloca(asy.ctx.int1_t())
-      asy.isZero_internal(ed.fd, res, x.buf)
-      res
-    template derefBool(x): untyped = asy.load2(asy.ctx.int1_t(), x)
-    template `and`(x, y): untyped =
-      var res = asy.br.alloca(asy.ctx.int1_t())
-      res = asy.br.`and`(derefBool x, derefBool y)
-      res
-    template x(ec: EcPointAff): Field = ec.getX()
-    template y(ec: EcPointAff): Field = ec.getY()
+    # Convenience templates for field / curve ops
+    fieldOps(asy, ed.fd)
+    ellipticAffOps(asy, ed)
 
     let (ri, ai) = llvmParams
 
