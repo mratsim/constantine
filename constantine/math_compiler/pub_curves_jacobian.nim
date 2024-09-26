@@ -62,8 +62,8 @@ template ellipticOps*(asy: Assembler_LLVM, ed: CurveDescriptor): untyped =
   ## more convenient.
   ## XXX: extend to include all ops
   # Boolean checks
-  template isNeutral(res, x): untyped = asy.isNeutral_internal(ed, res, x.buf)
-  template isNeutral(x): untyped =
+  template isNeutral(res, x: EcPointJac): untyped = asy.isNeutral_internal(ed, res, x.buf)
+  template isNeutral(x: EcPointJac): untyped =
     var res = asy.br.alloca(asy.ctx.int1_t())
     asy.isNeutral_internal(ed, res, x.buf)
     res
@@ -72,14 +72,15 @@ template ellipticOps*(asy: Assembler_LLVM, ed: CurveDescriptor): untyped =
   template ccopy(x, y: EcPointJac, c): untyped = asy.ccopy_internal(ed, x.buf, y.buf, derefBool c)
 
   # Accessors
-  template x(ec: EcPointJac | EcPointAff): Field = ec.getX()
-  template y(ec: EcPointJac | EcPointAff): Field = ec.getY()
+  template x(ec: EcPointJac): Field = ec.getX()
+  template y(ec: EcPointJac): Field = ec.getY()
   template z(ec: EcPointJac): Field = ec.getZ()
 
 proc fromAffine_impl*(asy: Assembler_LLVM, ed: CurveDescriptor, jac: var EcPointJac, aff: EcPointAff) =
   # Inject templates for convenient access
   fieldOps(asy, ed.fd)
   ellipticOps(asy, ed)
+  ellipticAffOps(asy, ed)
 
   jac.x.store(aff.x)
   jac.y.store(aff.y)
@@ -356,13 +357,6 @@ proc sum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: ValueRef) 
 
     ## Helper templates to allow the logic below to be roughly equivalent to the regular
     ## CPU code in `ec_shortweierstrass_jacobian.nim`.
-
-    ## XXX: These helpers will likely become either a template to be used in other EC
-    ## procs in the near term or exported templates using the `Field` and `EcPointJac` types
-    ## for overload resolution in the longer term. Still, the explicit `asy/ed` dependencies
-    ## makes it difficult to provide a clean API without -- effectively -- hacky templates,
-    ## unless we absorb not only the `Builder` in the `Field` / `EcPointJac` objects, but also
-    ## the full `asy`/`ed` types as refs. It is an option though.
 
     # Make finite field point operations nicer
     fieldOps(asy, ed.fd)
