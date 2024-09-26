@@ -54,21 +54,14 @@ proc store*(dst: EcPointAff, src: EcPointAff) =
   store(dst.getX(), src.getX())
   store(dst.getY(), src.getY())
 
-
-#func isNeutral*(P: EC_ShortW_Aff): SecretBool =
-#  ## Returns true if P is the neutral element / identity element
-#  ## and false otherwise, i.e. ∀Q, P+Q == Q
-#  ## For Short Weierstrass curves, this is the infinity point.
-#  result = P.x.isZero() and P.y.isZero()
-
-proc isNeutral_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, a: ValueRef) {.used.} =
+proc isNeutralAff_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, a: ValueRef) {.used.} =
   ## Generate an internal elliptic curve point isNeutral proc
   ## with signature
   ##   void name(*bool r, CurveType a)
   ## with r the result and a the operand
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = ed.name & "_isNeutral_internal"
+  let name = ed.name & "isNeutralAff_internal"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a]),
@@ -98,18 +91,18 @@ proc isNeutral_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, a: ValueRe
 
   asy.callFn(name, [r, a])
 
-proc genEcIsNeutral*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
+proc genEcIsNeutralAff*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
   ## Generate a public elliptic curve point isNeutral proc
   ## with signature
   ##   void name(*bool r, CurveType a)
   ## with r the result and a the operand
   ## and return the corresponding name to call it
 
-  let name = ed.name & "aff_isNeutral"
+  let name = ed.name & "isNeutralAff"
   let ptrBool = pointer_t(asy.ctx.int1_t())
   asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ptrBool, ed.curveTyAff]):
     let (r, a) = llvmParams
-    asy.isNeutral_internal(ed, r, a)
+    asy.isNeutralAff_internal(ed, r, a)
     asy.br.retVoid()
 
   return name
