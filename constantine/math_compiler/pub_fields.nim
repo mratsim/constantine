@@ -77,9 +77,9 @@ template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} 
   template prod(res, x, y: Field): untyped = asy.mul_internal(fd, res.buf, x.buf, y.buf)
 
   # Conditional arithmetic
-  template cadd(x, y: Field, c): untyped   = asy.cadd_internal(fd, x.buf, y.buf, c)
-  template csub(x, y: Field, c): untyped   = asy.csub_internal(fd, x.buf, y.buf, c)
-  template ccopy(x, y: Field, c): untyped  = asy.ccopy_internal(fd, x.buf, y.buf, c)
+  template cadd(x, y: Field, c): untyped   = asy.cadd_internal(fd, x.buf, y.buf, derefBool c)
+  template csub(x, y: Field, c): untyped   = asy.csub_internal(fd, x.buf, y.buf, derefBool c)
+  template ccopy(x, y: Field, c): untyped  = asy.ccopy_internal(fd, x.buf, y.buf, derefBool c)
 
   # Extended arithmetic
   template square(res, y: Field): untyped  = asy.nsqr_internal(fd, res.buf, y.buf, count = 1)
