@@ -29,7 +29,7 @@ type
     kAlwaysInline,
     kNoInline
 
-  Assembler_LLVM* = ref object
+  Assembler_LLVMObj* = object
     ctx*: ContextRef
     module*: ModuleRef
     br*: BuilderRef
@@ -48,6 +48,8 @@ type
 
     # Convenience
     void_t*: TypeRef
+
+  Assembler_LLVM* = ref Assembler_LLVMObj
 
   Backend* = enum
     bkAmdGpu
@@ -98,8 +100,17 @@ proc configure(asy: var Assembler_LLVM, backend: Backend) =
   asy.backend = backend
   asy.byteOrder = asy.dataLayout.getEndianness()
 
+when defined(gcDestructors):
+  proc `=destroy`(asy: Assembler_LLVMObj) =
+    asy.br.dispose()
+    asy.module.dispose()
+    asy.ctx.dispose()
+
 proc new*(T: type Assembler_LLVM, backend: Backend, moduleName: cstring): Assembler_LLVM =
-  new result, finalizeAssemblerLLVM
+  when not defined(gcDestructors):
+    new result, finalizeAssemblerLLVM
+  else:
+    new result
   result.ctx = createContext()
   result.module = result.ctx.createModule(moduleName)
   result.br = result.ctx.createBuilder()
