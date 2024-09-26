@@ -621,3 +621,206 @@ proc genEcDouble*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
     asy.double_internal(ed, ri, pi)
     asy.br.retVoid()
   result = name
+
+proc mixedSum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: ValueRef) =
+  ## Generate an internal elliptic curve point addition proc
+  ## a point in Jacobian and another in Affine coordinates
+  ## with signature
+  ##   `void name(CurveType r, CurveTypeJac p, CurveTypeAff q)`
+  ## with `a` and `b` EC curve point elements to be added.
+  ## The result is stored in `r`.
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
+  ##
+  ## XXX: For now we just port the coefA == 0 branch!
+  let name = ed.name & "_mixedSum_internal"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, p, q]),
+          {kHot}):
+    tagParameter(1, "sret")
+    let (ri, pi, qi) = llvmParams
+    let P = asy.asEcPointJac(pi, ed.curveTy)
+    let Q = asy.asEcPointAff(qi, ed.curveTyAff)
+    let rA = asy.asEcPointJac(ri, ed.curveTy)
+
+    ## Helper templates to allow the logic below to be roughly equivalent to the regular
+    ## CPU code in `ec_shortweierstrass_jacobian.nim`.
+    # Make finite field point operations nicer
+    fieldOps(asy, ed.fd)
+    # And EC points
+    ellipticOps(asy, ed)
+    # and for Affine
+    ellipticAffOps(asy, ed)
+
+    var
+      Z1Z1 = asy.newField(ed.fd)
+      U1   = asy.newField(ed.fd)
+      S1   = asy.newField(ed.fd)
+      H    = asy.newField(ed.fd)
+      R    = asy.newField(ed.fd)
+
+    # "when" static evaluation doesn't shortcut booleans :/
+    # which causes issues when CoefA isn't an int but Fp or Fp2
+    ## XXX: Take from `CurveDescriptor`
+    ## -> Need to use define `coefA` in it!
+    #const CoefA = F.Name.getCoefA()
+    when false: #CoefA is int:
+      const CoefA_eq_zero = CoefA == 0
+      const CoefA_eq_minus3 {.used.} = CoefA == -3
+    elif false: #else:
+      const CoefA_eq_zero = false
+      const CoefA_eq_minus3 = false
+    else:
+      const CoefA_eq_zero = true
+      const CoefA_eq_minus3 = false
+
+    block: # Addition-only, check for exceptional cases
+      var
+        U2 = asy.newField(ed.fd)
+        S2   = asy.newField(ed.fd)
+
+      U1 = P.x
+      S1 = P.y
+
+      Z1Z1.square(P.z) #, skipFinalSub = not CoefA_eq_minus3)
+      S2.prod(P.z, Z1Z1) #, skipFinalSub = true)
+      S2 *= Q.y           # S₂ = Y₂*Z₁³
+      U2.prod(Q.x, Z1Z1)  # U₂ = X₂*Z₁²
+
+      H.diff(U2, U1)      # H = U₂-U₁
+      R.diff(S2, S1)      # R = S₂-S₁
+
+    # Exceptional cases
+    # Expressing H as affine, if H == 0, P == Q or -Q
+    # H = U₂-U₁ = X₂*Z₁² - X₁*Z₂² = x₂*Z₂²*Z₁² - x₁*Z₁²*Z₂²
+    # if H == 0 && R == 0, P = Q -> doubling
+    # if only H == 0, P = -Q     -> infinity, implied in Z₃ = Z₁*Z₂*H = 0
+    # if only R == 0, P and Q are related by the cubic root endomorphism
+    let isDbl = H.isZero() and R.isZero()
+
+    # Rename buffers under the form (add_or_dbl)
+    template R_or_M: untyped = R
+    template H_or_Y: untyped = H
+    template V_or_S: untyped = U1
+    var
+      HH_or_YY = asy.newField(ed.fd)
+      HHH_or_Mpre = asy.newField(ed.fd)
+
+    H_or_Y.ccopy(P.y, isDbl) # H         (add) or Y₁        (dbl)
+    HH_or_YY.square(H_or_Y)  # H²        (add) or Y₁²       (dbl)
+
+    V_or_S.ccopy(P.x, isDbl) # U₁        (add) or X₁        (dbl)
+    V_or_S *= HH_or_YY       # V = U₁*HH (add) or S = X₁*YY (dbl)
+
+    block: # Compute M for doubling
+      when CoefA_eq_zero:
+        var
+          a = asy.newField(ed.fd)
+          b = asy.newField(ed.fd)
+        store(a, H)
+        store(b, HH_or_YY)
+        a.ccopy(P.x, isDbl)           # H or X₁
+        b.ccopy(P.x, isDbl)           # HH or X₁
+        HHH_or_Mpre.prod(a, b)        # HHH or X₁²
+
+        var M = asy.newField(ed.fd)   # Assuming on doubling path
+        store(M, HHH_or_Mpre)
+
+        M.div2()                      #  X₁²/2
+        M += HHH_or_Mpre              # 3X₁²/2
+        R_or_M.ccopy(M, isDbl)
+
+      elif CoefA_eq_minus3:
+        var
+          a = asy.newField(ed.fd)
+          b = asy.newField(ed.fd)
+        a.sum(P.x, Z1Z1)
+        b.diff(P.z, Z1Z1)
+        a.ccopy(H_or_Y, not isDbl)    # H   or X₁+ZZ
+        b.ccopy(HH_or_YY, not isDbl)  # HH  or X₁-ZZ
+        HHH_or_Mpre.prod(a, b)        # HHH or X₁²-ZZ²
+
+        var M = asy.newField(ed.fd)   # Assuming on doubling path
+        store(M, HHH_or_Mpre)
+
+        M.div2()                      # (X₁²-ZZ²)/2
+        M += HHH_or_Mpre              # 3(X₁²-ZZ²)/2
+        R_or_M.ccopy(M, isDbl)
+
+      else:
+        # TODO: Costly `a` coefficients can be computed
+        # by merging their computation with Z₃ = Z₁*Z₂*H (add) or Z₃ = Y₁*Z₁ (dbl)
+        var
+          a = asy.newField(ed.fd)
+          b = asy.newField(ed.fd)
+        store(a, H)
+        store(b, HH_or_YY)
+        a.ccopy(P.x, isDbl)
+        b.ccopy(P.x, isDbl)
+        HHH_or_Mpre.prod(a, b)        # HHH or X₁²
+
+        # Assuming doubling path
+        a.square(HHH_or_Mpre, skipFinalSub = true)
+        a *= HHH_or_Mpre              # a = 3X₁²
+        b.square(Z1Z1)
+        b.mulCheckSparse(CoefA)       # b = αZZ, with α the "a" coefficient of the curve
+
+        a += b
+        a.div2()
+        R_or_M.ccopy(a, isDbl)        # (3X₁² - αZZ)/2
+
+    # Let's count our horses, at this point:
+    # - R_or_M is set with R (add) or M (dbl)
+    # - HHH_or_Mpre contains HHH (add) or garbage precomputation (dbl)
+    # - V_or_S is set with V = U₁*HH (add) or S = X₁*YY (dbl)
+
+    var o = asy.newEcPointJac(ed)
+    block: # Finishing line
+      var t = asy.newField(ed.fd)
+      t.double(V_or_S)
+      o.x.square(R_or_M)
+      o.x -= t                           # X₃ = R²-2*V (add) or M²-2*S (dbl)
+      o.x.csub(HHH_or_Mpre, not isDbl)   # X₃ = R²-HHH-2*V (add) or M²-2*S (dbl)
+
+      V_or_S -= o.x                      # V-X₃ (add) or S-X₃ (dbl)
+      o.y.prod(R_or_M, V_or_S)           # Y₃ = R(V-X₃) (add) or M(S-X₃) (dbl)
+      HHH_or_Mpre.ccopy(HH_or_YY, isDbl) # HHH (add) or YY (dbl)
+      S1.ccopy(HH_or_YY, isDbl)          # S1 (add) or YY (dbl)
+      HHH_or_Mpre *= S1                  # HHH*S1 (add) or YY² (dbl)
+      o.y -= HHH_or_Mpre                 # Y₃ = R(V-X₃)-S₁*HHH (add) or M(S-X₃)-YY² (dbl)
+
+      t.setOne()
+      t.ccopy(H_or_Y, isDbl)             # Z₂ (add) or Y₁ (dbl)
+      t.prod(t, P.z) # , true)           # Z₁Z₂ (add) or Y₁Z₁ (dbl)
+      o.z.prod(t, H_or_Y)                # Z₁Z₂H (add) or garbage (dbl)
+      o.z.ccopy(t, isDbl)                # Z₁Z₂H (add) or Y₁Z₁ (dbl)
+
+    block: # Infinity points
+      o.x.ccopy(Q.x, P.isNeutral())
+      o.y.ccopy(Q.y, P.isNeutral())
+      o.z.csetOne(P.isNeutral())
+
+      o.ccopy(P, Q.isNeutral())
+
+    store(rA, o)
+
+    asy.br.retVoid()
+
+  asy.callFn(name, [r, p, q])
+
+proc genEcMixedSum*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
+  ## Generate a publc elliptic curve point addition proc between
+  ## a point in Jacobian and another in Affine coordinates
+  ## with signature
+  ##   `void name(CurveType r, CurveTypeJac p, CurveTypeAff q)`
+  ## with `a` and `b` EC curve point elements to be added.
+  ## The result is stored in `r`.
+  ##
+  ## Returns the name of the produced kernel to call it.
+  let name = ed.name & "_mixedSum"
+  asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ed.curveTy, ed.curveTy, ed.curveTyAff]):
+    let (ri, pi, qi) = llvmParams
+    asy.mixedSum_internal(ed, ri, pi, qi)
+    asy.br.retVoid()
+  result = name
