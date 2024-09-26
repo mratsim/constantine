@@ -40,11 +40,27 @@ template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} 
 
   # Boolean logic
   template `not`(x: ValueRef): untyped     = asy.br.`not`(x)
-  template derefBool(x: ValueRef): untyped = asy.load2(asy.ctx.int1_t(), x)
-  template `and`(x, y): untyped           =
-    var res = asy.br.alloca(asy.ctx.int1_t())
-    res = asy.br.`and`(derefBool x, derefBool y)
-    res
+
+  template checkIsBool(x: TypeRef): bool  =
+    x.getTypeKind == tkInteger and x.getIntTypeWidth == 1'u32
+  template raiseIfNotBool(x: ValueRef, b: bool): untyped =
+    if not b:
+      raise newException(ValueError, "Code construction faulty. Expected a bool (i1) type, but " &
+        "got: " & $x.getTypeOf)
+
+  func derefBool(x: ValueRef): ValueRef =
+    case x.getTypeOf.getTypeKind
+    of tkPointer:
+      result = asy.load2(asy.ctx.int1_t(), x)
+      raiseIfNotBool(result, checkIsBool(result.getTypeOf))
+    of tkInteger:
+      raiseIfNotBool(x, checkIsBool(x.getTypeOf))
+      result = x
+    else:
+      raiseIfNotBool(x, false)
+      # will raise
+
+  template `and`(x, y): untyped            = asy.br.`and`(derefBool x, derefBool y) # returns `i1`
 
   # Mutators
   template setZero(x: Field): untyped      = asy.setZero_internal(fd, x.buf)
