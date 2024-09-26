@@ -450,6 +450,7 @@ proc `=destroy`*(nv: NvidiaAssemblerObj) =
   ## XXX: Need to also call the finalizer for `asy` in the future!
   check nv.cuMod.cuModuleUnload()
   check nv.cuCtx.cuCtxDestroy()
+  `=destroy`(nv.asy)
 
 proc initNvAsm*[Name: static Algebra](field: type FF[Name], wordSize: int = 32, backend = bkNvidiaPTX): NvidiaAssembler =
   ## Constructs an `NvidiaAssembler` object, which compiles code for the Nvidia target
