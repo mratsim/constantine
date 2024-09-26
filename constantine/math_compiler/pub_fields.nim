@@ -69,6 +69,7 @@ template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} 
 
   # Conditional setters
   template csetZero(x: Field, c): untyped  = asy.csetZero_internal(fd, x.buf, derefBool c)
+  template csetOne(x: Field, c): untyped   = asy.csetOne_internal(fd, x.buf, derefBool c)
 
   # Basic arithmetic
   template sum(res, x, y: Field): untyped  = asy.add_internal(fd, res.buf, x.buf, y.buf)
