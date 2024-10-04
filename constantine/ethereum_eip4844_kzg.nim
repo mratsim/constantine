@@ -64,7 +64,7 @@ const RANDOM_CHALLENGE_KZG_BATCH_DOMAIN = asBytes"RCKZGBATCH___V1_"
 
 # Derived
 # ------------------------------------------------------------
-const BYTES_PER_BLOB = BYTES_PER_FIELD_ELEMENT*FIELD_ELEMENTS_PER_BLOB
+const BYTES_PER_BLOB* = BYTES_PER_FIELD_ELEMENT*FIELD_ELEMENTS_PER_BLOB
 
 # Protocol Types
 # ------------------------------------------------------------
@@ -151,7 +151,7 @@ func bytes_to_bls_bigint(dst: var Fr[BLS12_381].getBigInt(), src: array[32, byte
     return status
   return cttCodecScalar_Success
 
-func bytes_to_bls_field(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus =
+func bytes_to_bls_field*(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus =
   ## Convert untrusted bytes to a trusted and validated BLS scalar field element.
   ## This function does not accept inputs greater than the BLS modulus.
   var scalar {.noInit.}: Fr[BLS12_381].getBigInt()
@@ -177,7 +177,7 @@ func bytes_to_kzg_proof(dst: var KZGProof, src: array[48, byte]): CttCodecEccSta
     return cttCodecEcc_Success
   return status
 
-func blob_to_bigint_polynomial(
+func blob_to_bigint_polynomial*(
        dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt()],
        blob: Blob): CttCodecScalarStatus =
   ## Convert a blob to a polynomial in evaluation form
