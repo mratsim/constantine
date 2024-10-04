@@ -16,24 +16,24 @@ with a particular focus on cryptography used in blockchains and zero-knowledge p
 <!-- TOC -->
 
 - [Constantine](#constantine)
-    - [Public API: Curves & Protocols](#public-api-curves--protocols)
-        - [Protocols](#protocols)
-        - [Elliptic Curves](#elliptic-curves)
-        - [General cryptography](#general-cryptography)
-        - [Threadpool](#threadpool)
-    - [Installation](#installation)
-        - [From Rust](#from-rust)
-        - [From Go](#from-go)
-        - [From C](#from-c)
-        - [From Nim](#from-nim)
-    - [Dependencies & Requirements](#dependencies--requirements)
-    - [Performance](#performance)
-    - [Assembly & Hardware acceleration](#assembly--hardware-acceleration)
-    - [Security](#security)
-        - [Disclaimer](#disclaimer)
-        - [Security disclosure](#security-disclosure)
-    - [Why Nim](#why-nim)
-    - [License](#license)
+  - [Public API: Curves \& Protocols](#public-api-curves--protocols)
+    - [Protocols](#protocols)
+    - [Elliptic Curves](#elliptic-curves)
+    - [General cryptography](#general-cryptography)
+    - [Threadpool](#threadpool)
+  - [Installation](#installation)
+    - [From Rust](#from-rust)
+    - [From Go](#from-go)
+    - [From C](#from-c)
+    - [From Nim](#from-nim)
+  - [Dependencies \& Requirements](#dependencies--requirements)
+  - [Performance](#performance)
+  - [Assembly \& Hardware acceleration](#assembly--hardware-acceleration)
+  - [Security](#security)
+    - [Disclaimer](#disclaimer)
+    - [Security disclosure](#security-disclosure)
+  - [Why Nim](#why-nim)
+  - [License](#license)
 
 <!-- /TOC -->
 The library aims to be a fast, compact and hardened library for elliptic curve cryptography needs, in particular for blockchain protocols and zero-knowledge proofs system.
@@ -136,7 +136,10 @@ See the following documents on the threadpool performance details, design and re
 ## Installation
 
 > [!IMPORTANT]
-> Constantine can be compiled by Nim v1.6.x, v2.0.2 and v2.0.4 but not Nim v2.0.0 (due to a compile-time evaluation crash)
+> Constantine can be compiled with:
+> - Nim v1.6.x,
+> - Nim v2.0.2 to v2.0.8 but not Nim v2.0.0 and Nim 2.0.10 (due to compile-time evaluation crashes)
+> - Nim v2.2.0
 
 ### From Rust
 
