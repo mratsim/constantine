@@ -378,7 +378,7 @@ jobs:
         run: |
           cd constantine
           if [[ '${{  matrix.nim_version }}' != 'version-1-6' ]]; then
-            nimble CTT_LTO=false test_no_gmp --verbose
+            CTT_LTO=0 nimble test_no_gmp --verbose
           else
             nimble test_parallel_no_gmp --verbose
           fi
@@ -391,7 +391,7 @@ jobs:
         run: |
           cd constantine
           if [[ '${{  matrix.nim_version }}' != 'version-1-6' ]]; then
-            CTT_ASM=0 CTT_LTO=false nimble test_no_gmp --verbose
+            CTT_ASM=0 CTT_LTO=0 nimble test_no_gmp --verbose
           else
             CTT_ASM=0 nimble test_parallel_no_gmp --verbose
           fi
