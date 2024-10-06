@@ -17,6 +17,10 @@ import
   constantine/math/io/io_fields,
   constantine/platforms/[abstractions, views]
 
+import constantine/zoo_exports
+
+const prefix_ipa = "ctt_eth_verkle_"
+
 ## ############################################################
 ##
 ##                 Inner Product Arguments
@@ -139,7 +143,7 @@ func innerProduct[F](r: var F, a, b: distinct(View[F] or MutableView[F])) =
 func ipa_commit*[N: static int, EC, F](
       crs: PolynomialEval[N, EC],
       r: var EC,
-      poly: PolynomialEval[N, F]) =
+      poly: PolynomialEval[N, F]) {.libPrefix: prefix_ipa.} =
   crs.pedersen_commit(r, poly)
 
 func ipa_prove*[N, logN: static int, EcAff, F](
@@ -330,7 +334,7 @@ func ipa_verify*[N, logN: static int, EcAff, F](
       commitment: EcAff,
       opening_challenge: F,
       eval_at_challenge: F,
-      proof: IpaProof[logN, EcAff, F]): bool =
+      proof: IpaProof[logN, EcAff, F]): bool {.libPrefix: prefix_ipa.} =
   # We want to check ∑ᵢ[uᵢ]Lᵢ + C' + ∑ᵢ[uᵢ⁻¹]Rᵢ = a₀G₀ + [a₀.b₀]Q
   # ∑ᵢ[uᵢ]Lᵢ + C' + ∑ᵢ[uᵢ⁻¹]Rᵢ = a₀G₀ + [a₀.b₀]Q
   # with
@@ -661,7 +665,7 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
       proof: var IpaMultiProof[logN, EcAff, F],
       polys: openArray[PolynomialEval[N, F]],
       commitments: openArray[EcAff],
-      opening_challenges_in_domain: openArray[SomeUnsignedInt]) =
+      opening_challenges_in_domain: openArray[SomeUnsignedInt]) {.libPrefix: prefix_ipa.} =
   ## Create a combined proof that
   ## allow verifying the list of triplets
   ##    (polynomial, commitment, opening challenge)
@@ -838,7 +842,7 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
       commitments: openArray[EcAff],
       opening_challenges_in_domain: openArray[SomeUnsignedInt],
       evals_at_challenges: openArray[F],
-      proof: IpaMultiProof[logN, EcAff, F]): bool =
+      proof: IpaMultiProof[logN, EcAff, F]): bool {.libPrefix: prefix_ipa.} =
   ## Batch verification of commitments to multiple polynomials
   ## using a single multiproof
   ##
