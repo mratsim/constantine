@@ -372,12 +372,13 @@ jobs:
         # So "test_bindings" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
         # Also need to workaround asynctools not being able to create pipes https://github.com/nim-lang/Nim/issues/23118
+        # And LTO impossible constraint in the deneb_kzg test (but not MSM for some reason)
         if: runner.os == 'Windows' && matrix.target.BACKEND == 'ASM'
         shell: msys2 {0}
         run: |
           cd constantine
           if [[ '${{  matrix.nim_version }}' != 'version-1-6' ]]; then
-            nimble test_no_gmp --verbose
+            nimble CTT_LTO=false test_no_gmp --verbose
           else
             nimble test_parallel_no_gmp --verbose
           fi
@@ -390,7 +391,7 @@ jobs:
         run: |
           cd constantine
           if [[ '${{  matrix.nim_version }}' != 'version-1-6' ]]; then
-            CTT_ASM=0 nimble test_no_gmp --verbose
+            CTT_ASM=0 CTT_LTO=false nimble test_no_gmp --verbose
           else
             CTT_ASM=0 nimble test_parallel_no_gmp --verbose
           fi
