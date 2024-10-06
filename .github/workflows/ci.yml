@@ -376,7 +376,7 @@ jobs:
         shell: msys2 {0}
         run: |
           cd constantine
-          if [[ '${{  matrix.nim_version }}' == 'version-2-0' ]]; then
+          if [[ '${{  matrix.nim_version }}' != 'version-1-6' ]]; then
             nimble test_no_gmp --verbose
           else
             nimble test_parallel_no_gmp --verbose
@@ -389,7 +389,7 @@ jobs:
         shell: msys2 {0}
         run: |
           cd constantine
-          if [[ '${{  matrix.nim_version }}' == 'version-2-0' ]]; then
+          if [[ '${{  matrix.nim_version }}' != 'version-1-6' ]]; then
             CTT_ASM=0 nimble test_no_gmp --verbose
           else
             CTT_ASM=0 nimble test_parallel_no_gmp --verbose
