@@ -113,6 +113,9 @@ proc enqueuePendingCommands(wq: WorkQueue) {.async.} =
 
     await wq.sem.acquire()
     let cmd = wq.cmdQueue.popFirst()
+    echo '\n', '-'.repeat(80)
+    echo "|\n| Scheduling #", id, "/", total, ": ", cmd ,"\n|"
+    echo '-'.repeat(80)
     let p = cmd.startProcess(options = {poStdErrToStdOut, poUsePath, poEvalCommand})
 
     let bufOut = newAsyncQueue[string]()
