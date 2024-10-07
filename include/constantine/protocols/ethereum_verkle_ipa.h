@@ -162,15 +162,15 @@ ctt_eth_verkle_ipa_status ctt_eth_verkle_deserialize(
     EthVerkleIpaMultiProofBytes* src
     ) __attribute__((warn_unused_result));
 
-ctt_eth_verkle_ipa_status ctt_eth_verkle_mapToBaseField(
+ctt_eth_verkle_ipa_status ctt_eth_verkle_map_to_base_field(
     Fp_Banderwagon* dst, const EC_TwEdw_Fp_Banderwagon* p
     ) __attribute__((warn_unused_result));
 
-ctt_eth_verkle_ipa_status ctt_eth_verkle_mapToScalarField(
+ctt_eth_verkle_ipa_status ctt_eth_verkle_map_to_scalar_field(
     Fr_Banderwagon* res, const EC_TwEdw_Fp_Banderwagon* p
     ) __attribute__((warn_unused_result));
 
-ctt_eth_verkle_ipa_status ctt_eth_verkle_batchMapToScalarField(
+ctt_eth_verkle_ipa_status ctt_eth_verkle_batch_map_to_base_field(
     Fr_BanderWagon_OpenArray* res, const EC_TwEdw_Fp_Banderwagon_OpenArray* p
     ) __attribute__((warn_unused_result));
 
