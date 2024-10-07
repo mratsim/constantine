@@ -225,4 +225,4 @@ ctt_eth_verkle_ipa_status ctt_eth_verkle_ipa_multi_verify(
 }
 #endif
 
-#endif // __CTT_H_ETHEREUM_EVM_PRECOMPILES__
+#endif // __CTT_H_ETHEREUM_VERKLE_IPA__
