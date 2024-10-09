@@ -30,10 +30,10 @@ template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} 
 
   ## XXX: extend to include all ops
   # Boolean checks
-  template isZero(res, x: Field): untyped  = asy.isZero_internal(fd, res, x.buf)
+  template isZero(res, x: Field): untyped  = asy.isZero(fd, res, x.buf)
   template isZero(x: Field): untyped =
     var res = asy.br.alloca(asy.ctx.int1_t())
-    asy.isZero_internal(fd, res, x.buf)
+    asy.isZero(fd, res, x.buf)
     res
 
   # Boolean logic
@@ -61,44 +61,44 @@ template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} 
   template `and`(x, y): untyped            = asy.br.`and`(derefBool x, derefBool y) # returns `i1`
 
   # Mutators
-  template setZero(x: Field): untyped      = asy.setZero_internal(fd, x.buf)
-  template setOne(x: Field): untyped       = asy.setOne_internal(fd, x.buf)
-  template neg(res, y: Field): untyped     = asy.neg_internal(fd, res.buf, y.buf)
+  template setZero(x: Field): untyped      = asy.setZero(fd, x.buf)
+  template setOne(x: Field): untyped       = asy.setOne(fd, x.buf)
+  template neg(res, y: Field): untyped     = asy.neg(fd, res.buf, y.buf)
   template neg(x: Field): untyped          =
     var res = asy.newField(fd)
     res.store(x)
     x.neg(res)
 
   # Conditional setters
-  template csetZero(x: Field, c): untyped  = asy.csetZero_internal(fd, x.buf, derefBool c)
-  template csetOne(x: Field, c): untyped   = asy.csetOne_internal(fd, x.buf, derefBool c)
+  template csetZero(x: Field, c): untyped  = asy.csetZero(fd, x.buf, derefBool c)
+  template csetOne(x: Field, c): untyped   = asy.csetOne(fd, x.buf, derefBool c)
 
   # Basic arithmetic
-  template sum(res, x, y: Field): untyped  = asy.add_internal(fd, res.buf, x.buf, y.buf)
+  template sum(res, x, y: Field): untyped  = asy.add(fd, res.buf, x.buf, y.buf)
   template add(res, x, y: Field): untyped  = res.sum(x, y)
-  template diff(res, x, y: Field): untyped = asy.sub_internal(fd, res.buf, x.buf, y.buf)
-  template prod(res, x, y: Field, skipFinalSub: bool): untyped = asy.mul_internal(fd, res.buf, x.buf, y.buf, skipFinalSub)
+  template diff(res, x, y: Field): untyped = asy.sub(fd, res.buf, x.buf, y.buf)
+  template prod(res, x, y: Field, skipFinalSub: bool): untyped = asy.mul(fd, res.buf, x.buf, y.buf, skipFinalSub)
   template prod(res, x, y: Field): untyped = res.prod(x, y, skipFinalSub = false)
 
   # Conditional arithmetic
-  template cadd(x, y: Field, c): untyped   = asy.cadd_internal(fd, x.buf, y.buf, derefBool c)
-  template csub(x, y: Field, c): untyped   = asy.csub_internal(fd, x.buf, y.buf, derefBool c)
-  template ccopy(x, y: Field, c): untyped  = asy.ccopy_internal(fd, x.buf, y.buf, derefBool c)
+  template cadd(x, y: Field, c): untyped   = asy.cadd(fd, x.buf, y.buf, derefBool c)
+  template csub(x, y: Field, c): untyped   = asy.csub(fd, x.buf, y.buf, derefBool c)
+  template ccopy(x, y: Field, c): untyped  = asy.ccopy(fd, x.buf, y.buf, derefBool c)
 
   # Extended arithmetic
-  template square(res, y: Field, skipFinalSub: bool): untyped = asy.nsqr_internal(fd, res.buf, y.buf, count = 1, skipFinalSub)
+  template square(res, y: Field, skipFinalSub: bool): untyped = asy.nsqr(fd, res.buf, y.buf, count = 1, skipFinalSub)
   template square(res, y: Field): untyped  = res.square(y, skipFinalSub = false)
   template square(x: Field, skipFinalSub: bool): untyped = square(x, x, skipFinalSub)
   template square(x: Field): untyped       = square(x, x, skipFinalSub = false)
-  template double(res, x: Field): untyped  = asy.double_internal(fd, res.buf, x.buf)
+  template double(res, x: Field): untyped  = asy.double(fd, res.buf, x.buf)
   template double(x: Field): untyped       = x.double(x)
-  template div2(x: Field): untyped         = asy.div2_internal(fd, x.buf)
+  template div2(x: Field): untyped         = asy.div2(fd, x.buf)
 
   # Mutating assignment ops
   template `*=`(x, y: Field): untyped      = x.prod(x, y)
   template `+=`(x, y: Field): untyped      = x.add(x, y)
   template `-=`(x, y: Field): untyped      = x.diff(x, y)
-  template `*=`(x: Field, b: int): untyped = asy.scalarMul_internal(fd, x.buf, b)
+  template `*=`(x: Field, b: int): untyped = asy.scalarMul(fd, x.buf, b)
 
   # Other helpers that do not warrant a full LLVM internal/public proc
   template mulCheckSparse(x: Field, y: int) =
@@ -113,14 +113,14 @@ template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} 
     else:
       x *= b
 
-proc setZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.used.} =
+proc setZero*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.used.} =
   ## Generate an internal field setZero
   ## with signature
   ##   void name(FieldType r)
   ## with r the element to be zeroed.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_setZero_internal"
+  let name = fd.name & "_setZero_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r]),
@@ -137,14 +137,14 @@ proc setZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.
 
   asy.callFn(name, [r])
 
-proc setOne_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.used.} =
+proc setOne*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.used.} =
   ## Generate an internal field setOne
   ## with signature
   ##   void name(FieldType r)
   ## with `r` the element to be set to 1 in Montgomery form.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_setOne_internal"
+  let name = fd.name & "_setOne_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r]),
@@ -165,14 +165,14 @@ proc setOne_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.u
 
   asy.callFn(name, [r])
 
-proc add_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) {.used.} =
+proc add*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) {.used.} =
   ## Generate an internal field addition proc
   ## with signature
   ##   void name(FieldType r, FieldType a, FieldType b)
   ## with r the result and a, b the operands
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_add_internal"
+  let name = fd.name & "_add_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a, b]),
@@ -186,7 +186,7 @@ proc add_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) 
 
   asy.callFn(name, [r, a, b])
 
-proc mul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef, skipFinalSub: bool = false) {.used.} =
+proc mul*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef, skipFinalSub: bool = false) {.used.} =
   ## Generate an internal field multiplication proc
   ## with signature
   ##   void name(FieldType r, FieldType a, FieldType b)
@@ -196,7 +196,7 @@ proc mul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef, 
   ## multiplication.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_mul_internal"
+  let name = fd.name & "_mul_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a, b]),
@@ -209,7 +209,7 @@ proc mul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef, 
     asy.br.retVoid()
   asy.callFn(name, [r, a, b])
 
-proc ccopy_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a, b, c: ValueRef) {.used.} =
+proc ccopy*(asy: Assembler_LLVM, fd: FieldDescriptor, a, b, c: ValueRef) {.used.} =
   ## Generate an internal field conditional copy proc
   ## with signature
   ##   `void name(FieldType a, FieldType b, bool condition)`
@@ -218,7 +218,7 @@ proc ccopy_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a, b, c: ValueRef
   ## if `condition` is `false`: `a` is left unmodified.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_ccopy_internal"
+  let name = fd.name & "_ccopy_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([a, b, c]),
@@ -239,7 +239,7 @@ proc ccopy_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a, b, c: ValueRef
     asy.br.retVoid()
   asy.callFn(name, [a, b, c])
 
-proc csetOne_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, c: ValueRef) {.used.} =
+proc csetOne*(asy: Assembler_LLVM, fd: FieldDescriptor, r, c: ValueRef) {.used.} =
   ## Generate an internal field conditional setOne
   ## with signature
   ##   void name(FieldType r, bool condition)
@@ -247,7 +247,7 @@ proc csetOne_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, c: ValueRef)
   ## the `condition` is `true`.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_csetOne_internal"
+  let name = fd.name & "_csetOne_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, c]),
@@ -257,13 +257,13 @@ proc csetOne_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, c: ValueRef)
     let mOne = asy.getMontyOnePtr(fd)
 
     let (ri, ci) = llvmParams
-    asy.ccopy_internal(fd, ri, mOne, ci)
+    asy.ccopy(fd, ri, mOne, ci)
 
     asy.br.retVoid()
 
   asy.callFn(name, [r, c])
 
-proc csetZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, c: ValueRef) {.used.} =
+proc csetZero*(asy: Assembler_LLVM, fd: FieldDescriptor, r, c: ValueRef) {.used.} =
   ## Generate an internal field conditional setZero
   ## with signature
   ##   void name(FieldType r, bool condition)
@@ -271,7 +271,7 @@ proc csetZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, c: ValueRef
   ## the `condition` is `true`.
   ##
   ## Generates a call, so that we zero can use this proc as part of another procedure.
-  let name = fd.name & "_csetZero_internal"
+  let name = fd.name & "_csetZero_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, c]),
@@ -282,12 +282,12 @@ proc csetZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, c: ValueRef
     let (ri, ci) = llvmParams
 
     # NOTE: We could follow the algorithm used for the BigInt
-    # limbs, but we can also just combine `setZero_internal`
+    # limbs, but we can also just combine `setZero`
     # with a ccopy.
     ## XXX: port the below
     var zero = asy.newField(fd)
-    asy.setZero_internal(fd, zero.buf)
-    asy.ccopy_internal(fd, ri, zero.buf, ci)
+    asy.setZero(fd, zero.buf)
+    asy.ccopy(fd, ri, zero.buf, ci)
 
     when false:
       # func csetZero*(a: var Limbs, ctl: SecretBool) =
@@ -305,14 +305,14 @@ proc csetZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, c: ValueRef
 
   asy.callFn(name, [r, c])
 
-proc cadd_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef) {.used.} =
+proc cadd*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef) {.used.} =
   ## Generate an internal field conditional in-place addition proc
   ## with signature
   ##   void name(FieldType r, FieldType a, bool condition)
   ## `a` is added from `r` only if the `condition` is `true`.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_cadd_internal"
+  let name = fd.name & "_cadd_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a, c]),
@@ -323,21 +323,21 @@ proc cadd_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef)
     let (ri, ai, ci) = llvmParams
     let t = asy.newField(fd)          # temp field for `add`
     let aA = asy.asField(fd, ai)
-    asy.add_internal(fd, t.buf, ri, ai)   # `t = r + b`
-    asy.ccopy_internal(fd, ai, t.buf, ci) # `a.ccopy(t, condition)`
+    asy.add(fd, t.buf, ri, ai)   # `t = r + b`
+    asy.ccopy(fd, ai, t.buf, ci) # `a.ccopy(t, condition)`
 
     asy.br.retVoid()
 
   asy.callFn(name, [r, a, c])
 
-proc sub_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) {.used.} =
+proc sub*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) {.used.} =
   ## Generate an internal field subtraction proc
   ## with signature
   ##   void name(FieldType r, FieldType a, FieldType b)
   ## with r the result and a, b the operands
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_sub_internal"
+  let name = fd.name & "_sub_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a, b]),
@@ -351,14 +351,14 @@ proc sub_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) 
 
   asy.callFn(name, [r, a, b])
 
-proc csub_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef) {.used.} =
+proc csub*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef) {.used.} =
   ## Generate an internal field conditional in-place subtraction proc
   ## with signature
   ##   void name(FieldType r, FieldType a, bool condition)
   ## `a` is subtracted from `r` only if the `condition` is `true`.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_csub_internal"
+  let name = fd.name & "_csub_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a, c]),
@@ -368,21 +368,21 @@ proc csub_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef)
 
     let (ri, ai, ci) = llvmParams
     let t = asy.newField(fd)          # temp field for `sub`
-    asy.sub_internal(fd, t.buf, ri, ai)   # `t = r - b`
-    asy.ccopy_internal(fd, ri, t.buf, ci) # `r.ccopy(t, condition)`
+    asy.sub(fd, t.buf, ri, ai)   # `t = r - b`
+    asy.ccopy(fd, ri, t.buf, ci) # `r.ccopy(t, condition)`
 
     asy.br.retVoid()
 
   asy.callFn(name, [r, a, c])
 
-proc double_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} =
+proc double*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} =
   ## Generate an internal out-of-place double procedure
   ## with signature
   ##   `void name(FieldType r, FieldType a)`
   ## with `r` the resulting field element, `a` the element to be doubled
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_double_internal"
+  let name = fd.name & "_double_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a]),
@@ -390,12 +390,12 @@ proc double_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) 
     tagParameter(1, "sret")
 
     let (ri, ai) = llvmParams
-    asy.add_internal(fd, ri, ai, ai) # `r = a + a`
+    asy.add(fd, ri, ai, ai) # `r = a + a`
 
     asy.br.retVoid()
   asy.callFn(name, [r, a])
 
-proc nsqr_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef, count: int,
+proc nsqr*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef, count: int,
                     skipFinalSub = false) {.used.} =
   ## Generate an internal CT nsqr procedure
   ## with signature
@@ -406,7 +406,7 @@ proc nsqr_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef, co
   ## This can be an optimization in some use cases.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_nsqr" & $count & "_internal"
+  let name = fd.name & "_nsqr" & $count & "_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a]),
@@ -431,14 +431,14 @@ proc nsqr_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef, co
     asy.br.retVoid()
   asy.callFn(name, [r, a])
 
-proc isZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} =
+proc isZero*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} =
   ## Generate an internal field isZero proc
   ## with signature
   ##   void name(*bool r, FieldType a)
   ## with r the result and a the operand
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_isZero_internal"
+  let name = fd.name & "_isZero_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a]),
@@ -465,14 +465,14 @@ proc isZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) 
 
   asy.callFn(name, [r, a])
 
-proc isOdd_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} =
+proc isOdd*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} =
   ## Generate an internal field isOdd proc
   ## with signature
   ##   void name(*bool r, FieldType a)
   ## with r the result and a the operand
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_isOdd_internal"
+  let name = fd.name & "_isOdd_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a]),
@@ -491,14 +491,14 @@ proc isOdd_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {
 
   asy.callFn(name, [r, a])
 
-proc neg_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} =
+proc neg*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} =
   ## Generate an internal field negation
   ## with signature
   ##   `void name(FieldType r, FieldType a)`
   ## with `r` the resulting negated field element.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_neg_internal"
+  let name = fd.name & "_neg_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a]),
@@ -550,7 +550,7 @@ proc neg_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.u
 
   asy.callFn(name, [r, a])
 
-proc cneg_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef) {.used.} =
+proc cneg*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef) {.used.} =
   ## Generate an internal conditional out of place field negation
   ## with signature
   ##   `void name(FieldType r, FieldType a, bool condition)`
@@ -558,7 +558,7 @@ proc cneg_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef)
   ## The negation is only performed if `condition` is `true`.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = fd.name & "_cneg_internal"
+  let name = fd.name & "_cneg_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a, c]),
@@ -569,24 +569,25 @@ proc cneg_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef)
     let M = asy.getModulusPtr(fd)
 
     # first call the regular negation
-    asy.neg_internal(fd, ri, ai)
+    asy.neg(fd, ri, ai)
     # now ccopy
-    asy.ccopy_internal(fd, ri, ai, asy.br.`not`(ci))
+    asy.ccopy(fd, ri, ai, asy.br.`not`(ci))
 
     asy.br.retVoid()
 
   asy.callFn(name, [r, a, c])
 
-proc shiftRight_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a, k: ValueRef) {.used.} =
+proc shiftRight*(asy: Assembler_LLVM, fd: FieldDescriptor, a, k: ValueRef) {.used.} =
   ## Generate an internal field in-place shiftRight proc
   ## with signature
   ##   void name(FieldType a, i32 k)
   ## where a is the operand to be shifted and k is the shift amount
-  let name = fd.name & "_shiftRight_internal"
+  let name = fd.name & "_shiftRight_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([a, k]),
           {kHot}):
+    tagParameter(1, "sret")
     let (ai, ki) = llvmParams
     let aA = asy.asArray(ai, fd.fieldTy)
 
@@ -612,31 +613,32 @@ proc shiftRight_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a, k: ValueR
 
   asy.callFn(name, [a, k])
 
-proc div2_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef) {.used.} =
+proc div2*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef) {.used.} =
   ## Generate an internal field in-place div2 proc
   ## with signature
   ##   void name(FieldType a, i32 k)
   ## where a is the operand to be divided by 2.
-  let name = fd.name & "_div2_internal"
+  let name = fd.name & "_div2_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([a]),
           {kHot}):
+    tagParameter(1, "sret")
     let ai = llvmParams
     #let aA = asy.asField(fd, ai)
 
     var wasOdd = asy.br.alloca(asy.ctx.int1_t())
-    asy.isOdd_internal(fd, wasOdd, ai)
-    asy.shiftRight_internal(fd, ai, constInt(fd.wordTy, 1))
+    asy.isOdd(fd, wasOdd, ai)
+    asy.shiftRight(fd, ai, constInt(fd.wordTy, 1))
 
     let pp1d2 = asy.getPrimePlus1div2Ptr(fd)
-    asy.cadd_internal(fd, ai, pp1d2, asy.load2(asy.ctx.int1_t(), wasOdd))
+    asy.cadd(fd, ai, pp1d2, asy.load2(asy.ctx.int1_t(), wasOdd))
 
     asy.br.retVoid()
 
   asy.callFn(name, [a])
 
-proc scalarMul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef, b: int) =
+proc scalarMul*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef, b: int) =
   ## Multiplication by a small integer known at compile-time
   ## with signature
   ##   void name(FieldType a)
@@ -646,11 +648,12 @@ proc scalarMul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef, 
   ## Direct port of the code in `finite_fields.nim`.
 
   # NOTE: This implementation could take a Nim RT `b` of course
-  let name = fd.name & "_scalarMul_" & $b & "_internal"
+  let name = fd.name & "_scalarMul_" & $b & "_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([a]),
           {kHot}):
+    tagParameter(1, "sret")
     let ai = llvmParams
 
     # Make field ops convenient:

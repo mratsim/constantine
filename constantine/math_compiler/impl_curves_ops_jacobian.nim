@@ -62,14 +62,14 @@ template ellipticOps*(asy: Assembler_LLVM, cd: CurveDescriptor): untyped =
   ## more convenient.
   ## XXX: extend to include all ops
   # Boolean checks
-  template isNeutral(res, x: EcPointJac): untyped = asy.isNeutral_internal(cd, res, x.buf)
+  template isNeutral(res, x: EcPointJac): untyped = asy.isNeutral(cd, res, x.buf)
   template isNeutral(x: EcPointJac): untyped =
     var res = asy.br.alloca(asy.ctx.int1_t())
-    asy.isNeutral_internal(cd, res, x.buf)
+    asy.isNeutral(cd, res, x.buf)
     res
 
   # Conditional ops
-  template ccopy(x, y: EcPointJac, c): untyped = asy.ccopy_internal(cd, x.buf, y.buf, derefBool c)
+  template ccopy(x, y: EcPointJac, c): untyped = asy.ccopy(cd, x.buf, y.buf, derefBool c)
 
   # Accessors
   template x(ec: EcPointJac): Field = ec.getX()
@@ -87,10 +87,10 @@ proc fromAffine_impl*(asy: Assembler_LLVM, cd: CurveDescriptor, jac: var EcPoint
   jac.z.setOne()
   jac.z.csetZero(aff.isNeutral())
 
-proc fromAffine_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, j, a: ValueRef) =
+proc fromAffine*(asy: Assembler_LLVM, cd: CurveDescriptor, j, a: ValueRef) =
   ## Given an EC point in affine coordinates, converts the point to
   ## Jacobian coordinates as `jac`.
-  let name = cd.name & "_fromAffine_internal"
+  let name = cd.name & "_fromAffine_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([j, a]),
@@ -107,14 +107,14 @@ proc fromAffine_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, j, a: ValueR
 
   asy.callFn(name, [j, a])
 
-proc isNeutral_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, r, a: ValueRef) {.used.} =
+proc isNeutral*(asy: Assembler_LLVM, cd: CurveDescriptor, r, a: ValueRef) {.used.} =
   ## Generate an internal elliptic curve point isNeutral proc
   ## with signature
   ##   void name(*bool r, CurveType a)
   ## with r the result and a the operand
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = cd.name & "_isNeutral_internal"
+  let name = cd.name & "_isNeutral_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a]),
@@ -125,7 +125,7 @@ proc isNeutral_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, r, a: ValueRe
     let aEc = asy.asEcPointJac(ai, cd.curveTy)
 
     let z = aEc.getZ()
-    asy.isZero_internal(cd.fd, ri, z.buf)
+    asy.isZero(cd.fd, ri, z.buf)
 
     asy.br.retVoid()
 
@@ -140,14 +140,14 @@ proc isNeutral_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, r, a: ValueRe
 #  P.y.setOne()
 #  P.z.setZero()
 #
-#proc setNeutral_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, r: ValueRef) {.uscd.} =
+#proc setNeutral*(asy: Assembler_LLVM, cd: CurveDescriptor, r: ValueRef) {.uscd.} =
 #  ## Generate an internal elliptic curve point setNeutral proc
 #  ## with signature
 #  ##   void name(CurveType r)
 #  ## with r the point to be 'neutralized'.
 #  ##
 #  ## Generates a call, so that we one can use this proc as part of another procedure.
-#  let name = cd.name & "_setNeutral_internal"
+#  let name = cd.name & "_setNeutral_impl"
 #  asy.llvmInternalFnDef(
 #          name, SectionName,
 #          asy.void_t, toTypes([r, a]),
@@ -158,13 +158,13 @@ proc isNeutral_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, r, a: ValueRe
 #    let aEc = asy.asEcPointJac(ai, cd.curveTy)
 #
 #    let z = aEc.getZ()
-#    asy.isZero_internal(cd.fd, ri, z.buf)
+#    asy.isZero(cd.fd, ri, z.buf)
 #
 #    asy.br.retVoid()
 #
 #  asy.callFn(name, [r, a])
 
-proc ccopy_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, a, b, c: ValueRef) {.used.} =
+proc ccopy*(asy: Assembler_LLVM, cd: CurveDescriptor, a, b, c: ValueRef) {.used.} =
   ## Generate an internal elliptic curve point ccopy proc
   ## with signature
   ##   `void name(CurveType a, CurveType b, bool condition)`
@@ -173,7 +173,7 @@ proc ccopy_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, a, b, c: ValueRef
   ## if `condition` is `false`: `a` is left unmodified.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = cd.name & "_ccopy_internal"
+  let name = cd.name & "_ccopy_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([a, b, c]),
@@ -184,22 +184,22 @@ proc ccopy_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, a, b, c: ValueRef
     let aEc = asy.asEcPointJac(ai, cd.curveTy)
     let bEc = asy.asEcPointJac(bi, cd.curveTy)
 
-    asy.ccopy_internal(cd.fd, aEc.getX().buf, bEc.getX().buf, ci)
-    asy.ccopy_internal(cd.fd, aEc.getY().buf, bEc.getY().buf, ci)
-    asy.ccopy_internal(cd.fd, aEc.getZ().buf, bEc.getZ().buf, ci)
+    asy.ccopy(cd.fd, aEc.getX().buf, bEc.getX().buf, ci)
+    asy.ccopy(cd.fd, aEc.getY().buf, bEc.getY().buf, ci)
+    asy.ccopy(cd.fd, aEc.getZ().buf, bEc.getZ().buf, ci)
 
     asy.br.retVoid()
 
   asy.callFn(name, [a, b, c])
 
-proc neg_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, a: ValueRef) {.used.} =
+proc neg*(asy: Assembler_LLVM, cd: CurveDescriptor, a: ValueRef) {.used.} =
   ## Generate an internal elliptic curve point negation proc
   ## with signature
   ##   `void name(CurveType a)`
   ## with `a` the EC point to be negated.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = cd.name & "_neg_internal"
+  let name = cd.name & "_neg_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([a]),
@@ -208,20 +208,20 @@ proc neg_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, a: ValueRef) {.used
 
     let ai = llvmParams
     let aEc = asy.asEcPointJac(ai, cd.curveTy)
-    asy.neg_internal(cd.fd, aEc.getY().buf, aEc.getY().buf)
+    asy.neg(cd.fd, aEc.getY().buf, aEc.getY().buf)
 
     asy.br.retVoid()
 
   asy.callFn(name, [a])
 
-proc cneg_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, a, c: ValueRef) {.used.} =
+proc cneg*(asy: Assembler_LLVM, cd: CurveDescriptor, a, c: ValueRef) {.used.} =
   ## Generate an internal elliptic curve point conditional negation proc
   ## with signature
   ##   `void name(CurveType a, bool condition)`
   ## with `a` the EC curve point to be negated if `condition` is true.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = cd.name & "_cneg_internal"
+  let name = cd.name & "_cneg_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([a, c]),
@@ -230,13 +230,13 @@ proc cneg_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, a, c: ValueRef) {.
 
     let (ai, ci) = llvmParams
     let aEc = asy.asEcPointJac(ai, cd.curveTy)
-    asy.cneg_internal(cd.fd, aEc.getY().buf, aEc.getY().buf, ci)
+    asy.cneg(cd.fd, aEc.getY().buf, aEc.getY().buf, ci)
 
     asy.br.retVoid()
 
   asy.callFn(name, [a, c])
 
-proc sum_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, r, p, q: ValueRef) =
+proc sum*(asy: Assembler_LLVM, cd: CurveDescriptor, r, p, q: ValueRef) =
   ## Generate an internal elliptic curve point addition proc
   ## with signature
   ##   `void name(CurveType r, CurveType p, CurveType q)`
@@ -244,7 +244,7 @@ proc sum_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, r, p, q: ValueRef) 
   ## The result is stored in `r`.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = cd.name & "_sum_internal"
+  let name = cd.name & "_sum_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, p, q]),
@@ -407,14 +407,14 @@ proc sum_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, r, p, q: ValueRef) 
 
   asy.callFn(name, [r, p, q])
 
-proc double_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, r, p: ValueRef) =
+proc double*(asy: Assembler_LLVM, cd: CurveDescriptor, r, p: ValueRef) =
   ## Generate an internal elliptic curve point doubling procedure
   ## with signature
   ##   `void name(CurveType r, CurveType p)`
   ## with `p` the EC point to be doubled and stored in `r`.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = cd.name & "_double_internal"
+  let name = cd.name & "_double_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, p]),
@@ -490,7 +490,7 @@ proc double_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, r, p: ValueRef) 
 
   asy.callFn(name, [r, p])
 
-proc mixedSum_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, r, p, q: ValueRef) =
+proc mixedSum*(asy: Assembler_LLVM, cd: CurveDescriptor, r, p, q: ValueRef) =
   ## Generate an internal elliptic curve point addition proc
   ## a point in Jacobian and another in Affine coordinates
   ## with signature
@@ -499,7 +499,7 @@ proc mixedSum_internal*(asy: Assembler_LLVM, cd: CurveDescriptor, r, p, q: Value
   ## The result is stored in `r`.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = cd.name & "_mixedSum_internal"
+  let name = cd.name & "_mixedSum_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, p, q]),
