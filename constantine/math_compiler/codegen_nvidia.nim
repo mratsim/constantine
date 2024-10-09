@@ -504,7 +504,9 @@ proc initNvAsm*[Name: static Algebra](field: type EC_ShortW_Jac[Fp[Name], G1], w
   result.ed = result.asy.ctx.configureCurve(
     name, Fp[Name].bits(),
     Fp[Name].getModulus().toHex(),
-    v = 1, w = wordSize
+    v = 1, w = wordSize,
+    coef_a = Fp[Name].Name.getCoefA(),
+    coef_B = Fp[Name].Name.getCoefB()
   )
   result.fd = result.ed.fd
   result.asy.definePrimitives(result.ed)
