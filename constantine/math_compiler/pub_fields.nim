@@ -93,7 +93,7 @@ template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} 
   template `*=`(x, y: Field): untyped      = x.prod(x, y)
   template `+=`(x, y: Field): untyped      = x.add(x, y)
   template `-=`(x, y: Field): untyped      = x.diff(x, y)
-  template `*=`(x: Field, b: static int): untyped = asy.scalarMul_internal(fd, x.buf, b)
+  template `*=`(x: Field, b: int): untyped = asy.scalarMul_internal(fd, x.buf, b)
 
 proc setZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.used.} =
   ## Generate an internal field setZero
@@ -961,7 +961,7 @@ proc genFpDiv2*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
   return name
 
-proc scalarMul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef, b: static int) =
+proc scalarMul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef, b: int) =
   ## Multiplication by a small integer known at compile-time
   ## with signature
   ##   void name(FieldType a)
@@ -983,12 +983,12 @@ proc scalarMul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef, 
 
     let a = asy.asField(fd, ai) # shadow `a` argument of proc
 
-    const negate = b < 0
-    const b = if negate: -b
-              else: b
-    when negate:
+    let negate = b < 0
+    let b = if negate: -b
+            else: b
+    if negate:
       a.neg(a)
-    when b == 0:
+    if b == 0:
       a.setZero()
     elif b == 1:
       discard # nothing to do!
@@ -1061,9 +1061,8 @@ proc scalarMul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef, 
       t.double()   # 10
       t.double()   # 20
       a += t       # 21
-
     else:
-      {.error: "Multiplication by this small int not implemented".}
+      raise newException(ValueError, "Multiplication by small int: " & $b & " not implemented")
 
     asy.br.retVoid()
 
