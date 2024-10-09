@@ -30,7 +30,7 @@ proc genEcFromAffine*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
   let name = cd.name & "_isNeutral"
   asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.curveTy, cd.curveTyAff]):
     let (jac, aff) = llvmParams
-    asy.fromAffine_internal(cd, jac, aff)
+    asy.fromAffine(cd, jac, aff)
     asy.br.retVoid()
 
   return name
@@ -46,7 +46,7 @@ proc genEcIsNeutral*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
   let ptrBool = pointer_t(asy.ctx.int1_t())
   asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [ptrBool, cd.curveTy]):
     let (r, a) = llvmParams
-    asy.isNeutral_internal(cd, r, a)
+    asy.isNeutral(cd, r, a)
     asy.br.retVoid()
 
   return name
@@ -63,7 +63,7 @@ proc genEcIsNeutral*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
 #  let ptrBool = pointer_t(asy.ctx.int1_t())
 #  asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [ptrBool, cd.curveTy]):
 #    let (r, a) = llvmParams
-#    asy.setNeutral_internal(cd, r, a)
+#    asy.setNeutral(cd, r, a)
 #    asy.br.retVoid()
 #
 #  return name
@@ -80,7 +80,7 @@ proc genEcCcopy*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
   let name = cd.name & "_ccopy"
   asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.curveTy, cd.curveTy, asy.ctx.int1_t()]):
     let (a, b, c) = llvmParams
-    asy.ccopy_internal(cd, a, b, c)
+    asy.ccopy(cd, a, b, c)
     asy.br.retVoid()
 
   return name
@@ -95,7 +95,7 @@ proc genEcNeg*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
   let name = cd.name & "_neg"
   asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.curveTy]):
     let a = llvmParams
-    asy.neg_internal(cd, a)
+    asy.neg(cd, a)
     asy.br.retVoid()
 
   return name
@@ -110,7 +110,7 @@ proc genEcCneg*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
   let name = cd.name & "_neg"
   asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.curveTy, asy.ctx.int1_t()]):
     let (a, c) = llvmParams
-    asy.cneg_internal(cd, a, c)
+    asy.cneg(cd, a, c)
     asy.br.retVoid()
 
   return name
@@ -126,7 +126,7 @@ proc genEcSum*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
   let name = cd.name & "_sum"
   asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.curveTy, cd.curveTy, cd.curveTy]):
     let (ri, pi, qi) = llvmParams
-    asy.sum_internal(cd, ri, pi, qi)
+    asy.sum(cd, ri, pi, qi)
     asy.br.retVoid()
   result = name
 
@@ -140,7 +140,7 @@ proc genEcDouble*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
   let name = cd.name & "_double"
   asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.curveTy, cd.curveTy]):
     let (ri, pi) = llvmParams
-    asy.double_internal(cd, ri, pi)
+    asy.double(cd, ri, pi)
     asy.br.retVoid()
   result = name
 
@@ -156,6 +156,6 @@ proc genEcMixedSum*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
   let name = cd.name & "_mixedSum"
   asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.curveTy, cd.curveTy, cd.curveTyAff]):
     let (ri, pi, qi) = llvmParams
-    asy.mixedSum_internal(cd, ri, pi, qi)
+    asy.mixedSum(cd, ri, pi, qi)
     asy.br.retVoid()
   result = name

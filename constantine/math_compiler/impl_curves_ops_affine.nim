@@ -59,10 +59,10 @@ template ellipticAffOps*(asy: Assembler_LLVM, ed: CurveDescriptor): untyped =
   ## more convenient.
   ## XXX: extend to include all ops
   # Boolean checks
-  template isNeutral(res, x: EcPointAff): untyped = asy.isNeutralAff_internal(ed, res, x.buf)
+  template isNeutral(res, x: EcPointAff): untyped = asy.isNeutralAff(ed, res, x.buf)
   template isNeutral(x: EcPointAff): untyped =
     var res = asy.br.alloca(asy.ctx.int1_t())
-    asy.isNeutralAff_internal(ed, res, x.buf)
+    asy.isNeutralAff(ed, res, x.buf)
     res
 
   # Accessors
@@ -70,14 +70,14 @@ template ellipticAffOps*(asy: Assembler_LLVM, ed: CurveDescriptor): untyped =
   template y(ec: EcPointAff): Field = ec.getY()
 
 
-proc isNeutralAff_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, a: ValueRef) {.used.} =
+proc isNeutralAff*(asy: Assembler_LLVM, ed: CurveDescriptor, r, a: ValueRef) {.used.} =
   ## Generate an internal elliptic curve point isNeutral proc
   ## with signature
   ##   void name(*bool r, CurveType a)
   ## with r the result and a the operand
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = ed.name & "isNeutralAff_internal"
+  let name = ed.name & "isNeutralAff_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a]),
