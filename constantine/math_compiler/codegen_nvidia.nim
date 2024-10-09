@@ -245,9 +245,9 @@ proc getIdent(n: NimNode): NimNode =
 proc determineDevicePtrs(r, i: NimNode, iTypes: seq[NimNode]): seq[(NimNode, NimNode)] =
   ## Returns the device pointer ident and its associated original symbol.
   for el in r:
-    #if not el.requiresCopy:
-    #  error("The argument for `res`: " & $el.repr & " of type: " & $el.getTypeImpl().treerepr &
-    #    " does not require copying. This is not allowed for return values.")
+    if not el.requiresCopy:
+      error("The argument for `res`: " & $el.repr & " of type: " & $el.getTypeImpl().treerepr &
+        " does not require copying. This is not allowed for return values.")
     result.add (getIdent(el), el)
   for idx in 0 ..< i.len:
     let input = i[idx]
