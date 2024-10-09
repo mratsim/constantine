@@ -577,7 +577,8 @@ proc nsqr_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef, co
     for i in countdown(count, 1):
       # `mtymul` does not touch `r` until the end to store the result. It uses a temporary
       # buffer internally. So we can just pass `r` 3 times!
-      asy.mtymul(fd, ri, ri, ri, M)
+      let fR = i == 1 # only reduce on last iteration
+      asy.mtymul(fd, ri, ri, ri, M, finalReduce = fR)
 
     asy.br.retVoid()
   asy.callFn(name, [r, a])
