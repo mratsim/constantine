@@ -73,9 +73,10 @@ template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} 
 
   # Basic arithmetic
   template sum(res, x, y: Field): untyped  = asy.add_internal(fd, res.buf, x.buf, y.buf)
-  template add(res, x, y: Field): untyped  = asy.add_internal(fd, res.buf, x.buf, y.buf)
+  template add(res, x, y: Field): untyped  = res.sum(x, y)
   template diff(res, x, y: Field): untyped = asy.sub_internal(fd, res.buf, x.buf, y.buf)
-  template prod(res, x, y: Field): untyped = asy.mul_internal(fd, res.buf, x.buf, y.buf)
+  template prod(res, x, y: Field, skipFinalSub: bool): untyped = asy.mul_internal(fd, res.buf, x.buf, y.buf, skipFinalSub)
+  template prod(res, x, y: Field): untyped = res.prod(x, y, skipFinalSub = false)
 
   # Conditional arithmetic
   template cadd(x, y: Field, c): untyped   = asy.cadd_internal(fd, x.buf, y.buf, derefBool c)
@@ -83,10 +84,12 @@ template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} 
   template ccopy(x, y: Field, c): untyped  = asy.ccopy_internal(fd, x.buf, y.buf, derefBool c)
 
   # Extended arithmetic
-  template square(res, y: Field): untyped  = asy.nsqr_internal(fd, res.buf, y.buf, count = 1)
-  template square(x): untyped              = square(x, x)
+  template square(res, y: Field, skipFinalSub: bool): untyped = asy.nsqr_internal(fd, res.buf, y.buf, count = 1, skipFinalSub)
+  template square(res, y: Field): untyped  = res.square(y, skipFinalSub = false)
+  template square(x: Field, skipFinalSub: bool): untyped = square(x, x, skipFinalSub)
+  template square(x: Field): untyped       = square(x, x, skipFinalSub = false)
   template double(res, x: Field): untyped  = asy.double_internal(fd, res.buf, x.buf)
-  template double(x: Field): untyped       = asy.double_internal(fd, x.buf, x.buf)
+  template double(x: Field): untyped       = x.double(x)
   template div2(x: Field): untyped         = asy.div2_internal(fd, x.buf)
 
   # Mutating assignment ops
@@ -215,11 +218,14 @@ proc genFpAdd*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
   return name
 
-proc mul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) {.used.} =
+proc mul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef, skipFinalSub: bool = false) {.used.} =
   ## Generate an internal field multiplication proc
   ## with signature
   ##   void name(FieldType r, FieldType a, FieldType b)
   ## with r the result and a, b the operands
+  ##
+  ## If `skipFinalSub` is true, we do not subtract the modulus after the
+  ## multiplication.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
   let name = fd.name & "_mul_internal"
@@ -231,7 +237,7 @@ proc mul_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b: ValueRef) 
     let M = asy.getModulusPtr(fd)
 
     let (ri, ai, bi) = llvmParams
-    asy.mtymul(fd, ri, ai, bi, M) # TODO: for now we only suport Montgomery representation
+    asy.mtymul(fd, ri, ai, bi, M, finalReduce = not skipFinalSub) # TODO: for now we only suport Montgomery representation
     asy.br.retVoid()
   asy.callFn(name, [r, a, b])
 
@@ -551,11 +557,15 @@ proc genFpDouble*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
     asy.br.retVoid()
   return name
 
-proc nsqr_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef, count: int) {.used.} =
+proc nsqr_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef, count: int,
+                    skipFinalSub = false) {.used.} =
   ## Generate an internal CT nsqr procedure
   ## with signature
   ##   `void name(FieldType r, FieldType a)`
   ## with `r` the resulting field element, `a` the element to be (n-) squared.
+  ##
+  ## If `skipFinalSub` is true, we do not subtract the modulus even in the last iteration.
+  ## This can be an optimization in some use cases.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
   let name = fd.name & "_nsqr" & $count & "_internal"
@@ -577,7 +587,7 @@ proc nsqr_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef, co
     for i in countdown(count, 1):
       # `mtymul` does not touch `r` until the end to store the result. It uses a temporary
       # buffer internally. So we can just pass `r` 3 times!
-      let fR = i == 1 # only reduce on last iteration
+      let fR = i == 1 and not skipFinalSub # only reduce on last iteration
       asy.mtymul(fd, ri, ri, ri, M, finalReduce = fR)
 
     asy.br.retVoid()
