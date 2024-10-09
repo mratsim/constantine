@@ -387,13 +387,17 @@ proc sum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: ValueRef) 
         U2   = asy.newField(ed.fd)
         S2   = asy.newField(ed.fd)
 
-      Z2Z2.square(Q.z)
-      S1.prod(Q.z, Z2Z2)
+      ## XXX: Similarly to `prod` below, `skipFinalSub = true` here, also breaks the
+      ## code at a different point.
+      Z2Z2.square(Q.z, skipFinalSub = false)
+      ## XXX: If we set this `skipFinalSub` to true, the code will fail to produce the
+      ## correct result in some cases. Not sure yet why. See `tests/gpu/t_ec_sum.nim`.
+      S1.prod(Q.z, Z2Z2, skipFinalSub = false)
       S1 *= P.y           # S₁ = Y₁*Z₂³
       U1.prod(P.x, Z2Z2)  # U₁ = X₁*Z₂²
 
-      Z1Z1.square(P.z)
-      S2.prod(P.z, Z1Z1)
+      Z1Z1.square(P.z, skipFinalSub = not ed.coef_a == -3)
+      S2.prod(P.z, Z1Z1, skipFinalSub = true)
       S2 *= Q.y           # S₂ = Y₂*Z₁³
       U2.prod(Q.x, Z1Z1)  # U₂ = X₂*Z₁²
 
@@ -683,8 +687,10 @@ proc mixedSum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: Value
       U1 = P.x
       S1 = P.y
 
-      Z1Z1.square(P.z) #, skipFinalSub = not CoefA_eq_minus3)
-      S2.prod(P.z, Z1Z1) #, skipFinalSub = true)
+      ## XXX: either of these `skipFinalSub = true` breaks the code at some point.
+      ## See also `tests/gpu/t_ec_sum.nim`.
+      Z1Z1.square(P.z, skipFinalSub = false) #not (ed.coef_a == -3))
+      S2.prod(P.z, Z1Z1, skipFinalSub = false)
       S2 *= Q.y           # S₂ = Y₂*Z₁³
       U2.prod(Q.x, Z1Z1)  # U₂ = X₂*Z₁²
 
