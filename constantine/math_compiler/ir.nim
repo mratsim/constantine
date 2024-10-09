@@ -233,8 +233,8 @@ type
     cofactor*: string
     eqForm*: CurveEquationForm
 
-    coef_a*: uint32
-    coef_b*: uint32
+    coef_a*: int
+    coef_b*: int
 
     nonResidueFp*: uint32
     nonResidueFp2*: uint32
@@ -249,7 +249,8 @@ type
 proc configureCurve*(ctx: ContextRef,
       name: string,
       modBits: int, modulus: string,
-      v, w: int): CurveDescriptor =
+      v, w: int,
+      coefA, coefB: int): CurveDescriptor =
   ## Configure a curve descriptor with:
   ## - v: vector length
   ## - w: base word size in bits
@@ -263,6 +264,10 @@ proc configureCurve*(ctx: ContextRef,
   result.curveTy = array_t(result.fd.fieldTy, 3)
   # Array of 2 arrays for affine coords
   result.curveTyAff = array_t(result.fd.fieldTy, 2)
+
+  # Curve parameters
+  result.coef_a = coef_a
+  result.coef_b = coef_b # unused
 
 proc definePrimitives*(asy: Assembler_LLVM, ed: CurveDescriptor) =
   asy.definePrimitives(ed.fd)
