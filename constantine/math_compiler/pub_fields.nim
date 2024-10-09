@@ -855,8 +855,6 @@ proc genFpNsqrRT*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ##
   ## Returns the corresponding name to call it
   let name = fd.name & "_nsqr"
-  let ptrBool = pointer_t(asy.ctx.int1_t())
-  ## XXX: int32? int64?
   asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int32_t()]):
     ## We can just reuse `mtymul`
     let (r, a, count) = llvmParams
