@@ -342,8 +342,6 @@ proc sum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: ValueRef) 
   ## The result is stored in `r`.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  ##
-  ## XXX: For now we just port the coefA == 0 branch!
   let name = ed.name & "_sum_internal"
   asy.llvmInternalFnDef(
           name, SectionName,
@@ -362,17 +360,6 @@ proc sum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: ValueRef) 
     fieldOps(asy, ed.fd)
     # And EC points
     ellipticOps(asy, ed)
-
-    ## XXX: Required to extent for coefA != 0!
-    when false:
-      # "when" static evaluation doesn't shortcut booleans :/
-      # which causes issues when CoefA isn't an int but Fp or Fp2
-      when CoefA is int:
-        const CoefA_eq_zero = CoefA == 0
-        const CoefA_eq_minus3 {.used.} = CoefA == -3
-      else:
-        const CoefA_eq_zero = false
-        const CoefA_eq_minus3 = false
 
     var
       Z1Z1 = asy.newField(ed.fd)
@@ -427,56 +414,60 @@ proc sum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: ValueRef) 
     V_or_S.ccopy(P.x, isDbl) # U₁        (add) or X₁        (dbl)
     V_or_S *= HH_or_YY       # V = U₁*HH (add) or S = X₁*YY (dbl)
 
-    # Block for `coefA == 0`
-    ## XXX: when CoefA_eq_zero:
     block: # Compute M for doubling
-      var
-        a = asy.newField(ed.fd)
-        b = asy.newField(ed.fd)
-      store(a, H)
-      store(b, HH_or_YY)
-      a.ccopy(P.x, isDbl)           # H or X₁
-      b.ccopy(P.x, isDbl)           # HH or X₁
-      HHH_or_Mpre.prod(a, b)        # HHH or X₁²
+      if ed.coef_a == 0:
+        var
+          a = asy.newField(ed.fd)
+          b = asy.newField(ed.fd)
+        store(a, H)
+        store(b, HH_or_YY)
+        a.ccopy(P.x, isDbl)           # H or X₁
+        b.ccopy(P.x, isDbl)           # HH or X₁
+        HHH_or_Mpre.prod(a, b)        # HHH or X₁²
 
-      var M = asy.newField(ed.fd)
-      store(M, HHH_or_Mpre) # Assuming on doubling path
-      M.div2()                      #  X₁²/2
-      M += HHH_or_Mpre              # 3X₁²/2
-      R_or_M.ccopy(M, isDbl)
+        var M = asy.newField(ed.fd)
+        store(M, HHH_or_Mpre) # Assuming on doubling path
+        M.div2()                      #  X₁²/2
+        M += HHH_or_Mpre              # 3X₁²/2
+        R_or_M.ccopy(M, isDbl)
 
-    ## XXX: Required to extent for coefA != 0!
-    #  elif CoefA_eq_minus3:
-    #    var a{.noInit.}, b{.noInit.}: F
-    #    a.sum(P.x, Z1Z1)
-    #    b.diff(P.z, Z1Z1)
-    #    a.ccopy(H_or_Y, not isDbl)    # H   or X₁+ZZ
-    #    b.ccopy(HH_or_YY, not isDbl)  # HH  or X₁-ZZ
-    #    HHH_or_Mpre.prod(a, b)        # HHH or X₁²-ZZ²
-    #
-    #    var M{.noInit.} = HHH_or_Mpre # Assuming on doubling path
-    #    M.div2()                      # (X₁²-ZZ²)/2
-    #    M += HHH_or_Mpre              # 3(X₁²-ZZ²)/2
-    #    R_or_M.ccopy(M, isDbl)
-    #
-    #  else:
-    #    # TODO: Costly `a` coefficients can be computed
-    #    # by merging their computation with Z₃ = Z₁*Z₂*H (add) or Z₃ = Y₁*Z₁ (dbl)
-    #    var a{.noInit.} = H
-    #    var b{.noInit.} = HH_or_YY
-    #    a.ccopy(P.x, isDbl)
-    #    b.ccopy(P.x, isDbl)
-    #    HHH_or_Mpre.prod(a, b)  # HHH or X₁²
-    #
-    #    # Assuming doubling path
-    #    a.square(HHH_or_Mpre, skipFinalSub = true)
-    #    a *= HHH_or_Mpre              # a = 3X₁²
-    #    b.square(Z1Z1)
-    #    b.mulCheckSparse(CoefA)       # b = αZZ, with α the "a" coefficient of the curve
-    #
-    #    a += b
-    #    a.div2()
-    #    R_or_M.ccopy(a, isDbl)        # (3X₁² - αZZ)/2
+      elif ed.coef_a == -3:
+        var
+          a = asy.newField(ed.fd)
+          b = asy.newField(ed.fd)
+        a.sum(P.x, Z1Z1)
+        b.diff(P.z, Z1Z1)
+        a.ccopy(H_or_Y, not isDbl)    # H   or X₁+ZZ
+        b.ccopy(HH_or_YY, not isDbl)  # HH  or X₁-ZZ
+        HHH_or_Mpre.prod(a, b)        # HHH or X₁²-ZZ²
+
+        var M = asy.newField(ed.fd)
+        store(M, HHH_or_Mpre) # Assuming on doubling path
+        M.div2()                      # (X₁²-ZZ²)/2
+        M += HHH_or_Mpre              # 3(X₁²-ZZ²)/2
+        R_or_M.ccopy(M, isDbl)
+
+      else:
+        # TODO: Costly `a` coefficients can be computed
+        # by merging their computation with Z₃ = Z₁*Z₂*H (add) or Z₃ = Y₁*Z₁ (dbl)
+        var
+          a = asy.newField(ed.fd)
+          b = asy.newField(ed.fd)
+        store(a, H)
+        store(b, HH_or_YY)
+        a.ccopy(P.x, isDbl)
+        b.ccopy(P.x, isDbl)
+        HHH_or_Mpre.prod(a, b)  # HHH or X₁²
+
+        # Assuming doubling path
+        a.square(HHH_or_Mpre, skipFinalSub = true)
+        a *= HHH_or_Mpre              # a = 3X₁²
+        b.square(Z1Z1)
+        b.mulCheckSparse(ed.coef_a)       # b = αZZ, with α the "a" coefficient of the curve
+
+        a += b
+        a.div2()
+        R_or_M.ccopy(a, isDbl)        # (3X₁² - αZZ)/2
 
     # Let's count our horses, at this point:
     # - R_or_M is set with R (add) or M (dbl)
@@ -635,8 +626,6 @@ proc mixedSum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: Value
   ## The result is stored in `r`.
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  ##
-  ## XXX: For now we just port the coefA == 0 branch!
   let name = ed.name & "_mixedSum_internal"
   asy.llvmInternalFnDef(
           name, SectionName,
@@ -663,21 +652,6 @@ proc mixedSum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: Value
       S1   = asy.newField(ed.fd)
       H    = asy.newField(ed.fd)
       R    = asy.newField(ed.fd)
-
-    # "when" static evaluation doesn't shortcut booleans :/
-    # which causes issues when CoefA isn't an int but Fp or Fp2
-    ## XXX: Take from `CurveDescriptor`
-    ## -> Need to use define `coefA` in it!
-    #const CoefA = F.Name.getCoefA()
-    when false: #CoefA is int:
-      const CoefA_eq_zero = CoefA == 0
-      const CoefA_eq_minus3 {.used.} = CoefA == -3
-    elif false: #else:
-      const CoefA_eq_zero = false
-      const CoefA_eq_minus3 = false
-    else:
-      const CoefA_eq_zero = true
-      const CoefA_eq_minus3 = false
 
     block: # Addition-only, check for exceptional cases
       var
@@ -720,7 +694,7 @@ proc mixedSum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: Value
     V_or_S *= HH_or_YY       # V = U₁*HH (add) or S = X₁*YY (dbl)
 
     block: # Compute M for doubling
-      when CoefA_eq_zero:
+      if ed.coef_a == 0:
         var
           a = asy.newField(ed.fd)
           b = asy.newField(ed.fd)
@@ -737,7 +711,7 @@ proc mixedSum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: Value
         M += HHH_or_Mpre              # 3X₁²/2
         R_or_M.ccopy(M, isDbl)
 
-      elif CoefA_eq_minus3:
+      elif ed.coef_a == -3:
         var
           a = asy.newField(ed.fd)
           b = asy.newField(ed.fd)
@@ -770,7 +744,7 @@ proc mixedSum_internal*(asy: Assembler_LLVM, ed: CurveDescriptor, r, p, q: Value
         a.square(HHH_or_Mpre, skipFinalSub = true)
         a *= HHH_or_Mpre              # a = 3X₁²
         b.square(Z1Z1)
-        b.mulCheckSparse(CoefA)       # b = αZZ, with α the "a" coefficient of the curve
+        b.mulCheckSparse(ed.coef_a)   # b = αZZ, with α the "a" coefficient of the curve
 
         a += b
         a.div2()

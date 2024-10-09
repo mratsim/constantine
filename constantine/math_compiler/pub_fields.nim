@@ -41,7 +41,7 @@ template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} 
   # Boolean logic
   template `not`(x: ValueRef): untyped     = asy.br.`not`(x)
 
-  template checkIsBool(x: TypeRef): bool  =
+  template checkIsBool(x: TypeRef): bool =
     x.getTypeKind == tkInteger and x.getIntTypeWidth == 1'u32
   template raiseIfNotBool(x: ValueRef, b: bool): untyped =
     if not b:
@@ -66,6 +66,10 @@ template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} 
   template setZero(x: Field): untyped      = asy.setZero_internal(fd, x.buf)
   template setOne(x: Field): untyped       = asy.setOne_internal(fd, x.buf)
   template neg(res, y: Field): untyped     = asy.neg_internal(fd, res.buf, y.buf)
+  template neg(x: Field): untyped          =
+    var res = asy.newField(fd)
+    res.store(x)
+    x.neg(res)
 
   # Conditional setters
   template csetZero(x: Field, c): untyped  = asy.csetZero_internal(fd, x.buf, derefBool c)
@@ -97,6 +101,19 @@ template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} 
   template `+=`(x, y: Field): untyped      = x.add(x, y)
   template `-=`(x, y: Field): untyped      = x.diff(x, y)
   template `*=`(x: Field, b: int): untyped = asy.scalarMul_internal(fd, x.buf, b)
+
+  # Other helpers that do not warrant a full LLVM internal/public proc
+  template mulCheckSparse(x: Field, y: int) =
+    ## Multiplication with optimization for sparse inputs
+    ## intended to be used with curve `coaf_a` as argument `y`.
+    if y == 1:
+      discard
+    elif y == 0:
+      x.setZero()
+    elif y == -1:
+      x.neg()
+    else:
+      x *= b
 
 proc setZero_internal*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.used.} =
   ## Generate an internal field setZero
