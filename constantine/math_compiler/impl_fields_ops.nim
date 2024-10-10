@@ -232,7 +232,6 @@ proc ccopy*(asy: Assembler_LLVM, fd: FieldDescriptor, a, b, c: ValueRef) {.used.
 
     for i in 0 ..< fd.numWords:
       # `select` uses `bA` if `condition == true`, else `aA`
-      ## XXX: Could also use nvidia PTX `slct` instead?
       let resultLimb = asy.br.select(condition, bA[i], aA[i])
       aA[i] = resultLimb
 
@@ -513,38 +512,19 @@ proc neg*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} =
     # Subtraction M - a
     asy.modsub(fd, ri, M, ai, M)
 
-    # Determine if `a == 0`
-    var isZero = aA[0]
+    # Determine if `a == 0` as a wordTy
+    var isZeroW = aA[0]
     for i in 1 ..< fd.numWords:
-      isZero = asy.br.`or`(isZero, aA[i])
+      isZeroW = asy.br.`or`(isZeroW, aA[i])
 
-    # `slct` takes a condition and returns argument 1 if `cond >= 0` and argument 2 if `cond < 0`.
-    # Given that our `isZero` value is either positive or 0, we need to split the `== 0` and `> 0`
-    # for the condition. We do this by turning positive values into negative ones and keeping
-    # zeroes as is.
-    # Further, `slct` needs a 32 bit value as the condition. We want to avoid truncating `isZero`,
-    # from potentially larger values.
-    # So we create a boolean of whether it is 0, extend it to 32 bit and
-    # compute `0 - X` with `X ∈ {0, 1}`.
-
-    # create an int1 bool indicating if isZero is not zero: `notZero = isZero != 0`
+    # Construct `isZero` as `i1`
     let cZeroW = constInt(fd.wordTy, 0)
-    let notZero = asy.br.icmp(kNE, isZero, cZeroW)
-
-    # extend `int1_t` to `int32_t`
-    let notZeroExt = asy.br.zext(notZero, asy.ctx.int32_t())
-
-    # Create a value that's 0 if input was zero, -1 if input was non-zero
-    # i.e. `negNotZero = 0 - notZeroExt`.
-    let cZero32 = constInt(asy.ctx.int32_t(), 0)
-    let negNotZero = asy.br.sub(cZero32, notZeroExt)
+    let isZero = asy.br.icmp(kEQ, isZeroW, cZeroW)
 
     # Zero result if `a == 0`
     for i in 0 ..< fd.numWords:
-      # `slct`: r <- (c >= 0) ? a : b;
-      rA[i] = asy.br.slct(cZeroW, rA[i], negNotZero)
-      # -> copy `0` to `r` via `cZeroW` IFF `negNotZero == 0` (`c >= 0`)
-      # -> copy `a` to `r` otherwise (`negNotZero < 0`)
+      # `select` uses `cZeroW` if `isZero == true`, else `rA`
+      rA[i] = asy.br.select(isZero, cZeroW, rA[i])
 
     asy.br.retVoid()
 
