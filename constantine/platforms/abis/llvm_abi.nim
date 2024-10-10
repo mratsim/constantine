@@ -291,8 +291,14 @@ proc int32_t*(ctx: ContextRef): TypeRef {.importc: "LLVMInt32TypeInContext".}
 proc int64_t*(ctx: ContextRef): TypeRef {.importc: "LLVMInt64TypeInContext".}
 proc int128_t*(ctx: ContextRef): TypeRef {.importc: "LLVMInt128TypeInContext".}
 proc int_t*(ctx: ContextRef, numBits: uint32): TypeRef {.importc: "LLVMIntTypeInContext".}
-
 proc getIntTypeWidth*(ty: TypeRef): uint32 {.importc: "LLVMGetIntTypeWidth".}
+
+# Floats
+# ------------------------------------------------------------
+proc float16_t*(ctx: ContextRef): TypeRef {.importc: "LLVMBFloatTypeInContext".}
+proc float32_t*(ctx: ContextRef): TypeRef {.importc: "LLVMFloatTypeInContext".}
+proc float64_t*(ctx: ContextRef): TypeRef {.importc: "LLVMDoubleTypeInContext".}
+proc float128_t*(ctx: ContextRef): TypeRef {.importc: "LLVMFP128TypeInContext".}
 
 # Composite
 # ------------------------------------------------------------
@@ -725,6 +731,8 @@ type
     InlineAsmDialectATT
     InlineAsmDialectIntel
 
+proc isNil*(v: BasicBlockRef): bool {.borrow.}
+
 # "<llvm-c/Core.h>"
 
 # Instantiation
@@ -757,6 +765,19 @@ proc getInsertBlock(builder: BuilderRef): BasicBlockRef {.used, importc: "LLVMGe
 
 proc getBasicBlockParent*(blck: BasicBlockRef): ValueRef {.importc: "LLVMGetBasicBlockParent".}
   ## Obtains the function to which a basic block belongs
+
+proc phi*(builder: BuilderRef, ty: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildPhi".}
+proc condBr*(builder: BuilderRef, ifCond: ValueRef, then, els: BasicBlockRef) {.importc: "LLVMBuildCondBr".}
+proc br*(builder: BuilderRef, dest: BasicBlockRef) {.importc: "LLVMBuildBr".}
+proc addIncoming*(phi: ValueRef, incomingVals: ptr UncheckedArray[ValueRef], incomingBlks: ptr UncheckedArray[BasicBlockRef], count: uint32) {.importc: "LLVMAddIncoming".}
+
+proc addIncoming*(phi: ValueRef, incomingVal: ValueRef, incomingBlk: BasicBlockRef) =
+  let iv = [incomingVal]; let ib = [incomingBlk]
+  ## NOTE: Could of course also just mark `addIncoming` as receiving `ptr T` instead
+  template toPOA(x): untyped =
+    type T = typeof(x[0])
+    cast[ptr UncheckedArray[T]](addr x)
+  phi.addIncoming(toPOA iv, toPOA ib, 1)
 
 # Inline Assembly
 # ------------------------------------------------------------
@@ -793,10 +814,10 @@ proc subNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): Value
 proc subNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNUWSub".}
   ## Substraction No Unsigned Wrap, i.e. guaranteed to not overflow
 
-proc neg*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNeg".}
-proc negNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNSWNeg".}
+proc neg*(builder: BuilderRef, operand: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNeg".}
+proc negNSW*(builder: BuilderRef, operand: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNSWNeg".}
   ## Negation No Signed Wrap, i.e. guaranteed to not overflow
-proc negNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNUWNeg".}
+proc negNUW*(builder: BuilderRef, operand: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNUWNeg".}
   ## Negation No Unsigned Wrap, i.e. guaranteed to not overflow
 
 proc mul*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildMul".}

@@ -39,7 +39,6 @@ type
 
   SecretBool* = CTBool[SecretWord]
 
-
   Limbs*[N: static int] = array[N, SecretWord]
     ## Limbs-type
     ## Should be distinct type to avoid builtins to use non-constant time
