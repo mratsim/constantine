@@ -365,9 +365,6 @@ proc endianCheck(): NimNode =
       "Your architecture '" & $hostCPU & "' is big-endian and GPU offloading is unsupported on it."
 
 proc execCudaImpl(jitFn, res, inputs: NimNode): NimNode =
-  # XXX: we could check for inputs that are literals and produce local variables so
-  # that we can pass them by reference
-
   # Maybe wrap individually given arguments in a `[]` bracket, e.g.
   # `execCuda(res = foo, inputs = bar)`
   let res = maybeWrap res
@@ -465,13 +462,19 @@ macro execCuda*(jitFn: CUfunction,
   ##
   ## Example:
   ## ```nim
-  ## execCuda(fn, res = [r, s], inputs = [a, b, c]
+  ## execCuda(fn, res = [r, s], inputs = [a, b, c]) # if all arguments have the same type
+  ## # or
+  ## execCuda(fn, res = (r, s), inputs = (a, b, c)) # if different types
   ## ```
   ## will pass the parameters as `[r, s, a, b, c]`.
   ##
+  ## For more examples see the test case `tests/gpu/t_exec_literals_consts.nim`.
+  ##
   ## We do not perform any checks on whether the given types are valid as arguments to
   ## the CUDA target! Also, all arguments given as `res` are expected to be copied.
-  ## To return a value for a simple data type, use a `ptr X` type.
+  ## To return a value for a simple data type, use a `ptr X` type. However, it is allowed
+  ## to simply pass a `var` symbol as a `res` argument. We automatically copy to the
+  ## the memory location.
   ##
   ## We also copy all `res` data to the GPU, so that a return value can also be used
   ## as an input.
