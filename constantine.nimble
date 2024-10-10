@@ -613,6 +613,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
 const testDescNvidia: seq[string] = @[
   "tests/gpu/t_load_store.nim",
+  "tests/gpu/t_exec_literals_consts.nim",
   "tests/gpu/t_nvidia_fp.nim",
   "tests/gpu/t_mul.nim",
   "tests/gpu/t_neg.nim",
