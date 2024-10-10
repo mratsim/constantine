@@ -222,11 +222,15 @@ proc exec*[T](jitFn: CUfunction, r: var T, a, b: T) =
 proc getTypes(n: NimNode): seq[NimNode] =
   case n.kind
   of nnkIdent, nnkSym: result.add getTypeInst(n)
+  of nnkLiterals: result.add getTypeInst(n)
   of nnkBracket, nnkTupleConstr, nnkPar:
     for el in n:
       result.add getTypes(el)
   else:
-    error("Arguments to `execCuda` must be given as a bracket or tuple. Instead: " & $n.treerepr)
+    case n.typeKind
+    of ntyPtr: result.add getTypeInst(n)
+    else:
+      error("Arguments to `execCuda` must be given as a bracket, tuple or typed expression. Instead: " & $n.treerepr)
 
 proc requiresCopy(n: NimNode): bool =
   ## Returns `true` if the given type is not a trivial data type, which implies
@@ -276,25 +280,71 @@ proc assembleParams(r, i: NimNode, iTypes: seq[NimNode]): seq[NimNode] =
     else:
       result.add input
 
+proc sizeArg(n: NimNode): NimNode =
+  ## The argument to `sizeof` must be the size of the data we copy. If the
+  ## input type is already given as a `ptr T` type, we need the size of
+  ## `T` and not `ptr`.
+  case n.typeKind
+  of ntyPtr: result = n.getTypeInst()[0]
+  else: result = n
+
 # little helper macro constructors
 template check(arg): untyped = nnkCall.newTree(ident"check", arg)
-template size(arg): untyped = nnkCall.newTree(ident"sizeof", arg)
+template size(arg): untyped = nnkCall.newTree(ident"sizeof", sizeArg arg)
 template address(arg): untyped = nnkCall.newTree(ident"addr", arg)
 template csize_t(arg): untyped = nnkCall.newTree(ident"csize_t", arg)
 template pointer(arg): untyped = nnkCall.newTree(ident"pointer", arg)
+
+proc maybeAddress(n: NimNode): NimNode =
+  ## Returns the address of the given node, *IFF* the type is not a
+  ## pointer type already
+  case n.typeKind
+  of ntyPtr: result = n
+  else: result = address(n)
 
 proc genParams(pId, r, i: NimNode, iTypes: seq[NimNode]): NimNode =
   ## Generates the parameter `params` variable
   let ps = assembleParams(r, i, iTypes)
   result = nnkBracket.newTree()
   for p in ps:
-    result.add pointer(address p)
+    result.add pointer(maybeAddress p)
   result = nnkLetSection.newTree(
     nnkIdentDefs.newTree(pId, newEmptyNode(), result)
   )
 
+proc genVar(n: NimNode): (NimNode, NimNode) =
+  ## Generates a let `tmp` variable and returns its identifier and
+  ## the let section.
+  result[0] = genSym(nskLet, "tmp")
+  result[1] = nnkLetSection.newTree(
+    nnkIdentDefs.newTree(
+      result[0],
+      getTypeInst(n),
+      n
+    )
+  )
+
+proc genLocalVars(inputs: NimNode): (NimNode, NimNode) =
+  result[0] = newStmtList() # defines local vars
+  result[1] = nnkBracket.newTree() # returns new bracket of vars for parameters
+  for el in inputs:
+    case el.kind
+    of nnkLiterals, nnkConstDef: # define a local with the value of it
+      let (s, v) = genVar(el)
+      result[0].add v
+      result[1].add s
+    of nnkSym:
+      if el.strVal in ["true", "false"]:
+        let (s, v) = genVar(el)
+        result[0].add v
+        result[1].add s
+      else:
+        result[1].add el # keep symbol
+    else:
+      result[1].add el # keep symbol
+
 proc maybeWrap(n: NimNode): NimNode =
-  if n.kind in {nnkIdent, nnkSym}:
+  if n.kind notin {nnkBracket, nnkTupleConstr}:
     result = nnkBracket.newTree(n)
   else:
     result = n
@@ -357,14 +407,18 @@ proc execCudaImpl(jitFn, res, inputs: NimNode): NimNode =
       check nnkCall.newTree(
         ident"cuMemcpyHtoD",
         x[0],
-        address x[1],
+        maybeAddress x[1],
         csize_t size(x[1])
       )
     )
 
+  # Generate local variables
+  let (decl, vars) = genLocalVars(inputs)
+  result.add decl
+
   # assemble the parameters
   let pId = ident"params"
-  let params = genParams(pId, res, inputs, iTypes)
+  let params = genParams(pId, res, vars, iTypes)
   result.add params
 
   # launch the kernel
@@ -383,7 +437,7 @@ proc execCudaImpl(jitFn, res, inputs: NimNode): NimNode =
     result.add(
       check nnkCall.newTree(
         ident"cuMemcpyDtoH",
-        address x[1],
+        maybeAddress x[1],
         x[0],
         csize_t size(x[1])
       )
