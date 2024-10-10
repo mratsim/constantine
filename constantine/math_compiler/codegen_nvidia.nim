@@ -239,8 +239,11 @@ proc requiresCopy(n: NimNode): bool =
 
 proc getIdent(n: NimNode): NimNode =
   ## Generate a `GPU` suffixed ident
-  doAssert n.kind in {nnkIdent, nnkSym}, "No, was: " & $n.treerepr
-  result = ident(n.strVal & "GPU")
+  # Note: We want a deterministic name, because we call `getIdent` for the same symbol
+  # in multiple places atm.
+  case n.kind
+  of nnkIdent, nnkSym: result = ident(n.strVal & "GPU")
+  else: result = ident("`" & n.repr & "`GPU")
 
 proc determineDevicePtrs(r, i: NimNode, iTypes: seq[NimNode]): seq[(NimNode, NimNode)] =
   ## Returns the device pointer ident and its associated original symbol.
