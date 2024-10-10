@@ -237,6 +237,11 @@ proc requiresCopy(n: NimNode): bool =
   else:
     result = true
 
+proc allowsCopy(n: NimNode): bool =
+  ## Returns `true` if the given type is allowed to be copied. That means it is
+  ## either `requiresCopy` or a `var` symbol.
+  result = n.requiresCopy or n.symKind == nskVar
+
 proc getIdent(n: NimNode): NimNode =
   ## Generate a `GPU` suffixed ident
   # Note: We want a deterministic name, because we call `getIdent` for the same symbol
@@ -248,9 +253,9 @@ proc getIdent(n: NimNode): NimNode =
 proc determineDevicePtrs(r, i: NimNode, iTypes: seq[NimNode]): seq[(NimNode, NimNode)] =
   ## Returns the device pointer ident and its associated original symbol.
   for el in r:
-    if not el.requiresCopy:
+    if not el.allowsCopy:
       error("The argument for `res`: " & $el.repr & " of type: " & $el.getTypeImpl().treerepr &
-        " does not require copying. This is not allowed for return values.")
+        " does not allow copying. Copying to the address of all result variables is required.")
     result.add (getIdent(el), el)
   for idx in 0 ..< i.len:
     let input = i[idx]
