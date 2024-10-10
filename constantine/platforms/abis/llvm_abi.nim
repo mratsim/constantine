@@ -291,8 +291,14 @@ proc int32_t*(ctx: ContextRef): TypeRef {.importc: "LLVMInt32TypeInContext".}
 proc int64_t*(ctx: ContextRef): TypeRef {.importc: "LLVMInt64TypeInContext".}
 proc int128_t*(ctx: ContextRef): TypeRef {.importc: "LLVMInt128TypeInContext".}
 proc int_t*(ctx: ContextRef, numBits: uint32): TypeRef {.importc: "LLVMIntTypeInContext".}
-
 proc getIntTypeWidth*(ty: TypeRef): uint32 {.importc: "LLVMGetIntTypeWidth".}
+
+# Floats
+# ------------------------------------------------------------
+proc float16_t*(ctx: ContextRef): TypeRef {.importc: "LLVMBFloatTypeInContext".}
+proc float32_t*(ctx: ContextRef): TypeRef {.importc: "LLVMFloatTypeInContext".}
+proc float64_t*(ctx: ContextRef): TypeRef {.importc: "LLVMDoubleTypeInContext".}
+proc float128_t*(ctx: ContextRef): TypeRef {.importc: "LLVMFP128TypeInContext".}
 
 # Composite
 # ------------------------------------------------------------
