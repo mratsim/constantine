@@ -51,22 +51,21 @@ proc genEcIsNeutral*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
 
   return name
 
-## XXX: finish!
-#proc genEcSetNeutral*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
-#  ## Generate a public elliptic curve point setNeutral proc
-#  ## with signature
-#  ##   void name(*bool r, CurveType a)
-#  ## with r the result and a the operand
-#  ## and return the corresponding name to call it
-#
-#  let name = cd.name & "_setNeutral"
-#  let ptrBool = pointer_t(asy.ctx.int1_t())
-#  asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [ptrBool, cd.curveTy]):
-#    let (r, a) = llvmParams
-#    asy.setNeutral(cd, r, a)
-#    asy.br.retVoid()
-#
-#  return name
+proc genEcSetNeutral*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
+  ## Generate a public elliptic curve point `setNeutral` proc
+  ## with signature
+  ##   void name(CurveType a)
+  ## with a the EC point to be set to the neutral element.
+  ##
+  ## It returns the corresponding name to call it
+  let name = cd.name & "_setNeutral"
+  let ptrBool = pointer_t(asy.ctx.int1_t())
+  asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.curveTy]):
+    let r = llvmParams
+    asy.setNeutral(cd, r)
+    asy.br.retVoid()
+
+  return name
 
 proc genEcCcopy*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
   ## Generate a public elliptic curve point ccopy proc

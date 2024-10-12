@@ -131,38 +131,32 @@ proc isNeutral*(asy: Assembler_LLVM, cd: CurveDescriptor, r, a: ValueRef) {.used
 
   asy.callFn(name, [r, a])
 
-## XXX: This needs `setOne` for finite fields, which is non trivial
-#func setNeutral*(P: var EC_ShortW_Jac) {.inline.} =
-#  ## Set P to the neutral element / identity element
-#  ## i.e. ∀Q, P+Q == Q
-#  ## For Short Weierstrass curves, this is the infinity point.
-#  P.x.setOne()
-#  P.y.setOne()
-#  P.z.setZero()
-#
-#proc setNeutral*(asy: Assembler_LLVM, cd: CurveDescriptor, r: ValueRef) {.uscd.} =
-#  ## Generate an internal elliptic curve point setNeutral proc
-#  ## with signature
-#  ##   void name(CurveType r)
-#  ## with r the point to be 'neutralized'.
-#  ##
-#  ## Generates a call, so that we one can use this proc as part of another procedure.
-#  let name = cd.name & "_setNeutral_impl"
-#  asy.llvmInternalFnDef(
-#          name, SectionName,
-#          asy.void_t, toTypes([r, a]),
-#          {kHot}):
-#    tagParameter(1, "sret")
-#
-#    let (ri, ai) = llvmParams
-#    let aEc = asy.asEcPointJac(ai, cd.curveTy)
-#
-#    let z = aEc.getZ()
-#    asy.isZero(cd.fd, ri, z.buf)
-#
-#    asy.br.retVoid()
-#
-#  asy.callFn(name, [r, a])
+proc setNeutral*(asy: Assembler_LLVM, cd: CurveDescriptor, r: ValueRef) {.used.} =
+  ## Generate an internal elliptic curve point `setNeutral` proc
+  ## with signature
+  ##   void name(CurveType r)
+  ## with r the point to be 'neutralized'.
+  ##
+  ## Generates a call, so that we one can use this proc as part of another procedure.
+  let name = cd.name & "_setNeutral_impl"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r]),
+          {kHot}):
+    tagParameter(1, "sret")
+
+    let ri = llvmParams
+    let P = asy.asEcPointJac(ri, cd.curveTy)
+
+    fieldOps(asy, cd.fd)
+    ellipticOps(asy, cd)
+    P.x.setOne()
+    P.y.setOne()
+    P.z.setZero()
+
+    asy.br.retVoid()
+
+  asy.callFn(name, [r])
 
 proc ccopy*(asy: Assembler_LLVM, cd: CurveDescriptor, a, b, c: ValueRef) {.used.} =
   ## Generate an internal elliptic curve point ccopy proc
