@@ -271,7 +271,7 @@ macro genInstr(body: untyped): untyped =
 
 # Inline PTX assembly
 # ------------------------------------------------------------
-# See docs/implementation_nvidia_gpus.md for detailed implementation considerations
+# See docs/crypto-nvidia_gpus.md for detailed implementation considerations
 #
 # Need Cuda 11.5.1 at least for madc.hi.u64:
 # https://forums.developer.nvidia.com/t/wrong-result-returned-by-madc-hi-u64-ptx-instruction-for-specific-operands/196094
@@ -326,7 +326,7 @@ genInstr():
   # The PTX is without size indicator i.e. add.cc instead of add.cc.u32
   # Both version will be generated.
   #
-  # op name:       ("ptx",        "args;",            "constraints", [params])
+  # op name:       ("ptx",        "args;",           "constraints",   [params])
 
   # r <- a+b
   op add_co:       ("add.cc",     "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
