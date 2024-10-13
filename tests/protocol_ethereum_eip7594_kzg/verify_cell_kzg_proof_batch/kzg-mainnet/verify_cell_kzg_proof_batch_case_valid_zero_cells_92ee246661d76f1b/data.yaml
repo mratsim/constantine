@@ -1,0 +1,7 @@
+input:
+  row_commitments: []
+  row_indices: []
+  column_indices: []
+  cells: []
+  proofs: []
+output: true

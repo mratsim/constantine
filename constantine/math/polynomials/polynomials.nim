@@ -143,6 +143,32 @@ type InvDiffArrayKind* = enum
   kArrayMinus
   kMinusArray
 
+# How do we do modulo? Field.fromBigInt()?
+func sum*(r: var PolynomialCoef, f,g: PolynomialCoef)=
+  for i in  0..<r.coefs.len:
+    r.coefs[i].sum(f.coefs[i],g.coefs[i])
+
+func `+=`*(f: var PolynomialCoef, g: PolynomialCoef) =
+  for i in 0 ..< f.coefs.len:
+    f.coefs[i] += g.coefs[i]
+
+func diff*(r: var PolynomialCoef, f,g: PolynomialCoef)=
+  for i in  0..<r.coefs.len:
+    r.coefs[i].diff(f.coefs[i],g.coefs[i])
+
+func `-=`*(f: var PolynomialCoef, g: PolynomialCoef) =
+  for i in 0 ..< f.coefs.len:
+    f.coefs[i] -= g.coefs[i]
+
+func prod*[N,F](r: var PolynomialCoef[N, F], s: F, f: PolynomialCoef[N, F])=
+  for i in  0..<N:
+    r.coefs[i].prod(s, f.coefs[i])
+
+func `*=`*[N, F](f: var PolynomialCoef[N, F], s: F) =
+  for i in 0 ..< N:
+    f.coefs[i] *= s
+
+
 func sum*(r: var PolynomialEval, f, g: PolynomialEval) =
   ## Polynomial addition
   for i in 0 ..< r.evals.len:
