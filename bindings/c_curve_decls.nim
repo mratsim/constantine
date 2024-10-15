@@ -431,7 +431,7 @@ template genBindings_EC_ShortW_NonAffine*(EC, EcAff, ScalarBig, ScalarField: unt
 
   {.pop.}
 
-template genBindings_EC_TwistedEd_Affine*(EC, Field: untyped) =
+template genBindings_EC_TwEdw_Affine*(EC, Field: untyped) =
   when appType == "lib":
     {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:
@@ -464,7 +464,7 @@ template genBindings_EC_TwistedEd_Affine*(EC, Field: untyped) =
 
   {.pop.}
 
-template genBindings_EC_TwistedEd_Projective*(EC, EcAff, Field: untyped) =
+template genBindings_EC_TwEdw_Projective*(EC, EcAff, Field: untyped) =
   when appType == "lib":
     {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:
