@@ -20,8 +20,6 @@ import
   ./serialization/endians,
   ./math/io/[io_bigints, io_fields]
 
-import ./zoo_exports
-
 const EthVerkleSeed* = "eth_verkle_oct_2021"
 
 func generate_random_points*(r: var openArray[EC_TwEdw_Aff[Fp[Banderwagon]]]) =
@@ -151,7 +149,7 @@ type
 
 func serialize*(dst: var EthVerkleIpaProofBytes,
                 src: IpaProof[8, EC_TwEdw[Fp[Banderwagon]], Fr[Banderwagon]]
-                ): cttEthVerkleIpaStatus {.libPrefix: prefix_ipa, discardable.} =
+                ): cttEthVerkleIpaStatus {.discardable.} =
   # Note: We store 1 out of 2 coordinates of an EC point, so size(Fp[Banderwagon])
   const fpb = sizeof(Fp[Banderwagon])
   const frb = sizeof(Fr[Banderwagon])
@@ -170,7 +168,7 @@ func serialize*(dst: var EthVerkleIpaProofBytes,
   return cttEthVerkleIpa_Success
 
 func deserialize*(dst: var EthVerkleIpaProof,
-                  src: EthVerkleIpaProofBytes): cttEthVerkleIpaStatus {.libPrefix: prefix_ipa, discardable.} =
+                  src: EthVerkleIpaProofBytes): cttEthVerkleIpaStatus {.discardable.} =
 
   const fpb = sizeof(Fp[Banderwagon])
   const frb = sizeof(Fr[Banderwagon])
@@ -190,7 +188,7 @@ func deserialize*(dst: var EthVerkleIpaProof,
 
 func serialize*(dst: var EthVerkleIpaMultiProofBytes,
                 src: IpaMultiProof[8, EC_TwEdw[Fp[Banderwagon]], Fr[Banderwagon]]
-                ): cttEthVerkleIpaStatus {.libPrefix: prefix_ipa, discardable.} =
+                ): cttEthVerkleIpaStatus {.discardable.} =
 
   const frb = sizeof(Fr[Banderwagon])
   let D = cast[ptr array[frb, byte]](dst.addr)
@@ -202,7 +200,7 @@ func serialize*(dst: var EthVerkleIpaMultiProofBytes,
 
 func deserialize*(dst: var EthVerkleIpaMultiProof,
                   src: EthVerkleIpaMultiProofBytes
-                  ): cttEthVerkleIpaStatus {.libPrefix: prefix_ipa.} =
+                  ): cttEthVerkleIpaStatus =
 
   const frb = sizeof(Fr[Banderwagon])
   let D = cast[ptr array[frb, byte]](src.unsafeAddr)
@@ -217,7 +215,7 @@ func deserialize*(dst: var EthVerkleIpaMultiProof,
 # TODO: refactor, this shouldn't use curves_primitives but internal functions
 import ./lowlevel_fields
 
-func map_to_base_field*(dst: var Fp[Banderwagon],p: EC_TwEdw[Fp[Banderwagon]]) {.libPrefix: prefix_ipa, discardable.} =
+func map_to_base_field*(dst: var Fp[Banderwagon],p: EC_TwEdw[Fp[Banderwagon]]) {.discardable.} =
   ## The mapping chosen for the Banderwagon Curve is x/y
   ##
   ## This function takes a Banderwagon element & then
@@ -229,7 +227,7 @@ func map_to_base_field*(dst: var Fp[Banderwagon],p: EC_TwEdw[Fp[Banderwagon]]) {
   invY.inv(p.y)             # invY = 1/Y
   dst.prod(p.x, invY)       # dst = (X) * (1/Y)
 
-func map_to_scalar_field*(res: var Fr[Banderwagon], p: EC_TwEdw[Fp[Banderwagon]]): bool {.libPrefix: prefix_ipa, discardable.} =
+func map_to_scalar_field*(res: var Fr[Banderwagon], p: EC_TwEdw[Fp[Banderwagon]]): bool {.discardable.} =
   ## This function takes the x/y value from the above function as Fp element
   ## and convert that to bytes in Big Endian,
   ## and then load that to a Fr element
@@ -248,7 +246,7 @@ func map_to_scalar_field*(res: var Fr[Banderwagon], p: EC_TwEdw[Fp[Banderwagon]]
 
 func batch_map_to_scalar_field*(
       res: var openArray[Fr[Banderwagon]],
-      points: openArray[EC_TwEdw[Fp[Banderwagon]]]): bool {.libPrefix: prefix_ipa, discardable, noinline.} =
+      points: openArray[EC_TwEdw[Fp[Banderwagon]]]): bool {.discardable, noinline.} =
   ## This function performs the `mapToScalarField` operation
   ## on a batch of points
   ##
