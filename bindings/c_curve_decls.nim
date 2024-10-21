@@ -464,7 +464,7 @@ template genBindings_EC_TwEdw_Affine*(EC, Field: untyped) =
 
   {.pop.}
 
-template genBindings_EC_TwEdw_Projective*(EC, EcAff, Field: untyped) =
+template genBindings_EC_TwEdw_Projective*(EC, EcAff, ScalarBig, ScalarField: untyped) =
   when appType == "lib":
     {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:
@@ -515,6 +515,19 @@ template genBindings_EC_TwEdw_Projective*(EC, EcAff, Field: untyped) =
 
   func `ctt _ EC _ from_affine`(dst: var EC, src: EcAff) =
     dst.fromAffine(src)
+
+  func `ctt _ EC _ batch_affine`(dst: ptr UncheckedArray[EcAff], src: ptr UncheckedArray[EC], n: csize_t) =
+    dst.batchAffine(src, cast[int](n))
+
+  func `ctt _ EC _ scalar_mul_big_coef`(
+    P: var EC, scalar: ScalarBig) =
+
+    P.scalarMul(scalar)
+
+  func `ctt _ EC _ scalar_mul_fr_coef`(
+        P: var EC, scalar: ScalarField) =
+
+    P.scalarMul(scalar)
     
   {.pop.}
 
