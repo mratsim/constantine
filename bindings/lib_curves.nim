@@ -154,4 +154,4 @@ collectBindings(cBindings_banderwagon):
   genBindingsField(big255, banderwagon_fp)
   genBindingsFieldSqrt(banderwagon_fp)
   genBindings_EC_TwEdw_Affine(banderwagon_twedw_aff, banderwagon_fp)
-  genBindings_EC_TwEdw_Projective(banderwagon_twedw_prj, banderwagon_twedw_aff, banderwagon_fr)
+  genBindings_EC_TwEdw_Projective(banderwagon_twedw_prj, banderwagon_twedw_aff, big253, banderwagon_fr)
