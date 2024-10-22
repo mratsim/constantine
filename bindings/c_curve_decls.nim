@@ -431,6 +431,122 @@ template genBindings_EC_ShortW_NonAffine*(EC, EcAff, ScalarBig, ScalarField: unt
 
   {.pop.}
 
+template genBindings_EC_TwEdw_Affine*(EC, Field: untyped) =
+  when appType == "lib":
+    {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
+  else:
+    {.push noconv, exportc,  raises: [].} # No exceptions allowed
+
+  # --------------------------------------------------------------------------------------
+  func `ctt _ EC _ is_eq`(P, Q: EC): SecretBool =
+    P == Q
+
+  func `ctt _ EC _ is_neutral`(P: EC): SecretBool =
+    P.isNeutral()
+  
+  func `ctt _ EC _ set_neutral`(P: var EC) =
+    P.setNeutral()
+
+  func `ctt _ EC _ ccopy`(P: var EC, Q: EC, ctl: SecretBool) =
+    P.ccopy(Q, ctl)
+  
+  func `ctt _ EC _ is_on_curve`(x, y: Field): SecretBool =
+    isOnCurve(x, y)
+
+  func `ctt _ EC _ neg`(P: var EC, Q: EC) =
+    P.neg(Q)
+
+  func `ctt _ EC _ neg_in_place`(P: var EC) =
+    P.neg()
+
+  func `ctt _ EC _ cneg`(P: var EC, ctl: SecretBool) =
+    P.cneg(ctl)
+
+  {.pop.}
+
+template genBindings_EC_TwEdw_Projective*(EC, EcAff, ScalarBig, ScalarField: untyped) =
+  when appType == "lib":
+    {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
+  else:
+    {.push noconv, exportc,  raises: [].} # No exceptions allowed
+
+  # --------------------------------------------------------------------------------------
+  func `ctt _ EC _ is_eq`(P, Q: EC): SecretBool =
+    P == Q
+
+  func `ctt _ EC _ is_neutral`(P: EC): SecretBool =
+    P.isNeutral()
+  
+  func `ctt _ EC _ set_neutral`(P: var EC) =
+    P.setNeutral()
+
+  func `ctt _ EC _ ccopy`(P: var EC, Q: EC, ctl: SecretBool) =
+    P.ccopy(Q, ctl)
+
+  func `ctt _ EC _ neg`(P: var EC, Q: EC) =
+    P.neg(Q)
+
+  func `ctt _ EC _ neg_in_place`(P: var EC) =
+    P.neg()
+
+  func `ctt _ EC _ cneg`(P: var EC, ctl: SecretBool) =
+    P.cneg(ctl)
+
+  func `ctt _ EC _ sum`(r: var EC, P, Q: EC) =
+    r.sum(P, Q)
+  
+  func `ctt _ EC _ double`(r: var EC, P: EC) =
+    r.double(P)
+
+  func `ctt _ EC _ add_in_place`(P: var EC, Q: EC) =
+    P += Q
+
+  func `ctt _ EC _ diff`(r: var EC, P, Q: EC) =
+    r.diff(P,Q)
+
+  func `ctt _ EC _ diff_in_place`(P: var EC, Q: EC) =
+    P -= Q
+
+  func `ctt _ EC _ mixed_diff_in_place`(P: var EC, Q: EcAff) = 
+    P -= Q
+
+  func `ctt _ EC _ affine`(dst: var EcAff, src: EC) =
+    dst.affine(src)
+
+  func `ctt _ EC _ from_affine`(dst: var EC, src: EcAff) =
+    dst.fromAffine(src)
+
+  func `ctt _ EC _ batch_affine`(dst: ptr UncheckedArray[EcAff], src: ptr UncheckedArray[EC], n: csize_t) =
+    dst.batchAffine(src, cast[int](n))
+
+  func `ctt _ EC _ scalar_mul_big_coef`(P: var EC, scalar: ScalarBig) =
+    P.scalarMul(scalar)
+
+  func `ctt _ EC _ scalar_mul_fr_coef`(P: var EC, scalar: ScalarField) =
+    P.scalarMul(scalar)
+
+  func `ctt _ EC _ scalar_mul_big_coef_vartime`(P: var EC, scalar: ScalarBig) =
+    P.scalarMul_vartime(scalar)
+
+  func `ctt _ EC _ scalar_mul_fr_coef_vartime`(P: var EC, scalar: ScalarField) =
+    P.scalarMul_vartime(scalar)
+
+  func `ctt _ EC _ multi_scalar_mul_big_coefs_vartime`(
+          r: var EC,
+          coefs: ptr UncheckedArray[ScalarBig],
+          points: ptr UncheckedArray[EcAff],
+          len: csize_t) =
+    r.multiScalarMul_vartime(coefs, points, cast[int](len))
+
+  func `ctt _ EC _ multi_scalar_mul_fr_coefs_vartime`(
+          r: var EC,
+          coefs: ptr UncheckedArray[ScalarField],
+          points: ptr UncheckedArray[EcAff],
+          len: csize_t)=
+    r.multiScalarMul_vartime(coefs, points, cast[int](len))
+    
+  {.pop.}
+
 template genBindings_EC_hash_to_curve*(EC: untyped, mapping, hash: untyped, k: static int) =
   when appType == "lib":
     {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
