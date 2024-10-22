@@ -118,6 +118,13 @@ void ctt_banderwagon_ec_prj_diff_in_place(banderwagon_ec_prj* P, const banderwag
 void ctt_banderwagon_ec_prj_mixed_diff_in_place(banderwagon_ec_prj* P, const banderwagon_ec_aff* Q);
 void ctt_banderwagon_ec_prj_affine(banderwagon_ec_aff* dst, const banderwagon_ec_prj* src);
 void ctt_banderwagon_ec_prj_from_affine(banderwagon_ec_prj* dst, const banderwagon_ec_aff* src);
+void ctt_banderwagon_ec_prj_batch_affine(const banderwagon_ec_aff dst[], const banderwagon_ec_prj src[], size_t n);
+void ctt_banderwagon_ec_prj_scalar_mul_big_coef(banderwagon_ec_prj* P, const big253* scalar);
+void ctt_banderwagon_ec_prj_scalar_mul_fr_coef(banderwagon_ec_prj* P, const banderwagon_fr* scalar);
+void ctt_banderwagon_ec_prj_scalar_mul_big_coef_vartime(banderwagon_ec_prj* P, const big253* scalar);
+void ctt_banderwagon_ec_prj_scalar_mul_fr_coef_vartime(banderwagon_ec_prj* P, const banderwagon_fr* scalar);
+void ctt_banderwagon_ec_prj_multi_scalar_mul_big_coefs_vartime(banderwagon_ec_prj* r, const big253 coefs[], const banderwagon_ec_aff points[], size_t len);
+void ctt_banderwagon_ec_prj_multi_scalar_mul_fr_coefs_vartime(banderwagon_ec_prj* r, const banderwagon_fr coefs[], const banderwagon_ec_aff points[], size_t len);
 
 #ifdef __cplusplus
 }
