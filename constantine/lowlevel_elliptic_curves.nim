@@ -114,6 +114,7 @@ export ec_twistededwards.`-=`
 export ec_twistededwards.affine
 export ec_twistededwards.projective
 export ec_twistededwards.fromAffine
+export ec_twistededwards.batchAffine
 export ec_twistededwards.sum_vartime
 export ec_twistededwards.mixedSum_vartime
 export ec_twistededwards.diff_vartime

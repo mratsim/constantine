@@ -519,15 +519,31 @@ template genBindings_EC_TwEdw_Projective*(EC, EcAff, ScalarBig, ScalarField: unt
   func `ctt _ EC _ batch_affine`(dst: ptr UncheckedArray[EcAff], src: ptr UncheckedArray[EC], n: csize_t) =
     dst.batchAffine(src, cast[int](n))
 
-  func `ctt _ EC _ scalar_mul_big_coef`(
-    P: var EC, scalar: ScalarBig) =
-
+  func `ctt _ EC _ scalar_mul_big_coef`(P: var EC, scalar: ScalarBig) =
     P.scalarMul(scalar)
 
-  func `ctt _ EC _ scalar_mul_fr_coef`(
-        P: var EC, scalar: ScalarField) =
-
+  func `ctt _ EC _ scalar_mul_fr_coef`(P: var EC, scalar: ScalarField) =
     P.scalarMul(scalar)
+
+  func `ctt _ EC _ scalar_mul_big_coef_vartime`(P: var EC, scalar: ScalarBig) =
+    P.scalarMul_vartime(scalar)
+
+  func `ctt _ EC _ scalar_mul_fr_coef_vartime`(P: var EC, scalar: ScalarField) =
+    P.scalarMul_vartime(scalar)
+
+  func `ctt _ EC _ multi_scalar_mul_big_coefs_vartime`(
+          r: var EC,
+          coefs: ptr UncheckedArray[ScalarBig],
+          points: ptr UncheckedArray[EcAff],
+          len: csize_t) =
+    r.multiScalarMul_vartime(coefs, points, cast[int](len))
+
+  func `ctt _ EC _ multi_scalar_mul_fr_coefs_vartime`(
+          r: var EC,
+          coefs: ptr UncheckedArray[ScalarField],
+          points: ptr UncheckedArray[EcAff],
+          len: csize_t)=
+    r.multiScalarMul_vartime(coefs, points, cast[int](len))
     
   {.pop.}
 
