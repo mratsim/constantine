@@ -151,6 +151,7 @@ proc runGTsubgroupTests*(GT: typedesc, iters: int) =
 func random_gt(rng: var RngState, F: typedesc, gen: RandomGen): F {.noInit.} =
   result = rng.random_elem(F, gen)
   result.finalExp()
+  debug: doAssert bool result.isInPairingSubgroup()
 
 proc runGTexponentiationTests*(GT: typedesc, iters: int) =
   var rng: RngState
@@ -217,7 +218,7 @@ proc runGTexponentiationTests*(GT: typedesc, iters: int) =
 
 proc runGTmultiexpTests*[N: static int](GT: typedesc, num_points: array[N, int], iters: int) =
   var rng: RngState
-  let timeseed = 1727299797 # uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  let timeseed = uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   seed(rng, timeseed)
   echo "\n------------------------------------------------------\n"
   echo "test_pairing_",$GT.Name,"_gt_multiexp xoshiro512** seed: ", timeseed
