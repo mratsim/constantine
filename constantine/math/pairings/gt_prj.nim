@@ -305,7 +305,7 @@ proc isNeutral*(a: T2Prj): SecretBool =
 
 proc fromGT_vartime*[F](r: var T2Aff[F], a: QuadraticExt[F]) =
   # Special case identity element
-  if bool a.isNeutral():
+  if bool a.isOne():
     r.setNeutral()
     return
 
