@@ -91,7 +91,7 @@ func fromHex*(T: typedesc[Fp6],
   ## Convert 6 coordinates to an element of 𝔽p6
   result.fromHex(c0, c1, c2, c3, c4, c5)
 
-func fromHex*(dst: var Fp12,
+func fromHex*(dst: var AnyFp12,
               c0, c1, c2, c3: string,
               c4, c5, c6, c7: string,
               c8, c9, c10, c11: string) =
@@ -104,7 +104,7 @@ func fromHex*(dst: var Fp12,
     dst.c1.fromHex(c4, c5, c6, c7)
     dst.c2.fromHex(c8, c9, c10, c11)
 
-func fromHex*(T: typedesc[Fp12],
+func fromHex*(T: typedesc[AnyFp12],
               c0, c1, c2, c3: string,
               c4, c5, c6, c7: string,
               c8, c9, c10, c11: string): T =

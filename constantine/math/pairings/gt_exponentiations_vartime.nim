@@ -71,7 +71,7 @@ func gtExp_addchain_4bit_vartime[Gt: ExtensionField](r: var Gt, a: Gt, scalar: B
   of 0:
     r.setOne()
   of 1:
-    discard
+    r = a
   of 2:
     r.cyclotomic_square(a)
   of 3:
