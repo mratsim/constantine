@@ -333,7 +333,7 @@ proc fromTorus2_vartime*[F](r: var QuadraticExt[F], a: T2Aff[F]) =
 
   # Special case identity element
   if bool a.isNeutral():
-    r.setNeutral()
+    r.setOne()
     return
 
   var num {.noInit.}, den {.noInit.}: typeof(r)
@@ -380,13 +380,14 @@ proc mixedProd_vartime*[F](r: var T2Prj[F], a: T2Prj[F], b: T2Aff[F]) =
     r = a
     return
 
-  var u0 {.noInit.}, u1 {.noInit.}: F
+  var u0 {.noInit.}, u1 {.noInit.}, t{.noInit.}: F
   u0.prod(a.x, F b)
   u1.prod(a.z, F b)
+  t.prod(a.z, NonResidue)
 
-  r.x.prod(a.z, NonResidue)
-  r.x += u0
+  # Aliasing: a.x must be read before r.x is written to
   r.z.sum(u1, a.x)
+  r.x.sum(u0, t)
 
 proc affineProd_vartime*[F](r: var T2Prj[F], a, b: T2Aff[F]) =
 
@@ -535,6 +536,10 @@ proc batchFromTorus2_vartime*[F](dst: var openArray[QuadraticExt[F]],
   t.conj(QF src[0])
   dst[0] *= t
 
+func toHex*[F](a: T2Aff[F] or T2Prj[F], indent = 0, order: static Endianness = bigEndian): string =
+  var t {.noInit.}: QuadraticExt[F]
+  t.fromTorus2_vartime(a)
+  t.toHex(indent, order)
 
 when isMainModule:
   var a, c: QuadraticExt[Fp6[BLS12_381]]

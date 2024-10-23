@@ -181,7 +181,7 @@ suite "Torus-based Cryptography for 𝔾ₜ, T₂(𝔽p6) compression":
         var r_tprj: T2Prj[Fp6[Name]]
         a_taff.fromGT_vartime(a)
         b_taff.fromGT_vartime(b)
-        r_tprj.affineProd(a_taff, b_taff)
+        r_tprj.affineProd_vartime(a_taff, b_taff)
 
         var r_gt: MyFp12
         r_gt.prod(a, b)
@@ -207,7 +207,34 @@ suite "Torus-based Cryptography for 𝔾ₜ, T₂(𝔽p6) compression":
         var a_tprj, r_tprj: T2Prj[Fp6[Name]]
         a_tprj.fromGT_vartime(a)
         b_taff.fromGT_vartime(b)
-        r_tprj.mixedProd(a_tprj, b_taff)
+        r_tprj.mixedProd_vartime(a_tprj, b_taff)
+
+        var r_gt: MyFp12
+        r_gt.prod(a, b)
+
+        var r: MyFp12
+        r.fromTorus2_vartime(r_tprj)
+
+        doAssert bool r == r_gt
+
+    test(BN254_Nogami)
+    # test(BN254_Snarks)
+    test(BLS12_381)
+
+  test "T₂prj(𝔽p6) <- T₂prj(𝔽p6) * T₂aff(𝔽p6) - with aliasing":
+    proc test(Name: static Algebra) =
+      for i in 0 ..< Fp6iters:
+        type MyFp12 = QuadraticExt[Fp6[Name]] # Even if we choose to Fp2 -> Fp4 -> Fp12
+                                        # we want this test to pass
+        let a = rng.random_gt(MyFp12)
+        let b = rng.random_gt(MyFp12)
+
+        var b_taff: T2Aff[Fp6[Name]]
+        var a_tprj, r_tprj: T2Prj[Fp6[Name]]
+        a_tprj.fromGT_vartime(a)
+        b_taff.fromGT_vartime(b)
+        r_tprj = a_tprj
+        r_tprj.mixedProd_vartime(r_tprj, b_taff)
 
         var r_gt: MyFp12
         r_gt.prod(a, b)
@@ -246,6 +273,58 @@ suite "Torus-based Cryptography for 𝔾ₜ, T₂(𝔽p6) compression":
     # test(BN254_Snarks)
     test(BLS12_381)
 
+  test "T₂prj(𝔽p6) <- T₂prj(𝔽p6) * T₂prj(𝔽p6) - with aliasing of lhs":
+    proc test(Name: static Algebra) =
+      for i in 0 ..< Fp6iters:
+        type MyFp12 = QuadraticExt[Fp6[Name]] # Even if we choose to Fp2 -> Fp4 -> Fp12
+                                        # we want this test to pass
+        let a = rng.random_gt(MyFp12)
+        let b = rng.random_gt(MyFp12)
+
+        var a_tprj, b_tprj, r_tprj: T2Prj[Fp6[Name]]
+        a_tprj.fromGT_vartime(a)
+        b_tprj.fromGT_vartime(b)
+        r_tprj = a_tprj
+        r_tprj.prod(r_tprj, b_tprj)
+
+        var r_gt: MyFp12
+        r_gt.prod(a, b)
+
+        var r: MyFp12
+        r.fromTorus2_vartime(r_tprj)
+
+        doAssert bool r == r_gt
+
+    test(BN254_Nogami)
+    # test(BN254_Snarks)
+    test(BLS12_381)
+
+  test "T₂prj(𝔽p6) <- T₂prj(𝔽p6) * T₂prj(𝔽p6) - with aliasing of rhs":
+    proc test(Name: static Algebra) =
+      for i in 0 ..< Fp6iters:
+        type MyFp12 = QuadraticExt[Fp6[Name]] # Even if we choose to Fp2 -> Fp4 -> Fp12
+                                        # we want this test to pass
+        let a = rng.random_gt(MyFp12)
+        let b = rng.random_gt(MyFp12)
+
+        var a_tprj, b_tprj, r_tprj: T2Prj[Fp6[Name]]
+        a_tprj.fromGT_vartime(a)
+        b_tprj.fromGT_vartime(b)
+        r_tprj = b_tprj
+        r_tprj.prod(a_tprj, r_tprj)
+
+        var r_gt: MyFp12
+        r_gt.prod(a, b)
+
+        var r: MyFp12
+        r.fromTorus2_vartime(r_tprj)
+
+        doAssert bool r == r_gt
+
+    test(BN254_Nogami)
+    # test(BN254_Snarks)
+    test(BLS12_381)
+
   # ====================================================================================
 
   test "T₂prj(𝔽p6) <- T₂aff(𝔽p6)²":
@@ -258,7 +337,7 @@ suite "Torus-based Cryptography for 𝔾ₜ, T₂(𝔽p6) compression":
         var a_taff: T2Aff[Fp6[Name]]
         var r_tprj: T2Prj[Fp6[Name]]
         a_taff.fromGT_vartime(a)
-        r_tprj.affineSquare(a_taff)
+        r_tprj.affineSquare_vartime(a_taff)
 
         var r_gt: MyFp12
         r_gt.square(a)
