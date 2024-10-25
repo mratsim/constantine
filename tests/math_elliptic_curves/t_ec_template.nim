@@ -94,6 +94,21 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
       else:
         result = rng.random_long01Seq_with_randZ(EC)
 
+from std / math import divmod
+proc random_coefficient*[N: static int](rng: var RngState, maxBit: int = 0): BigInt[N] =
+  ## Initializes a random BigInt[N] with `maxBit` as the most significant bit
+  ## of it.
+  ## If `maxBit` is set to zero, the coefficient will utilize all bits.
+  const WordSize = 64
+  let toShift = result.limbs.len * WordSize - maxBit
+  let (d, r) = divmod(toShift, WordSize) # how many limbs to zero & how many bits in next limb
+  result = rng.random_unsafe(BigInt[N])
+  if maxBit == 0 or maxBit >= N: return # use all bits
+  let limbs = result.limbs.len
+  for i in countdown(limbs-1, limbs - d):
+    result.limbs[i] = SecretWord(0'u64)  # zero most significant limbs
+  result.shiftRight(r)                   # shift right by remaining required
+
 proc run_EC_addition_tests*(
        ec: typedesc,
        Iters: static int,
