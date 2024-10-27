@@ -622,7 +622,6 @@ const testDescNvidia: seq[string] = @[
   "tests/gpu/t_nsqr.nim",
   "tests/gpu/t_nsqr_rt.nim",
   "tests/gpu/t_ec_jac_coords.nim",
-  "tests/gpu/t_ec_sum_port.nim",
   "tests/gpu/t_ec_sum.nim"
 ]
 

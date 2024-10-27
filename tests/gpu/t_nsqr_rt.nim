@@ -39,6 +39,6 @@ proc testName[Name: static Algebra](field: type FF[Name], wordSize: int, a: FF[N
 
 let a = Fp[BN254_Snarks].fromHex("0x12345678FF11FFAA00321321CAFECAFE")
 
-testName(Fp[BN254_Snarks], 64, a, 2)
-testName(Fp[BN254_Snarks], 64, a, 3)
-testName(Fp[BN254_Snarks], 64, a, 4)
+testName(Fp[BN254_Snarks], 32, a, 2)
+testName(Fp[BN254_Snarks], 32, a, 3)
+testName(Fp[BN254_Snarks], 32, a, 4)

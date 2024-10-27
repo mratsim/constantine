@@ -67,14 +67,14 @@ template test(wordSize: int, ker, body: untyped): untyped =
     body
 
 # Store bool by passing explicit `addr` of a `var`
-test(64, genStoreBool):
+test(32, genStoreBool):
   let t = true
   var b: bool
   kernel.execCuda(b.addr, t)
   doAssert b == t
 
 # Store bool by passing explicit `ptr bool` var
-test(64, genStoreBool):
+test(32, genStoreBool):
   let t = true
   var b: bool
   var bP: ptr bool
@@ -83,7 +83,7 @@ test(64, genStoreBool):
   doAssert bP[] == t
 
 # Store bool by passing explicit `bool` as a `var`
-test(64, genStoreBool):
+test(32, genStoreBool):
   let t = true
   var b: bool
   kernel.execCuda(b, t)
@@ -96,19 +96,19 @@ template fails(body): untyped =
   else:
     echo "[INFO] ", astToStr(body), "\nfails as expected."
 fails:
-  test(64, genStoreBool):
+  test(32, genStoreBool):
     let t = true
     let b = false
     kernel.execCuda(b, t)
 
 # Passing a bool literal works
-test(64, genStoreBool):
+test(32, genStoreBool):
   var b: bool
   kernel.execCuda(b, true)
   doAssert b == true
 
 # Passing an int and float as let vars
-test(64, genStoreIntFloat):
+test(32, genStoreIntFloat):
   let x = 5
   let y = 5.5
   var ri: int
@@ -118,7 +118,7 @@ test(64, genStoreIntFloat):
   doAssert rf == y
 
 # Passing an int and float as literals
-test(64, genStoreIntFloat):
+test(32, genStoreIntFloat):
   var ri: int
   var rf: float
   kernel.execCuda(res = (ri, rf), inputs = (5, 5.5))
@@ -126,7 +126,7 @@ test(64, genStoreIntFloat):
   doAssert rf == 5.5
 
 # Passing an int and float as consts
-test(64, genStoreIntFloat):
+test(32, genStoreIntFloat):
   const x = 5
   const y = 5.5
   var ri: int
@@ -137,7 +137,7 @@ test(64, genStoreIntFloat):
 
 # Using `let` variable to store in int and float fails
 fails:
-  test(64, genStoreIntFloat):
+  test(32, genStoreIntFloat):
     const x = 5
     const y = 5.5
     let ri: int
@@ -147,7 +147,7 @@ fails:
     doAssert rf == y
 
 # Explicitly passing ptr int / ptr float
-test(64, genStoreIntFloat):
+test(32, genStoreIntFloat):
   let x = 5
   let y = 5.5
   var ri: int
@@ -161,7 +161,7 @@ test(64, genStoreIntFloat):
   doAssert rf == y
 
 # Pass inputs to `ptr T` as `ptr T` (64 bit size types)
-test(64, genStoreIntFloatFromPtr):
+test(32, genStoreIntFloatFromPtr):
   let x = 5
   let y = 5.5
   var ri: int
@@ -175,7 +175,7 @@ test(64, genStoreIntFloatFromPtr):
   doAssert rf == y
 
 # Passing inputs to `ptr T` as `addr x` (64 bit size types)
-test(64, genStoreIntFloatFromPtr):
+test(32, genStoreIntFloatFromPtr):
   let x = 5
   let y = 5.5
   var ri: int
@@ -185,7 +185,7 @@ test(64, genStoreIntFloatFromPtr):
   doAssert rf == y
 
 # Pass inputs to `ptr T` as `ptr T` (32 bit size types)
-test(64, genStoreIntFloatFromPtr):
+test(32, genStoreIntFloatFromPtr):
   let x = 5'i32
   let y = 5.5'f32
   var ri: int32
@@ -199,7 +199,7 @@ test(64, genStoreIntFloatFromPtr):
   doAssert rf == y
 
 # Passing inputs to `ptr T` as `addr x` (32 bit size types)
-test(64, genStoreIntFloatFromPtr):
+test(32, genStoreIntFloatFromPtr):
   let x = 5'i32
   let y = 5.5'f32
   var ri: int32

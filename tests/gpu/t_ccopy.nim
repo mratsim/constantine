@@ -63,4 +63,4 @@ let a = Fp[BN254_Snarks].fromHex("0x12345678FF11FFAA00321321CAFECAFE")
 let b = Fp[BN254_Snarks].fromHex("0xDEADBEEFDEADBEEFDEADBEEFDEADBEEF")
 
 
-testName(Fp[BN254_Snarks], 64, a, b)
+testName(Fp[BN254_Snarks], 32, a, b)

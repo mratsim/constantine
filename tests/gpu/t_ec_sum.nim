@@ -81,12 +81,12 @@ let pt2 = EC_ShortW_Jac[Fp[BN254_Snarks], G1].fromHex(x2, y2)
 ## If `skipFinalSub` is set to `true` in the EC sum implementation
 ##   `S1.prod(Q.z, Z2Z2, skipFinalSub = true)`
 ## the following fails at iteration 57.
-testSum(Fp[BN254_Snarks], 64, pt, pt2)
+testSum(Fp[BN254_Snarks], 32, pt, pt2)
 
 var pt2Aff: EC_ShortW_Aff[Fp[BN254_Snarks], G1]
 pt2Aff.affine(pt2)
 
-testMixedSum(Fp[BN254_Snarks], 64, pt, pt2Aff)
+testMixedSum(Fp[BN254_Snarks], 32, pt, pt2Aff)
 
 
 ## NOTE: While these inputs a, b are the ones that end up causing the
@@ -115,7 +115,7 @@ block SkipFinalSubIssue:
   let y2 = "0x0f53265870f65aa18bded3ccb9c62a4d8b060a32a05a75d455710bce95a991df"
   let b = EC_ShortW_Jac[Fp[BN254_Snarks], G1].fromHex(x2, y2)
 
-  let nv = initNvAsm(EC_ShortW_Jac[Fp[BN254_Snarks], G1], 64)
+  let nv = initNvAsm(EC_ShortW_Jac[Fp[BN254_Snarks], G1], 32)
   let kernel = nv.compile(genEcMixedSum)
 
   template checkSum(a, b): untyped =

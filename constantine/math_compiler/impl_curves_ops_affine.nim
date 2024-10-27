@@ -90,7 +90,7 @@ proc isNeutralAff*(asy: Assembler_LLVM, cd: CurveDescriptor, r, a: ValueRef) {.u
 
     let (ri, ai) = llvmParams
 
-    let P = asy.asEcPointAff(ed, ai)
+    let P = asy.asEcPointAff(cd, ai)
 
     asy.store(ri, P.x.isZero() and P.y.isZero())
 

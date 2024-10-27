@@ -34,7 +34,12 @@ proc testName[Name: static Algebra](field: type FF[Name], wordSize: int, a, b: F
     echo "GPU = ", rGPU.toHex()
     doAssert bool(rCPU == rGPU)
 
-let a = Fp[BN254_Snarks].fromUInt(1'u64)
+let a = Fp[BN254_Snarks].fromUInt(1'u32)
 let b = Fp[BN254_Snarks].fromHex("0x2beb0d0d6115007676f30bcc462fe814bf81198848f139621a3e9fa454fe8e6a")
 
-testName(Fp[BN254_Snarks], 64, a, b)
+testName(Fp[BN254_Snarks], 32, a, b)
+
+# We get incorrect result for modular multiplication with 64-bit limbs due to a fused-multiuply-add with carry bug.
+#
+# - https://gist.github.com/mratsim/a34df1e091925df15c13208df7eda569#file-mul-py
+# - https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067

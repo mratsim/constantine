@@ -14,7 +14,7 @@ import
   constantine/math/elliptic/ec_shortweierstrass_jacobian,
   constantine/platforms/abstractions,
   constantine/platforms/llvm/llvm,
-  constantine/math_compiler/[ir, pub_fields, pub_curves_jacobian, codegen_nvidia, impl_fields_globals],
+  constantine/math_compiler/[ir, pub_fields, pub_curves_jacobian, codegen_nvidia, impl_fields_globals, impl_curves_ops_jacobian],
   # Test utilities
   helpers/prng_unsafe
 
@@ -28,7 +28,7 @@ template genGetComponent*(asy: Assembler_LLVM, cd: CurveDescriptor, fn: typed): 
     let rA = asy.asField(r, cd.fd.fieldTy)
 
     let x = fn(ec)
-    asy.store(rA, x)
+    rA.store(x)
 
     asy.br.retVoid()
   name
@@ -71,6 +71,6 @@ let y = "0x2beb0d0d6115007676f30bcc462fe814bf81198848f139621a3e9fa454fe8e6a"
 let pt = EC_ShortW_Jac[Fp[BN254_Snarks], G1].fromHex(x, y)
 echo pt.toHex()
 
-testX(Fp[BN254_Snarks], 64, pt)
-testY(Fp[BN254_Snarks], 64, pt)
-testZ(Fp[BN254_Snarks], 64, pt)
+testX(Fp[BN254_Snarks], 32, pt)
+testY(Fp[BN254_Snarks], 32, pt)
+testZ(Fp[BN254_Snarks], 32, pt)
