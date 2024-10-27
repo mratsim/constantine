@@ -57,7 +57,7 @@ proc store*(dst: EcPointJac, src: EcPointJac) =
   store(dst.getY(), src.getY())
   store(dst.getZ(), src.getZ())
 
-template ellipticOps*(asy: Assembler_LLVM, cd: CurveDescriptor): untyped =
+template declEllipticJacOps*(asy: Assembler_LLVM, cd: CurveDescriptor): untyped =
   ## This template can be used to make operations on `Field` elements
   ## more convenient.
   ## XXX: extend to include all ops
@@ -78,9 +78,9 @@ template ellipticOps*(asy: Assembler_LLVM, cd: CurveDescriptor): untyped =
 
 proc fromAffine_impl*(asy: Assembler_LLVM, cd: CurveDescriptor, jac: var EcPointJac, aff: EcPointAff) =
   # Inject templates for convenient access
-  fieldOps(asy, cd.fd)
-  ellipticOps(asy, cd)
-  ellipticAffOps(asy, cd)
+  declFieldOps(asy, cd.fd)
+  declEllipticJacOps(asy, cd)
+  declEllipticAffOps(asy, cd)
 
   jac.x.store(aff.x)
   jac.y.store(aff.y)
@@ -148,8 +148,8 @@ proc setNeutral*(asy: Assembler_LLVM, cd: CurveDescriptor, r: ValueRef) {.used.}
     let ri = llvmParams
     let P = asy.asEcPointJac(ri, cd.curveTy)
 
-    fieldOps(asy, cd.fd)
-    ellipticOps(asy, cd)
+    declFieldOps(asy, cd.fd)
+    declEllipticJacOps(asy, cd)
     P.x.setOne()
     P.y.setOne()
     P.z.setZero()
@@ -253,9 +253,9 @@ proc sum*(asy: Assembler_LLVM, cd: CurveDescriptor, r, p, q: ValueRef) =
     ## CPU code in `ec_shortweierstrass_jacobian.nim`.
 
     # Make finite field point operations nicer
-    fieldOps(asy, cd.fd)
+    declFieldOps(asy, cd.fd)
     # And EC points
-    ellipticOps(asy, cd)
+    declEllipticJacOps(asy, cd)
 
     var
       Z1Z1 = asy.newField(cd.fd)
@@ -429,9 +429,9 @@ proc double*(asy: Assembler_LLVM, cd: CurveDescriptor, r, p: ValueRef) =
     ## the full `asy`/`ed` types as refs. It is an option though.
 
     # Make operations more convenient, for fields:
-    fieldOps(asy, cd.fd)
+    declFieldOps(asy, cd.fd)
     # and for EC points
-    ellipticOps(asy, cd)
+    declEllipticJacOps(asy, cd)
 
     var
       A = asy.newField(cd.fd)
@@ -507,11 +507,11 @@ proc mixedSum*(asy: Assembler_LLVM, cd: CurveDescriptor, r, p, q: ValueRef) =
     ## Helper templates to allow the logic below to be roughly equivalent to the regular
     ## CPU code in `ec_shortweierstrass_jacobian.nim`.
     # Make finite field point operations nicer
-    fieldOps(asy, cd.fd)
+    declFieldOps(asy, cd.fd)
     # And EC points
-    ellipticOps(asy, cd)
+    declEllipticJacOps(asy, cd)
     # and for Affine
-    ellipticAffOps(asy, cd)
+    declEllipticAffOps(asy, cd)
 
     var
       Z1Z1 = asy.newField(cd.fd)

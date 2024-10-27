@@ -17,7 +17,7 @@ It contains multiple commented out lines of proc signatures, input types and man
 instructions. By using `asy.store` and adjusting the return type of the LLVM based procedure,
 (i.e. the first argument in the following line from below:
 
-`asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ed.curveTy, ed.curveTy, ed.curveTy]):`
+`asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.curveTy, cd.curveTy, cd.curveTy]):`
                                                           ^--- First argument == return type
 
 and adjusting the `cpuSumImpl` below to return the 'same' value, one can compare all intermediary
@@ -38,41 +38,41 @@ import
   # Test utilities
   helpers/prng_unsafe
 
-proc genSumImpl*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
-  let name = ed.name & "_sum_internal"
+proc genSumImpl*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
+  let name = cd.name & "_sum_internal"
   let ptrBool = pointer_t(asy.ctx.int1_t())
-  #asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ed.fd.fieldTy, ed.curveTy, ed.curveTy]):
-  #asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ptrBool, ed.curveTy, ed.curveTy]):
-  asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ed.curveTy, ed.curveTy, ed.curveTy]):
+  #asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.fd.fieldTy, cd.curveTy, cd.curveTy]):
+  #asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [ptrBool, cd.curveTy, cd.curveTy]):
+  asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.curveTy, cd.curveTy, cd.curveTy]):
     let (ri, pi, qi) = llvmParams
     # Assuming fd.numWords is the number of limbs in the field element
-    let Q = asy.asEcPointJac(qi, ed.curveTy)
-    let P = asy.asEcPointJac(pi, ed.curveTy)
-    let rA = asy.asEcPointJac(ri, ed.curveTy)
-    #let rA = asy.asField(ri, ed.fd.fieldTy)
+    let Q = asy.asEcPointJac(qi, cd.curveTy)
+    let P = asy.asEcPointJac(pi, cd.curveTy)
+    let rA = asy.asEcPointJac(ri, cd.curveTy)
+    #let rA = asy.asField(ri, cd.fd.fieldTy)
 
     ## XXX: For now we just port the coefA == 0 branch!
 
     var
-      Z1Z1 = asy.newField(ed.fd)
-      U1   = asy.newField(ed.fd)
-      S1   = asy.newField(ed.fd)
-      H    = asy.newField(ed.fd)
-      R    = asy.newField(ed.fd)
+      Z1Z1 = asy.newField(cd.fd)
+      U1   = asy.newField(cd.fd)
+      S1   = asy.newField(cd.fd)
+      H    = asy.newField(cd.fd)
+      R    = asy.newField(cd.fd)
 
-    template square(res, y): untyped = asy.nsqr_internal(ed.fd, res.buf, y.buf, count = 1)
-    template prod(res, x, y): untyped = asy.mul_internal(ed.fd, res.buf, x.buf, y.buf)
-    template diff(res, x, y): untyped = asy.sub_internal(ed.fd, res.buf, x.buf, y.buf)
-    template add(res, x, y): untyped = asy.add_internal(ed.fd, res.buf, x.buf, y.buf)
-    template double(res, x): untyped = asy.double_internal(ed.fd, res.buf, x.buf)
-    template isZero(res, x): untyped = asy.isZero_internal(ed.fd, res, x.buf)
+    template square(res, y): untyped = asy.nsqr_internal(cd.fd, res.buf, y.buf, count = 1)
+    template prod(res, x, y): untyped = asy.mul_internal(cd.fd, res.buf, x.buf, y.buf)
+    template diff(res, x, y): untyped = asy.sub_internal(cd.fd, res.buf, x.buf, y.buf)
+    template add(res, x, y): untyped = asy.add_internal(cd.fd, res.buf, x.buf, y.buf)
+    template double(res, x): untyped = asy.double_internal(cd.fd, res.buf, x.buf)
+    template isZero(res, x): untyped = asy.isZero_internal(cd.fd, res, x.buf)
     template isZero(x): untyped =
       var res = asy.br.alloca(asy.ctx.int1_t())
-      asy.isZero_internal(ed.fd, res, x.buf)
+      asy.isZero_internal(cd.fd, res, x.buf)
       res
-    template ccopy(x, y: Field, c): untyped = asy.ccopy_internal(ed.fd, x.buf, y.buf, c)
-    template div2(x): untyped = asy.div2_internal(ed.fd, x.buf)
-    template csub(x, y, c): untyped = asy.csub_internal(ed.fd, x.buf, y.buf, c)
+    template ccopy(x, y: Field, c): untyped = asy.ccopy_internal(cd.fd, x.buf, y.buf, c)
+    template div2(x): untyped = asy.div2_internal(cd.fd, x.buf)
+    template csub(x, y, c): untyped = asy.csub_internal(cd.fd, x.buf, y.buf, c)
 
     template `not`(x: ValueRef): untyped = asy.br.`not`(x)
 
@@ -103,9 +103,9 @@ proc genSumImpl*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
 
     block: # Addition-only, check for exceptional cases
       var
-        Z2Z2 = asy.newField(ed.fd)
-        U2   = asy.newField(ed.fd)
-        S2   = asy.newField(ed.fd)
+        Z2Z2 = asy.newField(cd.fd)
+        U2   = asy.newField(cd.fd)
+        S2   = asy.newField(cd.fd)
 
       Z2Z2.square(Q.z) # , skipFinalSub = true)
       #store(rA, Z2Z2)
@@ -139,8 +139,8 @@ proc genSumImpl*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
     # if only R == 0, P and Q are related by the cubic root endomorphism
 
     ## TEST: Set H and R to zero to verify that our `isZero` & `and` logic works
-    # asy.setZero_internal(ed.fd, H.buf)
-    # asy.setZero_internal(ed.fd, R.buf)
+    # asy.setZero_internal(cd.fd, H.buf)
+    # asy.setZero_internal(cd.fd, R.buf)
 
     let isDbl = H.isZero() and R.isZero()
     #store(ri, isDbl)
@@ -150,8 +150,8 @@ proc genSumImpl*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
     template H_or_Y: untyped = H
     template V_or_S: untyped = U1
     var
-      HH_or_YY = asy.newField(ed.fd)
-      HHH_or_Mpre = asy.newField(ed.fd)
+      HH_or_YY = asy.newField(cd.fd)
+      HHH_or_Mpre = asy.newField(cd.fd)
 
     H_or_Y.ccopy(P.y, isDbl) # H         (add) or Y₁        (dbl)
     #store(rA, H_or_Y)
@@ -166,8 +166,8 @@ proc genSumImpl*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
     # Block for `coefA == 0`
     block: # Compute M for doubling
       var
-        a = asy.newField(ed.fd)
-        b = asy.newField(ed.fd)
+        a = asy.newField(cd.fd)
+        b = asy.newField(cd.fd)
       store(a, H)
       store(b, HH_or_YY)
       a.ccopy(P.x, isDbl)           # H or X₁
@@ -177,7 +177,7 @@ proc genSumImpl*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
       HHH_or_Mpre.prod(a, b)        # HHH or X₁²
       #store(rA, HHH_or_Mpre)
       #
-      var M = asy.newField(ed.fd)
+      var M = asy.newField(cd.fd)
       store(M, HHH_or_Mpre) # Assuming on doubling path
       M.div2()                      #  X₁²/2
       #store(rA, M)
@@ -192,7 +192,7 @@ proc genSumImpl*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
     # - V_or_S is set with V = U₁*HH (add) or S = X₁*YY (dbl)
     var o = asy.newEcPointJac(ed)
     block: # Finishing line
-      var t = asy.newField(ed.fd)
+      var t = asy.newField(cd.fd)
       t.double(V_or_S)
       #store(rA, t)
       o.x.square(R_or_M)

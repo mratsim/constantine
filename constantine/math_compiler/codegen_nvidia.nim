@@ -496,7 +496,7 @@ macro execCuda*(jitFn: CUfunction,
 type
   ## The type for all the public `genPubX` procedures for fields in `pub_fields.nim`
   FieldFnGenerator = proc(asy: Assembler_LLVM, fd: FieldDescriptor): string
-  CurveFnGenerator = proc(asy: Assembler_LLVM, ed: CurveDescriptor): string
+  CurveFnGenerator = proc(asy: Assembler_LLVM, cd: CurveDescriptor): string
 
   NvidiaAssemblerObj* = object
     sm*: tuple[major, minor: int32] # compute capability version
@@ -504,7 +504,7 @@ type
 
     asy*: Assembler_LLVM
     fd*: FieldDescriptor
-    ed*: CurveDescriptor
+    cd*: CurveDescriptor
 
     cuCtx*: CUcontext
     cuMod*: CUmodule
@@ -566,15 +566,15 @@ proc initNvAsm*[Name: static Algebra](field: type EC_ShortW_Jac[Fp[Name], G1], w
   let name = if field is Fp: $Name & "_fp"
              else: $Name & "_fr"
   result.asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("nvidia_" & name & $wordSize))
-  result.ed = result.asy.ctx.configureCurve(
+  result.cd = result.asy.ctx.configureCurve(
     name, Fp[Name].bits(),
     Fp[Name].getModulus().toHex(),
     v = 1, w = wordSize,
     coef_a = Fp[Name].Name.getCoefA(),
     coef_B = Fp[Name].Name.getCoefB()
   )
-  result.fd = result.ed.fd
-  result.asy.definePrimitives(result.ed)
+  result.fd = result.cd.fd
+  result.asy.definePrimitives(result.cd)
 
 proc compile*(nv: NvidiaAssembler, kernName: string): CUfunction =
   ## Overload of `compile` below.
@@ -601,5 +601,5 @@ proc compile*(nv: NvidiaAssembler, fn: CurveFnGenerator): CUfunction =
   ## Given a function that generates code for an elliptic curve operation, compile
   ## that function on the given Nvidia target and return a CUDA function.
   # execute the `fn`
-  let kernName = nv.asy.fn(nv.ed)
+  let kernName = nv.asy.fn(nv.cd)
   result = nv.compile(kernName)

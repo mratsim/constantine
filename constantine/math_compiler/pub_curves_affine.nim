@@ -18,18 +18,18 @@ import
 ## Section name used for `llvmInternalFnDef`
 const SectionName = "ctt.pub_curves_affine"
 
-proc genEcIsNeutralAff*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
+proc genEcIsNeutralAff*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
   ## Generate a public elliptic curve point isNeutral proc
   ## with signature
   ##   void name(*bool r, CurveType a)
   ## with r the result and a the operand
   ## and return the corresponding name to call it
 
-  let name = ed.name & "isNeutralAff"
+  let name = cd.name & "isNeutralAff"
   let ptrBool = pointer_t(asy.ctx.int1_t())
-  asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ptrBool, ed.curveTyAff]):
+  asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [ptrBool, cd.curveTyAff]):
     let (r, a) = llvmParams
-    asy.isNeutralAff_internal(ed, r, a)
+    asy.isNeutralAff_internal(cd, r, a)
     asy.br.retVoid()
 
   return name

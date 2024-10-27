@@ -269,8 +269,8 @@ proc configureCurve*(ctx: ContextRef,
   result.coef_a = coef_a
   result.coef_b = coef_b # unused
 
-proc definePrimitives*(asy: Assembler_LLVM, ed: CurveDescriptor) =
-  asy.definePrimitives(ed.fd)
+proc definePrimitives*(asy: Assembler_LLVM, cd: CurveDescriptor) =
+  asy.definePrimitives(cd.fd)
 
 # ############################################################
 #

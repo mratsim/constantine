@@ -18,14 +18,14 @@ import
   # Test utilities
   helpers/prng_unsafe
 
-template genGetComponent*(asy: Assembler_LLVM, ed: CurveDescriptor, fn: typed): string =
-  let name = ed.name & astToStr(fn)
-  asy.llvmPublicFnDef(name, "ctt." & ed.name, asy.void_t, [ed.fd.fieldTy, ed.curveTy]):
-    let M = asy.getModulusPtr(ed.fd)
+template genGetComponent*(asy: Assembler_LLVM, cd: CurveDescriptor, fn: typed): string =
+  let name = cd.name & astToStr(fn)
+  asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.fd.fieldTy, cd.curveTy]):
+    let M = asy.getModulusPtr(cd.fd)
     let (r, a) = llvmParams
 
-    let ec = asy.asEcPointJac(a, ed.curveTy)
-    let rA = asy.asField(r, ed.fd.fieldTy)
+    let ec = asy.asEcPointJac(a, cd.curveTy)
+    let rA = asy.asField(r, cd.fd.fieldTy)
 
     let x = fn(ec)
     asy.store(rA, x)
@@ -33,12 +33,12 @@ template genGetComponent*(asy: Assembler_LLVM, ed: CurveDescriptor, fn: typed): 
     asy.br.retVoid()
   name
 
-proc genGetX*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
-  result = asy.genGetComponent(ed, getX)
-proc genGetY*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
-  result = asy.genGetComponent(ed, getY)
-proc genGetZ*(asy: Assembler_LLVM, ed: CurveDescriptor): string =
-  result = asy.genGetComponent(ed, getZ)
+proc genGetX*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
+  result = asy.genGetComponent(cd, getX)
+proc genGetY*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
+  result = asy.genGetComponent(cd, getY)
+proc genGetZ*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
+  result = asy.genGetComponent(cd, getZ)
 
 template test[Name: static Algebra](field: type FF[Name], wordSize: int, a: EC_ShortW_Jac[field, G1], fn, cpuField: untyped): untyped =
   # Codegen

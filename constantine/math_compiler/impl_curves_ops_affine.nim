@@ -29,17 +29,17 @@ proc asEcPointAff*(asy: Assembler_LLVM, arrayPtr: ValueRef, arrayTy: TypeRef): E
   ## `array[WordTy, NumWords]`.
   result = EcPointAff(asy.asArray(arrayPtr, arrayTy))
 
-proc asEcPointAff*(asy: Assembler_LLVM, ed: CurveDescriptor, arrayPtr: ValueRef): EcPointAff =
+proc asEcPointAff*(asy: Assembler_LLVM, cd: CurveDescriptor, arrayPtr: ValueRef): EcPointAff =
   ## Constructs an elliptic curve point in Affine coordinates from an array pointer,
   ## taking the required `arrayTy` from the `CurveDescriptor`.
   ##
   ## `arrayTy` is an `array[FieldTy, 2]` where `FieldTy` itsel is an array of
   ## `array[WordTy, NumWords]`.
-  result = EcPointAff(asy.asArray(arrayPtr, ed.curveTyAff))
+  result = EcPointAff(asy.asArray(arrayPtr, cd.curveTyAff))
 
-proc newEcPointAff*(asy: Assembler_LLVM, ed: CurveDescriptor): EcPointAff =
+proc newEcPointAff*(asy: Assembler_LLVM, cd: CurveDescriptor): EcPointAff =
   ## Use field descriptor for size etc?
-  result = EcPointAff(asy.makeArray(ed.curveTyAff))
+  result = EcPointAff(asy.makeArray(cd.curveTyAff))
 
 func getIdx*(br: BuilderRef, ec: EcPointAff, idx: int): Field =
   let pelem = distinctBase(ec).getElementPtr(0, idx)
@@ -54,15 +54,15 @@ proc store*(dst: EcPointAff, src: EcPointAff) =
   store(dst.getX(), src.getX())
   store(dst.getY(), src.getY())
 
-template ellipticAffOps*(asy: Assembler_LLVM, ed: CurveDescriptor): untyped =
+template declEllipticAffOps*(asy: Assembler_LLVM, cd: CurveDescriptor): untyped =
   ## This template can be used to make operations on `Field` elements
   ## more convenient.
   ## XXX: extend to include all ops
   # Boolean checks
-  template isNeutral(res, x: EcPointAff): untyped = asy.isNeutralAff(ed, res, x.buf)
+  template isNeutral(res, x: EcPointAff): untyped = asy.isNeutralAff(cd, res, x.buf)
   template isNeutral(x: EcPointAff): untyped =
     var res = asy.br.alloca(asy.ctx.int1_t())
-    asy.isNeutralAff(ed, res, x.buf)
+    asy.isNeutralAff(cd, res, x.buf)
     res
 
   # Accessors
@@ -70,14 +70,14 @@ template ellipticAffOps*(asy: Assembler_LLVM, ed: CurveDescriptor): untyped =
   template y(ec: EcPointAff): Field = ec.getY()
 
 
-proc isNeutralAff*(asy: Assembler_LLVM, ed: CurveDescriptor, r, a: ValueRef) {.used.} =
+proc isNeutralAff*(asy: Assembler_LLVM, cd: CurveDescriptor, r, a: ValueRef) {.used.} =
   ## Generate an internal elliptic curve point isNeutral proc
   ## with signature
   ##   void name(*bool r, CurveType a)
   ## with r the result and a the operand
   ##
   ## Generates a call, so that we one can use this proc as part of another procedure.
-  let name = ed.name & "isNeutralAff_impl"
+  let name = cd.name & "isNeutralAff_impl"
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a]),
@@ -85,8 +85,8 @@ proc isNeutralAff*(asy: Assembler_LLVM, ed: CurveDescriptor, r, a: ValueRef) {.u
     tagParameter(1, "sret")
 
     # Convenience templates for field / curve ops
-    fieldOps(asy, ed.fd)
-    ellipticAffOps(asy, ed)
+    declFieldOps(asy, cd.fd)
+    declEllipticAffOps(asy, cd)
 
     let (ri, ai) = llvmParams
 

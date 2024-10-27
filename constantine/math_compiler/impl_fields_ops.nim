@@ -15,7 +15,7 @@ import
 ## Section name used for `llvmInternalFnDef`
 const SectionName = "ctt.impl_fields"
 
-template fieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} =
+template declFieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} =
   ## This template can be used to make operations on `Field` elements
   ## more convenient.
 
@@ -637,7 +637,7 @@ proc scalarMul*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef, b: int) =
     let ai = llvmParams
 
     # Make field ops convenient:
-    fieldOps(asy, fd)
+    declFieldOps(asy, fd)
 
     let a = asy.asField(fd, ai) # shadow `a` argument of proc
 
