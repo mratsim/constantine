@@ -9,7 +9,8 @@
 import
   constantine/platforms/bithacks,
   constantine/platforms/llvm/[llvm, super_instructions],
-  std/tables
+  constantine/named/deriv/parser_fields, # types for curve definition
+  std/[tables, typetraits]
 
 # ############################################################
 #
@@ -28,7 +29,7 @@ type
     kAlwaysInline,
     kNoInline
 
-  Assembler_LLVM* = ref object
+  Assembler_LLVMObj* = object
     ctx*: ContextRef
     module*: ModuleRef
     br*: BuilderRef
@@ -47,6 +48,8 @@ type
 
     # Convenience
     void_t*: TypeRef
+
+  Assembler_LLVM* = ref Assembler_LLVMObj
 
   Backend* = enum
     bkAmdGpu
@@ -97,8 +100,17 @@ proc configure(asy: var Assembler_LLVM, backend: Backend) =
   asy.backend = backend
   asy.byteOrder = asy.dataLayout.getEndianness()
 
+when defined(gcDestructors):
+  proc `=destroy`(asy: Assembler_LLVMObj) =
+    asy.br.dispose()
+    asy.module.dispose()
+    asy.ctx.dispose()
+
 proc new*(T: type Assembler_LLVM, backend: Backend, moduleName: cstring): Assembler_LLVM =
-  new result, finalizeAssemblerLLVM
+  when not defined(gcDestructors):
+    new result, finalizeAssemblerLLVM
+  else:
+    new result
   result.ctx = createContext()
   result.module = result.ctx.createModule(moduleName)
   result.br = result.ctx.createBuilder()
@@ -207,6 +219,59 @@ proc definePrimitives*(asy: Assembler_LLVM, fd: FieldDescriptor) =
 proc wordTy*(fd: FieldDescriptor, value: SomeInteger) =
   constInt(fd.wordTy, value)
 
+type
+  ## XXX: For now we barely use any of these fields!
+  CurveDescriptor* = object
+    name*: string # of the curve
+    fd*: FieldDescriptor # of the underlying field
+    family*: CurveFamily
+    modulus*: string # Modulus as Big-Endian uppercase hex, NOT prefixed with 0x
+    modulusBitWidth*: uint32
+    order*: string
+    orderBitWidth*: uint32
+
+    cofactor*: string
+    eqForm*: CurveEquationForm
+
+    coef_a*: int
+    coef_b*: int
+
+    nonResidueFp*: uint32
+    nonResidueFp2*: uint32
+
+    embeddingDegree*: uint32
+    sexticTwist*: SexticTwist
+
+    curveTyAff*: TypeRef # type of EC point in Affine coordinates
+    curveTy*: TypeRef # type of EC point in Jacobian and Projective coordinates
+                      # Their individual values differ, but both have (X,Y,Z) FF coords
+
+proc configureCurve*(ctx: ContextRef,
+      name: string,
+      modBits: int, modulus: string,
+      v, w: int,
+      coefA, coefB: int): CurveDescriptor =
+  ## Configure a curve descriptor with:
+  ## - v: vector length
+  ## - w: base word size in bits
+  ## - a `modulus` of bitsize `modBits`
+  ##
+  ## - Name is a prefix for example
+  ##   `mycurve_fp_`
+  result.name = "curve_" & name
+  result.fd = configureField(ctx, name, modBits, modulus, v, w)
+  # Array of 3 arrays, one for each field type
+  result.curveTy = array_t(result.fd.fieldTy, 3)
+  # Array of 2 arrays for affine coords
+  result.curveTyAff = array_t(result.fd.fieldTy, 2)
+
+  # Curve parameters
+  result.coef_a = coef_a
+  result.coef_b = coef_b # unused
+
+proc definePrimitives*(asy: Assembler_LLVM, cd: CurveDescriptor) =
+  asy.definePrimitives(cd.fd)
+
 # ############################################################
 #
 #                    Aggregate Types
@@ -223,20 +288,26 @@ proc wordTy*(fd: FieldDescriptor, value: SomeInteger) =
 
 type
   Array* = object
-    builder: BuilderRef
+    builder*: BuilderRef
     buf*: ValueRef
-    arrayTy: TypeRef
-    elemTy: TypeRef
+    arrayTy*: TypeRef
+    elemTy*: TypeRef
     int32_t: TypeRef
 
-proc asArray*(asy: Assembler_LLVM, arrayPtr: ValueRef, arrayTy: TypeRef): Array =
+proc `[]`*(a: Array, index: SomeInteger): ValueRef {.inline.}
+proc `[]=`*(a: Array, index: SomeInteger, val: ValueRef) {.inline.}
+
+proc asArray*(br: BuilderRef, arrayPtr: ValueRef, arrayTy: TypeRef): Array =
   Array(
-    builder: asy.br,
+    builder: br,
     buf: arrayPtr,
     arrayTy: arrayTy,
     elemTy: arrayTy.getElementType(),
     int32_t: arrayTy.getContext().int32_t()
   )
+
+proc asArray*(asy: Assembler_LLVM, arrayPtr: ValueRef, arrayTy: TypeRef): Array =
+  asy.br.asArray(arrayPtr, arrayTy)
 
 proc makeArray*(asy: Assembler_LLVM, arrayTy: TypeRef): Array =
   Array(
@@ -257,13 +328,20 @@ proc makeArray*(asy: Assembler_LLVM, elemTy: TypeRef, len: uint32): Array =
     int32_t: arrayTy.getContext().int32_t()
   )
 
+proc getElementPtr*(a: Array, indices: varargs[int]): ValueRef =
+  ## Helper to get an element pointer from a (nested) array.
+  var idxs = newSeq[ValueRef](indices.len)
+  for i, idx in indices:
+    idxs[i] = constInt(a.int32_t, idx)
+  result = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, idxs)
+
 proc `[]`*(a: Array, index: SomeInteger): ValueRef {.inline.}=
   # First dereference the array pointer with 0, then access the `index`
-  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, [constInt(a.int32_t, 0), constInt(a.int32_t, uint64 index)])
+  let pelem = a.getElementPtr(0, index.int)
   a.builder.load2(a.elemTy, pelem)
 
 proc `[]=`*(a: Array, index: SomeInteger, val: ValueRef) {.inline.}=
-  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, [constInt(a.int32_t, 0), constInt(a.int32_t, uint64 index)])
+  let pelem = a.getElementPtr(0, index.int)
   a.builder.store(val, pelem)
 
 proc store*(asy: Assembler_LLVM, dst: Array, src: Array) {.inline.}=
@@ -274,6 +352,29 @@ proc store*(asy: Assembler_LLVM, dst: Array, src: ValueRef) {.inline.}=
   ## Heterogeneous store of i256 into 4xuint64
   doAssert asy.byteOrder == kLittleEndian
   asy.br.store(src, dst.buf)
+
+# Representation of a finite field point with some utilities
+type Field* {.borrow: `.`.} = distinct Array
+
+proc `[]`*(a: Field, index: SomeInteger): ValueRef = distinctBase(a)[index]
+proc `[]=`*(a: Field, index: SomeInteger, val: ValueRef) = distinctBase(a)[index] = val
+
+proc asField*(br: BuilderRef, a: ValueRef, fieldTy: TypeRef): Field =
+  result = Field(br.asArray(a, fieldTy))
+proc asField*(asy: Assembler_LLVM, a: ValueRef, fieldTy: TypeRef): Field =
+  asy.br.asField(a, fieldTy)
+proc asField*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef): Field =
+  asy.br.asField(a, fd.fieldTy)
+
+proc newField*(asy: Assembler_LLVM, fd: FieldDescriptor): Field =
+  ## Use field descriptor for size etc?
+  result = Field(asy.makeArray(fd.fieldTy))
+
+proc store*(dst: Field, src: Field) =
+  ## Stores the `dst` in `src`. Both must correspond to the same field of course.
+  assert dst.arrayTy.getArrayLength() == src.arrayTy.getArrayLength()
+  for i in 0 ..< dst.arrayTy.getArrayLength:
+    dst[i] = src[i]
 
 # Conversion to native LLVM int
 # -------------------------------
@@ -460,7 +561,7 @@ template llvmFnDef[N: static int](
   ## Function parameters are available with the `llvmParams` magic variable
   let paramsTys = asy.wrapTypesForFnCall(paramTypes)
 
-  var fn = asy.module.getFunction(cstring name)
+  var fn {.inject.} = asy.module.getFunction(cstring name)
   if fn.pointer.isNil():
     var savedLoc = asy.br.getInsertBlock()
 

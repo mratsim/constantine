@@ -26,9 +26,9 @@ proc modsub*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
   else:
     doAssert false, "Unimplemented"
 
-proc mtymul*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
+proc mtymul*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef, finalReduce = true) =
   case asy.backend
   of bkNvidiaPTX:
-    asy.mtymul_nvidia(fd, r, a, b, M)
+    asy.mtymul_nvidia(fd, r, a, b, M, finalReduce)
   else:
     doAssert false, "Unimplemented"

@@ -95,7 +95,7 @@ proc finalSubNoOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array
   for i in 1 ..< N:
     scratch[i] = asy.br.sub_bio(a[i], M[i])
 
-  # If it underflows here a was smaller than the modulus, which is what we want
+  # If it underflows here, `a` was smaller than the modulus, which is what we want
   let underflowedModulus = asy.br.sub_bi(0'u32, 0'u32)
 
   for i in 0 ..< N:
@@ -341,7 +341,7 @@ proc mtymul_CIOS_sparebit(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: 
   asy.callFn(name, [r, a, b, M])
 
 proc mtymul_nvidia(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef, finalReduce = true) {.used.} =
-  ## Generate an optimized modular addition kernel
+  ## Generate an optimized modular multiplication kernel
   ## with parameters `a, b, modulus: Limbs -> Limbs`
 
   # TODO: spareBits == 0

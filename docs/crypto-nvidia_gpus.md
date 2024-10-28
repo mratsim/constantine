@@ -4,6 +4,13 @@ This documentation references useful information for implementing and optimizing
 
 ## Integer instruction bug
 
+### Integer FMA with carry-in uint64
+
+We get incorrect result for modular multiplication with 64-bit limbs due to a fused-multiuply-add with carry bug.
+
+- https://gist.github.com/mratsim/a34df1e091925df15c13208df7eda569#file-mul-py
+- https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
+
 ### Integer FMA with carry-in uint32
 
 The instruction integer fused-multiply-add  with carry-in may
@@ -56,12 +63,6 @@ int main() {
     printf("Cpu result: hi:%lx low:%lx\n", (uint64_t)((result >> 64) & 0xffffffffffffffffUL), (uint64_t)(result & 0xffffffffffffffffUL));
 }
 ```
-
-### Integer FMA with carry-in uint64
-
-https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
-
-Unfortunately it seems like we're also hit by this on uint64.
 
 
 ## The hidden XMAD instruction
