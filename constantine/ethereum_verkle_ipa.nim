@@ -288,5 +288,55 @@ func batchMapToScalarField*(
 # - eth_verkle_ipa
 # - sha256 for transcripts
 
+var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
+var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
+var polynomial: PolynomialEval[256, Fr[Banderwagon]]
+
+func verkle_ipa_commit*(
+      crs: CRS, r: var EC_TwEdw_Aff[Fp[Banderwagon]], 
+      poly: polynomial) =
+  ipa_commit(crs, r, poly)
+
+func verkle_ipa_prove*(
+      crs: CRS, 
+      domain: domain, 
+      transcript: var EthVerkleTranscript, 
+      eval_at_challenge: var Fr[Banderwagon], 
+      proof: var IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]], 
+      poly: polynomial, 
+      commitment: EC_TwEdw_Aff[Fp[Banderwagon]], 
+      opening_challenge: Fr[Banderwagon]) =
+  ipa_prove(crs, domain, transcript, eval_at_challenge, proof, poly, commitment, opening_challenge)
+
+func verkle_ipa_verify*(
+      crs: CRS, 
+      domain: domain, 
+      transcript: var EthVerkleTranscript, 
+      commitment: EC_TwEdw_Aff[Fp[Banderwagon]],
+      opening_challenge: Fr[Banderwagon],
+      eval_at_challenge: var Fr[Banderwagon], 
+      proof: IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]): bool =
+  return ipa_verify(crs, domain, transcript, commitment, opening_challenge, eval_at_challenge, proof)
+
+func verkle_ipa_multi_prove*(
+      crs: CRS, 
+      domain: domain, 
+      transcript: var EthVerkleTranscript, 
+      proof: var IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]], 
+      polys: openArray[polynomial], 
+      commitments: openArray[EC_TwEdw_Aff[Fp[Banderwagon]]], 
+      opening_challenges_in_domain: openArray[SomeUnsignedInt]) =
+  ipa_multi_prove(crs, domain, transcript, proof, polys, commitments, opening_challenges_in_domain)
+
+func verkle_ipa_multi_verify*(
+      crs: CRS, 
+      domain: domain, 
+      transcript: var EthVerkleTranscript, 
+      commitments: openArray[EC_TwEdw_Aff[Fp[Banderwagon]]],
+      opening_challenges_in_domain: openArray[SomeUnsignedInt],
+      evals_at_challenges: openArray[Fr[Banderwagon]], 
+      proof: IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]): bool =
+  return ipa_multi_verify(crs, domain, transcript, commitment, opening_challenge, eval_at_challenge, proof)
+
 export eth_verkle_ipa
 export hashes
