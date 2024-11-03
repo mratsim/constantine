@@ -333,7 +333,7 @@ proc fromTorus2_vartime*[F](r: var QuadraticExt[F], a: T2Aff[F]) =
 
   # Special case identity element
   if bool a.isNeutral():
-    r.setOne()
+    r.setNeutral()
     return
 
   var num {.noInit.}, den {.noInit.}: typeof(r)
@@ -380,7 +380,7 @@ proc mixedProd_vartime*[F](r: var T2Prj[F], a: T2Prj[F], b: T2Aff[F]) =
     r = a
     return
 
-  var u0 {.noInit.}, u1 {.noInit.}, t{.noInit.}: F
+  var u0 {.noInit.}, u1 {.noInit.}, t {.noInit.}: F
   u0.prod(a.x, F b)
   u1.prod(a.z, F b)
   t.prod(a.z, NonResidue)

@@ -39,9 +39,9 @@ proc report(op, domain: string, start, stop: MonoTime, startClk, stopClk: int64,
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<55} {domain:<20} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<65} {domain:<20} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
   else:
-    echo &"{op:<55} {domain:<20} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<65} {domain:<20} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 macro fixFieldDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
@@ -126,11 +126,14 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
 
   var r{.noInit.}: GT
   var startNaive, stopNaive, startMultiExpBaseline, stopMultiExpBaseline: MonoTime
-  var startMultiExpOpt, stopMultiExpOpt, startMultiExpPara, stopMultiExpPara: MonoTime
+  var startMultiExpOptEndo, stopMultiExpOptEndo, startMultiExpPara, stopMultiExpPara: MonoTime
+  var startMultiExpOptNoEndo, stopMultiExpOptNoEndo: Monotime
 
   when GT is QuadraticExt:
     var startMultiExpBaselineTorus: MonoTime
     var stopMultiExpBaselineTorus: MonoTime
+    var startMultiExpOptTorusNoEndo: MonoTime
+    var stopMultiExpOptTorusNoEndo: Monotime
 
   if numInputs <= 100000:
     # startNaive = getMonotime()
@@ -166,10 +169,23 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
       stopMultiExpBaselineTorus = getMonotime()
 
   block:
-    startMultiExpOpt = getMonotime()
-    bench("𝔾ₜ multi-exp optimized       " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
-      r.multiExp_vartime(elems, exponents)
-    stopMultiExpOpt = getMonotime()
+    startMultiExpOptNoEndo = getMonotime()
+    bench("𝔾ₜ multi-exp opt no endo     " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+      r.multiExp_vartime(elems, exponents, useEndo = false, useTorus = false)
+    stopMultiExpOptNoEndo = getMonotime()
+
+  block:
+    startMultiExpOptEndo = getMonotime()
+    bench("𝔾ₜ multi-exp opt + endo      " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+      r.multiExp_vartime(elems, exponents, useEndo = true, useTorus = false)
+    stopMultiExpOptEndo = getMonotime()
+
+  when GT is QuadraticExt:
+    block:
+      startMultiExpOptTorusNoEndo = getMonotime()
+      bench("𝔾ₜ multiexp opt+torus no endo" & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+        r.multiExp_vartime(elems, exponents, useEndo = false, useTorus = true)
+      stopMultiExpOptTorusNoEndo = getMonotime()
 
   block:
     ctx.tp = Threadpool.new()
@@ -183,24 +199,35 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
 
   let perfNaive = inNanoseconds((stopNaive-startNaive) div iters)
   let perfMultiExpBaseline = inNanoseconds((stopMultiExpBaseline-startMultiExpBaseline) div iters)
-  let perfMultiExpOpt = inNanoseconds((stopMultiExpOpt-startMultiExpOpt) div iters)
+  let perfMultiExpOptNoEndo = inNanoseconds((stopMultiExpOptNoEndo-startMultiExpOptNoEndo) div iters)
+  let perfMultiExpOptEndo = inNanoseconds((stopMultiExpOptEndo-startMultiExpOptEndo) div iters)
   let perfMultiExpPara = inNanoseconds((stopMultiExpPara-startMultiExpPara) div iters)
   when GT is QuadraticExt:
     let perfMultiExpBaselineTorus = inNanoseconds((stopMultiExpBaselineTorus-startMultiExpBaselineTorus) div iters)
+    let perfMultiExpOptTorusNoEndo = inNanoseconds((startMultiExpOptTorusNoEndo-stopMultiExpOptTorusNoEndo) div iters)
 
   if numInputs <= 100000:
     let speedupBaseline = float(perfNaive) / float(perfMultiExpBaseline)
     echo &"Speedup ratio baseline over naive linear combination: {speedupBaseline:>6.3f}x"
 
-    let speedupOpt = float(perfNaive) / float(perfMultiExpOpt)
+    let speedupOpt = float(perfNaive) / float(perfMultiExpOptNoEndo)
     echo &"Speedup ratio optimized over naive linear combination: {speedupOpt:>6.3f}x"
 
-    let speedupOptBaseline = float(perfMultiExpBaseline) / float(perfMultiExpOpt)
-    echo &"Speedup ratio optimized over baseline linear combination: {speedupOptBaseline:>6.3f}x"
+    let speedupOptBaseline = float(perfMultiExpBaseline) / float(perfMultiExpOptNoEndo)
+    echo &"Speedup ratio optimized no endomorphism over baseline linear combination: {speedupOptBaseline:>6.3f}x"
+
+    let speedupOptEndo = float(perfNaive) / float(perfMultiExpOptNoEndo)
+    echo &"Speedup ratio optimized+endomorphism over naive linear combination: {speedupOptEndo:>6.3f}x"
+
+    let speedupOptEndoOpt = float(perfMultiExpOptNoEndo) / float(perfMultiExpOptEndo)
+    echo &"Speedup ratio optimized without/with endormorphism: {speedupOptEndoOpt:>6.3f}x"
 
     when GT is QuadraticExt:
       let speedupTorusOverBaseline = float(perfMultiExpBaseline) / float(perfMultiExpBaselineTorus)
       echo &"Speedup ratio baseline+Torus over baseline linear combination: {speedupTorusOverBaseline:>6.3f}x"
 
-  let speedupParaOpt = float(perfMultiExpOpt) / float(perfMultiExpPara)
-  echo &"Speedup ratio parallel over optimized linear combination: {speedupParaOpt:>6.3f}x"
+      let speedupTorusOverOpt = float(perfMultiExpOptNoEndo) / float(perfMultiExpOptTorusNoEndo)
+      echo &"Speedup ratio optimized+Torus over optimized: {speedupTorusOverOpt:>6.3f}x"
+
+  let speedupParaOpt = float(perfMultiExpOptEndo) / float(perfMultiExpPara)
+  echo &"Speedup ratio parallel over optimized+endomorphism linear combination: {speedupParaOpt:>6.3f}x"

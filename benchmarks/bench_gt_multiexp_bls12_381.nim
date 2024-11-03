@@ -28,7 +28,9 @@ const AvailableCurves = [
   BLS12_381,
 ]
 
-const testNumPoints = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+# const testNumPoints = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+const testNumPoints = [128, 256]
+
 
 type Fp12over4[C: static Algebra] = CubicExt[Fp4[C]]
 type Fp12over6[C: static Algebra] = QuadraticExt[Fp6[C]]

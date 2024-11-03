@@ -241,14 +241,16 @@ proc runGTmultiexpTests*[N: static int](GT: typedesc, num_points: array[N, int],
           t.gtExp_vartime(elems[i], exponents[i])
           naive *= t
 
-        var mexp_ref, mexp_ref_torus, mexp_opt: GT
+        var mexp_ref, mexp_ref_torus, mexp_opt, mexp_opt_torus: GT
         mexp_ref.multiExp_reference_vartime(elems, exponents, useTorus = false)
         mexp_ref_torus.multiExp_reference_vartime(elems, exponents, useTorus = true)
-        mexp_opt.multiExp_vartime(elems, exponents)
+        mexp_opt.multiExp_vartime(elems, exponents, useEndo = true, useTorus = false)
+        mexp_opt_torus.multiExp_vartime(elems, exponents, useEndo = false, useTorus = true)
 
         doAssert bool(naive == mexp_ref)
         doAssert bool(naive == mexp_ref_torus)
         doAssert bool(naive == mexp_opt)
+        doAssert bool(naive == mexp_opt_torus)
 
         stdout.write '.'
 

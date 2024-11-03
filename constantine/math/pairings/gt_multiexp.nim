@@ -106,7 +106,7 @@ func `~*=`(a: var T2Prj, b: T2Prj) {.inline.} =
 func `~/=`(a: var T2Prj, b: T2Aff) {.inline.} =
   ## Cyclotomic division
   var t {.noInit.}: T2Aff
-  t.cyclotomic_inv(b)
+  t.inv(b)
   a ~*= t
 
 # Reference multi-exponentiation
@@ -212,7 +212,7 @@ func multiExp_reference_vartime*[bits: static int, Gt](
   when useTorus:
     static: doAssert Gt is QuadraticExt, "GT was: " & $Gt
     type F = typeof(elems[0].c0)
-    let elemsTorus = allocHeapArrayAligned(T2Aff[F], N, alignment = 64)
+    var elemsTorus = allocHeapArrayAligned(T2Aff[F], N, alignment = 64)
     elemsTorus.toOpenArray(0, N-1).batchFromGT_vartime(
       elems.toOpenArray(0, N-1)
     )
@@ -266,7 +266,7 @@ func multiExp_reference_vartime*[Gt](
 #                                                             #
 # ########################################################### #
 
-func accumulate[GT](buckets: ptr UncheckedArray[GT], val: SecretWord, negate: SecretBool, elem: GT) {.inline, meter.} =
+func accumulate[GtAcc, GtElt](buckets: ptr UncheckedArray[GtAcc], val: SecretWord, negate: SecretBool, elem: GtElt) {.inline, meter.} =
   let val = BaseType(val)
   if val == 0: # Skip g⁰
     return
@@ -275,7 +275,7 @@ func accumulate[GT](buckets: ptr UncheckedArray[GT], val: SecretWord, negate: Se
   else:
     buckets[val-1] ~*= elem
 
-func bucketReduce[GT](r: var GT, buckets: ptr UncheckedArray[GT], numBuckets: static int) {.meter.} =
+func bucketReduce[GtAcc](r: var GtAcc, buckets: ptr UncheckedArray[GtAcc], numBuckets: static int) {.meter.} =
   # We interleave reduction with one-ing the bucket to use instruction-level parallelism
 
   var accumBuckets{.noInit.}: typeof(r)
@@ -293,11 +293,11 @@ type MiniMultiExpKind* = enum
   kFullWindow
   kBottomWindow
 
-func bucketAccumReduce[bits: static int, GT](
-       r: var GT,
-       buckets: ptr UncheckedArray[GT],
+func bucketAccumReduce[bits: static int, GtAcc, GtElt](
+       r: var GtAcc,
+       buckets: ptr UncheckedArray[GtAcc],
        bitIndex: int, miniMultiExpKind: static MiniMultiExpKind, c: static int,
-       elems: ptr UncheckedArray[GT], expos: ptr UncheckedArray[BigInt[bits]], N: int) =
+       elems: ptr UncheckedArray[GtElt], expos: ptr UncheckedArray[BigInt[bits]], N: int) =
 
   const excess = bits mod c
   const top = bits - excess
@@ -326,11 +326,11 @@ func bucketAccumReduce[bits: static int, GT](
   # 2. Bucket Reduction
   r.bucketReduce(buckets, numBuckets = 1 shl (c-1))
 
-func miniMultiExp[bits: static int, GT](
-       r: var GT,
-       buckets: ptr UncheckedArray[GT],
+func miniMultiExp[bits: static int, GtAcc, GtElt](
+       r: var GtAcc,
+       buckets: ptr UncheckedArray[GtAcc],
        bitIndex: int, miniMultiExpKind: static MiniMultiExpKind, c: static int,
-       elems: ptr UncheckedArray[GT], expos: ptr UncheckedArray[BigInt[bits]], N: int) {.meter.} =
+       elems: ptr UncheckedArray[GtElt], expos: ptr UncheckedArray[BigInt[bits]], N: int) {.meter.} =
   ## Apply a mini-Multi-Exponentiation on [bitIndex, bitIndex+window)
   ## slice of all (coef, point) pairs
 
@@ -345,9 +345,9 @@ func miniMultiExp[bits: static int, GT](
     for _ in 0 ..< c:
       r.cyclotomic_square()
 
-func multiExpImpl_vartime[bits: static int, GT](
-       r: var GT,
-       elems: ptr UncheckedArray[GT], expos: ptr UncheckedArray[BigInt[bits]],
+func multiExpImpl_vartime[bits: static int, GtAcc, GtElt](
+       r: var GtAcc,
+       elems: ptr UncheckedArray[GtElt], expos: ptr UncheckedArray[BigInt[bits]],
        N: int, c: static int) {.tags:[VarTime, HeapAlloc], meter.} =
   ## Multiexponentiation:
   ##   r <- g₀^a₀ + g₁^a₁ + ... + gₙ^aₙ
@@ -356,7 +356,7 @@ func multiExpImpl_vartime[bits: static int, GT](
   # -----
   const numBuckets = 1 shl (c-1)
 
-  let buckets = allocHeapArray(GT, numBuckets)
+  let buckets = allocHeapArray(GtAcc, numBuckets)
   for i in 0 ..< numBuckets:
     buckets[i].setNeutral()
 
@@ -449,7 +449,7 @@ template withEndo[exponentsBits: static int, GT](
 #                                                             #
 # ########################################################### #
 
-func multiexp_dispatch_vartime[bits: static int, GT](
+func multiexp_dispatch_endo_vartime[bits: static int, GT](
        r: var GT,
        elems: ptr UncheckedArray[GT],
        expos: ptr UncheckedArray[BigInt[bits]], N: int) =
@@ -474,6 +474,43 @@ func multiexp_dispatch_vartime[bits: static int, GT](
   of 11: withEndo(multiExpImpl_vartime, r, elems, expos, N, c = 11)
   of 12: withEndo(multiExpImpl_vartime, r, elems, expos, N, c = 12)
   of 13: withEndo(multiExpImpl_vartime, r, elems, expos, N, c = 13)
+  of 14: withEndo(multiExpImpl_vartime, r, elems, expos, N, c = 14)
+  of 15: withEndo(multiExpImpl_vartime, r, elems, expos, N, c = 15)
+
+  of 16..17: withEndo(multiExpImpl_vartime, r, elems, expos, N, c = 16)
+  else:
+    unreachable()
+
+func multiexp_dispatch_no_endo_vartime[bits: static int, GtAcc, GtElt](
+       r: var GtAcc,
+       elems: ptr UncheckedArray[GtElt],
+       expos: ptr UncheckedArray[BigInt[bits]], N: int) =
+  ## Multiexponentiation:
+  ##   r <- g₀^a₀ + g₁^a₁ + ... + gₙ^aₙ
+  ##
+  ## TODO: Currently endomorphism acceleration on a torus is not implemented,
+  ##       we have 2 approaches:
+  ##       - First convert to Torus then apply endomorphism acceleration
+  ##       - or apply endomorphism acceleration then convert to Torus
+  let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
+
+  # Given that bits and N change after applying an endomorphism,
+  # we are able to use a bigger `c`
+  # TODO: benchmark
+
+  case c
+  of  2: multiExpImpl_vartime(r, elems, expos, N, c =  2)
+  of  3: multiExpImpl_vartime(r, elems, expos, N, c =  3)
+  of  4: multiExpImpl_vartime(r, elems, expos, N, c =  4)
+  of  5: multiExpImpl_vartime(r, elems, expos, N, c =  5)
+  of  6: multiExpImpl_vartime(r, elems, expos, N, c =  6)
+  of  7: multiExpImpl_vartime(r, elems, expos, N, c =  7)
+  of  8: multiExpImpl_vartime(r, elems, expos, N, c =  8)
+  of  9: multiExpImpl_vartime(r, elems, expos, N, c =  9)
+  of 10: multiExpImpl_vartime(r, elems, expos, N, c = 10)
+  of 11: multiExpImpl_vartime(r, elems, expos, N, c = 11)
+  of 12: multiExpImpl_vartime(r, elems, expos, N, c = 12)
+  of 13: multiExpImpl_vartime(r, elems, expos, N, c = 13)
   of 14: multiExpImpl_vartime(r, elems, expos, N, c = 14)
   of 15: multiExpImpl_vartime(r, elems, expos, N, c = 15)
 
@@ -485,41 +522,63 @@ func multiExp_vartime*[bits: static int, GT](
        r: var GT,
        elems: ptr UncheckedArray[GT],
        expos: ptr UncheckedArray[BigInt[bits]],
-       len: int) {.tags:[VarTime, Alloca, HeapAlloc], meter, inline.} =
+       len: int,
+       useEndo: static bool = true,
+       useTorus: static bool = false) {.tags:[VarTime, Alloca, HeapAlloc], meter, inline.} =
   ## Multiexponentiation:
   ##   r <- g₀^a₀ + g₁^a₁ + ... + gₙ^aₙ
-  multiExp_dispatch_vartime(r, elems, expos, len)
+  when useTorus:
+    static: doAssert Gt is QuadraticExt, "GT was: " & $Gt
+    type F = typeof(elems[0].c0)
+    var elemsTorus = allocHeapArrayAligned(T2Aff[F], len, alignment = 64)
+    elemsTorus.toOpenArray(0, len-1).batchFromGT_vartime(
+      elems.toOpenArray(0, len-1)
+    )
+    var r_torus {.noInit.}: T2Prj[F]
+    multiexp_dispatch_no_endo_vartime(r_torus, elemsTorus, expos, len)
+    r.fromTorus2_vartime(r_torus)
+  else:
+    when useEndo:
+      multiExp_dispatch_endo_vartime(r, elems, expos, len)
+    else:
+      multiExp_dispatch_no_endo_vartime(r, elems, expos, len)
 
 func multiExp_vartime*[bits: static int, GT](
        r: var GT,
        elems: openArray[GT],
-       expos: openArray[BigInt[bits]]) {.tags:[VarTime, Alloca, HeapAlloc], meter, inline.} =
+       expos: openArray[BigInt[bits]],
+       useEndo: static bool = true,
+       useTorus: static bool = false) {.tags:[VarTime, Alloca, HeapAlloc], meter, inline.} =
   ## Multiexponentiation:
   ##   r <- g₀^a₀ + g₁^a₁ + ... + gₙ^aₙ
   debug: doAssert elems.len == expos.len
   let N = elems.len
-  multiExp_dispatch_vartime(r, elems.asUnchecked(), expos.asUnchecked(), N)
+  multiExp_vartime(r, elems.asUnchecked(), expos.asUnchecked(), N, useEndo, useTorus)
 
 func multiExp_vartime*[F, GT](
        r: var GT,
        elems: ptr UncheckedArray[GT],
        expos: ptr UncheckedArray[F],
-       len: int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
+       len: int,
+       useEndo: static bool = true,
+       useTorus: static bool = false) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
   ## Multiexponentiation:
   ##   r <- g₀^a₀ + g₁^a₁ + ... + gₙ^aₙ
   let n = cast[int](len)
   let expos_big = allocHeapArrayAligned(F.getBigInt(), n, alignment = 64)
   expos_big.batchFromField(expos, n)
-  r.multiExp_vartime(elems, expos_big, n)
+  r.multiExp_vartime(elems, expos_big, n, useEndo, useTorus)
 
   freeHeapAligned(expos_big)
 
 func multiExp_vartime*[GT](
        r: var GT,
        elems: openArray[GT],
-       expos: openArray[Fr]) {.tags:[VarTime, Alloca, HeapAlloc], inline.} =
+       expos: openArray[Fr],
+       useEndo: static bool = true,
+       useTorus: static bool = true) {.tags:[VarTime, Alloca, HeapAlloc], inline.} =
   ## Multiexponentiation:
   ##   r <- g₀^a₀ + g₁^a₁ + ... + gₙ^aₙ
   debug: doAssert elems.len == expos.len
   let N = elems.len
-  multiExp_vartime(r, elems.asUnchecked(), expos.asUnchecked(), N)
+  multiExp_vartime(r, elems.asUnchecked(), expos.asUnchecked(), N, useEndo, useTorus)
