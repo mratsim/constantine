@@ -330,7 +330,7 @@ proc genFpNsqrRT*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
     for i in 0 ..< fd.numWords:
       rA[i] = aA[i]
 
-    asy.genCountdownLoop(fn, count):
+    asy.llvmForCountdown i, count, 0: # countdown from count to 0
       # use `mtymul` to multiply `r·r` and store it again in `r`
       asy.mtymul(fd, r, r, r, M)
 
