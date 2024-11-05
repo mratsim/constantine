@@ -277,6 +277,8 @@ type
 
 proc getContext*(ty: TypeRef): ContextRef {.importc: "LLVMGetTypeContext".}
 proc getTypeKind*(ty: TypeRef): TypeKind {.importc: "LLVMGetTypeKind".}
+proc isPointerType*(ty: TypeRef): bool = ty.getTypeKind == tkPointer
+
 proc dumpType*(ty: TypeRef) {.sideeffect, importc: "LLVMDumpType".}
 proc toLLVMstring(ty: TypeRef): LLVMstring {.used, importc: "LLVMPrintTypeToString".}
 
