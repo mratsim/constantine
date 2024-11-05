@@ -19,7 +19,8 @@ import
   helpers/prng_unsafe
 
 proc testSum[Name: static Algebra](field: type FF[Name], wordSize: int,
-                                   a, b: EC_ShortW_Jac[field, G1]) =
+                                   a, b: EC_ShortW_Jac[field, G1],
+                                   iters = 1000) =
   # Codegen
   # -------------------------
   let nv = initNvAsm(EC_ShortW_Jac[field, G1], wordSize)
@@ -40,7 +41,7 @@ proc testSum[Name: static Algebra](field: type FF[Name], wordSize: int,
     # return point
     rGPU
   var res = a
-  for i in 0 ..< 1000: # `res = res + b`, starting with `a + b`
+  for i in 0 ..< iters: # `res = res + b`, starting with `a + b`
     res = checkSum(res, b)
 
 proc testMixedSum[Name: static Algebra](field: type FF[Name], wordSize: int,
@@ -68,15 +69,16 @@ proc testMixedSum[Name: static Algebra](field: type FF[Name], wordSize: int,
   for i in 0 ..< 1000: # `res = res + b`, starting with `a + b`
     res = checkSum(res, b)
 
+type EC =  EC_ShortW_Jac[Fp[BN254_Snarks], G1]
 
 let x = "0x2ef34a5db00ff691849861d49415d8081d9d0e10cba33b57b2dd1f37f13eeee0"
 let y = "0x2beb0d0d6115007676f30bcc462fe814bf81198848f139621a3e9fa454fe8e6a"
-let pt = EC_ShortW_Jac[Fp[BN254_Snarks], G1].fromHex(x, y)
+let pt = EC.fromHex(x, y)
 echo pt.toHex()
 
 let x2 = "0x226c85cf65f4596a77da7d247310a81ac9aa9220e819e3ef23b6cbe0218ce272"
 let y2 = "0xf53265870f65aa18bded3ccb9c62a4d8b060a32a05a75d455710bce95a991df"
-let pt2 = EC_ShortW_Jac[Fp[BN254_Snarks], G1].fromHex(x2, y2)
+let pt2 = EC.fromHex(x2, y2)
 
 ## If `skipFinalSub` is set to `true` in the EC sum implementation
 ##   `S1.prod(Q.z, Z2Z2, skipFinalSub = true)`
@@ -87,6 +89,11 @@ var pt2Aff: EC_ShortW_Aff[Fp[BN254_Snarks], G1]
 pt2Aff.affine(pt2)
 
 testMixedSum(Fp[BN254_Snarks], 32, pt, pt2Aff)
+
+block CheckAddZero:
+  var pt3: EC
+  pt3.setNeutral()
+  testSum(Fp[BN254_Snarks], 32, pt, pt3, iters = 2)
 
 
 ## NOTE: While these inputs a, b are the ones that end up causing the
