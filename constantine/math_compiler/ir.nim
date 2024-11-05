@@ -851,3 +851,89 @@ proc store*(m: MutableValue, val: ConstantValue) =
 
 proc getValueRef*(m: MutableValue): ValueRef = m.load().val
 
+## Convenience templates that make writing code more succinct
+
+import std / macros
+template llvmForImpl(asy, iter, suffix: untyped, start, stop, isCountup: typed, body: untyped): untyped =
+  ## `asy: Assembler_LLVM`, `fn` need to be in scope!
+  ## Start and stop need to be Nim values (CT or RT)
+  block:
+    let loopEntry = asy.ctx.appendBasicBlock(fn, "loop.entry" & suffix)
+    let loopBody  = asy.ctx.appendBasicBlock(fn, "loop.body" & suffix)
+    let loopExit  = asy.ctx.appendBasicBlock(fn, "loop.exit" & suffix)
+
+    # Branch to loop entry
+    asy.br.br(loopEntry)
+
+    # Position at loop entry
+    asy.br.positionAtEnd(loopEntry)
+
+    # stopping value & increment / decrement per iteration
+    let cStart = asLlvmConstInt(start, asy.ctx.int32_t())
+    let cStop = asLlvmConstInt(stop, asy.ctx.int32_t())
+    let change = if isCountup: 1 else: -1
+    let cChange = constInt(asy.ctx.int32_t(), change)
+
+    # Loop entry condition
+    let cmp = if isCountup: kSLE else: kSGE
+    let condition = asy.br.icmp(cmp, cStart, cStop)
+    asy.br.condBr(condition, loopBody, loopExit)
+
+    # Loop body
+    asy.br.positionAtEnd(loopBody)
+    let phi = asy.br.phi(getTypeOf cStart)
+    phi.addIncoming(cStart, loopEntry)
+
+    # Inject the phi node as the iterator
+    let iter {.inject.} = phi
+    # The loop body
+    body
+
+    # Increment / decrement for next iteration
+    let nextIter = asy.br.add(phi, cChange) # will subtract for countdown
+
+    ## After the loop body the builder may not be in the `loopBody` anymore.
+    ## Consider:
+    ##
+    ## llvmFor i, 0, 10, true:    # Outer loop
+    ##   # Block: outer.body
+    ##   llvmFor j, 0, 5, true:    # Inner loop
+    ##     # Block: inner.body
+    ##     # ... instructions ...
+    ##   # After inner loop - which block are we in?
+    ##
+    ##   # Need to add PHI incoming edge for outer loop
+    ##   phi.addIncoming(nextIter, ????)  # <-- `getInsertBlock` yields the after block of the inner loop
+    ##   # `loopBody` would be incorrect as a result of the inner loop.
+    phi.addIncoming(nextIter, asy.br.getInsertBlock())
+
+    # Check if we should continue looping
+    let continueLoop = asy.br.icmp(cmp, nextIter, cStop)
+    asy.br.condBr(continueLoop, loopBody, loopExit)
+
+    # Loop exit
+    asy.br.positionAtEnd(loopExit)
+
+macro llvmFor*(asy: untyped, iter: untyped, start, stop, isCountup: typed, body: untyped): untyped =
+  let label = $genSym(nskLabel, "loop")
+  result = quote do:
+    llvmForImpl(`asy`, `iter`, `label`, `start`, `stop`, `isCountup`, `body`)
+
+template llvmFor*(asy: untyped, iter: untyped, start, stop: typed, body: untyped): untyped {.dirty.} =
+  ## Start and stop must be Nim values
+  block:
+    let isCountup = start < stop
+    asy.llvmFor iter, start, stop, isCountup:
+      body
+
+template llvmForCountup*(asy: untyped, iter: untyped, start, stop: typed, body: untyped): untyped  {.dirty.} =
+  ## Start and stop can either be Nim or LLVM values
+  block:
+    asy.llvmFor iter, start, stop, true:
+      body
+
+template llvmForCountdown*(asy: untyped, iter: untyped, start, stop: typed, body: untyped): untyped  {.dirty.} =
+  ## Start and stop can either be Nim or LLVM values
+  block:
+    asy.llvmFor iter, start, stop, false:
+      body
