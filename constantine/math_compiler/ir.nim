@@ -937,3 +937,85 @@ template llvmForCountdown*(asy: untyped, iter: untyped, start, stop: typed, body
   block:
     asy.llvmFor iter, start, stop, false:
       body
+
+## Convenience utilities for `ValueRef` (representing numbers) for LLVM
+template declNumberOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped =
+  ## Declares templates similar to the field and EC ops templates
+  ## for `ValueRef`, `MutableValue` and `ConstantValue` so that one
+  ## can effectively write regular arithmetic / boolean logic code
+  ## with LLVM values to produce the correct code.
+  template genLhsRhsVariants(name, fn: untyped): untyped =
+    ## Generates variants for mix of Nim integer + ValueRef and
+    ## pure ValueRef
+    type T = int | uint32 | uint64
+    type U = ValueRef | MutableValue | ConstantValue
+    type X = MutableValue | ConstantValue
+
+    let I = fd.wordTy
+
+    template name(lhs, rhs: ValueRef): untyped =
+      if $getTypeOf(lhs) != $getTypeOf(rhs):
+        raise newException(ValueError, "Inputs do not have matching types. LHS = " & $getTypeOf(lhs) & ", RHS = " & $getTypeOf(rhs))
+      elif getTypeOf(lhs).isPointerType():
+        raise newException(ValueError, "Inputs must not be pointer types.")
+      asy.br.fn(lhs, rhs)
+    template name(lhs: SomeInteger, rhs: U): untyped =
+      block:
+        let lhsV = constInt(I, lhs)
+        asy.br.fn(lhsV, getValueRef rhs)
+    template name(lhs: U, rhs: SomeInteger): untyped =
+      block:
+        let rhsV = constInt(I, rhs)
+        asy.br.fn(getValueRef lhs, rhsV)
+    template name[T: X; U: X](lhs: T; rhs: U): untyped =
+      asy.br.fn(getValueRef lhs, getValueRef rhs)
+
+  template genLhsRhsBooleanVariants(name, pred: untyped): untyped =
+    ## Generates variants for mix of Nim integer + ValueRef and
+    ## pure ValueRef for boolean operations
+    type T = int | uint32 | uint64
+    type U = ValueRef | MutableValue | ConstantValue
+    type X = MutableValue | ConstantValue
+
+    let I = fd.wordTy
+
+    template name(lhs, rhs: ValueRef): untyped =
+      if $getTypeOf(lhs) != $getTypeOf(rhs):
+        raise newException(ValueError, "Inputs do not have matching types. LHS = " & $getTypeOf(lhs) & ", RHS = " & $getTypeOf(rhs))
+      elif getTypeOf(lhs).isPointerType():
+        raise newException(ValueError, "Inputs must not be pointer types.")
+      asy.br.icmp(pred, lhs, rhs)
+    template name(lhs: T; rhs: U): untyped =
+      block:
+        let lhsV = constInt(I, lhs)
+        name(lhsV, getValueRef rhs)
+    template name(lhs: U; rhs: T): untyped =
+      block:
+        let rhsV = constInt(I, rhs)
+        name(getValueRef lhs, rhsV)
+    template name[T: X; U: X](lhs: T; rhs: U): untyped =
+      name(getValueRef lhs, getValueRef rhs)
+
+  # standard binary operations
+  genLhsRhsVariants(`shl`, lshl)
+  genLhsRhsVariants(`shr`, lshr)
+  genLhsRhsVariants(`and`, `and`)
+  genLhsRhsVariants(`or`, `or`)
+  genLhsRhsVariants(`+`, add)
+  genLhsRhsVariants(`-`, sub)
+  genLhsRhsVariants(`*`, mul)
+
+  # boolean based on `icmp`
+  genLhsRhsBooleanVariants(`<`, kSLT)
+  genLhsRhsBooleanVariants(`<=`, kSLE)
+  genLhsRhsBooleanVariants(`==`, kEQ)
+  ## XXX: The following cause overload resolution errors for
+  ## bog standard types, i.e. `>` of `uint32` or `!=` for `string`.
+  ## I think this is because `!=`, `>` and `>=` are implemented as
+  ## untyped templates in system.nim.
+  ## Slightly problematic, we need to add `not` for LLVM to achieve
+  ## the correct behavior.
+  #genLhsRhsBooleanVariants(`>`, kSGT)
+  #genLhsRhsBooleanVariants(`>=`, kSGE)
+  #genLhsRhsBooleanVariants(`!=`, kNE)
+
