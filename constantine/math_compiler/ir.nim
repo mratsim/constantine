@@ -646,4 +646,19 @@ template load2*(asy: Assembler_LLVM, ty: TypeRef, `ptr`: ValueRef, name: cstring
   asy.br.load2(ty, `ptr`, name)
 
 template store*(asy: Assembler_LLVM, dst, src: ValueRef, name: cstring = "") =
+  if not dst.getTypeOf.isPointerType():
+    raise newException(ValueError, "The destination argument to `store` is not a pointer type.")
+  if src.getTypeOf.isPointerType():
+    raise newException(ValueError, "The source argument to `store` is a pointer type. " &
+      "You must `load2()` it before the store. Or use the `MutableValue` type, in which case " &
+      "we can load it automatically for you. If you really wish to store the pointer " &
+      "to the destination, use `storePtr` instead.")
+  asy.br.store(src, dst)
+
+template storePtr*(asy: Assembler_LLVM, dst, src: ValueRef, name: cstring = "") =
+  if not dst.getTypeOf.isPointerType():
+    raise newException(ValueError, "The destination argument to `storePtr` is not a pointer type.")
+  if not src.getTypeOf.isPointerType():
+    raise newException(ValueError, "The source argument to `storePtr` is not a pointer type. " &
+      "You likely want to call `store` instead.")
   asy.br.store(src, dst)
