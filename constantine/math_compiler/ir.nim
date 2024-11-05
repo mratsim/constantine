@@ -1167,3 +1167,26 @@ macro llvmIf*(asy, body: untyped): untyped =
   result.add quote do:
     `asy`.br.positionAtEnd(`afterId`)
 
+proc to*(asy: Assembler_LLVM, x: ValueRef, dtype: TypeRef, signed = false): ValueRef =
+  ## Converts the given integer type of `x` to the target type `T`.
+  ## The numbers are treated as signed integers if `signed` is true, else
+  ## as unsigned.
+  let outsize = getIntTypeWidth(dtype)
+  let tk = x.getTypeOf().getTypeKind()
+  if tk != tkInteger:
+    raise newException(ValueError, "The argument is not an integer type, but: " & $getTypeOf(x))
+  let inSize = getTypeOf(x).getIntTypeWidth()
+  if inSize == outsize:
+    result = x
+  elif inSize < outsize:
+    # extend,
+    if signed:
+      result = asy.br.sext(x, dtype, "to.i" & $outSize)
+    else:
+      result = asy.br.zext(x, dtype, "to.u" & $outSize)
+  else: # trunacte
+    result = asy.br.trunc(x, dtype, "trunc.to.i" & $outSize)
+
+proc to*[T](asy: Assembler_LLVM, x: ValueRef, dtype: typedesc[T], signed = false): ValueRef =
+  let outTyp = asy.nimToLlvmType(T)
+  result = asy.to(x, outTyp, signed)
