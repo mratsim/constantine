@@ -723,3 +723,131 @@ template storePtr*(asy: Assembler_LLVM, dst, src: ValueRef, name: cstring = "") 
     raise newException(ValueError, "The source argument to `storePtr` is not a pointer type. " &
       "You likely want to call `store` instead.")
   asy.br.store(src, dst)
+
+## No-op to support calling it on `MutableValue | ConstantValue | ValueRef`
+proc getValueRef*(x: ValueRef): ValueRef = x
+
+proc nimToLlvmType[T](asy: Assembler_LLVM, _: typedesc[T]): TypeRef =
+  when T is SomeInteger:
+    result = asy.ctx.int_t(sizeof(T) * 8)
+  else:
+    {.error: "Unsupported so far: " & $T.}
+
+type
+  ## A value constructed using `constX`
+  ConstantValue* = object
+    br: BuilderRef
+    val: ValueRef
+    typ: TypeRef
+
+proc `=copy`(m: var ConstantValue, x: ConstantValue) {.error: "Copying a constant value is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+
+proc initConstVal*(br: BuilderRef, val: ValueRef): ConstantValue =
+  ## Construct a constant value from a given LLVM value.
+  result = ConstantValue(br: br, val: val, typ: getTypeOf(val))
+
+proc initConstVal*(asy: Assembler_LLVM, val: ValueRef): ConstantValue =
+  asy.br.initConstVal(val)
+
+proc initConstVal*[T: SomeInteger](asy: Assembler_LLVM, x: T): ConstantValue =
+  let t = asy.nimToLlvmType(T)
+  result = initConstVal(asy.br, constInt(t, x))
+
+proc initConstVal*(br: BuilderRef, val: int{lit}, typ: TypeRef): ConstantValue =
+  ## Construct an LLVM value from an integer literal of the targe type `typ`.
+  result = br.initConstVal(constInt(typ, val))
+
+proc initConstVal*(asy: Assembler_LLVM, val: int{lit}, typ: TypeRef): ConstantValue =
+  ## Construct an LLVM value from an integer literal of the targe type `typ`.
+  result = asy.br.initConstVal(constInt(typ, val))
+
+template store*(asy: Assembler_LLVM, dst: ValueRef, src: ConstantValue, name: cstring = "") =
+  if not dst.getTypeOf.isPointerType():
+    raise newException(ValueError, "The destination argument to `store` is not a pointer type.")
+  asy.br.store(src.val, dst)
+
+proc getValueRef*(v: ConstantValue): ValueRef = v.val
+
+proc asLlvmConstInt[T: SomeInteger | ValueRef](x: T, dtype: TypeRef): ValueRef =
+  ## Given either a value that is already an LLVM value ref or
+  ## a Nim value, return a `constInt`
+  when T is ValueRef:
+    ## XXX: check type is int
+    result = x
+  else:
+    result = constInt(dtype, x)
+
+type
+  ## A value constructed using `constX`
+  MutableValue* = object
+    br: BuilderRef
+    buf: ValueRef
+    typ: TypeRef ## type of the *underlying* type, not the pointer
+
+proc `=copy`(m: var MutableValue, x: MutableValue) {.error: "Copying a mutable value is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+proc initMutVal*(br: BuilderRef, x: ValueRef): MutableValue =
+  ## Initializes a mutable value from a given LLVM value. Raises if the given
+  ## value is of pointer type.
+  if x.getTypeOf().isPointerType():
+    raise newException(ValueError, "Initializing a mutable value from a pointer type is not supported.")
+  let typ = x.getTypeOf()
+  result = MutableValue(
+    br: br,
+    buf: br.alloca(typ),
+    typ: typ
+  )
+  br.store(x, result.buf) # LLVM store is (source, dest)
+
+proc initMutVal*(br: BuilderRef, x: ConstantValue): MutableValue =
+  br.initMutVal(x.val)
+
+proc initMutVal*(asy: Assembler_LLVM, x: ConstantValue): MutableValue =
+  asy.br.initMutVal(x)
+
+proc initMutVal*(br: BuilderRef, typ: TypeRef): MutableValue =
+  if typ.getTypeKind != tkInteger:
+    raise newException(ValueError, "Initializing a mutable value from a non integer type without value is not supported. " &
+      "Type is: " & $typ)
+  br.initMutVal(constInt(typ, 0))
+
+proc initMutVal*(asy: Assembler_LLVM, typ: TypeRef): MutableValue =
+  asy.br.initMutVal(typ)
+
+proc initMutVal*[T](br: BuilderRef): MutableValue =
+  br.initMutVal(default(T)) # initialize with default value for correct type info
+
+proc initMutVal*[T](asy: Assembler_LLVM): MutableValue =
+  asy.br.initMutVal[:T]()
+
+proc load*(m: MutableValue): ConstantValue =
+  result = m.br.initConstVal(m.br.load2(m.typ, m.buf))
+
+proc store*(m: MutableValue, val: ValueRef) =
+  if val.getTypeOf.isPointerType():
+    raise newException(ValueError, "The source argument to `store` is a pointer type. " &
+      "You must `load2()` it before the store. Or use the `MutableValue` type, in which case " &
+      "we can load it automatically for you. If you really wish to store the pointer " &
+      "to the destination, use `storePtr` instead.")
+  m.br.store(val, m.buf) # LLVM store uses (target, source)
+
+proc store*(asy: Assembler_LLVM, dst: ValueRef, m: MutableValue) =
+  asy.store(dst, m.load().val) # delegate to regular template defined further above
+
+proc store*(asy: Assembler_LLVM, dst: MutableValue, x: ValueRef) =
+  asy.store(dst.buf, x) # delegate to regular template defined further above
+
+proc storePtr*(m: MutableValue, val: ValueRef) =
+  if not val.getTypeOf.isPointerType():
+    raise newException(ValueError, "The source argument to `store` is not a pointer type. " &
+      "You likely want to call `store` instead.")
+  m.br.store(val, m.buf) # LLVM store uses (target, source)
+
+proc store*(m: MutableValue, val: ConstantValue) =
+  m.store(val.val)
+
+proc getValueRef*(m: MutableValue): ValueRef = m.load().val
+
