@@ -15,7 +15,9 @@ import
   ./impl_fields_dispatch,
   ./impl_fields_ops,
   ./impl_curves_ops_affine,
-  ./impl_curves_ops_jacobian
+  ./impl_curves_ops_jacobian,
+  ./impl_msm_nvidia
+
 
 ## Section name used for `llvmInternalFnDef`
 const SectionName = "ctt.pub_curves_jacobian"
@@ -156,5 +158,25 @@ proc genEcMixedSum*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
   asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.curveTy, cd.curveTy, cd.curveTyAff]):
     let (ri, pi, qi) = llvmParams
     asy.mixedSum(cd, ri, pi, qi)
+    asy.br.retVoid()
+  result = name
+
+proc genEcMSM*(asy: Assembler_LLVM, cd: CurveDescriptor, c, N: int): string =
+  ## Generate a publc elliptic curve MSM proc for EC points in affine
+  ## coordinates and coefficients in canonical representation.
+  ## Uses the bucket method and is currently fully serial. So don't
+  ## expect any speedup from the CPU implementation.
+  ##
+  ## `c` is the window size and `N` the number of points. The code
+  ## requires these to be defined at compile time.
+  ##
+  ## Returns the name of the produced kernel to call it.
+  let fT = array_t(cd.fieldScalarTy, N)
+  let cT = array_t(cd.curveTyAff, N)
+  let name = cd.name & "_msm_public_c_" & $c & "_N_" & $N
+
+  asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.curveTy, fT, cT]):
+    let (ri, cs, ps) = llvmParams
+    asy.msm(cd, ri, cs, ps, c, N)
     asy.br.retVoid()
   result = name
