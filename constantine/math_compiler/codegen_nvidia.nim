@@ -448,6 +448,9 @@ proc execCudaImpl(jitFn, res, inputs: NimNode): NimNode =
         x[0]
       )
     )
+  result = quote do:
+    block:
+      `result`
 
 macro execCuda*(jitFn: CUfunction,
                 res: typed,
