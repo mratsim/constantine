@@ -388,27 +388,64 @@ proc store*(asy: Assembler_LLVM, dst: Array, src: ValueRef) {.inline.}=
   asy.br.store(src, dst.buf)
 
 # Representation of a finite field point with some utilities
-type Field* {.borrow: `.`.} = distinct Array
 
-proc `[]`*(a: Field, index: SomeInteger): ValueRef = distinctBase(a)[index]
-proc `[]=`*(a: Field, index: SomeInteger, val: ValueRef) = distinctBase(a)[index] = val
+template genField(name, desc, field: untyped): untyped =
+  type name* {.borrow: `.`.} = distinct Array
 
-proc asField*(br: BuilderRef, a: ValueRef, fieldTy: TypeRef): Field =
-  result = Field(br.asArray(a, fieldTy))
-proc asField*(asy: Assembler_LLVM, a: ValueRef, fieldTy: TypeRef): Field =
-  asy.br.asField(a, fieldTy)
-proc asField*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef): Field =
-  asy.br.asField(a, fd.fieldTy)
+  proc `=copy`(m: var name, x: name) {.error: "Copying a " & $name & " is not allowed. " &
+    "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
 
-proc newField*(asy: Assembler_LLVM, fd: FieldDescriptor): Field =
-  ## Use field descriptor for size etc?
-  result = Field(asy.makeArray(fd.fieldTy))
+  proc `[]`*(a: name, index: SomeInteger | ValueRef): ValueRef = distinctBase(a)[index]
+  proc `[]=`*(a: name, index: SomeInteger | ValueRef, val: ValueRef) = distinctBase(a)[index] = val
 
-proc store*(dst: Field, src: Field) =
-  ## Stores the `dst` in `src`. Both must correspond to the same field of course.
-  assert dst.arrayTy.getArrayLength() == src.arrayTy.getArrayLength()
-  for i in 0 ..< dst.arrayTy.getArrayLength:
-    dst[i] = src[i]
+  proc `as name`*(br: BuilderRef, a: ValueRef, fieldTy: TypeRef): name =
+    result = name(br.asArray(a, fieldTy))
+  proc `as name`*(asy: Assembler_LLVM, a: ValueRef, fieldTy: TypeRef): name =
+    asy.br.`as name`(a, fieldTy)
+  proc `as name`*(asy: Assembler_LLVM, d: desc, a: ValueRef): name =
+    asy.br.`as name`(a, d.field)
+
+  proc `new name`*(asy: Assembler_LLVM, d: desc): name =
+    ## Use field descriptor for size etc?
+    result = name(asy.makeArray(d.field))
+
+  proc store*(dst: name, src: name) =
+    ## Stores the `dst` in `src`. Both must correspond to the same field of course.
+    assert dst.arrayTy.getArrayLength() == src.arrayTy.getArrayLength()
+    for i in 0 ..< dst.arrayTy.getArrayLength:
+      dst[i] = src[i]
+
+
+genField(Field, FieldDescriptor, fieldTy)             # intended for elements of `Fp[Curve]`
+genField(FieldScalar, CurveDescriptor, fieldScalarTy) # intended for elements of `Fr[Curve]`
+
+# Representation of a finite field point with some utilities
+type FieldArray* {.borrow: `.`.} = distinct Array
+
+proc `=copy`(m: var FieldArray, x: FieldArray) {.error: "Copying an FieldArray is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+proc `[]`*(a: FieldArray, index: SomeInteger | ValueRef): Field = asField(a.builder, distinctBase(a).getPtr(index), a.elemTy)
+proc `[]=`*(a: FieldArray, index: SomeInteger | ValueRef, val: ValueRef) = distinctBase(a)[index] = val
+
+proc asFieldArray*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef, num: int): FieldArray =
+  ## Interpret the given value `a` as an array of Field elements.
+  let ty = array_t(fd.fieldTy, num)
+  result = FieldArray(asy.br.asArray(a, ty))
+
+type FieldScalarArray* {.borrow: `.`.} = distinct Array
+
+proc `=copy`(m: var FieldScalarArray, x: FieldScalarArray) {.error: "Copying an FieldScalarArray is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+proc `[]`*(a: FieldScalarArray, index: SomeInteger | ValueRef): FieldScalar = asFieldScalar(a.builder, distinctBase(a).getPtr(index), a.elemTy)
+proc `[]=`*(a: FieldScalarArray, index: SomeInteger | ValueRef, val: ValueRef) = distinctBase(a)[index] = val
+
+proc asFieldScalarArray*(asy: Assembler_LLVM, cd: CurveDescriptor, a: ValueRef, num: int): FieldScalarArray =
+  ## Interpret the given value `a` as an array of Field elements.
+  let ty = array_t(cd.fieldScalarTy, num)
+  result = FieldScalarArray(asy.br.asArray(a, ty))
+
 
 # Conversion to native LLVM int
 # -------------------------------

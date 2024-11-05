@@ -23,6 +23,16 @@ const SectionName = "ctt.curves_jacobian"
 type
   EcPointJac* {.borrow: `.`.} = distinct Array
 
+proc `=copy`(m: var EcPointJac, x: EcPointJac) {.error: "Copying an EcPointJac is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+proc asEcPointJac*(br: BuilderRef, arrayPtr: ValueRef, arrayTy: TypeRef): EcPointJac =
+  ## Constructs an elliptic curve point in Jacobian coordinates from an array pointer.
+  ##
+  ## `arrayTy` is an `array[FieldTy, 3]` where `FieldTy` itsel is an array of
+  ## `array[WordTy, NumWords]`.
+  result = EcPointJac(br.asArray(arrayPtr, arrayTy))
+
 proc asEcPointJac*(asy: Assembler_LLVM, arrayPtr: ValueRef, arrayTy: TypeRef): EcPointJac =
   ## Constructs an elliptic curve point in Jacobian coordinates from an array pointer.
   ##
@@ -56,6 +66,25 @@ proc store*(dst: EcPointJac, src: EcPointJac) =
   store(dst.getX(), src.getX())
   store(dst.getY(), src.getY())
   store(dst.getZ(), src.getZ())
+
+# Representation of a finite field point with some utilities
+type EcJacArray* {.borrow: `.`.} = distinct Array
+
+proc `=copy`(m: var EcJacArray, x: EcJacArray) {.error: "Copying an EcJacArray is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+proc `[]`*(a: EcJacArray, index: SomeInteger | ValueRef): EcPointJac = a.builder.asEcPointJac((distinctBase(a).getPtr(index)), a.elemTy)
+proc `[]=`*(a: EcJacArray, index: SomeInteger | ValueRef, val: EcPointJac) = distinctBase(a)[index] = val.buf
+
+proc asEcJacArray*(asy: Assembler_LLVM, cd: CurveDescriptor, a: ValueRef, num: int): EcJacArray =
+  ## Interpret the given value `a` as an array of EC elements in Jacobian coordinates.
+  let ty = array_t(cd.curveTy, num)
+  result = EcJacArray(asy.br.asArray(a, ty))
+
+proc initEcJacArray*(asy: Assembler_LLVM, cd: CurveDescriptor, num: int): EcJacArray =
+  ## Initialize a new EcJacArray for `num` elements
+  let ty = array_t(cd.curveTy, num)
+  result = EcJacArray(asy.makeArray(ty))
 
 template declEllipticJacOps*(asy: Assembler_LLVM, cd: CurveDescriptor): untyped =
   ## This template can be used to make operations on `Field` elements
