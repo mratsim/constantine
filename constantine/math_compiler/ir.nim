@@ -304,8 +304,11 @@ type
     elemTy*: TypeRef
     int32_t: TypeRef
 
-proc `[]`*(a: Array, index: SomeInteger): ValueRef {.inline.}
-proc `[]=`*(a: Array, index: SomeInteger, val: ValueRef) {.inline.}
+proc `=copy`*(m: var Array, x: Array) {.error: "Copying an Array is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+proc `[]`*(a: Array, index: SomeInteger | ValueRef): ValueRef {.inline.}
+proc `[]=`*(a: Array, index: SomeInteger | ValueRef, val: ValueRef) {.inline.}
 
 proc asArray*(br: BuilderRef, arrayPtr: ValueRef, arrayTy: TypeRef): Array =
   Array(
