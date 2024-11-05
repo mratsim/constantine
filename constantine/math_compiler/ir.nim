@@ -348,13 +348,34 @@ proc getElementPtr*(a: Array, indices: varargs[int]): ValueRef =
     idxs[i] = constInt(a.int32_t, idx)
   result = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, idxs)
 
-proc `[]`*(a: Array, index: SomeInteger): ValueRef {.inline.}=
+proc getElementPtr*(a: Array, indices: varargs[ValueRef]): ValueRef =
+  ## Helper to get an element pointer from a (nested) array using
+  ## indices that are already `ValueRef`
+  let idxs = @indices
+  result = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, idxs)
+
+template asInt(x: SomeInteger | ValueRef): untyped =
+  when typeof(x) is ValueRef: x
+  else: x.int
+
+proc getPtr*(a: Array, index: SomeInteger | ValueRef): ValueRef {.inline.}=
+  ## First dereference the array pointer with 0, then access the `index`
+  ## but do not load the element!
+  when typeof(index) is SomeInteger:
+    result = a.getElementPtr(0, index.int)
+  else:
+    result = a.getElementPtr(constInt(a.int32_t, 0), index)
+
+proc `[]`*(a: Array, index: SomeInteger | ValueRef): ValueRef {.inline.}=
   # First dereference the array pointer with 0, then access the `index`
-  let pelem = a.getElementPtr(0, index.int)
+  let pelem = getPtr(a, index)
   a.builder.load2(a.elemTy, pelem)
 
-proc `[]=`*(a: Array, index: SomeInteger, val: ValueRef) {.inline.}=
-  let pelem = a.getElementPtr(0, index.int)
+proc `[]=`*(a: Array, index: SomeInteger | ValueRef, val: ValueRef) {.inline.}=
+  when typeof(index) is SomeInteger:
+    let pelem = a.getElementPtr(0, index.int)
+  else:
+    let pelem = a.getElementPtr(constInt(a.int32_t, 0), index)
   a.builder.store(val, pelem)
 
 proc store*(asy: Assembler_LLVM, dst: Array, src: Array) {.inline.}=
