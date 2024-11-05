@@ -586,7 +586,8 @@ proc initNvAsm*[Name: static Algebra](field: type EC_ShortW_Jac[Fp[Name], G1], w
     Fp[Name].getModulus().toHex(),
     v = 1, w = wordSize,
     coef_a = Fp[Name].Name.getCoefA(),
-    coef_B = Fp[Name].Name.getCoefB()
+    coef_B = Fp[Name].Name.getCoefB(),
+    curveOrderBitWidth = Fr[Name].bits()
   )
   result.fd = result.cd.fd
   result.asy.definePrimitives(result.cd)

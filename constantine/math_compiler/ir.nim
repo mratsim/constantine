@@ -254,7 +254,8 @@ proc configureCurve*(ctx: ContextRef,
       name: string,
       modBits: int, modulus: string,
       v, w: int,
-      coefA, coefB: int): CurveDescriptor =
+      coefA, coefB: int,
+      curveOrderBitWidth: int): CurveDescriptor =
   ## Configure a curve descriptor with:
   ## - v: vector length
   ## - w: base word size in bits
@@ -276,6 +277,7 @@ proc configureCurve*(ctx: ContextRef,
   # Curve parameters
   result.coef_a = coef_a
   result.coef_b = coef_b # unused
+  result.orderBitWidth = curveOrderBitWidth.uint32
 
 proc definePrimitives*(asy: Assembler_LLVM, cd: CurveDescriptor) =
   asy.definePrimitives(cd.fd)
