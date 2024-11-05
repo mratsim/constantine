@@ -76,7 +76,7 @@ proc msm*(asy: Assembler_LLVM, cd: CurveDescriptor, r, coefs, points: ValueRef,
 
       var accumBuckets = asy.newEcPointJac(cd)
       var miniMSM      = asy.newEcPointJac(cd)
-      accumBuckets = buckets[numBuckets-1]
+      accumBuckets.store(buckets[numBuckets-1])
       miniMSM.store(buckets[numBuckets-1])
 
       asy.llvmFor k, numBuckets-2, 0, false:
