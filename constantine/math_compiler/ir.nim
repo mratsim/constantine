@@ -226,9 +226,13 @@ type
     fd*: FieldDescriptor # of the underlying field
     family*: CurveFamily
     modulus*: string # Modulus as Big-Endian uppercase hex, NOT prefixed with 0x
-    modulusBitWidth*: uint32
+    modulusBitWidth*: uint32 # bits required for elements of `Fp`
     order*: string
-    orderBitWidth*: uint32
+    orderBitWidth*: uint32 # bits required for scalar elements `Fr`
+
+    # type of the field Fr
+    fieldScalarTy*: TypeRef
+    numWordsScalar*: uint32 # num words required for it
 
     cofactor*: string
     eqForm*: CurveEquationForm
@@ -264,6 +268,10 @@ proc configureCurve*(ctx: ContextRef,
   result.curveTy = array_t(result.fd.fieldTy, 3)
   # Array of 2 arrays for affine coords
   result.curveTyAff = array_t(result.fd.fieldTy, 2)
+
+  # and the type for elements of Fr
+  result.numWordsScalar = uint32 wordsRequired(curveOrderBitWidth, w)
+  result.fieldScalarTy = array_t(result.fd.wordTy, result.numWordsScalar)
 
   # Curve parameters
   result.coef_a = coef_a
