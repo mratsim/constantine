@@ -60,13 +60,25 @@ proc store*(dst: EcPointJac, src: EcPointJac) =
 template declEllipticJacOps*(asy: Assembler_LLVM, cd: CurveDescriptor): untyped =
   ## This template can be used to make operations on `Field` elements
   ## more convenient.
-  ## XXX: extend to include all ops
+  # Setters
+  template setNeutral(x: EcPointJac): untyped = asy.setNeutral(cd, x.buf)
+
   # Boolean checks
   template isNeutral(res, x: EcPointJac): untyped = asy.isNeutral(cd, res, x.buf)
   template isNeutral(x: EcPointJac): untyped =
     var res = asy.br.alloca(asy.ctx.int1_t())
     asy.isNeutral(cd, res, x.buf)
     res
+
+  # Mutating assignment ops
+  template sum(res, x, y: EcPointJac): untyped = asy.sum(cd, res.buf, x.buf, y.buf)
+  template `+=`(x, y: EcPointJac): untyped     = x.sum(x, y)
+  template mixedSum(res, x: EcPointJac, y: EcPointAff): untyped = asy.mixedSum(cd, res.buf, x.buf, y.buf)
+  template `+=`(x: EcPointJac, y: EcPointAff): untyped = x.mixedSum(x, y)
+
+  # Arithmetic mutations
+  template double(res, x: EcPointJac): untyped = asy.double(cd, res.buf, x.buf)
+  template double(x: EcPointJac): untyped      = x.double(x)
 
   # Conditional ops
   template ccopy(x, y: EcPointJac, c): untyped = asy.ccopy(cd, x.buf, y.buf, derefBool c)
