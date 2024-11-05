@@ -596,6 +596,19 @@ proc compile*(nv: NvidiaAssembler, kernName: string): CUfunction =
   ## Overload of `compile` below.
   ## Call this version if you have manually used the Assembler_LLVM object
   ## to build instructions and have a kernel name you wish to compile.
+  ##
+  ## Use this overload if your generator function does not match the `FieldFnGenerator` or
+  ## `CurveFnGenerator` signatures. This is useful if your function requires additional
+  ## arguments that are compile time values in the context of LLVM.
+  ##
+  ## Example:
+  ##
+  ## ```nim
+  ##  let nv = initNvAsm(EC, wordSize)
+  ##  let kernel = nv.compile(asy.genEcMSM(cd, 3, 1000) # window size, num. points
+  ## ```
+  ## where `genEcMSM` returns the name of the kernel.
+
   let ptx = nv.asy.codegenNvidiaPTX(nv.sm) # convert to PTX
 
   # GPU exec
