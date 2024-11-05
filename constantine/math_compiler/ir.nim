@@ -1019,3 +1019,151 @@ template declNumberOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped =
   #genLhsRhsBooleanVariants(`>=`, kSGE)
   #genLhsRhsBooleanVariants(`!=`, kNE)
 
+proc collectElifBranches(n: NimNode): tuple[elifs: seq[NimNode], els: NimNode] =
+  ## The `else` branch is an optional second argument, `els`
+  doAssert n.kind == nnkIfStmt
+  result.els = newEmptyNode() # set to empty as default
+  for el in n:
+    case el.kind
+    of nnkElifBranch: result.elifs.add el
+    of nnkElse: result.els = el
+    else: raiseAssert "Invalid branch: " & $el.kind
+
+macro llvmIf*(asy, body: untyped): untyped =
+  ## Rewrites the given body, which *must* contain an if statement
+  ## with (possibly) multiple branches) into conditional branches
+  ## on LLVM. We jump from the current block of `asy` into the
+  ## conditional branches and provide a block at the end, which we
+  ## will reach from every if branch.
+  ##
+  ## NOTE: This can only be used inside of an `llvmInternalFnDef` template,
+  ## because it needs access to the current function, `fn` identifier.
+  ##
+  ## BE CAREFUL: For the moment this macro does not handle using values
+  ## assigned in its body after the if statements. This would require
+  ## creating a φ-node for the value, which we currently do not do.
+  ## Mainly, because this requires a more complicated traversal of the
+  ## macro body to detect such a requirement. Instead we might add
+  ## an alternative `llvmIfUse` or similar in the future, where exactly
+  ## one assignment is allowed.
+  ##
+  ##   IfStmt
+  ##     ElifBranch
+  ##       Ident "true"
+  ##       StmtList
+  ##         Command
+  ##           Ident "echo"
+  ##           StrLit "x"
+  ##     Else
+  ##       StmtList
+  ##         Command
+  ##           Ident "echo"
+  ##           StrLit "y"
+  ##
+  doAssert body.kind in {nnkIfStmt, nnkStmtList}, "Input *must* be an if statement, but is: " & $body.kind
+  var body = body
+  if body.kind == nnkStmtList:
+    doAssert body.len == 1 and body[0].kind == nnkIfStmt, "If a nnkStmtList, must only contain an nnkIfStmt, but: " & $body.treerepr
+    body = body[0]
+
+  # 1. collect all elif branches (and possible else)
+  let (elifs, els) = collectElifBranches(body)
+  let hasElse = els.kind != nnkEmpty
+
+  # For each `elif` (including the first `if`) we need 2 blocks:
+  # - elif condition
+  # - if true body
+  # If `els` is set, need an additional:
+  # - else body
+  # Finally, need an
+  # - after if/else body
+  result = newStmtList()
+
+  # 2. generate all required blocks
+  var elifBranches = newSeq[tuple[cond, body: NimNode]]() # contains the *identifiers* for the blocks
+  for i, el in elifs:
+    # 2.1 create the identifiers
+    let condId = genSym(nskLet, "elifCond")
+    let bodyId = genSym(nskLet, "elifBody")
+    # 2.2 generate let stmts to append the blocks to LLVM context
+    let idx = $i
+    result.add quote do:
+      let `condId` = `asy`.ctx.appendBasicBlock(fn, "elif.condition." & `idx`)
+      let `bodyId` = `asy`.ctx.appendBasicBlock(fn, "elif.body." & `idx`)
+    # 2.3 store
+    elifBranches.add (cond: condId, body: bodyId)
+  # 2.4 create `else` block if needed
+  var elseId: NimNode
+  if hasElse:
+    elseId = genSym(nskLet, "elseBody")
+    result.add quote do:
+      let `elseId` = `asy`.ctx.appendBasicBlock(fn, "else.body")
+  # 2.5 create 'after if/else' block
+  let afterId = genSym(nskLet, "afterBody")
+  result.add quote do:
+    let `afterId` = `asy`.ctx.appendBasicBlock(fn, "after.body")
+
+  # 3. jump to the first if condition
+  let firstCond = elifBranches[0].cond
+  result.add quote do:
+    `asy`.br.br(`firstCond`)
+
+  # 4. fill all the blocks
+  for i, el in elifs:
+    # 4.1 take condition of `elif`
+    # ElifBranch
+    #   Ident "true"       <- `el[0]`
+    #   StmtList           <- `el[1]`
+    #     Command
+    #       Ident "echo"
+    #       StrLit "x"
+    let cond = el[0]
+    # 4.2 set our builder to this block
+    let condId = elifBranches[i].cond
+    let condVal = genSym(nskLet, "condVal")
+    result.add quote do:
+      `asy`.br.positionAtEnd(`condId`)
+    # 4.3 fill the block with the condition
+    result.add quote do:
+      let `condVal` = `cond`
+
+    #result.add nnkBlockStmt.newTree(ident("Block_" & $condId), cond)
+    # 4.4 determine the `else` block to jump to (else, after or next elif)
+    let ifFalseNext =
+      if i < elifBranches.high: # has another elif
+        elifBranches[i+1].cond
+      elif hasElse:             # last, jump to existing else
+        elseId
+      else:                     # neither, jump after if/else
+        afterId
+
+    # 4.5 conditionally branch based on condition the block with a conditional branch
+    let bodyId = elifBranches[i].body
+    result.add quote do:
+      `asy`.br.condBr(`condVal`, `bodyId`, `ifFalseNext`)
+
+    # 4.6 set builder to if body
+    let blkBody = el[1]
+    result.add quote do:
+      `asy`.br.positionAtEnd(`bodyId`)
+    # 4.7 fill the block with the body
+    result.add nnkBlockStmt.newTree(ident("Block_" & $bodyId), blkBody)
+    # 4.8 branch to after if
+    result.add quote do:
+      `asy`.br.br(`afterId`)
+
+  # 5. handle the `else` branch if any
+  if hasElse:
+    # 5.1 position at else block
+    result.add quote do:
+      `asy`.br.positionAtEnd(`elseId`)
+    # 5.2 add the else body to this block
+    result.add els[0]
+    # 5.3 jump to after block
+    result.add quote do:
+      `asy`.br.br(`afterId`)
+
+  # 6. position builder at after block
+  result.add quote do:
+    `asy`.br.positionAtEnd(`afterId`)
+
