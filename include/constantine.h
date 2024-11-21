@@ -27,6 +27,7 @@
 #include "constantine/curves/vesta.h"
 
 #include "constantine/curves/bls12_381_codecs.h"
+#include "constantine/curves/banderwagon.h"
 
 #include "constantine/curves/bls12_381_parallel.h"
 #include "constantine/curves/bn254_snarks_parallel.h"

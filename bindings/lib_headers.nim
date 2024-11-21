@@ -134,7 +134,8 @@ proc writeCurveHeaders(dir: string) =
     BLS12_381: cBindings_bls12_381,
     BN254_Snarks: cBindings_bn254_snarks,
     Pallas: cBindings_pallas,
-    Vesta: cBindings_vesta
+    Vesta: cBindings_vesta,
+    Banderwagon: cBindings_banderwagon
   }
 
   staticFor i, 0, curveMappings.len:

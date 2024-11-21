@@ -19,14 +19,14 @@ import
 export c_curve_decls, c_curve_decls_parallel
 
 type
-  big254 = BigInt[254]
   big253 = BigInt[253]
+  big254 = BigInt[254]
   big255 = BigInt[255]
   big381 = BigInt[381]
 
 collectBindings(cBindings_big):
-  genBindingsBig(big254)
   genBindingsBig(big253)
+  genBindingsBig(big254)
   genBindingsBig(big255)
   genBindingsBig(big381)
 

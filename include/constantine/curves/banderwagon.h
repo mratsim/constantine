@@ -16,13 +16,13 @@
 extern "C" {
 #endif
 
-typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(255)]; } banderwagon_fr;
-typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(253)]; } banderwagon_fp;
+typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(253)]; } banderwagon_fr;
+typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(255)]; } banderwagon_fp;
 typedef struct { banderwagon_fp x, y; } banderwagon_ec_aff;
 typedef struct { banderwagon_fp x, y, z; } banderwagon_ec_prj;
 
-void ctt_big255_from_banderwagon_fr(big255* dst, const banderwagon_fr* src);
-void ctt_banderwagon_fr_from_big255(banderwagon_fr* dst, const big255* src);
+void ctt_big253_from_banderwagon_fr(big253* dst, const banderwagon_fr* src);
+void ctt_banderwagon_fr_from_big253(banderwagon_fr* dst, const big253* src);
 ctt_bool ctt_banderwagon_fr_unmarshalBE(banderwagon_fr* dst, const byte src[], size_t src_len) __attribute__((warn_unused_result));
 ctt_bool ctt_banderwagon_fr_marshalBE(byte dst[], size_t dst_len, const banderwagon_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_banderwagon_fr_is_eq(const banderwagon_fr* a, const banderwagon_fr* b);
@@ -54,8 +54,8 @@ void ctt_banderwagon_fr_cset_one(banderwagon_fr* a, secret_bool ctl);
 void ctt_banderwagon_fr_cneg_in_place(banderwagon_fr* a, secret_bool ctl);
 void ctt_banderwagon_fr_cadd_in_place(banderwagon_fr* a, const banderwagon_fr* b, secret_bool ctl);
 void ctt_banderwagon_fr_csub_in_place(banderwagon_fr* a, const banderwagon_fr* b, secret_bool ctl);
-void ctt_big253_from_banderwagon_fp(big253* dst, const banderwagon_fp* src);
-void ctt_banderwagon_fp_from_big253(banderwagon_fp* dst, const big253* src);
+void ctt_big255_from_banderwagon_fp(big255* dst, const banderwagon_fp* src);
+void ctt_banderwagon_fp_from_big255(banderwagon_fp* dst, const big255* src);
 ctt_bool ctt_banderwagon_fp_unmarshalBE(banderwagon_fp* dst, const byte src[], size_t src_len) __attribute__((warn_unused_result));
 ctt_bool ctt_banderwagon_fp_marshalBE(byte dst[], size_t dst_len, const banderwagon_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_banderwagon_fp_is_eq(const banderwagon_fp* a, const banderwagon_fp* b);
@@ -119,11 +119,11 @@ void ctt_banderwagon_ec_prj_mixed_diff_in_place(banderwagon_ec_prj* P, const ban
 void ctt_banderwagon_ec_prj_affine(banderwagon_ec_aff* dst, const banderwagon_ec_prj* src);
 void ctt_banderwagon_ec_prj_from_affine(banderwagon_ec_prj* dst, const banderwagon_ec_aff* src);
 void ctt_banderwagon_ec_prj_batch_affine(const banderwagon_ec_aff dst[], const banderwagon_ec_prj src[], size_t n);
-void ctt_banderwagon_ec_prj_scalar_mul_big_coef(banderwagon_ec_prj* P, const big255* scalar);
+void ctt_banderwagon_ec_prj_scalar_mul_big_coef(banderwagon_ec_prj* P, const big253* scalar);
 void ctt_banderwagon_ec_prj_scalar_mul_fr_coef(banderwagon_ec_prj* P, const banderwagon_fr* scalar);
-void ctt_banderwagon_ec_prj_scalar_mul_big_coef_vartime(banderwagon_ec_prj* P, const big255* scalar);
+void ctt_banderwagon_ec_prj_scalar_mul_big_coef_vartime(banderwagon_ec_prj* P, const big253* scalar);
 void ctt_banderwagon_ec_prj_scalar_mul_fr_coef_vartime(banderwagon_ec_prj* P, const banderwagon_fr* scalar);
-void ctt_banderwagon_ec_prj_multi_scalar_mul_big_coefs_vartime(banderwagon_ec_prj* r, const big255 coefs[], const banderwagon_ec_aff points[], size_t len);
+void ctt_banderwagon_ec_prj_multi_scalar_mul_big_coefs_vartime(banderwagon_ec_prj* r, const big253 coefs[], const banderwagon_ec_aff points[], size_t len);
 void ctt_banderwagon_ec_prj_multi_scalar_mul_fr_coefs_vartime(banderwagon_ec_prj* r, const banderwagon_fr coefs[], const banderwagon_ec_aff points[], size_t len);
 
 #ifdef __cplusplus

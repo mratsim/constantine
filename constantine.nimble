@@ -340,6 +340,7 @@ proc testLib(path, testName: string, useGMP: bool) =
 task test_lib, "Test C library":
   exec "mkdir -p build/test_lib"
   testLib("examples-c", "t_libctt_bls12_381", useGMP = true)
+  testLib("examples-c", "t_libctt_banderwagon", useGMP = true)
   testLib("examples-c", "ethereum_bls_signatures", useGMP = false)
   testLib("tests"/"c_api", "t_threadpool", useGMP = false)
 
