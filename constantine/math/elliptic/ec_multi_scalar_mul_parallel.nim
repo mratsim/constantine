@@ -185,32 +185,22 @@ proc msmImpl_vartime_parallel[bits: static int, EC, ECaff](
   # Last window is done sync on this thread, directly initializing r
   const excess = bits mod c
   const top = bits-excess
+  const msmKind = if top == 0: kBottomWindow
+                  elif excess == 0: kFullWindow
+                  else: kTopWindow
 
-  when top != 0:
-    when excess != 0:
-      bucketAccumReduce_withInit(
-        r,
-        bucketsMatrix[numFullWindows*numBuckets].addr,
-        bitIndex = top, kTopWindow, c,
-        coefs, points, N)
-    else:
-      r[].setNeutral()
+  bucketAccumReduce_withInit(
+    r,
+    bucketsMatrix[numFullWindows*numBuckets].addr,
+    bitIndex = top, msmKind, c,
+    coefs, points, N)
 
-  # 3. Final reduction, r initialized to what would be miniMSMsReady[numWindows-1]
-  when excess != 0:
-    for w in countdown(numWindows-2, 0):
-      for _ in 0 ..< c:
-        r[].double()
-      discard sync miniMSMsReady[w]
-      r[] ~+= miniMSMsResults[w]
-  elif numWindows >= 2:
-    discard sync miniMSMsReady[numWindows-2]
-    r[] = miniMSMsResults[numWindows-2]
-    for w in countdown(numWindows-3, 0):
-      for _ in 0 ..< c:
-        r[].double()
-      discard sync miniMSMsReady[w]
-      r[] ~+= miniMSMsResults[w]
+  # 3. Final reduction
+  for w in countdown(numFullWindows-1, 0):
+    for _ in 0 ..< c:
+      r[].double()
+    discard sync miniMSMsReady[w]
+    r[] ~+= miniMSMsResults[w]
 
   # Cleanup
   # -------
@@ -371,33 +361,24 @@ proc msmAffine_vartime_parallel[bits: static int, EC, ECaff](
   # Last window is done sync on this thread, directly initializing r
   const excess = bits mod c
   const top = bits-excess
+  const msmKind = if top == 0: kBottomWindow
+                  elif excess == 0: kFullWindow
+                  else: kTopWindow
 
-  when top != 0:
-    when excess != 0:
-      let buckets = allocHeapArray(EC, numBuckets)
-      for i in 0 ..< numBuckets:
-        buckets[i].setNeutral()
-      r[].bucketAccumReduce(buckets, bitIndex = top, kTopWindow, c,
-                                coefs, points, N)
-      buckets.freeHeap()
-    else:
-      r[].setNeutral()
+  let buckets = allocHeapArray(EC, numBuckets)
+  bucketAccumReduce_withInit(
+    r,
+    buckets,
+    bitIndex = top, msmKind, c,
+    coefs, points, N)
+  freeHeapAligned(buckets)
 
-  # 2. Final reduction with latency hiding, r initialized to what would be miniMSMsReady[numWindows-1]
-  when excess != 0:
-    for w in countdown(numWindows-2, 0):
-      for _ in 0 ..< c:
-        r[].double()
-      discard sync miniMSMsReady[w]
-      r[] ~+= miniMSMsResults[w]
-  elif numWindows >= 2:
-    discard sync miniMSMsReady[numWindows-2]
-    r[] = miniMSMsResults[numWindows-2]
-    for w in countdown(numWindows-3, 0):
-      for _ in 0 ..< c:
-        r[].double()
-      discard sync miniMSMsReady[w]
-      r[] ~+= miniMSMsResults[w]
+  # 3. Final reduction
+  for w in countdown(numFullWindows-1, 0):
+    for _ in 0 ..< c:
+      r[].double()
+    discard sync miniMSMsReady[w]
+    r[] ~+= miniMSMsResults[w]
 
   # Cleanup
   # -------
