@@ -47,6 +47,30 @@ Misc:
 - RNG: https://github.com/mratsim/constantine/tree/master/constantine/csprngs
 - threadpool: https://github.com/mratsim/constantine/tree/master/constantine/threadpool
 
+## Dependencies
+
+To remove the thread of supply chain attacks, Constantine has no external dependencies except:
+- `std/atomics` a thin-wrapper around C/C++ atomics with C++11 memory model
+  for multithreading.
+- for testing/fuzzing with dependencies on:
+  - Nim standard library for string and sequences (`std/strutils`, `std/strformat` and `std/sequtils`)
+  - jsony and nim-yaml package to deserialize test vectors
+- benchmarks with dependencies on:
+  - `std/times` and `std/monotimes`
+  - `std/os` for IO
+- at compile-time with dependencies on:
+  - `std/macros`
+- for C header code generation
+  - `std/strtabs` and `std/intsets`
+
+While Nim `system` is used, `string` and `seq` are avoided for:
+- zero allocation for functions that might handle secret keys.
+- full control over memory management instead of deferring to the Nim allocator.
+
+Non-debug, non-test IO is reimplemented over the C standard library, for example for parsing trusted setups.
+
+Besides supply-chain attacks and leaking secrets on the heap, this also make Constantine easy-to-optimize for trusted enclaves or zkVMs.
+
 ## Cryptography for the Consensus Layer
 
 The Consensus Layer of Ethereum relies on the following cryptographic components:
@@ -90,7 +114,7 @@ The execution layer relies on the following cryptographic components:
   - SHA256
   - Modular Exponentiation
   - BN254 elliptic addition, multiplication and pairing check
-  - (next upgrade) BLS12-381 G! and G2, addition, multiplication, multi-scalar multiplication and pairing check
+  - (next upgrade) BLS12-381 G1 and G2, addition, multiplication, multi-scalar multiplication and pairing check
 
 ### In scope?
 
@@ -156,7 +180,7 @@ Implementations:
 ### Execution Layer
 
 Note on name:
-There are multiple BN254 curves in the litterature, the one we refer to has high 2-adicity to enable large FFTs in Snarks application. It used to be called `alt_bn128` (128 being the security level it was considered at before Kim & Barbulesco TNFS attack) and it is also sometimes called bn256.
+There are multiple BN254 curves in the literature, the one we refer to has high 2-adicity to enable large FFTs in Snarks application. It used to be called `alt_bn128` (128 being the security level it was considered at before Kim & Barbulesco TNFS attack) and it is also sometimes called bn256.
 
 Specs:
 - MODEXP
