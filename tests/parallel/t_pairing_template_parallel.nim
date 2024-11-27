@@ -74,10 +74,12 @@ proc runGTmultiexp_parallel_Tests*[N: static int](GT: typedesc, num_points: arra
           t.gtExp_vartime(elems[i], exponents[i])
           naive *= t
 
-        var mexp: GT
-        tp.multiExp_vartime_parallel(mexp, elems, exponents)
+        var mexp, mexp_torus: GT
+        tp.multiExp_vartime_parallel(mexp, elems, exponents, useTorus = false)
+        tp.multiExp_vartime_parallel(mexp_torus, elems, exponents, useTorus = true)
 
         doAssert bool(naive == mexp)
+        doAssert bool(naive == mexp_torus)
 
         stdout.write '.'
 

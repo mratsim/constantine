@@ -460,6 +460,7 @@ template withTorus[exponentsBits: static int, GT](
   var r_torus {.noInit.}: T2Prj[F]
   multiExpProc(r_torus, elemsTorus, expos, len, c)
   r.fromTorus2_vartime(r_torus)
+  freeHeap(elemsTorus)
 
 # Combined accel
 # -----------------------------------------------------------------------------------------------------------------------

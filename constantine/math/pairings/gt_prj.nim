@@ -464,6 +464,7 @@ proc batchFromGT_vartime*[F](dst: var openArray[T2Aff[F]],
   ## so this is about a ~25% speedup
 
   # TODO: handle neutral element
+  # TODO: Parallel batch inversion
 
   debug: doAssert dst.len == src.len
 
