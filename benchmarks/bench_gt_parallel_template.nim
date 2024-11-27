@@ -128,6 +128,7 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
   var startNaive, stopNaive, startMultiExpBaseline, stopMultiExpBaseline: MonoTime
   var startMultiExpOpt, stopMultiExpOpt: MonoTime
   var startMultiExpPara, stopMultiExpPara: MonoTime
+  var startMultiExpParaTorus, stopMultiExpParaTorus: MonoTime
 
   when GT is QuadraticExt:
     var startMultiExpBaselineTorus: MonoTime
@@ -186,10 +187,21 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
 
     startMultiExpPara = getMonotime()
     bench("𝔾ₜ multi-exp      " & align($ctx.tp.numThreads & " threads", 11) & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
-      ctx.tp.multiExp_vartime_parallel(r, elems, exponents)
+      ctx.tp.multiExp_vartime_parallel(r, elems, exponents, useTorus = false)
     stopMultiExpPara = getMonotime()
 
     ctx.tp.shutdown()
+
+  when GT is QuadraticExt:
+    block:
+      ctx.tp = Threadpool.new()
+
+      startMultiExpParaTorus = getMonotime()
+      bench("𝔾ₜ multi-exp torus" & align($ctx.tp.numThreads & " threads", 11) & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+        ctx.tp.multiExp_vartime_parallel(r, elems, exponents, useTorus = true)
+      stopMultiExpParaTorus = getMonotime()
+
+      ctx.tp.shutdown()
 
   let perfNaive = inNanoseconds((stopNaive-startNaive) div iters)
   let perfMultiExpBaseline = inNanoseconds((stopMultiExpBaseline-startMultiExpBaseline) div iters)
@@ -198,6 +210,7 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
   when GT is QuadraticExt:
     let perfMultiExpBaselineTorus = inNanoseconds((stopMultiExpBaselineTorus-startMultiExpBaselineTorus) div iters)
     let perfMultiExpOptTorus = inNanoseconds((stopMultiExpOptTorus-startMultiExpOptTorus) div iters)
+    let perfMultiExpParaTorus = inNanoSeconds((stopMultiExpParaTorus-startMultiExpParaTorus) div iters)
 
   if numInputs <= 100000:
     let speedupBaseline = float(perfNaive) / float(perfMultiExpBaseline)
@@ -215,3 +228,10 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
 
   let speedupParaOpt = float(perfMultiExpOpt) / float(perfMultiExpPara)
   echo &"Speedup ratio parallel over serial optimized linear combination: {speedupParaOpt:>6.3f}x"
+
+  when GT is QuadraticExt:
+    let speedupParaTorus = float(perfMultiExpOptTorus) / float(perfMultiExpParaTorus)
+    echo &"Speedup ratio parallel over serial for Torus-based multiexp: {speedupParaTorus:>6.3f}x"
+
+    let speedupParaTorusOpt = float(perfMultiExpPara) / float(perfMultiExpParaTorus)
+    echo &"Speedup ratio parallel over parallel Torus-based multiexp: {speedupParaTorusOpt:>6.3f}x"

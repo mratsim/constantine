@@ -239,7 +239,7 @@ proc applyEndoTorus_parallel[bits: static int, GT](
       # but we could parallel batch convert over the whole range
       endoTorusBasis[i].batchFromGT_vartime(endoBasis[i])
 
-  let endoTorusElems  = cast[ptr UncheckedArray[GT]](endoTorusBasis)
+  let endoTorusElems  = cast[ptr UncheckedArray[T2Aff[F]]](endoTorusBasis)
   let endoExpos = cast[ptr UncheckedArray[BigInt[L]]](splitExpos)
   freeHeapAligned(endoBasis)
 
@@ -258,7 +258,10 @@ template withEndoTorus[exponentsBits: static int, GT](
     let (endoTorusElems, endoExpos, endoN) = applyEndoTorus_parallel(tp, elems, expos, N)
     # Given that bits and N changed, we are able to use a bigger `c`
     # TODO: bench
-    multiExpProc(tp, r, endoTorusElems, endoExpos, endoN, c)
+    type F = typeof(elems[0].c0)
+    var r_torus {.noInit.}: T2Prj[F]
+    multiExpProc(tp, r_torus.addr, endoTorusElems, endoExpos, endoN, c)
+    r[].fromTorus2_vartime(r_torus)
     freeHeap(endoTorusElems)
     freeHeap(endoExpos)
   else:
@@ -283,18 +286,18 @@ proc multiexp_dispatch_vartime_parallel[bits: static int, GT](
 
   when useTorus:
     case c
-    of  2: withTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  2)
-    of  3: withTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  3)
-    of  4: withTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  4)
-    of  5: withTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  5)
-    of  6: withTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  6)
-    of  7: withTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  7)
-    of  8: withTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  8)
-    of  9: withTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  9)
-    of 10: withTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c = 10)
-    of 11: withTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c = 11)
-    of 12: withTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c = 12)
-    of 13: withTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c = 13)
+    of  2: withEndoTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  2)
+    of  3: withEndoTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  3)
+    of  4: withEndoTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  4)
+    of  5: withEndoTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  5)
+    of  6: withEndoTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  6)
+    of  7: withEndoTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  7)
+    of  8: withEndoTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  8)
+    of  9: withEndoTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c =  9)
+    of 10: withEndoTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c = 10)
+    of 11: withEndoTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c = 11)
+    of 12: withEndoTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c = 12)
+    of 13: withEndoTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c = 13)
     of 14: withTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c = 14)
     of 15: withTorus(multiExpImpl_vartime_parallel, tp, r, elems, expos, N, c = 15)
 

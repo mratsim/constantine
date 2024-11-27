@@ -45,6 +45,7 @@ proc main() =
     for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
       ctx12o4.multiExpParallelBench(numPoints, batchIters)
+      echo "----"
       ctx12o6.multiExpParallelBench(numPoints, batchIters)
       separator()
     separator()
