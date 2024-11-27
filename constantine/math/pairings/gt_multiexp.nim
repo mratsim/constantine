@@ -454,9 +454,9 @@ template withTorus[exponentsBits: static int, GT](
   static: doAssert Gt is QuadraticExt, "GT was: " & $Gt
   type F = typeof(elems[0].c0)
   var elemsTorus = allocHeapArrayAligned(T2Aff[F], len, alignment = 64)
-  elemsTorus.toOpenArray(0, len-1).batchFromGT_vartime(
-    elems.toOpenArray(0, len-1)
-  )
+  batchFromGT_vartime(
+    elemsTorus.toOpenArray(0, len-1),
+    elems.toOpenArray(0, len-1))
   var r_torus {.noInit.}: T2Prj[F]
   multiExpProc(r_torus, elemsTorus, expos, len, c)
   r.fromTorus2_vartime(r_torus)

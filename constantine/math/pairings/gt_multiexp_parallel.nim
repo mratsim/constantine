@@ -163,6 +163,24 @@ template withEndo[exponentsBits: static int, GT](
 # Torus acceleration
 # -----------------------------------------------------------------------------------------------------------------------
 
+proc paraNaiveConversion[F](
+  tp: Threadpool,
+  dst: ptr UncheckedArray[T2Aff[F]],
+  src: ptr UncheckedArray[QuadraticExt[F]],
+  N: int) =
+
+  # Cryptic error
+  #   Error: cannot use symbol of kind 'param' as a 'let'
+  # if we inline the following in the `withTorus` template
+
+  # TODO: Parallel Montgomery batch inversion
+
+  syncScope:
+    tp.parallelFor i in 0 ..< N:
+      captures: {dst, src}
+      # TODO: Parallel batch conversion
+      fromGT_vartime(dst[i], src[i])
+
 template withTorus[exponentsBits: static int, GT](
            multiExpProc: untyped,
            tp: Threadpool,
@@ -173,15 +191,7 @@ template withTorus[exponentsBits: static int, GT](
   static: doAssert Gt is QuadraticExt, "GT was: " & $Gt
   type F = typeof(elems[0].c0)
   var elemsTorus = allocHeapArrayAligned(T2Aff[F], len, alignment = 64)
-  # TODO: macro symbol resolution bug
-  # syncScope:
-  #   tp.parallelFor i in 0 ..< N:
-  #     captures: {elems, elemsTorus}
-  #     # TODO: Parallel batch conversion
-  #     elemsTorus.fromGT_vartime(elems[i])
-  elemsTorus.toOpenArray(0, len-1).batchFromGT_vartime(
-    elems.toOpenArray(0, len-1)
-  )
+  paraNaiveConversion(tp, elemsTorus, elems, len)
   var r_torus {.noInit.}: T2Prj[F]
   multiExpProc(tp, r_torus.addr, elemsTorus, expos, len, c)
   r[].fromTorus2_vartime(r_torus)
