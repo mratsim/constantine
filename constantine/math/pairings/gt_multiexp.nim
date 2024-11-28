@@ -219,6 +219,7 @@ func multiExp_reference_vartime*[bits: static int, Gt](
     var r_torus {.noInit.}: T2Prj[F]
     multiExp_reference_dispatch_vartime(r_torus, elemsTorus, expos, N)
     r.fromTorus2_vartime(r_torus)
+    elemsTorus.freeHeapAligned()
   else:
     multiExp_reference_dispatch_vartime(r, elems, expos, N)
 
