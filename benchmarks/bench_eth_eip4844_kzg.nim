@@ -74,6 +74,7 @@ proc benchBlobToKzgCommitment(b: BenchSet, ctx: ptr EthereumKZGContext, iters: i
 
   ## We require `tp` to be unintialized as even idle threads somehow reduce perf of serial benches
   let tp = Threadpool.new()
+  let numThreads = tp.numThreads
 
   let startParallel = getMonotime()
   block:
@@ -88,7 +89,7 @@ proc benchBlobToKzgCommitment(b: BenchSet, ctx: ptr EthereumKZGContext, iters: i
   let perfParallel = inNanoseconds((stopParallel-startParallel) div iters)
 
   let parallelSpeedup = float(perfSerial) / float(perfParallel)
-  echo &"Speedup ratio parallel {tp.numThreads} threads over serial: {parallelSpeedup:>6.3f}x"
+  echo &"Speedup ratio parallel {numThreads} threads over serial: {parallelSpeedup:>6.3f}x"
 
 proc benchComputeKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
 
@@ -102,6 +103,7 @@ proc benchComputeKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) 
 
   ## We require `tp` to be unintialized as even idle threads somehow reduce perf of serial benches
   let tp = Threadpool.new()
+  let numThreads = tp.numThreads
 
   let startParallel = getMonotime()
   block:
@@ -117,7 +119,7 @@ proc benchComputeKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) 
   let perfParallel = inNanoseconds((stopParallel-startParallel) div iters)
 
   let parallelSpeedup = float(perfSerial) / float(perfParallel)
-  echo &"Speedup ratio parallel {tp.numThreads} threads over serial: {parallelSpeedup:>6.3f}x"
+  echo &"Speedup ratio parallel {numThreads} threads over serial: {parallelSpeedup:>6.3f}x"
 
 proc benchComputeBlobKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
 
@@ -130,6 +132,7 @@ proc benchComputeBlobKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: i
 
   ## We require `tp` to be unintialized as even idle threads somehow reduce perf of serial benches
   let tp = Threadpool.new()
+  let numThreads = tp.numThreads
 
   let startParallel = getMonotime()
   block:
@@ -144,7 +147,7 @@ proc benchComputeBlobKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: i
   let perfParallel = inNanoseconds((stopParallel-startParallel) div iters)
 
   let parallelSpeedup = float(perfSerial) / float(perfParallel)
-  echo &"Speedup ratio parallel {tp.numThreads} threads over serial: {parallelSpeedup:>6.3f}x"
+  echo &"Speedup ratio parallel {numThreads} threads over serial: {parallelSpeedup:>6.3f}x"
 
 proc benchVerifyKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
 
@@ -163,6 +166,7 @@ proc benchVerifyBlobKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: in
 
   ## We require `tp` to be unintialized as even idle threads somehow reduce perf of serial benches
   let tp = Threadpool.new()
+  let numThreads = tp.numThreads
 
   let startParallel = getMonotime()
   block:
@@ -176,7 +180,7 @@ proc benchVerifyBlobKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: in
   let perfParallel = inNanoseconds((stopParallel-startParallel) div iters)
 
   let parallelSpeedup = float(perfSerial) / float(perfParallel)
-  echo &"Speedup ratio parallel {tp.numThreads} threads over serial: {parallelSpeedup:>6.3f}x"
+  echo &"Speedup ratio parallel {numThreads} threads over serial: {parallelSpeedup:>6.3f}x"
 
 proc benchVerifyBlobKzgProofBatch(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
 
@@ -201,6 +205,7 @@ proc benchVerifyBlobKzgProofBatch(b: BenchSet, ctx: ptr EthereumKZGContext, iter
 
     ## We require `tp` to be unintialized as even idle threads somehow reduce perf of serial benches
     let tp = Threadpool.new()
+    let numTHreads = tp.numThreads
 
     let startParallel = getMonotime()
     block:
@@ -220,7 +225,7 @@ proc benchVerifyBlobKzgProofBatch(b: BenchSet, ctx: ptr EthereumKZGContext, iter
     let perfParallel = inNanoseconds((stopParallel-startParallel) div iters)
 
     let parallelSpeedup = float(perfSerial) / float(perfParallel)
-    echo &"Speedup ratio parallel {tp.numThreads} threads over serial: {parallelSpeedup:>6.3f}x"
+    echo &"Speedup ratio parallel {numThreads} threads over serial: {parallelSpeedup:>6.3f}x"
     echo ""
 
     i *= 2
@@ -258,7 +263,7 @@ proc main() =
   echo ""
   benchVerifyBlobKzgProofBatch(b, ctx, Iters)
   separator()
-
+  ctx.trusted_setup_delete()
 
 when isMainModule:
   main()
