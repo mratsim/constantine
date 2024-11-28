@@ -572,6 +572,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   ("tests/math_pairings/t_pairing_bn254_snarks_gt_exp.nim", false),
   ("tests/math_pairings/t_pairing_bls12_381_gt_exp.nim", false),
+  ("tests/math_pairings/t_pairing_bls12_381_gt_multiexp.nim", false),
 
   # Multi-Pairing
   # ----------------------------------------------------------
