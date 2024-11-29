@@ -168,6 +168,9 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_MEM: Limbs[
     ctx.finalSubMayOverflowImpl(r, u, M, v, a_in_scratch = true, scratchReg = b.reuseRegister())
 
   result.add ctx.generate()
+  return nnkBlockStmt.newTree(
+      newEmptyNode(),
+      result)
 
 func addmod_asm*(r: var Limbs, a, b, M: Limbs, spareBits: static int) =
   ## Constant-time modular addition
@@ -228,6 +231,10 @@ macro submod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_MEM: Limbs[
 
   result.add ctx.generate()
 
+  return nnkBlockStmt.newTree(
+      newEmptyNode(),
+      result)
+
 func submod_asm*(r: var Limbs, a, b, M: Limbs) =
   ## Constant-time modular substraction
   ## Warning, does not handle aliasing of a and b
@@ -276,6 +283,10 @@ macro negmod_gen[N: static int](r_PIR: var Limbs[N], a_MEM, M_MEM: Limbs[N]): un
     ctx.mov r[i], u[i]
 
   result.add ctx.generate()
+
+  return nnkBlockStmt.newTree(
+      newEmptyNode(),
+      result)
 
 func negmod_asm*(r: var Limbs, a, M: Limbs) =
   ## Constant-time modular negation
