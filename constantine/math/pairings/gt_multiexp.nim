@@ -10,7 +10,6 @@ import constantine/named/algebras,
        constantine/math/arithmetic,
        constantine/math/endomorphisms/split_scalars,
        constantine/math/extension_fields,
-       constantine/math/arithmetic/bigints,
        constantine/named/zoo_endomorphisms,
        constantine/platforms/abstractions,
        ./cyclotomic_subgroups, ./gt_prj
@@ -128,8 +127,8 @@ func multiExpImpl_reference_vartime[bits: static int, GtAcc, GtElt](
   const numBuckets = 1 shl c - 1 # bucket 0 is unused
   const numWindows = bits.ceilDiv_vartime(c)
 
-  let miniEXPs = allocHeapArray(GtAcc, numWindows)
-  let buckets = allocHeapArray(GtAcc, numBuckets)
+  let miniEXPs = allocHeapArrayAligned(GtAcc, numWindows, alignment = 64)
+  let buckets = allocHeapArrayAligned(GtAcc, numBuckets, alignment = 64)
 
   # Algorithm
   # ---------
@@ -170,8 +169,8 @@ func multiExpImpl_reference_vartime[bits: static int, GtAcc, GtElt](
 
   # Cleanup
   # -------
-  buckets.freeHeap()
-  miniEXPs.freeHeap()
+  buckets.freeHeapAligned()
+  miniEXPs.freeHeapAligned()
 
 func multiExp_reference_dispatch_vartime[bits: static int, GtAcc, GtElt](
        r: var GtAcc,
@@ -247,7 +246,7 @@ func multiExp_reference_vartime*[F, Gt](
   expos_big.batchFromField(expos, n)
   r.multiExp_reference_vartime(elems, expos_big, n, useTorus)
 
-  freeHeapAligned(expos_big)
+  expos_big.freeHeapAligned()
 
 func multiExp_reference_vartime*[Gt](
        r: var Gt,
@@ -357,7 +356,7 @@ func multiExpImpl_vartime[bits: static int, GtAcc, GtElt](
   # -----
   const numBuckets = 1 shl (c-1)
 
-  let buckets = allocHeapArray(GtAcc, numBuckets)
+  let buckets = allocHeapArrayAligned(GtAcc, numBuckets, alignment = 64)
   for i in 0 ..< numBuckets:
     buckets[i].setNeutral()
 
@@ -386,7 +385,7 @@ func multiExpImpl_vartime[bits: static int, GtAcc, GtElt](
 
   # Cleanup
   # -------
-  buckets.freeHeap()
+  buckets.freeHeapAligned()
 
 # Endomorphism acceleration
 # -----------------------------------------------------------------------------------------------------------------------
@@ -404,8 +403,8 @@ proc applyEndomorphism[bits: static int, GT](
             else: {.error: "Unconfigured".}
 
   const L = Fr[Gt.Name].bits().computeEndoRecodedLength(M)
-  let splitExpos   = allocHeapArray(array[M, BigInt[L]], N)
-  let endoBasis    = allocHeapArray(array[M, GT], N)
+  let splitExpos   = allocHeapArrayAligned(array[M, BigInt[L]], N, alignment = 64)
+  let endoBasis    = allocHeapArrayAligned(array[M, GT], N, alignment = 64)
 
   for i in 0 ..< N:
     var negateElems {.noinit.}: array[M, SecretBool]
@@ -438,8 +437,8 @@ template withEndo[exponentsBits: static int, GT](
     # Given that bits and N changed, we are able to use a bigger `c`
     # TODO: bench
     multiExpProc(r, endoElems, endoExpos, endoN, c)
-    freeHeap(endoElems)
-    freeHeap(endoExpos)
+    endoElems.freeHeapAligned()
+    endoExpos.freeHeapAligned()
   else:
     multiExpProc(r, elems, expos, N, c)
 
@@ -461,7 +460,7 @@ template withTorus[exponentsBits: static int, GT](
   var r_torus {.noInit.}: T2Prj[F]
   multiExpProc(r_torus, elemsTorus, expos, len, c)
   r.fromTorus2_vartime(r_torus)
-  freeHeap(elemsTorus)
+  elemsTorus.freeHeapAligned()
 
 # Combined accel
 # -----------------------------------------------------------------------------------------------------------------------
@@ -487,8 +486,8 @@ template withEndoTorus[exponentsBits: static int, GT](
     # Given that bits and N changed, we are able to use a bigger `c`
     # TODO: bench
     withTorus(multiExpProc, r, endoElems, endoExpos, endoN, c)
-    freeHeap(endoElems)
-    freeHeap(endoExpos)
+    endoElems.freeHeapAligned()
+    endoExpos.freeHeapAligned()
   else:
     withTorus(multiExpProc, r, elems, expos, N, c)
 
@@ -587,7 +586,7 @@ func multiExp_vartime*[F, GT](
   expos_big.batchFromField(expos, n)
   r.multiExp_vartime(elems, expos_big, n, useTorus)
 
-  freeHeapAligned(expos_big)
+  expos_big.freeHeapAligned()
 
 func multiExp_vartime*[GT](
        r: var GT,

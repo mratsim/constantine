@@ -56,7 +56,7 @@ proc multiexpImpl_vartime_parallel[bits: static int, GtAcc, GtElt](
   let miniMultiExpsResults = allocHeapArray(GtAcc, numFullWindows)
   let miniMultiExpsReady   = allocStackArray(FlowVar[bool], numFullWindows)
 
-  let bucketsMatrix = allocHeapArray(GtAcc, numBuckets*numWindows)
+  let bucketsMatrix = allocHeapArrayAligned(GtAcc, numBuckets*numWindows, alignment = 64)
 
   # Algorithm
   # ---------
@@ -98,7 +98,7 @@ proc multiexpImpl_vartime_parallel[bits: static int, GtAcc, GtElt](
   # Cleanup
   # -------
   miniMultiExpsResults.freeHeap()
-  bucketsMatrix.freeHeap()
+  bucketsMatrix.freeHeapAligned()
 
 # Endomorphism acceleration
 # -----------------------------------------------------------------------------------------------------------------------
@@ -117,8 +117,8 @@ proc applyEndomorphism_parallel[bits: static int, GT](
             else: {.error: "Unconfigured".}
 
   const L = Fr[Gt.Name].bits().computeEndoRecodedLength(M)
-  let splitExpos   = allocHeapArray(array[M, BigInt[L]], N)
-  let endoBasis    = allocHeapArray(array[M, GT], N)
+  let splitExpos   = allocHeapArrayAligned(array[M, BigInt[L]], N, alignment = 64)
+  let endoBasis    = allocHeapArrayAligned(array[M, GT], N, alignment = 64)
 
   syncScope:
     tp.parallelFor i in 0 ..< N:
@@ -155,8 +155,8 @@ template withEndo[exponentsBits: static int, GT](
     # Given that bits and N changed, we are able to use a bigger `c`
     # TODO: bench
     multiExpProc(tp, r, endoElems, endoExpos, endoN, c)
-    freeHeap(endoElems)
-    freeHeap(endoExpos)
+    endoElems.freeHeapAligned()
+    endoExpos.freeHeapAligned()
   else:
     multiExpProc(tp, r, elems, expos, N, c)
 
@@ -195,7 +195,7 @@ template withTorus[exponentsBits: static int, GT](
   var r_torus {.noInit.}: T2Prj[F]
   multiExpProc(tp, r_torus.addr, elemsTorus, expos, len, c)
   r[].fromTorus2_vartime(r_torus)
-  freeHeap(elemsTorus)
+  elemsTorus.freeHeapAligned()
 
 # Combined accel
 # -----------------------------------------------------------------------------------------------------------------------
@@ -223,11 +223,11 @@ proc applyEndoTorus_parallel[bits: static int, GT](
             else: {.error: "Unconfigured".}
 
   const L = Fr[Gt.Name].bits().computeEndoRecodedLength(M)
-  let splitExpos   = allocHeapArray(array[M, BigInt[L]], N)
-  let endoBasis    = allocHeapArray(array[M, GT], N)
+  let splitExpos   = allocHeapArrayAligned(array[M, BigInt[L]], N, alignment = 64)
+  let endoBasis    = allocHeapArrayAligned(array[M, GT], N, alignment = 64)
 
   type F = typeof(elems[0].c0)
-  let endoTorusBasis = allocHeapArray(array[M, T2Aff[F]], N)
+  let endoTorusBasis = allocHeapArrayAligned(array[M, T2Aff[F]], N, alignment = 64)
 
   syncScope:
     tp.parallelFor i in 0 ..< N:
@@ -251,7 +251,7 @@ proc applyEndoTorus_parallel[bits: static int, GT](
 
   let endoTorusElems  = cast[ptr UncheckedArray[T2Aff[F]]](endoTorusBasis)
   let endoExpos = cast[ptr UncheckedArray[BigInt[L]]](splitExpos)
-  freeHeapAligned(endoBasis)
+  endoBasis.freeHeapAligned()
 
   return (endoTorusElems, endoExpos, M*N)
 
@@ -272,8 +272,8 @@ template withEndoTorus[exponentsBits: static int, GT](
     var r_torus {.noInit.}: T2Prj[F]
     multiExpProc(tp, r_torus.addr, endoTorusElems, endoExpos, endoN, c)
     r[].fromTorus2_vartime(r_torus)
-    freeHeap(endoTorusElems)
-    freeHeap(endoExpos)
+    endoTorusElems.freeHeapAligned()
+    endoExpos.freeHeapAligned()
   else:
     withTorus(multiExpProc, r, elems, expos, N, c)
 
@@ -376,7 +376,7 @@ proc multiExp_vartime_parallel*[F, GT](
       expos_big[i].fromField(expos[i])
   tp.multiExp_vartime_parallel(r, elems, expos_big, n, useTorus)
 
-  freeHeapAligned(expos_big)
+  expos_big.freeHeapAligned()
 
 proc multiExp_vartime_parallel*[GT](
        tp: Threadpool,
