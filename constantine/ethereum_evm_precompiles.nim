@@ -19,7 +19,10 @@ import
   ./named/zoo_subgroups,
   ./math/io/[io_bigints, io_fields],
   ./math_arbitrary_precision/arithmetic/bigints_views,
-  ./hash_to_curve/hash_to_curve
+  ./hash_to_curve/hash_to_curve,
+  # For KZG point precompile
+  ./ethereum_eip4844_kzg,
+  ./serialization/codecs_status_codes
 
 # ############################################################
 #
@@ -1215,3 +1218,60 @@ func eth_evm_bls12381_map_fp2_to_g2*(r: var openArray[byte], inputs: openarray[b
   r.toOpenArray(128, 192-1).marshal(aff.y.c0, bigEndian)
   r.toOpenArray(192, 256-1).marshal(aff.y.c1, bigEndian)
   return cttEVM_Success
+
+proc kzg_to_versioned_hash(r: var array[32, byte], commitment_bytes: array[48, byte]) =
+  ## Spec: https://eips.ethereum.org/EIPS/eip-4844#helpers
+  ## `return VERSIONED_HASH_VERSION_KZG + sha256(commitment)[1:]`
+  const VERSIONED_HASH_VERSION_KZG = 0x01.byte
+  var s {.noinit.}: sha256
+  s.init()
+  s.update(commitment_bytes)
+  s.finish(r)
+  r[0] = VERSIONED_HASH_VERSION_KZG
+
+func kzg_point_evaluation_precompile*(r: var openArray[byte],
+                                      input: openArray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
+  ## Verify `p(z) = y` given commitment that corresponds to the polynomial `p(x)` and a KZG proof.
+  ## Also verify that the provided commitment matches the provided versioned_hash.
+  ## Returns `FIELD_ELEMENTS_PER_BLOB` and the BSL12-381 modulus as padded 32 byte big endian values,
+  ## i.e. `r` must be 64 bytes long.
+  ##
+  ## Spec: https://eips.ethereum.org/EIPS/eip-4844#point-evaluation-precompile
+  # The data is encoded as follows: versioned_hash | z | y | commitment | proof | with z and y being padded 32 byte big endian values
+  if len(input) != 192:
+    return cttEVM_InvalidInputSize
+  if len(r) != 64:
+    return cttEVM_InvalidOutputSize
+
+  var
+    versioned_hash: array[32, byte]
+    z: array[32, byte]
+    y: array[32, byte]
+    commitment_bytes: array[48, byte]
+    proof: array[48, byte]
+  ## XXX: copy like Python code in big endian order or unmarshal? `verify_kzg_proof` works on byte arrays
+  versioned_hash.rawCopy(0, input, 0, 32)
+  z.rawCopy(0, input, 32, 32)
+  y.rawCopy(0, input, 64, 32)
+  commitment_bytes.rawCopy(0, input, 96, 48) # commitment_bytes should surely be hashed in big endian order based on spec
+  proof.rawCopy(0, input, 144, 48)
+
+  # Verify commitment matches versioned_hash
+  var rhash: array[32, byte]
+  rhash.kzg_to_versioned_hash(commitment_bytes)
+  if rhash != versioned_hash:
+    ## XXX: BAD! If it was `cttEthKzgStatus` return type I'd return the VerificationFailure
+    return cttEVM_InvalidInputSize #cttEthKzg_VerificationFailure
+
+  # Verify KZG proof with z and y in big endian format
+  var ctx = allocHeapAligned(EthereumKZGContext, alignment = 64)
+  if ctx.verify_kzg_proof(commitment_bytes, z, y, proof) != cttEthKzg_Success:
+    ## XXX: BAD! If it was `cttEthKzgStatus` return type I'd return the VerificationFailure
+    return cttEVM_InvalidInputSize #cttEthKzg_VerificationFailure
+
+  # Reference:
+  # `return Bytes(U256(FIELD_ELEMENTS_PER_BLOB).to_be_bytes32() + U256(BLS_MODULUS).to_be_bytes32())`
+  r.toOpenArray( 0, 32-1).marshal([FIELD_ELEMENTS_PER_BLOB], WordBitWidth, bigEndian)
+  r.toOpenArray(32, 64-1).marshal(Fp[BLS12_381].getModulus(), bigEndian)
+
+  result = cttEVM_Success
