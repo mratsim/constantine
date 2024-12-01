@@ -76,7 +76,7 @@ func millerLoopAddchain*(
   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 1)               # 0b100001010000100011
   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 46, add = true)  # 0b1000010100001000110000000000000000000000000000000000000000000001
 
-func cycl_exp_by_curve_param*(r: var Fp12[BLS12_377], a: Fp12[BLS12_377], invert = BLS12_377_pairing_ate_param_isNeg) =
+func cycl_exp_by_curve_param*(r: var AnyFp12[BLS12_377], a: AnyFp12[BLS12_377], invert = BLS12_377_pairing_ate_param_isNeg) =
   ## f^x with x the curve parameter
   ## For BLS12_377 f^0x8508c00000000001
   r.cycl_sqr_repeated(a, 5)
@@ -95,14 +95,14 @@ func cycl_exp_by_curve_param*(r: var Fp12[BLS12_377], a: Fp12[BLS12_377], invert
   if invert:
     r.cyclotomic_inv()
 
-func isInPairingSubgroup*(a: Fp12[BLS12_377]): SecretBool =
+func isInPairingSubgroup*(a: AnyFp12[BLS12_377]): SecretBool =
   ## Returns true if a is in GT subgroup, i.e. a is an element of order r
   ## Warning ⚠: Assumes that a is in the cyclotomic subgroup
   # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
   #   A note on group membership tests for G1, G2 and GT
   #   on BLS pairing-friendly curves
   #   a is in the GT subgroup iff a^p == a^u
-  var t0{.noInit.}, t1{.noInit.}: Fp12[BLS12_377]
+  var t0{.noInit.}, t1{.noInit.}: typeof(a)
   t0.frobenius_map(a)
   t1.cycl_exp_by_curve_param(a)
 

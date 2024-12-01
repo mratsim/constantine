@@ -9,8 +9,7 @@
 import
   constantine/platforms/abstractions,
   constantine/named/algebras,
-  constantine/math/arithmetic,
-  constantine/math/io/io_fields
+  constantine/math/arithmetic
 
 export Fp
 
@@ -59,6 +58,11 @@ type
   Fp12*[Name: static Algebra] =
     CubicExt[Fp4[Name]]
     # QuadraticExt[Fp6[Name]]
+
+  AnyFp12*[Name: static Algebra] =
+    QuadraticExt[Fp6[Name]] or
+    CubicExt[Fp4[Name]]
+    ## Towering agnostic Fp12
 
 template c0*(a: ExtensionField): auto =
   a.coords[0]
@@ -1687,11 +1691,13 @@ func prodImpl(r: var CubicExt, a, b: CubicExt) =
   var v0{.noInit.}, v1{.noInit.}, v2{.noInit.}: typeof(r.c0)
   var t0{.noInit.}, t1{.noInit.}, t2{.noInit.}: typeof(r.c0)
 
+  # 3M
   v0.prod(a.c0, b.c0)
   v1.prod(a.c1, b.c1)
   v2.prod(a.c2, b.c2)
 
   # r₀ = β ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
+  # 4M + 2A + 1m
   t0.sum(a.c1, a.c2)
   t1.sum(b.c1, b.c2)
   t0 *= t1
@@ -1701,6 +1707,7 @@ func prodImpl(r: var CubicExt, a, b: CubicExt) =
   # r₀ = t₀ + v₀ at the end to handle aliasing
 
   # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁ + β v₂
+  # 5M + 7A + 2m
   t1.sum(a.c0, a.c1)
   t2.sum(b.c0, b.c1)
   r.c1.prod(t1, t2)
@@ -1710,6 +1717,7 @@ func prodImpl(r: var CubicExt, a, b: CubicExt) =
   r.c1 += t1
 
   # r₂ = (a₀ + a₂) * (b₀ + b₂) - v₀ - v₂ + v₁
+  # 6M + 12A + 2m
   t1.sum(a.c0, a.c2)
   t2.sum(b.c0, b.c2)
   r.c2.prod(t1, t2)
@@ -1718,6 +1726,7 @@ func prodImpl(r: var CubicExt, a, b: CubicExt) =
   r.c2 += v1
 
   # Finish r₀
+  # 6M + 13A + 2m
   r.c0.sum(t0, v0)
 
 func prod2xImpl(r: var CubicExt2x, a, b: CubicExt) =
@@ -2026,21 +2035,21 @@ func invImpl(r: var CubicExt, a: CubicExt, useVartime: static bool = false) =
   var t {.noInit.}: typeof(r.c0)
 
   # A <- a₀² - β a₁ a₂
-  A.square(a.c0)
-  t.prod(a.c1, a.c2)
-  t *= NonResidue
-  A -= t
+  A.square(a.c0)      # 1S
+  t.prod(a.c1, a.c2)  # 1M + 1S
+  t *= NonResidue     # 1M + 1S + 1m
+  A -= t              # 1M + 1S + 1m + 1A
 
   # B <- β a₂² - a₀ a₁
   B.square(a.c2)
   B *= NonResidue
   t.prod(a.c0, a.c1)
-  B -= t
+  B -= t              # 2M + 2S + 2m + 2A
 
   # C <- a₁² - a₀ a₂
   C.square(a.c1)
   t.prod(a.c0, a.c2)
-  C -= t
+  C -= t              # 3M + 3S + 2m + 3A
 
   # F in t
   # F <- β a₁ C + a₀ A + β a₂ B
@@ -2049,17 +2058,17 @@ func invImpl(r: var CubicExt, a: CubicExt, useVartime: static bool = false) =
   t += r.c2
   t *= NonResidue
   r.c0.prod(a.c0, A) # aliasing: last use of a₀, destroy r₀
-  t += r.c0
+  t += r.c0           # 6M + 3S + 3m + 5A
 
   when useVartime:
     t.inv_vartime()
   else:
-    t.inv()
+    t.inv()           # I + 6M + 3S + 3m + 5A
 
   # (a0 + a1 v + a2 v²)^-1 = (A + B v + C v²) / F
   r.c0.prod(A, t)
   r.c1.prod(B, t)
-  r.c2.prod(C, t)
+  r.c2.prod(C, t)     # I + 9M + 3S + 3m + 5A
 
 func inv2xImpl(r: var CubicExt, a: CubicExt, useVartime: static bool = false) =
   ## Compute the multiplicative inverse of ``a``

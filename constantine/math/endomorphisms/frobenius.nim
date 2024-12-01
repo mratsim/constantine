@@ -76,7 +76,7 @@ func frobenius_map*[Name](r: var Fp6[Name], a: Fp6[Name], k: static int = 1) {.i
   else:
     {.error: "Not Implemented".}
 
-func frobenius_map*[Name](r: var Fp12[Name], a: Fp12[Name], k: static int = 1) {.inline.} =
+func frobenius_map*[Name](r: var AnyFp12[Name], a: AnyFp12[Name], k: static int = 1) {.inline.} =
   ## Computes a^(pᵏ)
   ## The p-power frobenius automorphism on 𝔽p12
   staticFor i, 0, r.coords.len:

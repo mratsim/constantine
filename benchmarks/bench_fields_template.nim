@@ -24,26 +24,30 @@ import
   ./bench_blueprint
 
 export notes, abstractions
-proc separator*() = separator(165)
+proc separator*() = separator(145)
 proc smallSeparator*() = separator(8)
 
 proc report(op, field: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<70} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<49} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
   else:
-    echo &"{op:<70} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<49} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 macro fixFieldDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
   # we get the Curve ID instead of the curve name.
   let instantiated = T.getTypeInst()
   var name = $instantiated[1][0] # 𝔽p
-  name.add "[" & $Algebra(instantiated[1][1].intVal) & "]"
+  if instantiated[1][1].kind == nnkIntLit:
+    name.add "[" & $Algebra(instantiated[1][1].intVal) & "]"
+  else:
+    name.add "[" & $instantiated[1][1][0] # QuadraticExt[𝔽p6[
+    name.add "[" & $Algebra(instantiated[1][1][1].intVal) & "]]"
   result = newLit name
 
-template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
+template bench*(op: string, T: typedesc, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
   report(op, fixFieldDisplay(T), startTime, stopTime, startClk, stopClk, iters)
 
@@ -184,10 +188,10 @@ proc sqrtBench*(T: typedesc, iters: int) =
       "Tonelli-Shanks"
   const addchain = block:
     when T.Name.hasSqrtAddchain() or T.Name.hasTonelliShanksAddchain():
-      "with addition chain"
+      "+ addchain"
     else:
-      "without addition chain"
-  const desc = "Square Root (constant-time " & algoType & " " & addchain & ")"
+      "no addchain"
+  const desc = "Sqrt (constant-time " & algoType & " " & addchain & ")"
   bench(desc, T, iters):
     var r = x
     discard r.sqrt_if_square()
@@ -211,10 +215,10 @@ proc sqrtVartimeBench*(T: typedesc, iters: int) =
       "Tonelli-Shanks"
   const addchain = block:
     when T.Name.hasSqrtAddchain() or T.Name.hasTonelliShanksAddchain():
-      "with addition chain"
+      "+ addchain"
     else:
-      "without addition chain"
-  const desc = "Square Root (vartime " & algoType & " " & addchain & ")"
+      "no addchain"
+  const desc = "Sqrt (vartime " & algoType & " " & addchain & ")"
   bench(desc, T, iters):
     var r = x
     discard r.sqrt_if_square_vartime()

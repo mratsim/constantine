@@ -59,8 +59,8 @@ func gtExpEndo*[Gt: ExtensionField, scalBits: static int](
       "  order:  " & $Fr[Gt.Name].bits() & "-bit\n"
 
   # 1. Compute endomorphisms
-  const M = when Gt is Fp6:  2
-            elif Gt is Fp12: 4
+  const M = when Gt.Name.getEmbeddingDegree() == 6:  2
+            elif Gt.Name.getEmbeddingDegree() == 12: 4
             else: {.error: "Unconfigured".}
 
   var endos {.noInit.}: array[M-1, Gt]
@@ -131,9 +131,9 @@ func gtExp*[Gt](r: var Gt, a: Gt, scalar: BigInt) {.inline, meter.} =
   ## Those will be assumed to maintain constant-time property
   when Gt.Name.hasEndomorphismAcceleration() and
        BigInt.bits >= EndomorphismThreshold:
-    when Gt is Fp6:
+    when Gt.Name.getEmbeddingDegree() == 6:
       r.gtExpEndo(a, scalar) # TODO: window method
-    elif Gt is Fp12:
+    elif Gt.Name.getEmbeddingDegree() == 12:
       r.gtExpEndo(a, scalar)
     else: # Curves defined on Fp^m with m > 2
       {.error: "Unconfigured".}

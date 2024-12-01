@@ -52,7 +52,7 @@ export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11
 # ----------------------------------------------------------------
 
 func millerLoopGenericBLS12*[Name](
-       f: var Fp12[Name],
+       f: var AnyFp12[Name],
        Q: EC_ShortW_Aff[Fp2[Name], G2],
        P: EC_ShortW_Aff[Fp[Name], G1]
      ) {.meter.} =
@@ -64,7 +64,7 @@ func millerLoopGenericBLS12*[Name](
   basicMillerLoop(f, T, P, Q, pairing(Name, ate_param))
 
 func millerLoopGenericBLS12*[Name](
-       f: var Fp12[Name],
+       f: var AnyFp12[Name],
        Qs: ptr UncheckedArray[EC_ShortW_Aff[Fp2[Name], G2]],
        Ps: ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]],
        N: int
@@ -83,7 +83,7 @@ func finalExpGeneric[Name: static Algebra](f: var Fp12[Name]) =
   f.pow_vartime(Name.pairing(finalexponent), window = 3)
 
 func pairing_bls12_reference*[Name](
-       gt: var Fp12[Name],
+       gt: var AnyFp12[Name],
        P: EC_ShortW_Aff[Fp[Name], G1],
        Q: EC_ShortW_Aff[Fp2[Name], G2]) =
   ## Compute the optimal Ate Pairing for BLS12 curves
@@ -97,7 +97,7 @@ func pairing_bls12_reference*[Name](
 # Optimized pairing implementation
 # ----------------------------------------------------------------
 
-func finalExpHard_BLS12*[Name](f: var Fp12[Name]) {.meter.} =
+func finalExpHard_BLS12*[Name](f: var AnyFp12[Name]) {.meter.} =
   ## Hard part of the final exponentiation
   ## Specialized for BLS12 curves
   ##
@@ -117,7 +117,7 @@ func finalExpHard_BLS12*[Name](f: var Fp12[Name]) {.meter.} =
   # - S₁₂ being cyclotomic squaring
   # - Fₙ being n Frobenius applications
 
-  var v0 {.noInit.}, v1 {.noInit.}, v2 {.noInit.}: Fp12[Name]
+  var v0 {.noInit.}, v1 {.noInit.}, v2 {.noInit.}: typeof(f)
 
   # Save for f³ and (x−1)²
   v2.cyclotomic_square(f)      # v2 = f²
@@ -153,7 +153,7 @@ func finalExpHard_BLS12*[Name](f: var Fp12[Name]) {.meter.} =
   f *= v0
 
 func pairing_bls12*[Name](
-       gt: var Fp12[Name],
+       gt: var AnyFp12[Name],
        P: EC_ShortW_Aff[Fp[Name], G1],
        Q: EC_ShortW_Aff[Fp2[Name], G2]) {.meter.} =
   ## Compute the optimal Ate Pairing for BLS12 curves
@@ -164,7 +164,7 @@ func pairing_bls12*[Name](
   gt.finalExpHard_BLS12()
 
 func pairing_bls12*[Name: static Algebra](
-       gt: var Fp12[Name],
+       gt: var AnyFp12[Name],
        Ps: ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]],
        Qs: ptr UncheckedArray[EC_ShortW_Aff[Fp2[Name], G2]],
        len: int) {.meter.} =
@@ -178,7 +178,7 @@ func pairing_bls12*[Name: static Algebra](
   gt.finalExpHard_BLS12()
 
 func pairing_bls12*[Name: static Algebra](
-       gt: var Fp12[Name],
+       gt: var AnyFp12[Name],
        Ps: openArray[EC_ShortW_Aff[Fp[Name], G1]],
        Qs: openArray[EC_ShortW_Aff[Fp2[Name], G2]]) {.inline.} =
   ## Compute the optimal Ate Pairing for BLS12 curves
