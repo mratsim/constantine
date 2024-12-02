@@ -1270,6 +1270,6 @@ func kzg_point_evaluation_precompile*(r: var openArray[byte],
   # Reference:
   # `return Bytes(U256(FIELD_ELEMENTS_PER_BLOB).to_be_bytes32() + U256(BLS_MODULUS).to_be_bytes32())`
   r.toOpenArray( 0, 32-1).marshal([FIELD_ELEMENTS_PER_BLOB], WordBitWidth, bigEndian)
-  r.toOpenArray(32, 64-1).marshal(Fp[BLS12_381].getModulus(), bigEndian)
+  r.toOpenArray(32, 64-1).marshal(Fr[BLS12_381].getModulus(), bigEndian)
 
   result = cttEVM_Success
