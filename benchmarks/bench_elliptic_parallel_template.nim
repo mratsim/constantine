@@ -29,6 +29,22 @@ import
 
 export bench_elliptic_template
 
+from std / math import divmod
+proc random_coefficient*[N: static int](rng: var RngState, maxBit: int = 0): BigInt[N] =
+  ## Initializes a random BigInt[N] with `maxBit` as the most significant bit
+  ## of it.
+  ## If `maxBit` is set to zero, the coefficient will utilize all bits.
+  const WordSize = 64
+  let toShift = result.limbs.len * WordSize - maxBit
+  let (d, r) = divmod(toShift, WordSize) # how many limbs to zero & how many bits in next limb
+  result = rng.random_unsafe(BigInt[N])
+  if maxBit == 0 or maxBit >= N: return # use all bits
+  let limbs = result.limbs.len
+  for i in countdown(limbs-1, limbs - d):
+    result.limbs[i] = SecretWord(0'u64)  # zero most significant limbs
+  result.shiftRight(r)                   # shift right by remaining required
+
+
 # ############################################################
 #
 #             Parallel Benchmark definitions
@@ -55,11 +71,14 @@ proc multiAddParallelBench*(EC: typedesc, numInputs: int, iters: int) =
 
 type BenchMsmContext*[EC] = object
   tp: Threadpool
-  numInputs: int
-  coefs: seq[getBigInt(EC.getName(), kScalarField)]
-  points: seq[affine(EC)]
+  numInputs*: int
+  coefs*: seq[getBigInt(EC.getName(), kScalarField)]
+  points*: seq[affine(EC)]
 
-proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int]): BenchMsmContext[EC] =
+proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int],
+                            maxBit = 0): BenchMsmContext[EC] =
+  ## `maxBit` sets the maximum bit set in the coefficients that are randomly sampled.
+  ## Useful to benchmark MSM with many leading zeroes.
   result.tp = Threadpool.new()
   let maxNumInputs = inputSizes.max()
 
@@ -70,7 +89,9 @@ proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int]): BenchMsmC
   result.points = newSeq[ECaff](maxNumInputs)
   result.coefs = newSeq[BigInt[bits]](maxNumInputs)
 
-  proc genCoefPointPairsChunk[EC, ECaff](rngSeed: uint64, start, len: int, points: ptr ECaff, coefs: ptr BigInt[bits]) {.nimcall.} =
+  proc genCoefPointPairsChunk[EC, ECaff](rngSeed: uint64, start, len: int,
+                                         points: ptr ECaff,
+                                         coefs: ptr BigInt[bits], maxBit: int) {.nimcall.} =
     let points = cast[ptr UncheckedArray[ECaff]](points)
     let coefs = cast[ptr UncheckedArray[BigInt[bits]]](coefs)
 
@@ -82,7 +103,7 @@ proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int]): BenchMsmC
       var tmp = threadRng.random_unsafe(EC)
       tmp.clearCofactor()
       points[i].affine(tmp)
-      coefs[i] = threadRng.random_unsafe(BigInt[bits])
+      coefs[i] = random_coefficient[bits](threadRng, maxBit)
 
   let chunks = balancedChunksPrioNumber(0, maxNumInputs, result.tp.numThreads)
 
@@ -94,7 +115,10 @@ proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int]): BenchMsmC
 
   syncScope:
     for (id, start, size) in items(chunks):
-      result.tp.spawn genCoefPointPairsChunk[EC, ECaff](rng.next(), start, size, result.points[0].addr, result.coefs[0].addr)
+      result.tp.spawn genCoefPointPairsChunk[EC, ECaff](
+        rng.next(), start, size,
+        result.points[0].addr, result.coefs[0].addr, maxBit
+      )
 
   # Even if child threads are sleeping, it seems like perf is lower when there are threads around
   # maybe because the kernel has more overhead or time quantum to keep track off so shut them down.

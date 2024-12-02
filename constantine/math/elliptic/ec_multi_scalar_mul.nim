@@ -37,17 +37,51 @@ export bestBucketBitSize, abstractions
 #
 # See the litterature references at the top of `ec_multi_scalar_mul_scheduler.nim`
 
+proc determineBitsSet*[bits: static int](coefs: ptr UncheckedArray[BigInt[bits]], N: int): int =
+  ## Computes the highest bit set in the collection of all MSM coefficients.
+  ## Useful to avoid bucket computation in all most-significant-windows that
+  ## are fully zero in all coefficients.
+  const WordSize = 64
+  var acc: BigInt[bits]
+  let numLimbs = acc.limbs.len
+  # OR all coefficients
+  for i in 0 ..< N:
+    let coef = coefs[i]
+    for j in 0 ..< numLimbs:
+      acc.limbs[j] = acc.limbs[j] or coef.limbs[j]
+
+  # Determine most significant set bit + 1 (only first byte set -> msb == 8)
+  var msb = -1
+  block MsbCheck:
+
+    for i in countdown(numLimbs-1, 0):
+      for j in countdown(WordSize - 1, 0):  # Check each bit
+        let val = (1'u64 shl j)
+        if (acc.limbs[i].uint64 and val) != 0:
+          msb = i * WordSize + j + 1
+          break MsbCheck
+  result = msb
+
 func multiScalarMulImpl_reference_vartime[bits: static int, EC, ECaff](
        r: var EC,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECaff],
-       N: int, c: static int) {.tags:[VarTime, HeapAlloc].} =
+       N: int, c: static int,
+       useZeroWindows: bool) {.tags:[VarTime, HeapAlloc].} =
   ## Inner implementation of MSM, for static dispatch over c, the bucket bit length
   ## This is a straightforward simple translation of BDLO12, section 4
-
   # Prologue
   # --------
+  let numWindows =
+    if not useZeroWindows:
+      var msb = determineBitsSet[bits](coefs, N)
+      if msb < 0: # return early, nothing to do, all empty
+        return
+      # round up to next window of c
+      msb = ceilDiv_vartime(msb, c) #  * c
+      msb
+    else:
+      bits.ceilDiv_vartime(c)
   const numBuckets = 1 shl c - 1 # bucket 0 is unused
-  const numWindows = bits.ceilDiv_vartime(c)
 
   let miniMSMs = allocHeapArray(EC, numWindows)
   let buckets = allocHeapArray(EC, numBuckets)
@@ -88,7 +122,6 @@ func multiScalarMulImpl_reference_vartime[bits: static int, EC, ECaff](
     for _ in 0 ..< c:
       r.double()
     r ~+= miniMSMs[w]
-
   # Cleanup
   # -------
   buckets.freeHeap()
@@ -98,28 +131,29 @@ func multiScalarMul_reference_dispatch_vartime[bits: static int, EC, ECaff](
        r: var EC,
        coefs: ptr UncheckedArray[BigInt[bits]],
        points: ptr UncheckedArray[ECaff],
-       N: int) {.tags:[VarTime, HeapAlloc].} =
+       N: int,
+       useZeroWindows: bool) {.tags:[VarTime, HeapAlloc].} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   let c = bestBucketBitSize(N, bits, useSignedBuckets = false, useManualTuning = false)
 
   case c
-  of  2: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  2)
-  of  3: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  3)
-  of  4: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  4)
-  of  5: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  5)
-  of  6: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  6)
-  of  7: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  7)
-  of  8: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  8)
-  of  9: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  9)
-  of 10: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 10)
-  of 11: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 11)
-  of 12: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 12)
-  of 13: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 13)
-  of 14: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 14)
-  of 15: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 15)
+  of  2: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  2, useZeroWindows)
+  of  3: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  3, useZeroWindows)
+  of  4: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  4, useZeroWindows)
+  of  5: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  5, useZeroWindows)
+  of  6: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  6, useZeroWindows)
+  of  7: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  7, useZeroWindows)
+  of  8: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  8, useZeroWindows)
+  of  9: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  9, useZeroWindows)
+  of 10: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 10, useZeroWindows)
+  of 11: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 11, useZeroWindows)
+  of 12: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 12, useZeroWindows)
+  of 13: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 13, useZeroWindows)
+  of 14: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 14, useZeroWindows)
+  of 15: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 15, useZeroWindows)
 
-  of 16..20: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 16)
+  of 16..20: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 16, useZeroWindows)
   else:
     unreachable()
 
@@ -127,41 +161,45 @@ func multiScalarMul_reference_vartime*[bits: static int, EC, ECaff](
        r: var EC,
        coefs: ptr UncheckedArray[BigInt[bits]],
        points: ptr UncheckedArray[ECaff],
-       N: int) {.tags:[VarTime, HeapAlloc].} =
+       N: int,
+       useZeroWindows: bool) {.tags:[VarTime, HeapAlloc].} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
-  multiScalarMul_reference_dispatch_vartime(r, coefs, points, N)
+  multiScalarMul_reference_dispatch_vartime(r, coefs, points, N, useZeroWindows)
 
-func multiScalarMul_reference_vartime*[EC, ECaff](r: var EC, coefs: openArray[BigInt], points: openArray[ECaff]) {.tags:[VarTime, HeapAlloc].} =
+func multiScalarMul_reference_vartime*[EC, ECaff](r: var EC, coefs: openArray[BigInt], points: openArray[ECaff],
+                                                  useZeroWindows: bool) {.tags:[VarTime, HeapAlloc].} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   debug: doAssert coefs.len == points.len
   let N = points.len
-  multiScalarMul_reference_dispatch_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N)
+  multiScalarMul_reference_dispatch_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N, useZeroWindows)
 
 func multiScalarMul_reference_vartime*[F, EC, ECaff](
        r: var EC,
        coefs: ptr UncheckedArray[F],
        points: ptr UncheckedArray[ECaff],
-       len: int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
+       len: int,
+       useZeroWindows: bool) {.tags:[VarTime, Alloca, HeapAlloc].} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
   let n = cast[int](len)
   let coefs_big = allocHeapArrayAligned(F.getBigInt(), n, alignment = 64)
   coefs_big.batchFromField(coefs, n)
-  r.multiScalarMul_reference_vartime(coefs_big, points, n)
+  r.multiScalarMul_reference_vartime(coefs_big, points, n, useZeroWindows)
 
   freeHeapAligned(coefs_big)
 
 func multiScalarMul_reference_vartime*[EC, ECaff](
        r: var EC,
        coefs: openArray[Fr],
-       points: openArray[ECaff]) {.tags:[VarTime, Alloca, HeapAlloc], inline.} =
+       points: openArray[ECaff],
+       useZeroWindows: bool) {.tags:[VarTime, Alloca, HeapAlloc].} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
   debug: doAssert coefs.len == points.len
   let N = points.len
-  multiScalarMul_reference_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N)
+  multiScalarMul_reference_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N, useZeroWindows)
 
 # ########################################################### #
 #                                                             #
@@ -256,27 +294,41 @@ func miniMSM[bits: static int, EC, ECaff](
 func msmImpl_vartime[bits: static int, EC, ECaff](
        r: var EC,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECaff],
-       N: int, c: static int) {.tags:[VarTime, HeapAlloc], meter.} =
+       N: int, c: static int,
+       useZeroWindows: bool) {.tags:[VarTime, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
 
   # Setup
   # -----
   const numBuckets = 1 shl (c-1)
-
   let buckets = allocHeapArray(EC, numBuckets)
   for i in 0 ..< numBuckets:
     buckets[i].setNeutral()
 
   # Algorithm
   # ---------
-  const excess = bits mod c
-  const top = bits - excess
+  var excess = bits mod c
+  let top =
+    if not useZeroWindows:
+      var msb = determineBitsSet[bits](coefs, N)
+      if msb < 0: # return early, nothing to do, all empty
+        return
+      # round up to next window of c
+      if msb < bits - excess:
+        msb = ceilDiv_vartime(msb, c) * c
+        excess = 0
+        msb
+      else: # in this case, we don't gain anything by modiying windows
+        bits - excess
+    else:
+      bits - excess
+
   var w = top
   r.setNeutral()
 
-  when top != 0:      # Prologue
-    when excess != 0:
+  if top != 0:      # Prologue
+    if excess != 0:
       r.miniMSM(buckets, w, kTopWindow, c, coefs, points, N)
       w -= c
     else:
@@ -350,10 +402,10 @@ func miniMSM_affine[NumBuckets, QueueLen, EC, ECaff; bits: static int](
 func msmAffineImpl_vartime[bits: static int, EC, ECaff](
        r: var EC,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECaff],
-       N: int, c: static int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
+       N: int, c: static int,
+       useZeroWindows: bool) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
-
   # Setup
   # -----
   const (numBuckets, queueLen) = c.deriveSchedulerConstants()
@@ -363,13 +415,27 @@ func msmAffineImpl_vartime[bits: static int, EC, ECaff](
 
   # Algorithm
   # ---------
-  const excess = bits mod c
-  const top = bits - excess
+  var excess = bits mod c
+  let top =
+    if not useZeroWindows:
+      var msb = determineBitsSet[bits](coefs, N)
+      if msb < 0: # return early, nothing to do, all empty
+        return
+      # round up to next window of c
+      if msb < bits - excess:
+        msb = ceilDiv_vartime(msb, c) * c
+        excess = 0
+        msb
+      else: # in this case, we don't gain anything by modiying windows
+        bits - excess
+    else:
+      bits - excess
+
   var w = top
   r.setNeutral()
 
-  when top != 0:      # Prologue
-    when excess != 0:
+  if top != 0:      # Prologue
+    if excess != 0:
       # The top might use only a few bits, the affine scheduler would likely have significant collisions
       for i in 0 ..< numBuckets:
         sched.buckets.pt[i].setNeutral()
@@ -436,7 +502,8 @@ template withEndo[coefsBits: static int, EC, ECaff](
            r: var EC,
            coefs: ptr UncheckedArray[BigInt[coefsBits]],
            points: ptr UncheckedArray[ECaff],
-           N: int, c: static int) =
+           N: int, c: static int,
+           useZeroWindows: bool) =
   when hasEndomorphismAcceleration(EC.getName()) and
         EndomorphismThreshold <= coefsBits and
         coefsBits <= EC.getScalarField().bits() and
@@ -447,7 +514,7 @@ template withEndo[coefsBits: static int, EC, ECaff](
     let (endoCoefs, endoPoints, endoN) = applyEndomorphism(coefs, points, N)
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance
-    msmProc(r, endoCoefs, endoPoints, endoN, c)
+    msmProc(r, endoCoefs, endoPoints, endoN, c, useZeroWindows)
     freeHeap(endoCoefs)
     freeHeap(endoPoints)
   else:
@@ -459,7 +526,8 @@ template withEndo[coefsBits: static int, EC, ECaff](
 func msm_dispatch_vartime[bits: static int, F, G](
        r: var (EC_ShortW_Jac[F, G] or EC_ShortW_Prj[F, G]),
        coefs: ptr UncheckedArray[BigInt[bits]],
-       points: ptr UncheckedArray[EC_ShortW_Aff[F, G]], N: int) =
+       points: ptr UncheckedArray[EC_ShortW_Aff[F, G]], N: int,
+       useZeroWindows: bool) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
@@ -469,29 +537,30 @@ func msm_dispatch_vartime[bits: static int, F, G](
   # but it has no significant impact on performance
 
   case c
-  of  2: withEndo(msmImpl_vartime, r, coefs, points, N, c =  2)
-  of  3: withEndo(msmImpl_vartime, r, coefs, points, N, c =  3)
-  of  4: withEndo(msmImpl_vartime, r, coefs, points, N, c =  4)
-  of  5: withEndo(msmImpl_vartime, r, coefs, points, N, c =  5)
-  of  6: withEndo(msmImpl_vartime, r, coefs, points, N, c =  6)
-  of  7: withEndo(msmImpl_vartime, r, coefs, points, N, c =  7)
-  of  8: withEndo(msmImpl_vartime, r, coefs, points, N, c =  8)
+  of  2: withEndo(msmImpl_vartime, r, coefs, points, N, c =  2, useZeroWindows)
+  of  3: withEndo(msmImpl_vartime, r, coefs, points, N, c =  3, useZeroWindows)
+  of  4: withEndo(msmImpl_vartime, r, coefs, points, N, c =  4, useZeroWindows)
+  of  5: withEndo(msmImpl_vartime, r, coefs, points, N, c =  5, useZeroWindows)
+  of  6: withEndo(msmImpl_vartime, r, coefs, points, N, c =  6, useZeroWindows)
+  of  7: withEndo(msmImpl_vartime, r, coefs, points, N, c =  7, useZeroWindows)
+  of  8: withEndo(msmImpl_vartime, r, coefs, points, N, c =  8, useZeroWindows)
 
-  of  9: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c =  9)
-  of 10: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c = 10)
-  of 11: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c = 11)
-  of 12: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c = 12)
-  of 13: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c = 13)
-  of 14: msmAffineImpl_vartime(r, coefs, points, N, c = 14)
-  of 15: msmAffineImpl_vartime(r, coefs, points, N, c = 15)
+  of  9: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c =  9, useZeroWindows)
+  of 10: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c = 10, useZeroWindows)
+  of 11: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c = 11, useZeroWindows)
+  of 12: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c = 12, useZeroWindows)
+  of 13: withEndo(msmAffineImpl_vartime, r, coefs, points, N, c = 13, useZeroWindows)
+  of 14: msmAffineImpl_vartime(r, coefs, points, N, c = 14, useZeroWindows)
+  of 15: msmAffineImpl_vartime(r, coefs, points, N, c = 15, useZeroWindows)
 
-  of 16..17: msmAffineImpl_vartime(r, coefs, points, N, c = 16)
+  of 16..17: msmAffineImpl_vartime(r, coefs, points, N, c = 16, useZeroWindows)
   else:
     unreachable()
 
 func msm_dispatch_vartime[bits: static int, F](
        r: var EC_TwEdw_Prj[F], coefs: ptr UncheckedArray[BigInt[bits]],
-       points: ptr UncheckedArray[EC_TwEdw_Aff[F]], N: int) =
+       points: ptr UncheckedArray[EC_TwEdw_Aff[F]], N: int,
+       useZeroWindows: bool) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
 
@@ -503,22 +572,22 @@ func msm_dispatch_vartime[bits: static int, F](
   # but it has no significant impact on performance
 
   case c
-  of  2: withEndo(msmImpl_vartime, r, coefs, points, N, c =  2)
-  of  3: withEndo(msmImpl_vartime, r, coefs, points, N, c =  3)
-  of  4: withEndo(msmImpl_vartime, r, coefs, points, N, c =  4)
-  of  5: withEndo(msmImpl_vartime, r, coefs, points, N, c =  5)
-  of  6: withEndo(msmImpl_vartime, r, coefs, points, N, c =  6)
-  of  7: withEndo(msmImpl_vartime, r, coefs, points, N, c =  7)
-  of  8: withEndo(msmImpl_vartime, r, coefs, points, N, c =  8)
-  of  9: withEndo(msmImpl_vartime, r, coefs, points, N, c =  9)
-  of 10: withEndo(msmImpl_vartime, r, coefs, points, N, c = 10)
-  of 11: withEndo(msmImpl_vartime, r, coefs, points, N, c = 11)
-  of 12: withEndo(msmImpl_vartime, r, coefs, points, N, c = 12)
-  of 13: withEndo(msmImpl_vartime, r, coefs, points, N, c = 13)
-  of 14: msmImpl_vartime(r, coefs, points, N, c = 14)
-  of 15: msmImpl_vartime(r, coefs, points, N, c = 15)
+  of  2: withEndo(msmImpl_vartime, r, coefs, points, N, c =  2, useZeroWindows)
+  of  3: withEndo(msmImpl_vartime, r, coefs, points, N, c =  3, useZeroWindows)
+  of  4: withEndo(msmImpl_vartime, r, coefs, points, N, c =  4, useZeroWindows)
+  of  5: withEndo(msmImpl_vartime, r, coefs, points, N, c =  5, useZeroWindows)
+  of  6: withEndo(msmImpl_vartime, r, coefs, points, N, c =  6, useZeroWindows)
+  of  7: withEndo(msmImpl_vartime, r, coefs, points, N, c =  7, useZeroWindows)
+  of  8: withEndo(msmImpl_vartime, r, coefs, points, N, c =  8, useZeroWindows)
+  of  9: withEndo(msmImpl_vartime, r, coefs, points, N, c =  9, useZeroWindows)
+  of 10: withEndo(msmImpl_vartime, r, coefs, points, N, c = 10, useZeroWindows)
+  of 11: withEndo(msmImpl_vartime, r, coefs, points, N, c = 11, useZeroWindows)
+  of 12: withEndo(msmImpl_vartime, r, coefs, points, N, c = 12, useZeroWindows)
+  of 13: withEndo(msmImpl_vartime, r, coefs, points, N, c = 13, useZeroWindows)
+  of 14: msmImpl_vartime(r, coefs, points, N, c = 14, useZeroWindows)
+  of 15: msmImpl_vartime(r, coefs, points, N, c = 15, useZeroWindows)
 
-  of 16..17: msmImpl_vartime(r, coefs, points, N, c = 16)
+  of 16..17: msmImpl_vartime(r, coefs, points, N, c = 16, useZeroWindows)
   else:
     unreachable()
 
@@ -526,43 +595,47 @@ func multiScalarMul_vartime*[bits: static int, EC, ECaff](
        r: var EC,
        coefs: ptr UncheckedArray[BigInt[bits]],
        points: ptr UncheckedArray[ECaff],
-       len: int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
+       len: int,
+       useZeroWindows: bool) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
 
-  msm_dispatch_vartime(r, coefs, points, len)
+  msm_dispatch_vartime(r, coefs, points, len, useZeroWindows)
 
 func multiScalarMul_vartime*[bits: static int, EC, ECaff](
        r: var EC,
        coefs: openArray[BigInt[bits]],
-       points: openArray[ECaff]) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
+       points: openArray[ECaff],
+       useZeroWindows: bool) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
   debug: doAssert coefs.len == points.len
   let N = points.len
-  msm_dispatch_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N)
+  msm_dispatch_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N, useZeroWindows)
 
 func multiScalarMul_vartime*[F, EC, ECaff](
        r: var EC,
        coefs: ptr UncheckedArray[F],
        points: ptr UncheckedArray[ECaff],
-       len: int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
+       len: int,
+       useZeroWindows: bool) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
 
   let n = cast[int](len)
   let coefs_big = allocHeapArrayAligned(F.getBigInt(), n, alignment = 64)
   coefs_big.batchFromField(coefs, n)
-  r.multiScalarMul_vartime(coefs_big, points, n)
+  r.multiScalarMul_vartime(coefs_big, points, n, useZeroWindows)
 
   freeHeapAligned(coefs_big)
 
 func multiScalarMul_vartime*[EC, ECaff](
        r: var EC,
        coefs: openArray[Fr],
-       points: openArray[ECaff]) {.tags:[VarTime, Alloca, HeapAlloc], inline.} =
+       points: openArray[ECaff],
+       useZeroWindows: bool) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
   debug: doAssert coefs.len == points.len
   let N = points.len
-  multiScalarMul_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N)
+  multiScalarMul_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N, useZeroWindows)

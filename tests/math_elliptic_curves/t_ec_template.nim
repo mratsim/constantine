@@ -14,7 +14,7 @@
 
 import
   # Standard library
-  std/[unittest, times],
+  std/[unittest, times, strformat],
   # Internals
   constantine/platforms/abstractions,
   constantine/named/algebras,
@@ -93,6 +93,21 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
         result = rng.random_highHammingWeight_with_randZ(EC)
       else:
         result = rng.random_long01Seq_with_randZ(EC)
+
+from std / math import divmod
+proc random_coefficient*[N: static int](rng: var RngState, maxBit: int = 0): BigInt[N] =
+  ## Initializes a random BigInt[N] with `maxBit` as the most significant bit
+  ## of it.
+  ## If `maxBit` is set to zero, the coefficient will utilize all bits.
+  const WordSize = 64
+  let toShift = result.limbs.len * WordSize - maxBit
+  let (d, r) = divmod(toShift, WordSize) # how many limbs to zero & how many bits in next limb
+  result = rng.random_unsafe(BigInt[N])
+  if maxBit == 0 or maxBit >= N: return # use all bits
+  let limbs = result.limbs.len
+  for i in countdown(limbs-1, limbs - d):
+    result.limbs[i] = SecretWord(0'u64)  # zero most significant limbs
+  result.shiftRight(r)                   # shift right by remaining required
 
 proc run_EC_addition_tests*(
        ec: typedesc,
@@ -1390,3 +1405,103 @@ proc run_EC_multi_scalar_mul_impl*[N: static int](
         test(ec, gen = Uniform)
         test(ec, gen = HighHammingWeight)
         test(ec, gen = Long01Sequence)
+
+proc run_EC_multi_scalar_mul_zero_windows_sanity*(
+       ec: typedesc,
+       moduleName: string) =
+  # Random seed for reproducibility
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo moduleName, " xoshiro512** seed: ", seed
+
+  const testSuiteDesc = "Elliptic curve multi-scalar-multiplication"
+  const NumPoints = 4096
+
+  suite "Scalar coefficients with specific number of zero bits":
+    const maxBits = [1, 8, 16, 32, 64, 128, 256, 512] # how many bits are set in the coefficients
+    for bits in maxBits:
+      test "Zero bits " & $bits:
+        proc test(EC: typedesc) =
+          type T = BigInt[EC.getScalarField().bits()]
+          var coefs = newSeq[T](NumPoints)
+          for i in 0 ..< NumPoints:
+            coefs[i] = random_coefficient[EC.getScalarField().bits()](rng, bits)
+          # verify number of bits needed
+          let msb = determineBitsSet(cast[ptr UncheckedArray[T]](coefs[0].addr), NumPoints)
+          ## `determineBitsSet` returns the highest set bit in the list of coefficients + 1
+          ## and the size of the BigInt if the target size is larger than the BigInt.
+          check msb == min(bits, bEC.getScalarField().bits())
+        test(ec)
+
+import ../../benchmarks/bench_msm_impl_optional_drop_windows
+proc run_EC_multi_scalar_mul_different_zero_windows*[N: static int](
+       ec: typedesc,
+       numPoints: array[N, int],
+       moduleName: string) =
+  # Random seed for reproducibility
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo moduleName, " xoshiro512** seed: ", seed
+
+  const testSuiteDesc = "Elliptic curve multi-scalar-multiplication with all windows compared to dropping MSB zero windows"
+
+  suite &"{testSuiteDesc} - {$ec} - [{WordBitWidth}-bit mode]":
+    const maxBits = [1, 8, 16, 32, 64, 128, 256, 512] # how many bits are set in the coefficients
+    # first check a selection of bits with different number of points
+    for bits in maxBits:
+      for n in numPoints:
+        let bucketBits = bestBucketBitSize(n, ec.getScalarField().bits(), useSignedBuckets = false, useManualTuning = false)
+        test &"{$ec} Multi-scalar-mul (N={n}, bucket bits: {bucketBits}, maxBitsSet={bits})":
+          proc test(EC: typedesc) =
+            var points = newSeq[affine(EC)](n)
+            var coefs = newSeq[BigInt[EC.getScalarField().bits()]](n)
+
+            for i in 0 ..< n:
+              var tmp = rng.random_unsafe(EC)
+              tmp.clearCofactor()
+              points[i].affine(tmp)
+              coefs[i] = random_coefficient[EC.getScalarField().bits()](rng, bits)
+
+            var refAll, refWo, optAll, optWo: EC
+            refAll.multiScalarMul_reference_vartime(coefs, points, useZeroWindows = true)
+            refWo.multiScalarMul_reference_vartime(coefs, points, useZeroWindows = false)
+            optAll.multiScalarMul_vartime(coefs, points, useZeroWindows = true)
+            optWo.multiScalarMul_vartime(coefs, points, useZeroWindows = false)
+
+            doAssert bool(refAll == refWo)
+            doAssert bool(optAll == optWo)
+            doAssert bool(refWo  == optWo)
+
+          test(ec)
+
+    # now check each possible bit explicitly
+    # Note: this uses a fixed bucket size, but given the above, that should be fine
+    for bits in 0 ..< ec.getScalarField().bits():
+      const n = 32
+      let bucketBits = bestBucketBitSize(n, ec.getScalarField().bits(), useSignedBuckets = false, useManualTuning = false)
+      test &"{$ec} Multi-scalar-mul (N={n}, bucket bits: {bucketBits}, maxBitsSet={bits})":
+        proc test(EC: typedesc) =
+          var points = newSeq[affine(EC)](n)
+          var coefs = newSeq[BigInt[EC.getScalarField().bits()]](n)
+
+          for i in 0 ..< n:
+            var tmp = rng.random_unsafe(EC)
+            tmp.clearCofactor()
+            points[i].affine(tmp)
+            coefs[i] = random_coefficient[EC.getScalarField().bits()](rng, bits)
+
+          var refAll, refWo, optAll, optWo: EC
+          refAll.multiScalarMul_reference_vartime(coefs, points, useZeroWindows = true)
+          refWo.multiScalarMul_reference_vartime(coefs, points, useZeroWindows = false)
+          optAll.multiScalarMul_vartime(coefs, points, useZeroWindows = true)
+          optWo.multiScalarMul_vartime(coefs, points, useZeroWindows = false)
+
+          doAssert bool(refAll == refWo)
+          doAssert bool(optAll == optWo)
+          doAssert bool(refWo  == optWo)
+
+        test(ec)
