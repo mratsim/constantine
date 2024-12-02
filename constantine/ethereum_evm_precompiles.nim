@@ -44,6 +44,7 @@ type
     cttEVM_IntLargerThanModulus
     cttEVM_PointNotOnCurve
     cttEVM_PointNotInSubgroup
+    cttEVM_VerificationFailure
 
 func eth_evm_sha256*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## SHA256
@@ -1260,14 +1261,11 @@ func kzg_point_evaluation_precompile*(r: var openArray[byte],
   var rhash: array[32, byte]
   rhash.kzg_to_versioned_hash(commitment_bytes)
   if rhash != versioned_hash:
-    ## XXX: BAD! If it was `cttEthKzgStatus` return type I'd return the VerificationFailure
-    return cttEVM_InvalidInputSize #cttEthKzg_VerificationFailure
+    return cttEVM_VerificationFailure
 
   # Verify KZG proof with z and y in big endian format
-  var ctx = allocHeapAligned(EthereumKZGContext, alignment = 64)
   if ctx.verify_kzg_proof(commitment_bytes, z, y, proof) != cttEthKzg_Success:
-    ## XXX: BAD! If it was `cttEthKzgStatus` return type I'd return the VerificationFailure
-    return cttEVM_InvalidInputSize #cttEthKzg_VerificationFailure
+    return cttEVM_VerificationFailure
 
   # Reference:
   # `return Bytes(U256(FIELD_ELEMENTS_PER_BLOB).to_be_bytes32() + U256(BLS_MODULUS).to_be_bytes32())`
