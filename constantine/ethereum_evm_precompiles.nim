@@ -24,6 +24,9 @@ import
   ./ethereum_eip4844_kzg,
   ./serialization/codecs_status_codes
 
+# For KZG point precompile
+export EthereumKZGContext, TrustedSetupFormat, TrustedSetupStatus, trusted_setup_load, trusted_setup_delete
+
 # ############################################################
 #
 #                       Ethereum EVM precompiles
@@ -1230,8 +1233,9 @@ proc kzg_to_versioned_hash(r: var array[32, byte], commitment_bytes: array[48, b
   s.finish(r)
   r[0] = VERSIONED_HASH_VERSION_KZG
 
-func kzg_point_evaluation_precompile*(r: var openArray[byte],
-                                      input: openArray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
+func eth_evm_kzg_point_evaluation_precompile*(ctx: ptr EthereumKZGContext,
+                                              r: var openArray[byte],
+                                              input: openArray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Verify `p(z) = y` given commitment that corresponds to the polynomial `p(x)` and a KZG proof.
   ## Also verify that the provided commitment matches the provided versioned_hash.
   ## Returns `FIELD_ELEMENTS_PER_BLOB` and the BSL12-381 modulus as padded 32 byte big endian values,
@@ -1250,11 +1254,10 @@ func kzg_point_evaluation_precompile*(r: var openArray[byte],
     y: array[32, byte]
     commitment_bytes: array[48, byte]
     proof: array[48, byte]
-  ## XXX: copy like Python code in big endian order or unmarshal? `verify_kzg_proof` works on byte arrays
   versioned_hash.rawCopy(0, input, 0, 32)
   z.rawCopy(0, input, 32, 32)
   y.rawCopy(0, input, 64, 32)
-  commitment_bytes.rawCopy(0, input, 96, 48) # commitment_bytes should surely be hashed in big endian order based on spec
+  commitment_bytes.rawCopy(0, input, 96, 48)
   proof.rawCopy(0, input, 144, 48)
 
   # Verify commitment matches versioned_hash
