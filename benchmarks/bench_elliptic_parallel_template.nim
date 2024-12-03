@@ -35,7 +35,7 @@ export bench_elliptic_template
 #
 # ############################################################
 
-proc multiAddParallelBench*(EC: typedesc, numInputs: int, iters: int) =
+proc multiAddParallelBench*(EC: typedesc, numInputs: int, iters: int) {.noinline.} =
   var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](numInputs)
 
   for i in 0 ..< numInputs:
@@ -59,7 +59,7 @@ type BenchMsmContext*[EC] = object
   coefs: seq[getBigInt(EC.getName(), kScalarField)]
   points: seq[affine(EC)]
 
-proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int]): BenchMsmContext[EC] =
+proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int]): BenchMsmContext[EC] {.noinline.} =
   result.tp = Threadpool.new()
   let maxNumInputs = inputSizes.max()
 

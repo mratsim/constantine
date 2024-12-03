@@ -44,6 +44,7 @@ proc main() =
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
     addBench(Fp[curve], Iters)
+    add10Bench(Fp[curve], Iters)
     subBench(Fp[curve], Iters)
     negBench(Fp[curve], Iters)
     ccopyBench(Fp[curve], Iters)
@@ -55,8 +56,9 @@ proc main() =
     sqr2xUnrBench(Fp[curve], Iters)
     rdc2xBench(Fp[curve], Iters)
     smallSeparator()
-    sumprodBench(Fp[curve], Iters)
-    smallSeparator()
+    when not Fp[curve].isCrandallPrimeField():
+      sumprodBench(Fp[curve], Iters)
+      smallSeparator()
     toBigBench(Fp[curve], Iters)
     toFieldBench(Fp[curve], Iters)
     smallSeparator()

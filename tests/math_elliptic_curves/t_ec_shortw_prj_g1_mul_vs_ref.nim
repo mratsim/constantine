@@ -23,11 +23,11 @@ run_EC_mul_vs_ref_impl(
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_vs_ref_" & $BN254_Snarks
   )
 
-# run_EC_mul_vs_ref_impl(
-#     ec = EC_ShortW_Prj[Fp[Secp256k1], G1],
-#     ItersMul = ItersMul,
-#     moduleName = "test_ec_shortweierstrass_projective_g1_mul_vs_ref_" & $BN254_Snarks
-#   )
+run_EC_mul_vs_ref_impl(
+    ec = EC_ShortW_Prj[Fp[Secp256k1], G1],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_shortweierstrass_projective_g1_mul_vs_ref_" & $BN254_Snarks
+  )
 
 run_EC_mul_vs_ref_impl(
     ec = EC_ShortW_Prj[Fp[BLS12_381], G1],
