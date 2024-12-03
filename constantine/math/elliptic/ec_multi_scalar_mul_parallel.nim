@@ -160,10 +160,10 @@ proc msmImpl_vartime_parallel[bits: static int, EC, ECaff](
   # Instead of storing the result in futures, risking them being scattered in memory
   # we store them in a contiguous array, and the synchronizing future just returns a bool.
   # top window is done on this thread
-  let miniMSMsResults = allocHeapArray(EC, numFullWindows)
+  let miniMSMsResults = allocHeapArrayAligned(EC, numFullWindows, alignment = 64)
   let miniMSMsReady   = allocStackArray(FlowVar[bool], numFullWindows)
 
-  let bucketsMatrix = allocHeapArray(EC, numBuckets*numWindows)
+  let bucketsMatrix = allocHeapArrayAligned(EC, numBuckets*numWindows, alignment = 64)
 
   # Algorithm
   # ---------
@@ -204,8 +204,8 @@ proc msmImpl_vartime_parallel[bits: static int, EC, ECaff](
 
   # Cleanup
   # -------
-  miniMSMsResults.freeHeap()
-  bucketsMatrix.freeHeap()
+  miniMSMsResults.freeHeapAligned()
+  bucketsMatrix.freeHeapAligned()
 
 # Parallel MSM Affine - bucket accumulation
 # -----------------------------------------
@@ -218,8 +218,8 @@ proc bucketAccumReduce_serial[bits: static int, EC, ECaff](
        N: int) =
 
   const (numBuckets, queueLen) = c.deriveSchedulerConstants()
-  let buckets = allocHeap(Buckets[numBuckets, EC, ECaff])
-  let sched = allocHeap(Scheduler[numBuckets, queueLen, EC, ECaff])
+  let buckets = allocHeapAligned(Buckets[numBuckets, EC, ECaff], alignment = 64)
+  let sched = allocHeapAligned(Scheduler[numBuckets, queueLen, EC, ECaff], alignment = 64)
   sched.init(points, buckets, 0, numBuckets.int32)
 
   # 1. Bucket Accumulation
@@ -230,8 +230,8 @@ proc bucketAccumReduce_serial[bits: static int, EC, ECaff](
 
   # Cleanup
   # ----------------
-  sched.freeHeap()
-  buckets.freeHeap()
+  sched.freeHeapAligned()
+  buckets.freeHeapAligned()
 
 proc bucketAccumReduce_parallel[bits: static int, EC, ECaff](
        tp: Threadpool,
@@ -253,8 +253,8 @@ proc bucketAccumReduce_parallel[bits: static int, EC, ECaff](
   let chunkSize = int32(numBuckets) shr log2_vartime(cast[uint32](numChunks)) # Both are power of 2 so exact division
   let chunksReadiness = allocStackArray(FlowVar[bool], numChunks-1)           # Last chunk is done on this thread
 
-  let buckets = allocHeap(Buckets[numBuckets, EC, ECaff])
-  let scheds = allocHeapArray(Scheduler[numBuckets, queueLen, EC, ECaff], numChunks)
+  let buckets = allocHeapAligned(Buckets[numBuckets, EC, ECaff], alignment = 64)
+  let scheds = allocHeapArrayAligned(Scheduler[numBuckets, queueLen, EC, ECaff], numChunks, alignment = 64)
 
   block: # 1. Bucket Accumulation
     for chunkID in 0'i32 ..< numChunks-1:
@@ -307,8 +307,8 @@ proc bucketAccumReduce_parallel[bits: static int, EC, ECaff](
 
   # Cleanup
   # ----------------
-  scheds.freeHeap()
-  buckets.freeHeap()
+  scheds.freeHeapAligned()
+  buckets.freeHeapAligned()
 
 # Parallel MSM Affine - window-level only
 # ---------------------------------------
@@ -328,7 +328,7 @@ proc msmAffine_vartime_parallel[bits: static int, EC, ECaff](
   # Instead of storing the result in futures, risking them being scattered in memory
   # we store them in a contiguous array, and the synchronizing future just returns a bool.
   # top window is done on this thread
-  let miniMSMsResults = allocHeapArray(EC, numFullWindows)
+  let miniMSMsResults = allocHeapArrayAligned(EC, numFullWindows, alignment = 64)
   let miniMSMsReady   = allocStackArray(Flowvar[bool], numFullWindows)
 
   # Algorithm
@@ -365,13 +365,13 @@ proc msmAffine_vartime_parallel[bits: static int, EC, ECaff](
                   elif excess == 0: kFullWindow
                   else: kTopWindow
 
-  let buckets = allocHeapArray(EC, numBuckets)
+  let buckets = allocHeapArrayAligned(EC, numBuckets, alignment = 64)
   bucketAccumReduce_withInit(
     r,
     buckets,
     bitIndex = top, msmKind, c,
     coefs, points, N)
-  freeHeapAligned(buckets)
+  buckets.freeHeapAligned()
 
   # 3. Final reduction
   for w in countdown(numFullWindows-1, 0):
@@ -382,7 +382,7 @@ proc msmAffine_vartime_parallel[bits: static int, EC, ECaff](
 
   # Cleanup
   # -------
-  miniMSMsResults.freeHeap()
+  miniMSMsResults.freeHeapAligned()
 
 proc msmAffine_vartime_parallel_split[bits: static int, EC, ECaff](
        tp: Threadpool,
@@ -410,7 +410,7 @@ proc msmAffine_vartime_parallel_split[bits: static int, EC, ECaff](
     return
 
   let chunkingDescriptor = balancedChunksPrioNumber(0, N, msmParallelism)
-  let splitMSMsResults = allocHeapArray(typeof(r[]), msmParallelism-1)
+  let splitMSMsResults = allocHeapArrayAligned(typeof(r[]), msmParallelism-1, alignment = 64)
   let splitMSMsReady   = allocStackArray(Flowvar[bool], msmParallelism-1)
 
   for (i, start, len) in items(chunkingDescriptor):
@@ -429,7 +429,7 @@ proc msmAffine_vartime_parallel_split[bits: static int, EC, ECaff](
     discard sync splitMSMsReady[i]
     r[] ~+= splitMSMsResults[i]
 
-  freeHeap(splitMSMsResults)
+  splitMSMsResults.freeHeapAligned()
 
 proc applyEndomorphism_parallel[bits: static int, ECaff](
        tp: Threadpool,
@@ -447,8 +447,8 @@ proc applyEndomorphism_parallel[bits: static int, ECaff](
             else: ECaff.G
 
   const L = ECaff.getScalarField().bits().computeEndoRecodedLength(M)
-  let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
-  let endoBasis    = allocHeapArray(array[M, ECaff], N)
+  let splitCoefs   = allocHeapArrayAligned(array[M, BigInt[L]], N, alignment = 64)
+  let endoBasis    = allocHeapArrayAligned(array[M, ECaff], N, alignment = 64)
 
   syncScope:
     tp.parallelFor i in 0 ..< N:
@@ -489,8 +489,8 @@ template withEndo[coefsBits: static int, EC, ECaff](
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance
     msmProc(tp, r, endoCoefs, endoPoints, endoN, c)
-    freeHeap(endoCoefs)
-    freeHeap(endoPoints)
+    endoCoefs.freeHeapAligned()
+    endoPoints.freeHeapAligned()
   else:
     msmProc(tp, r, coefs, points, N, c)
 
@@ -512,8 +512,8 @@ template withEndo[coefsBits: static int, EC, ECaff](
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance
     msmProc(tp, r, endoCoefs, endoPoints, endoN, c, useParallelBuckets)
-    freeHeap(endoCoefs)
-    freeHeap(endoPoints)
+    endoCoefs.freeHeapAligned()
+    endoPoints.freeHeapAligned()
   else:
     msmProc(tp, r, coefs, points, N, c, useParallelBuckets)
 
