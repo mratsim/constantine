@@ -49,8 +49,8 @@ func multiScalarMulImpl_reference_vartime[bits: static int, EC, ECaff](
   const numBuckets = 1 shl c - 1 # bucket 0 is unused
   const numWindows = bits.ceilDiv_vartime(c)
 
-  let miniMSMs = allocHeapArray(EC, numWindows)
-  let buckets = allocHeapArray(EC, numBuckets)
+  let miniMSMs = allocHeapArrayAligned(EC, numWindows, alignment = 64)
+  let buckets = allocHeapArrayAligned(EC, numBuckets, alignment = 64)
 
   # Algorithm
   # ---------
@@ -91,8 +91,8 @@ func multiScalarMulImpl_reference_vartime[bits: static int, EC, ECaff](
 
   # Cleanup
   # -------
-  buckets.freeHeap()
-  miniMSMs.freeHeap()
+  buckets.freeHeapAligned()
+  miniMSMs.freeHeapAligned()
 
 func multiScalarMul_reference_dispatch_vartime[bits: static int, EC, ECaff](
        r: var EC,
@@ -151,7 +151,7 @@ func multiScalarMul_reference_vartime*[F, EC, ECaff](
   coefs_big.batchFromField(coefs, n)
   r.multiScalarMul_reference_vartime(coefs_big, points, n)
 
-  freeHeapAligned(coefs_big)
+  coefs_big.freeHeapAligned()
 
 func multiScalarMul_reference_vartime*[EC, ECaff](
        r: var EC,
@@ -264,7 +264,7 @@ func msmImpl_vartime[bits: static int, EC, ECaff](
   # -----
   const numBuckets = 1 shl (c-1)
 
-  let buckets = allocHeapArray(EC, numBuckets)
+  let buckets = allocHeapArrayAligned(EC, numBuckets, alignment = 64)
   for i in 0 ..< numBuckets:
     buckets[i].setNeutral()
 
@@ -293,7 +293,7 @@ func msmImpl_vartime[bits: static int, EC, ECaff](
 
   # Cleanup
   # -------
-  buckets.freeHeap()
+  buckets.freeHeapAligned()
 
 # Multi scalar multiplication with batched affine additions
 # -----------------------------------------------------------------------------------------------------------------------
@@ -357,8 +357,8 @@ func msmAffineImpl_vartime[bits: static int, EC, ECaff](
   # Setup
   # -----
   const (numBuckets, queueLen) = c.deriveSchedulerConstants()
-  let buckets = allocHeap(Buckets[numBuckets, EC, ECaff])
-  let sched = allocHeap(Scheduler[numBuckets, queueLen, EC, ECaff])
+  let buckets = allocHeapAligned(Buckets[numBuckets, EC, ECaff], alignment = 64)
+  let sched = allocHeapAligned(Scheduler[numBuckets, queueLen, EC, ECaff], alignment = 64)
   sched.init(points, buckets, 0, numBuckets.int32)
 
   # Algorithm
@@ -389,8 +389,8 @@ func msmAffineImpl_vartime[bits: static int, EC, ECaff](
 
   # Cleanup
   # -------
-  sched.freeHeap()
-  buckets.freeHeap()
+  sched.freeHeapAligned()
+  buckets.freeHeapAligned()
 
 # Endomorphism acceleration
 # -----------------------------------------------------------------------------------------------------------------------
@@ -410,8 +410,8 @@ proc applyEndomorphism[bits: static int, ECaff](
             else: ECaff.G
 
   const L = ECaff.getScalarField().bits().computeEndoRecodedLength(M)
-  let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
-  let endoBasis    = allocHeapArray(array[M, ECaff], N)
+  let splitCoefs   = allocHeapArrayAligned(array[M, BigInt[L]], N, alignment = 64)
+  let endoBasis    = allocHeapArrayAligned(array[M, ECaff], N, alignment = 64)
 
   for i in 0 ..< N:
     var negatePoints {.noinit.}: array[M, SecretBool]
@@ -448,8 +448,8 @@ template withEndo[coefsBits: static int, EC, ECaff](
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance
     msmProc(r, endoCoefs, endoPoints, endoN, c)
-    freeHeap(endoCoefs)
-    freeHeap(endoPoints)
+    endoCoefs.freeHeapAligned()
+    endoPoints.freeHeapAligned()
   else:
     msmProc(r, coefs, points, N, c)
 
@@ -555,7 +555,7 @@ func multiScalarMul_vartime*[F, EC, ECaff](
   coefs_big.batchFromField(coefs, n)
   r.multiScalarMul_vartime(coefs_big, points, n)
 
-  freeHeapAligned(coefs_big)
+  coefs_big.freeHeapAligned()
 
 func multiScalarMul_vartime*[EC, ECaff](
        r: var EC,
