@@ -168,7 +168,7 @@ func serialize*(dst: var EthVerkleIpaProofBytes,
   return cttEthVerkleIpa_Success
 
 func deserialize*(dst: var EthVerkleIpaProof,
-                  src: EthVerkleIpaProofBytes): cttEthVerkleIpaStatus =
+                  src: EthVerkleIpaProofBytes): cttEthVerkleIpaStatus {.discardable.} =
 
   const fpb = sizeof(Fp[Banderwagon])
   const frb = sizeof(Fr[Banderwagon])
@@ -215,7 +215,7 @@ func deserialize*(dst: var EthVerkleIpaMultiProof,
 # TODO: refactor, this shouldn't use curves_primitives but internal functions
 import ./lowlevel_fields
 
-func mapToBaseField*(dst: var Fp[Banderwagon],p: EC_TwEdw[Fp[Banderwagon]]) =
+func map_to_base_field*(dst: var Fp[Banderwagon],p: EC_TwEdw[Fp[Banderwagon]]) {.discardable.} =
   ## The mapping chosen for the Banderwagon Curve is x/y
   ##
   ## This function takes a Banderwagon element & then
@@ -227,7 +227,7 @@ func mapToBaseField*(dst: var Fp[Banderwagon],p: EC_TwEdw[Fp[Banderwagon]]) =
   invY.inv(p.y)             # invY = 1/Y
   dst.prod(p.x, invY)       # dst = (X) * (1/Y)
 
-func mapToScalarField*(res: var Fr[Banderwagon], p: EC_TwEdw[Fp[Banderwagon]]): bool {.discardable.} =
+func map_to_scalar_field*(res: var Fr[Banderwagon], p: EC_TwEdw[Fp[Banderwagon]]): bool {.discardable.} =
   ## This function takes the x/y value from the above function as Fp element
   ## and convert that to bytes in Big Endian,
   ## and then load that to a Fr element
@@ -244,7 +244,7 @@ func mapToScalarField*(res: var Fr[Banderwagon], p: EC_TwEdw[Fp[Banderwagon]]): 
 
   return check1 and check2
 
-func batchMapToScalarField*(
+func batch_map_to_scalar_field*(
       res: var openArray[Fr[Banderwagon]],
       points: openArray[EC_TwEdw[Fp[Banderwagon]]]): bool {.discardable, noinline.} =
   ## This function performs the `mapToScalarField` operation
