@@ -115,7 +115,7 @@ func finalExpEasy*[Name: static Algebra](f: var Fp6[Name]) {.meter.} =
   f.frobenius_map(g)    # f = f^((p³-1) p)
   f *= g                # f = f^((p³-1) (p+1))
 
-func finalExpEasy*[Name: static Algebra](f: var Fp12[Name]) {.meter.} =
+func finalExpEasy*[Name: static Algebra](f: var AnyFp12[Name]) {.meter.} =
   ## Easy part of the final exponentiation
   ##
   ## This maps the result of the Miller loop into the cyclotomic subgroup Gϕ₁₂
@@ -422,10 +422,10 @@ func isInCyclotomicSubgroup*[Name](a: Fp6[Name]): SecretBool =
 
   return t == p and not a.isZero()
 
-func isInCyclotomicSubgroup*[Name](a: Fp12[Name]): SecretBool =
+func isInCyclotomicSubgroup*[Name](a: AnyFp12[Name]): SecretBool =
   ## Check if a ∈ Fpⁿ: a^Φₙ(p) = 1
   ## Φ₁₂(p) = p⁴-p²+1
-  var t{.noInit.}, p2{.noInit.}: Fp12[Name]
+  var t{.noInit.}, p2{.noInit.}: typeof(a)
 
   p2.frobenius_map(a, 2) # a^(p²)
   t.frobenius_map(p2, 2) # a^(p⁴)

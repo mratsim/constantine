@@ -39,9 +39,9 @@ proc report(op, domain: string, start, stop: MonoTime, startClk, stopClk: int64,
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<68} {domain:<20} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<65} {domain:<20} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
   else:
-    echo &"{op:<68} {domain:<20} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<65} {domain:<20} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 macro fixFieldDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
@@ -52,7 +52,7 @@ macro fixFieldDisplay(T: typedesc): untyped =
   result = newLit name
 
 func fixDisplay(T: typedesc): string =
-  when T is (Fp or Fp2 or Fp4 or Fp6 or Fp12):
+  when T is (Fp or ExtensionField):
     fixFieldDisplay(T)
   else:
     $T
@@ -68,7 +68,7 @@ func random_gt*(rng: var RngState, F: typedesc): F {.inline, noInit.} =
   result = rng.random_unsafe(F)
   result.finalExp()
 
-# Multi-exponentiations
+# multi-exp
 # ---------------------------------------------------------------------------
 
 type BenchMultiexpContext*[GT] = object
@@ -126,11 +126,19 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
 
   var r{.noInit.}: GT
   var startNaive, stopNaive, startMultiExpBaseline, stopMultiExpBaseline: MonoTime
-  var startMultiExpOpt, stopMultiExpOpt, startMultiExpPara, stopMultiExpPara: MonoTime
+  var startMultiExpOpt, stopMultiExpOpt: MonoTime
+  var startMultiExpPara, stopMultiExpPara: MonoTime
+  var startMultiExpParaTorus, stopMultiExpParaTorus: MonoTime
+
+  when GT is QuadraticExt:
+    var startMultiExpBaselineTorus: MonoTime
+    var stopMultiExpBaselineTorus: MonoTime
+    var startMultiExpOptTorus: MonoTime
+    var stopMultiExpOptTorus: Monotime
 
   if numInputs <= 100000:
     # startNaive = getMonotime()
-    bench("𝔾ₜ exponentiations                 " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+    bench("𝔾ₜ exponentiations           " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
       var tmp: GT
       r.setOne()
       for i in 0 ..< elems.len:
@@ -140,7 +148,7 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
 
   if numInputs <= 100000:
     startNaive = getMonotime()
-    bench("𝔾ₜ exponentiations vartime         " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+    bench("𝔾ₜ exponentiations vartime   " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
       var tmp: GT
       r.setOne()
       for i in 0 ..< elems.len:
@@ -150,30 +158,59 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
 
   if numInputs <= 100000:
     startMultiExpBaseline = getMonotime()
-    bench("𝔾ₜ multi-exponentiations baseline  " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
-      r.multiExp_reference_vartime(elems, exponents)
+    bench("𝔾ₜ multi-exp baseline        " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+      r.multiExp_reference_vartime(elems, exponents, useTorus = false)
     stopMultiExpBaseline = getMonotime()
+
+  if numInputs <= 100000:
+    when GT is QuadraticExt:
+      startMultiExpBaselineTorus = getMonotime()
+      bench("𝔾ₜ multi-exp baseline + torus" & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+        r.multiExp_reference_vartime(elems, exponents, useTorus = true)
+      stopMultiExpBaselineTorus = getMonotime()
 
   block:
     startMultiExpOpt = getMonotime()
-    bench("𝔾ₜ multi-exponentiations optimized " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
-      r.multiExp_vartime(elems, exponents)
+    bench("𝔾ₜ multi-exp opt             " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+      r.multiExp_vartime(elems, exponents, useTorus = false)
     stopMultiExpOpt = getMonotime()
+
+  when GT is QuadraticExt:
+    block:
+      startMultiExpOptTorus = getMonotime()
+      bench("𝔾ₜ multi-exp opt + torus     " & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+        r.multiExp_vartime(elems, exponents, useTorus = true)
+      stopMultiExpOptTorus = getMonotime()
 
   block:
     ctx.tp = Threadpool.new()
 
     startMultiExpPara = getMonotime()
-    bench("𝔾ₜ multi-exponentiations" & align($ctx.tp.numThreads & " threads", 11) & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
-      ctx.tp.multiExp_vartime_parallel(r, elems, exponents)
+    bench("𝔾ₜ multi-exp      " & align($ctx.tp.numThreads & " threads", 11) & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+      ctx.tp.multiExp_vartime_parallel(r, elems, exponents, useTorus = false)
     stopMultiExpPara = getMonotime()
 
     ctx.tp.shutdown()
+
+  when GT is QuadraticExt:
+    block:
+      ctx.tp = Threadpool.new()
+
+      startMultiExpParaTorus = getMonotime()
+      bench("𝔾ₜ multi-exp torus" & align($ctx.tp.numThreads & " threads", 11) & align($numInputs, 10) & " (" & $bits & "-bit exponents)", GT, iters):
+        ctx.tp.multiExp_vartime_parallel(r, elems, exponents, useTorus = true)
+      stopMultiExpParaTorus = getMonotime()
+
+      ctx.tp.shutdown()
 
   let perfNaive = inNanoseconds((stopNaive-startNaive) div iters)
   let perfMultiExpBaseline = inNanoseconds((stopMultiExpBaseline-startMultiExpBaseline) div iters)
   let perfMultiExpOpt = inNanoseconds((stopMultiExpOpt-startMultiExpOpt) div iters)
   let perfMultiExpPara = inNanoseconds((stopMultiExpPara-startMultiExpPara) div iters)
+  when GT is QuadraticExt:
+    let perfMultiExpBaselineTorus = inNanoseconds((stopMultiExpBaselineTorus-startMultiExpBaselineTorus) div iters)
+    let perfMultiExpOptTorus = inNanoseconds((stopMultiExpOptTorus-startMultiExpOptTorus) div iters)
+    let perfMultiExpParaTorus = inNanoSeconds((stopMultiExpParaTorus-startMultiExpParaTorus) div iters)
 
   if numInputs <= 100000:
     let speedupBaseline = float(perfNaive) / float(perfMultiExpBaseline)
@@ -182,8 +219,19 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
     let speedupOpt = float(perfNaive) / float(perfMultiExpOpt)
     echo &"Speedup ratio optimized over naive linear combination: {speedupOpt:>6.3f}x"
 
-    let speedupOptBaseline = float(perfMultiExpBaseline) / float(perfMultiExpOpt)
-    echo &"Speedup ratio optimized over baseline linear combination: {speedupOptBaseline:>6.3f}x"
+    when GT is QuadraticExt:
+      let speedupTorusOverBaseline = float(perfMultiExpBaseline) / float(perfMultiExpBaselineTorus)
+      echo &"Speedup ratio baseline + Torus over baseline linear combination: {speedupTorusOverBaseline:>6.3f}x"
+
+      let speedupTorusOverOpt = float(perfMultiExpOpt) / float(perfMultiExpOptTorus)
+      echo &"Speedup ratio optimized + Torus over optimized: {speedupTorusOverOpt:>6.3f}x"
 
   let speedupParaOpt = float(perfMultiExpOpt) / float(perfMultiExpPara)
-  echo &"Speedup ratio parallel over optimized linear combination: {speedupParaOpt:>6.3f}x"
+  echo &"Speedup ratio parallel over serial optimized linear combination: {speedupParaOpt:>6.3f}x"
+
+  when GT is QuadraticExt:
+    let speedupParaTorus = float(perfMultiExpOptTorus) / float(perfMultiExpParaTorus)
+    echo &"Speedup ratio parallel over serial for Torus-based multiexp: {speedupParaTorus:>6.3f}x"
+
+    let speedupParaTorusOpt = float(perfMultiExpPara) / float(perfMultiExpParaTorus)
+    echo &"Speedup ratio parallel over parallel Torus-based multiexp: {speedupParaTorusOpt:>6.3f}x"

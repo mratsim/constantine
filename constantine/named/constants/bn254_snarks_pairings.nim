@@ -41,7 +41,7 @@ const BN254_Snarks_pairing_finalexponent* = block:
 # operations compared to NAF, and can we combine the saved EC[Fp2] accumulators?
 
 func cycl_exp_by_curve_param*(
-       r: var Fp12[BN254_Snarks], a: Fp12[BN254_Snarks],
+       r: var AnyFp12[BN254_Snarks], a: AnyFp12[BN254_Snarks],
        invert = BN254_Snarks_pairing_ate_param_isNeg) =
   ## f^u with u the curve parameter
   ## For BN254_Snarks f^0x44e992b44a6909f1
@@ -50,17 +50,17 @@ func cycl_exp_by_curve_param*(
   # addchain search -add 3622 -double 1696 "0x44e992b44a6909f1"
   var # Hopefully the compiler optimizes away unused Fp12
       # because those are huge
-    x10       {.noInit.}: Fp12[BN254_Snarks]
-    x100      {.noInit.}: Fp12[BN254_Snarks]
-    x1000     {.noInit.}: Fp12[BN254_Snarks]
-    x10000    {.noInit.}: Fp12[BN254_Snarks]
-    x10001    {.noInit.}: Fp12[BN254_Snarks]
-    x10011    {.noInit.}: Fp12[BN254_Snarks]
-    x10100    {.noInit.}: Fp12[BN254_Snarks]
-    x11001    {.noInit.}: Fp12[BN254_Snarks]
-    x100010   {.noInit.}: Fp12[BN254_Snarks]
-    x100111   {.noInit.}: Fp12[BN254_Snarks]
-    x101001   {.noInit.}: Fp12[BN254_Snarks]
+    x10       {.noInit.}: r.typeof()
+    x100      {.noInit.}: r.typeof()
+    x1000     {.noInit.}: r.typeof()
+    x10000    {.noInit.}: r.typeof()
+    x10001    {.noInit.}: r.typeof()
+    x10011    {.noInit.}: r.typeof()
+    x10100    {.noInit.}: r.typeof()
+    x11001    {.noInit.}: r.typeof()
+    x100010   {.noInit.}: r.typeof()
+    x100111   {.noInit.}: r.typeof()
+    x101001   {.noInit.}: r.typeof()
 
   x10       .cyclotomic_square(a)
   x100      .cyclotomic_square(x10)
@@ -100,14 +100,14 @@ func cycl_exp_by_curve_param*(
   if invert:
     r.cyclotomic_inv()
 
-func isInPairingSubgroup*(a: Fp12[BN254_Snarks]): SecretBool =
+func isInPairingSubgroup*(a: AnyFp12[BN254_Snarks]): SecretBool =
   ## Returns true if a is in GT subgroup, i.e. a is an element of order r
   ## Warning ⚠: Assumes that a is in the cyclotomic subgroup
   # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
   #   A note on group membership tests for G1, G2 and GT
   #   on BLS pairing-friendly curves
   #   P is in the G1 subgroup iff a^p == a^(6u²)
-  var t0{.noInit.}, t1{.noInit.}: Fp12[BN254_Snarks]
+  var t0{.noInit.}, t1{.noInit.}: typeof(a)
   t0.cycl_exp_by_curve_param(a)   # a^p
   t1.cycl_exp_by_curve_param(t0)  # a^(p²)
   t0.square(t1) # a^(2p²)

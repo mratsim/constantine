@@ -28,17 +28,25 @@ const AvailableCurves = [
   BLS12_381,
 ]
 
-const testNumPoints = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+# const testNumPoints = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+const testNumPoints = [128, 256]
+
+
+type Fp12over4[C: static Algebra] = CubicExt[Fp4[C]]
+type Fp12over6[C: static Algebra] = QuadraticExt[Fp6[C]]
 
 proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    var ctx = createBenchMultiExpContext(Fp12[curve], testNumPoints)
+    var ctx12o4 = createBenchMultiExpContext(Fp12over4[curve], testNumPoints)
+    var ctx12o6 = createBenchMultiExpContext(Fp12over6[curve], testNumPoints)
     separator()
     for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
-      ctx.multiExpParallelBench(numPoints, batchIters)
+      ctx12o4.multiExpParallelBench(numPoints, batchIters)
+      echo "----"
+      ctx12o6.multiExpParallelBench(numPoints, batchIters)
       separator()
     separator()
 

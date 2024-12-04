@@ -72,7 +72,7 @@ func `+=`[F; G: static Subgroup](P: var EC_ShortW_JacExt[F, G], Q: EC_ShortW_Jac
 func `+=`[F; G: static Subgroup](P: var EC_ShortW_JacExt[F, G], Q: EC_ShortW_Aff[F, G]) {.inline.}=
   P.mixedSum_vartime(P, Q)
 
-proc addBench*(EC: typedesc, iters: int) =
+proc addBench*(EC: typedesc, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   let P = rng.random_unsafe(EC)
   let Q = rng.random_unsafe(EC)
@@ -88,7 +88,7 @@ proc addBench*(EC: typedesc, iters: int) =
       bench("EC Add vartime " & $EC.G, EC, iters):
         r.sum_vartime(P, Q)
 
-proc mixedAddBench*(EC: typedesc, iters: int) =
+proc mixedAddBench*(EC: typedesc, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   let P = rng.random_unsafe(EC)
   let Q = rng.random_unsafe(EC)
@@ -106,25 +106,25 @@ proc mixedAddBench*(EC: typedesc, iters: int) =
       bench("EC Mixed Addition vartime " & $EC.G, EC, iters):
         r.mixedSum_vartime(P, Qaff)
 
-proc doublingBench*(EC: typedesc, iters: int) =
+proc doublingBench*(EC: typedesc, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   let P = rng.random_unsafe(EC)
   bench("EC Double " & $EC.G, EC, iters):
     r.double(P)
 
-proc affFromProjBench*(EC: typedesc, iters: int) =
+proc affFromProjBench*(EC: typedesc, iters: int) {.noinline.} =
   var r {.noInit.}: EC_ShortW_Aff[EC.F, EC.G]
   let P = rng.random_unsafe(EC)
   bench("EC Projective to Affine " & $EC.G, EC, iters):
     r.affine(P)
 
-proc affFromJacBench*(EC: typedesc, iters: int) =
+proc affFromJacBench*(EC: typedesc, iters: int) {.noinline.} =
   var r {.noInit.}: EC_ShortW_Aff[EC.F, EC.G]
   let P = rng.random_unsafe(EC)
   bench("EC Jacobian to Affine " & $EC.G, EC, iters):
     r.affine(P)
 
-proc affFromProjBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
+proc affFromProjBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) {.noinline.} =
   var r = newSeq[affine(EC)](numPoints)
   var points = newSeq[EC](numPoints)
 
@@ -139,7 +139,7 @@ proc affFromProjBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, ite
       for i in 0 ..< numPoints:
         r[i].affine(points[i])
 
-proc affFromJacBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
+proc affFromJacBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) {.noinline.} =
   var r = newSeq[affine(EC)](numPoints)
   var points = newSeq[EC](numPoints)
 
@@ -154,7 +154,7 @@ proc affFromJacBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, iter
       for i in 0 ..< numPoints:
         r[i].affine(points[i])
 
-proc scalarMulGenericBench*(EC: typedesc, bits, window: static int, iters: int) =
+proc scalarMulGenericBench*(EC: typedesc, bits, window: static int, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -165,7 +165,7 @@ proc scalarMulGenericBench*(EC: typedesc, bits, window: static int, iters: int) 
     r = P
     r.scalarMulGeneric(exponent, window)
 
-proc scalarMulEndo*(EC: typedesc, bits: static int, iters: int) =
+proc scalarMulEndo*(EC: typedesc, bits: static int, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -176,7 +176,7 @@ proc scalarMulEndo*(EC: typedesc, bits: static int, iters: int) =
     r = P
     r.scalarMulEndo(exponent)
 
-proc scalarMulEndoWindow*(EC: typedesc, bits: static int, iters: int) =
+proc scalarMulEndoWindow*(EC: typedesc, bits: static int, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -190,7 +190,7 @@ proc scalarMulEndoWindow*(EC: typedesc, bits: static int, iters: int) =
     else:
       {.error: "Not implemented".}
 
-proc scalarMulVartimeDoubleAddBench*(EC: typedesc, bits: static int, iters: int) =
+proc scalarMulVartimeDoubleAddBench*(EC: typedesc, bits: static int, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -201,7 +201,7 @@ proc scalarMulVartimeDoubleAddBench*(EC: typedesc, bits: static int, iters: int)
     r = P
     r.scalarMul_doubleAdd_vartime(exponent)
 
-proc scalarMulVartimeMinHammingWeightRecodingBench*(EC: typedesc, bits: static int, iters: int) =
+proc scalarMulVartimeMinHammingWeightRecodingBench*(EC: typedesc, bits: static int, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -212,7 +212,7 @@ proc scalarMulVartimeMinHammingWeightRecodingBench*(EC: typedesc, bits: static i
     r = P
     r.scalarMul_jy00_vartime(exponent)
 
-proc scalarMulVartimeWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
+proc scalarMulVartimeWNAFBench*(EC: typedesc, bits, window: static int, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -223,7 +223,7 @@ proc scalarMulVartimeWNAFBench*(EC: typedesc, bits, window: static int, iters: i
     r = P
     r.scalarMul_wNAF_vartime(exponent, window)
 
-proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
+proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -234,14 +234,14 @@ proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iter
     r = P
     r.scalarMulEndo_wNAF_vartime(exponent, window)
 
-proc subgroupCheckBench*(EC: typedesc, iters: int) =
+proc subgroupCheckBench*(EC: typedesc, iters: int) {.noinline.} =
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
 
   bench("Subgroup check", EC, iters):
     discard P.isInSubgroup()
 
-proc subgroupCheckScalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
+proc subgroupCheckScalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -253,7 +253,7 @@ proc subgroupCheckScalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: sta
     discard r.isInSubgroup()
     r.scalarMulEndo_wNAF_vartime(exponent, window)
 
-proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
+proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) {.noinline.} =
   var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](numPoints)
 
   for i in 0 ..< numPoints:
@@ -271,7 +271,7 @@ proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int)
         r += points[i]
 
 
-proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
+proc msmBench*(EC: typedesc, numPoints: int, iters: int) {.noinline.} =
   const bits = EC.getScalarField().bits()
   var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](numPoints)
   var scalars = newSeq[BigInt[bits]](numPoints)

@@ -71,7 +71,7 @@ func gtExp_addchain_4bit_vartime[Gt: ExtensionField](r: var Gt, a: Gt, scalar: B
   of 0:
     r.setOne()
   of 1:
-    discard
+    r = a
   of 2:
     r.cyclotomic_square(a)
   of 3:
@@ -263,8 +263,8 @@ func gtExpEndo_wNAF_vartime*[Gt: ExtensionField, scalBits: static int](
   static: doAssert window <= 4, "Window of size " & $window & " is too large and precomputation would use " & $(precompSize * sizeof(Gt)) & " stack space."
 
   # 1. Compute endomorphisms
-  const M = when Gt is Fp6:  2
-            elif Gt is Fp12: 4
+  const M = when Gt.Name.getEmbeddingDegree() == 6:  2
+            elif Gt.Name.getEmbeddingDegree() == 12: 4
             else: {.error: "Unconfigured".}
 
   var endos {.noInit.}: array[M-1, Gt]
@@ -351,9 +351,9 @@ func gtExp_vartime*[Gt: ExtensionField, scalBits: static int](
   when Gt.Name.hasEndomorphismAcceleration():
     when scalBits >= EndomorphismThreshold: # Skip static: doAssert when multiplying by intentionally small scalars.
       if usedBits >= EndomorphismThreshold:
-        when Gt is Fp6:
+        when Gt.Name.getEmbeddingDegree() == 6:
           r.gtExpEndo_wNAF_vartime(a, scalar, window = 4)
-        elif Gt is Fp12:
+        elif Gt.Name.getEmbeddingDegree() == 12:
           r.gtExpEndo_wNAF_vartime(a, scalar, window = 3)
         else: # Curves defined on Fp^m with m > 2
           {.error: "Unconfigured".}

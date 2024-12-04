@@ -13,6 +13,9 @@ import
 const numPoints = [1, 2, 8, 16, 128, 256, 1024]
 
 runGTmultiexpTests(
-  GT = Fp12[BN254_Snarks],
+  # Torus-based cryptography requires quadratic extension
+  # but by default cubic extensions are faster
+  # GT = Fp12[BN254_Snarks],
+  GT = QuadraticExt[Fp6[BN254_Snarks]],
   numPoints,
   iters = 4)

@@ -10,9 +10,12 @@ import
   # Test utilities
   ./t_pairing_template
 
-const numPoints = [1, 2, 8, 16, 128, 256, 1024]
+const numPoints = [1, 2, 3, 4, 5, 6, 7, 8, 16, 128, 256, 1024]
 
 runGTmultiexpTests(
-  GT = Fp12[BLS12_381],
+  # Torus-based cryptography requires quadratic extension
+  # but by default cubic extensions are faster
+  # GT = Fp12[BLS12_381],
+  GT = QuadraticExt[Fp6[BLS12_381]],
   numPoints,
   iters = 4)

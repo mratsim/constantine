@@ -319,52 +319,55 @@ proc largeField() =
 
       check: bool r.isZero()
 
-    test "fromMont doesn't need a final substraction with 256-bit prime (full word used)":
-      block:
-        let a = Fp[Secp256k1].getMinusOne()
-        let expected = BigInt[256].fromHex"0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E"
+    # Outdated tests as Crandall primes / Pseudo-Mersenne primes
+    # don't use Montgomery representaiton anymore
 
-        var r: BigInt[256]
-        r.fromField(a)
+    # test "fromMont doesn't need a final substraction with 256-bit prime (full word used)":
+    #   block:
+    #     let a = Fp[Secp256k1].getMinusOne()
+    #     let expected = BigInt[256].fromHex"0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E"
 
-        check: bool(r == expected)
-      block:
-        var a: Fp[Secp256k1]
-        var d: FpDbl[Secp256k1]
+    #     var r: BigInt[256]
+    #     r.fromField(a)
 
-        # Set Montgomery repr to the largest field element in Montgomery Residue form
-        a.mres    = BigInt[256].fromHex"0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E"
-        d.limbs2x = (BigInt[512].fromHex"0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E").limbs
+    #     check: bool(r == expected)
+    #   block:
+    #     var a: Fp[Secp256k1]
+    #     var d: FpDbl[Secp256k1]
 
-        var r, expected: BigInt[256]
+    #     # Set Montgomery repr to the largest field element in Montgomery Residue form
+    #     a.mres    = BigInt[256].fromHex"0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E"
+    #     d.limbs2x = (BigInt[512].fromHex"0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E").limbs
 
-        r.fromField(a)
-        expected.limbs.redc2xMont(d.limbs2x, Fp[Secp256k1].getModulus().limbs, Fp[Secp256k1].getNegInvModWord(), Fp[Secp256k1].getSpareBits())
+    #     var r, expected: BigInt[256]
 
-        check: bool(r == expected)
+    #     r.fromField(a)
+    #     expected.limbs.redc2xMont(d.limbs2x, Fp[Secp256k1].getModulus().limbs, Fp[Secp256k1].getNegInvModWord(), Fp[Secp256k1].getSpareBits())
 
-    test "fromMont doesn't need a final substraction with 255-bit prime (1 spare bit)":
-      block:
-        let a = Fp[Edwards25519].getMinusOne()
-        let expected = BigInt[255].fromHex"0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"
+    #     check: bool(r == expected)
 
-        var r: BigInt[255]
-        r.fromField(a)
+    # test "fromMont doesn't need a final substraction with 255-bit prime (1 spare bit)":
+    #   block:
+    #     let a = Fp[Edwards25519].getMinusOne()
+    #     let expected = BigInt[255].fromHex"0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"
 
-        check: bool(r == expected)
-      block:
-        var a: Fp[Edwards25519]
-        var d: FpDbl[Edwards25519]
+    #     var r: BigInt[255]
+    #     r.fromField(a)
 
-        # Set Montgomery repr to the largest field element in Montgomery Residue form
-        a.mres    = BigInt[255].fromHex"0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"
-        d.limbs2x = (BigInt[512].fromHex"0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec").limbs
+    #     check: bool(r == expected)
+    #   block:
+    #     var a: Fp[Edwards25519]
+    #     var d: FpDbl[Edwards25519]
 
-        var r, expected: BigInt[255]
+    #     # Set Montgomery repr to the largest field element in Montgomery Residue form
+    #     a.mres    = BigInt[255].fromHex"0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"
+    #     d.limbs2x = (BigInt[512].fromHex"0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec").limbs
 
-        r.fromField(a)
-        expected.limbs.redc2xMont(d.limbs2x, Fp[Edwards25519].getModulus().limbs, Fp[Edwards25519].getNegInvModWord(), Fp[Edwards25519].getSpareBits())
+    #     var r, expected: BigInt[255]
 
-        check: bool(r == expected)
+    #     r.fromField(a)
+    #     expected.limbs.redc2xMont(d.limbs2x, Fp[Edwards25519].getModulus().limbs, Fp[Edwards25519].getNegInvModWord(), Fp[Edwards25519].getSpareBits())
+
+    #     check: bool(r == expected)
 
 largeField()

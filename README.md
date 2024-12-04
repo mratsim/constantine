@@ -137,8 +137,6 @@ See the following documents on the threadpool performance details, design and re
 
 > [!IMPORTANT]
 > Constantine can be compiled with:
-> - Nim v1.6.x,
-> - Nim v2.0.2 to v2.0.8 but not Nim v2.0.0 and Nim 2.0.10 (due to compile-time evaluation crashes)
 > - Nim v2.2.0
 
 ### From Rust

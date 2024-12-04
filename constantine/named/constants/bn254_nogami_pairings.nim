@@ -84,7 +84,7 @@ func millerLoopAddchain*(
     f.millerCorrectionBN(Ts[i], Qs[i], Ps[i])
 
 func cycl_exp_by_curve_param*(
-       r: var Fp12[BN254_Nogami], a: Fp12[BN254_Nogami],
+       r: var AnyFp12[BN254_Nogami], a: AnyFp12[BN254_Nogami],
        invert = BN254_Nogami_pairing_ate_param_isNeg) =
   ## f^u with u the curve parameter
   ## For BN254_Nogami f^-0x4080000000000001 = 0b100000010000000000000000000000000000000000000000000000000000001
@@ -94,14 +94,14 @@ func cycl_exp_by_curve_param*(
   if invert:
     r.cyclotomic_inv()
 
-func isInPairingSubgroup*(a: Fp12[BN254_Nogami]): SecretBool =
+func isInPairingSubgroup*(a: AnyFp12[BN254_Nogami]): SecretBool =
   ## Returns true if a is in GT subgroup, i.e. a is an element of order r
   ## Warning ⚠: Assumes that a is in the cyclotomic subgroup
   # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
   #   A note on group membership tests for G1, G2 and GT
   #   on BLS pairing-friendly curves
   #   P is in the G1 subgroup iff a^p == a^(6u²)
-  var t0{.noInit.}, t1{.noInit.}: Fp12[BN254_Nogami]
+  var t0{.noInit.}, t1{.noInit.}: typeof(a)
   t0.cycl_exp_by_curve_param(a)   # a^p
   t1.cycl_exp_by_curve_param(t0)  # a^(p²)
   t0.square(t1) # a^(2p²)

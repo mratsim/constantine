@@ -52,6 +52,8 @@ proc mulx_by_word(
   ctx.mov r0, rax
 
   # Steady state
+  # TODO: should we alternate rax with another register?
+  #       to deal with false dependencies?
   for j in 1 ..< N:
     ctx.mulx t[j], rax, a[j], rdx
     if j == 1:
