@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  constantine/platforms/bithacks, # for log2_vartime
   constantine/platforms/llvm/[llvm, asm_nvidia],
   ./ir,
   ./impl_fields_globals,
@@ -725,3 +726,46 @@ proc scalarMul*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef, b: int) =
     asy.br.retVoid()
 
   asy.callFn(name, [a])
+
+proc getWindowAt*(asy: Assembler_LLVM, cd: CurveDescriptor, r, c, bI, wI: ValueRef) {.used.} =
+  ## Generate an internal field `getWindowAt` function
+  ## with signature
+  ##   void name(BaseType r, FieldType c, int bitIndex, int windowSize)
+  let name = cd.fd.name & "_getWindowAt"
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, c, bI, wI]),
+          {kHot}):
+    tagParameter(1, "sret")
+
+    # Operations for numbers as `ValueRef`
+    declNumberOps(asy, cd.fd)
+
+    let (ri, ci, bitIndex, windowSize) = llvmParams
+    let rA = asy.asFieldScalar(cd, ri)
+    let cA = asy.asFieldScalar(cd, ci)
+    let fd = cd.fd
+
+    # Nim values
+    let SlotShift = log2_vartime(fd.w.uint32)
+    let WordMask = fd.w - 1
+    let WindowMask = (1 shl windowSize) - 1   # LLVM
+
+    # LLVM values
+    let slot     = bitIndex shr SlotShift
+    let word     = cA[slot]                    # word in limbs
+    let pos      = bitIndex and WordMask       # position in the word
+
+    # This is constant-time, the branch does not depend on secret data.
+    llvmIf(asy): # transforms an `if` statement body into llvm conditional branches
+      if pos + windowSize > fd.w and slot+1 < fd.numWords:
+        # Read next word as well
+        let x = ((word shr pos) or (cA[slot+1] shl (fd.w - pos))) and WindowMask
+        asy.store(ri, x)
+      else:
+        let x = (word shr pos) and WindowMask
+        asy.store(ri, x)
+
+    asy.br.retVoid()
+
+  asy.callFn(name, [r, c, bI, wI])

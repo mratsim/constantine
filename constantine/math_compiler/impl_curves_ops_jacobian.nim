@@ -23,6 +23,16 @@ const SectionName = "ctt.curves_jacobian"
 type
   EcPointJac* {.borrow: `.`.} = distinct Array
 
+proc `=copy`(m: var EcPointJac, x: EcPointJac) {.error: "Copying an EcPointJac is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+proc asEcPointJac*(br: BuilderRef, arrayPtr: ValueRef, arrayTy: TypeRef): EcPointJac =
+  ## Constructs an elliptic curve point in Jacobian coordinates from an array pointer.
+  ##
+  ## `arrayTy` is an `array[FieldTy, 3]` where `FieldTy` itsel is an array of
+  ## `array[WordTy, NumWords]`.
+  result = EcPointJac(br.asArray(arrayPtr, arrayTy))
+
 proc asEcPointJac*(asy: Assembler_LLVM, arrayPtr: ValueRef, arrayTy: TypeRef): EcPointJac =
   ## Constructs an elliptic curve point in Jacobian coordinates from an array pointer.
   ##
@@ -57,16 +67,47 @@ proc store*(dst: EcPointJac, src: EcPointJac) =
   store(dst.getY(), src.getY())
   store(dst.getZ(), src.getZ())
 
+# Representation of a finite field point with some utilities
+type EcJacArray* {.borrow: `.`.} = distinct Array
+
+proc `=copy`(m: var EcJacArray, x: EcJacArray) {.error: "Copying an EcJacArray is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+proc `[]`*(a: EcJacArray, index: SomeInteger | ValueRef): EcPointJac = a.builder.asEcPointJac((distinctBase(a).getPtr(index)), a.elemTy)
+proc `[]=`*(a: EcJacArray, index: SomeInteger | ValueRef, val: EcPointJac) = distinctBase(a)[index] = val.buf
+
+proc asEcJacArray*(asy: Assembler_LLVM, cd: CurveDescriptor, a: ValueRef, num: int): EcJacArray =
+  ## Interpret the given value `a` as an array of EC elements in Jacobian coordinates.
+  let ty = array_t(cd.curveTy, num)
+  result = EcJacArray(asy.br.asArray(a, ty))
+
+proc initEcJacArray*(asy: Assembler_LLVM, cd: CurveDescriptor, num: int): EcJacArray =
+  ## Initialize a new EcJacArray for `num` elements
+  let ty = array_t(cd.curveTy, num)
+  result = EcJacArray(asy.makeArray(ty))
+
 template declEllipticJacOps*(asy: Assembler_LLVM, cd: CurveDescriptor): untyped =
   ## This template can be used to make operations on `Field` elements
   ## more convenient.
-  ## XXX: extend to include all ops
+  # Setters
+  template setNeutral(x: EcPointJac): untyped = asy.setNeutral(cd, x.buf)
+
   # Boolean checks
   template isNeutral(res, x: EcPointJac): untyped = asy.isNeutral(cd, res, x.buf)
   template isNeutral(x: EcPointJac): untyped =
     var res = asy.br.alloca(asy.ctx.int1_t())
     asy.isNeutral(cd, res, x.buf)
     res
+
+  # Mutating assignment ops
+  template sum(res, x, y: EcPointJac): untyped = asy.sum(cd, res.buf, x.buf, y.buf)
+  template `+=`(x, y: EcPointJac): untyped     = x.sum(x, y)
+  template mixedSum(res, x: EcPointJac, y: EcPointAff): untyped = asy.mixedSum(cd, res.buf, x.buf, y.buf)
+  template `+=`(x: EcPointJac, y: EcPointAff): untyped = x.mixedSum(x, y)
+
+  # Arithmetic mutations
+  template double(res, x: EcPointJac): untyped = asy.double(cd, res.buf, x.buf)
+  template double(x: EcPointJac): untyped      = x.double(x)
 
   # Conditional ops
   template ccopy(x, y: EcPointJac, c): untyped = asy.ccopy(cd, x.buf, y.buf, derefBool c)

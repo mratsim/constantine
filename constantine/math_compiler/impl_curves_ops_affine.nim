@@ -22,6 +22,16 @@ const SectionName = "ctt.curves_affine"
 type
   EcPointAff* {.borrow: `.`.} = distinct Array
 
+proc `=copy`*(m: var EcPointAff, x: EcPointAff) {.error: "Copying an EcPointAff is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+proc asEcPointAff*(br: BuilderRef, arrayPtr: ValueRef, arrayTy: TypeRef): EcPointAff =
+  ## Constructs an elliptic curve point in Affine coordinates from an array pointer.
+  ##
+  ## `arrayTy` is an `array[FieldTy, 2]` where `FieldTy` itsel is an array of
+  ## `array[WordTy, NumWords]`.
+  result = EcPointAff(br.asArray(arrayPtr, arrayTy))
+
 proc asEcPointAff*(asy: Assembler_LLVM, arrayPtr: ValueRef, arrayTy: TypeRef): EcPointAff =
   ## Constructs an elliptic curve point in Affine coordinates from an array pointer.
   ##
@@ -53,6 +63,25 @@ proc store*(dst: EcPointAff, src: EcPointAff) =
   assert dst.arrayTy.getArrayLength() == src.arrayTy.getArrayLength()
   store(dst.getX(), src.getX())
   store(dst.getY(), src.getY())
+
+# Array of EC points in affine coordinates
+type EcAffArray* {.borrow: `.`.} = distinct Array
+
+proc `=copy`(m: var EcAffArray, x: EcAffArray) {.error: "Copying an EcAffArray is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+proc `[]`*(a: EcAffArray, index: SomeInteger | ValueRef): EcPointAff = a.builder.asEcPointAff((distinctBase(a).getPtr(index)), a.elemTy)
+proc `[]=`*(a: EcAffArray, index: SomeInteger | ValueRef, val: EcPointAff) = distinctBase(a)[index] = val.buf
+
+proc asEcAffArray*(asy: Assembler_LLVM, cd: CurveDescriptor, a: ValueRef, num: int): EcAffArray =
+  ## Interpret the given value `a` as an array of EC elements in Affine coordinates.
+  let ty = array_t(cd.curveTyAff, num)
+  result = EcAffArray(asy.br.asArray(a, ty))
+
+proc initEcAffArray*(asy: Assembler_LLVM, cd: CurveDescriptor, num: int): EcAffArray =
+  ## Initialize a new EcAffArray for `num` elements
+  let ty = array_t(cd.curveTyAff, num)
+  result = EcAffArray(asy.makeArray(ty))
 
 template declEllipticAffOps*(asy: Assembler_LLVM, cd: CurveDescriptor): untyped =
   ## This template can be used to make operations on `Field` elements
