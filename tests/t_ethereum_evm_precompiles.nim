@@ -164,4 +164,4 @@ runPrecompileTests("eip-2537/fail-map_fp_to_G1_bls.json", eth_evm_bls12381_map_f
 runPrecompileTests("eip-2537/map_fp2_to_G2_bls.json", eth_evm_bls12381_map_fp2_to_g2, 256)
 runPrecompileTests("eip-2537/fail-map_fp2_to_G2_bls.json", eth_evm_bls12381_map_fp2_to_g2, 256)
 
-runPrecompileTests("eip-4844/pointEvaluation.json", eth_evm_kzg_point_evaluation_precompile, 64, true)
+runPrecompileTests("eip-4844/pointEvaluation.json", eth_evm_kzg_point_evaluation, 64, true)

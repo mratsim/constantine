@@ -1233,9 +1233,9 @@ proc kzg_to_versioned_hash(r: var array[32, byte], commitment_bytes: array[48, b
   s.finish(r)
   r[0] = VERSIONED_HASH_VERSION_KZG
 
-func eth_evm_kzg_point_evaluation_precompile*(ctx: ptr EthereumKZGContext,
-                                              r: var openArray[byte],
-                                              input: openArray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
+func eth_evm_kzg_point_evaluation*(ctx: ptr EthereumKZGContext,
+                                   r: var openArray[byte],
+                                   input: openArray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Verify `p(z) = y` given commitment that corresponds to the polynomial `p(x)` and a KZG proof.
   ## Also verify that the provided commitment matches the provided versioned_hash.
   ## Returns `FIELD_ELEMENTS_PER_BLOB` and the BSL12-381 modulus as padded 32 byte big endian values,
