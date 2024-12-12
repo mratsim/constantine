@@ -212,7 +212,7 @@ proc signMessage*(message: string, privateKey: Fr[C],
     let mask = s.toBig() > sneg.toBig() # if true, `s` is in upper half, need `sneg`
     ccopy(s, sneg, mask)
 
-    if bool(s == zero):
+    if bool(s.isZero()):
       continue # try again
 
     return (r: r, s: s)
