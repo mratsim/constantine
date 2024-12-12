@@ -46,8 +46,6 @@ proc loadVectors(TestType: typedesc, filename: string): TestType =
   result = content.fromJson(TestType)
 
 proc trusted_setup*(): ptr EthereumKZGContext =
-  ## This is a convenience function for the Ethereum mainnet testing trusted setups.
-  ## It is insecure and will be replaced once the KZG ceremony is done.
 
   var ctx: ptr EthereumKZGContext
   let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
