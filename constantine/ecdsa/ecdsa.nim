@@ -36,9 +36,9 @@ proc toBytes(x: Fr[C] | Fp[C]): array[32, byte] =
   let bi = x.toBig()
   discard result.marshal(bi, bigEndian)
 
-proc toDER(r, s: Fr[C]): seq[byte] =
+proc toDER*(r, s: Fr[C]): seq[byte] =
   ## Converts the given signature `(r, s)` into a signature in
-  ## ASN.1 DER encoding.
+  ## ASN.1 DER encoding following SEC1.
   ##
   ## Note that the implementation is not written for efficiency
   ## and should be viewed as a convenience tool for the time being.
