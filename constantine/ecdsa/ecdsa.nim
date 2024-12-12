@@ -248,9 +248,14 @@ proc verifySignature*(
   # 6. Verify r_computed equals provided r
   result = bool(r_computed == signature.r)
 
-proc getPrivateKey*(): Fr[C] =
+proc generatePrivateKey*(): Fr[C] =
   ## Generate a new private key using a cryptographic random number generator.
   result = randomFieldElement[Fr[C]]()
+
+proc getPublicKey*(pk: Fr[C]): EC_ShortW_Aff[Fp[C], G1] =
+  ## Derives the public key from a given private key,
+  ## `privateKey · G` in affine coordinates.
+  result = (pk * G).getAffine()
 
 proc toPemPrivateKey(privateKey: Fr[C]): seq[byte] =
   # Start with SEQUENCE
