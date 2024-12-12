@@ -34,15 +34,34 @@ const
   TestVectorsDir* =
     currentSourcePath.rsplit(DirSep, 1)[0] / "protocol_ethereum_evm_precompiles"
 
+const
+  TrustedSetupMainnet =
+    currentSourcePath.rsplit(DirSep, 1)[0] /
+    ".." / "constantine" /
+    "commitments_setups" /
+    "trusted_setup_ethereum_kzg4844_reference.dat"
+
 proc loadVectors(TestType: typedesc, filename: string): TestType =
   let content = readFile(TestVectorsDir/filename)
   result = content.fromJson(TestType)
 
-template runPrecompileTests(filename: string, funcname: untyped, outsize: int) =
+proc trusted_setup*(): ptr EthereumKZGContext =
+
+  var ctx: ptr EthereumKZGContext
+  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
+  echo "Trusted Setup loaded successfully"
+  return ctx
+
+template runPrecompileTests(filename: string, funcname: untyped, outsize: int, needKzgCtx: static bool = false) =
   block:
+
     proc `PrecompileTestrunner _ funcname`() =
       let vec = seq[PrecompileTest].loadVectors(filename)
       echo "Running ", filename
+
+      when needKzgCtx:
+        var ctx = trusted_setup()
 
       for test in vec:
         stdout.write "    Testing " & test.Name & " ... "
@@ -58,7 +77,10 @@ template runPrecompileTests(filename: string, funcname: untyped, outsize: int) =
         let outs = if outsize > 0: outsize else: test.Expected.len div 2
         var r = newSeq[byte](outs)
 
-        let status = funcname(r, inputbytes)
+        when needKzgCtx:
+          let status = ctx.funcname(r, inputbytes)
+        else:
+          let status = funcname(r, inputbytes)
         if status != cttEVM_Success:
           doAssert test.ExpectedError.len > 0, "[Test Failure]\n" &
             "  " & test.Name & "\n" &
@@ -73,6 +95,9 @@ template runPrecompileTests(filename: string, funcname: untyped, outsize: int) =
             "  " & "expected: " & expected.toHex() & '\n'
 
         stdout.write "Success\n"
+
+      when needKzgCtx:
+        ctx.trusted_setup_delete()
 
     `PrecompileTestrunner _ funcname`()
 
@@ -136,3 +161,5 @@ runPrecompileTests("eip-2537/map_fp_to_G1_bls.json", eth_evm_bls12381_map_fp_to_
 runPrecompileTests("eip-2537/fail-map_fp_to_G1_bls.json", eth_evm_bls12381_map_fp_to_g1, 128)
 runPrecompileTests("eip-2537/map_fp2_to_G2_bls.json", eth_evm_bls12381_map_fp2_to_g2, 256)
 runPrecompileTests("eip-2537/fail-map_fp2_to_G2_bls.json", eth_evm_bls12381_map_fp2_to_g2, 256)
+
+runPrecompileTests("eip-4844/pointEvaluation.json", eth_evm_kzg_point_evaluation, 64, true)
