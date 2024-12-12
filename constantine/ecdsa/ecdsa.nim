@@ -6,7 +6,7 @@ import
   ../math/arithmetic,
   ../platforms/abstractions,
   ../serialization/codecs, # for fromHex and (in the future) base64 encoding
-  ../mac/mac_hmac # for deterministic nonce generation via RFC 6979
+  ../mac/mac_hmac, # for deterministic nonce generation via RFC 6979
   ../named/zoo_generators, # for generator
   ../csprngs/sysrand
 
