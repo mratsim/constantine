@@ -1,0 +1,82 @@
+[
+  {
+    "message": "Hello, Constantine!",
+    "privateKey": "0x256bd879af387ca45f9164b1d4882f68570e0e9cedae60a5185a405b4aeb4697",
+    "publicKeyX": "0x45a41d181c6dff19b6275a4639cde0ae581f4fb2ccbd82663fe9ff9ad6896f3e",
+    "publicKeyY": "0x31039cb9d47f142d2f1a7a928329b89d94040f23668f70772664259decbdb017",
+    "r": "0xed77f05cd805bab09c214f9c913c776d0afe3db8e63d1dcb83819828d61ac5b7",
+    "s": "0xa3ea2322400e727256ea054648ac88e819b28ae6839728b53081225dad8ffb48"
+  },
+  {
+    "message": "Hello, Constantine!",
+    "privateKey": "0x2d8f7346f506f998e2cddaeb930821d5cec2425f1b9f8f9a9cf2fe6d2d12f7e7",
+    "publicKeyX": "0xa852f5361011655444fa29e0b00322d7df3b00279d5bd87c3a9208b4d08bebd8",
+    "publicKeyY": "0xc4ef7ab0b5b0fe064eefa7f61607d6eaab3fac906a701826efe46b9e7c8958a4",
+    "r": "0x994e37598cc2e01abf006159d36dafeae859c1341aaff98a6a253e150536fe30",
+    "s": "0xa032c45d726c75ebf50606900ef363fa485d6be29a9dca6a89e50ec10378e2d2"
+  },
+  {
+    "message": "Hello, Constantine!",
+    "privateKey": "0x22a8c89261fe9adcfbf19579bb3ea69267d04580ea7efbe545ca8a85bc360c0a",
+    "publicKeyX": "0xea6587e76c9a5eb035a9628288540babefd6a2e3e1daafe93741f0e3d3c1f8c0",
+    "publicKeyY": "0x9fda7e50aff389e652c95fb0d53bc11937f285e5b56f1d59aba2a86509a3603a",
+    "r": "0x0b1077451d938aa42eecdd53b3380edd2680e01e5ebad0bff5a62a2701d10fcd",
+    "s": "0x6eb29bb61d2a9d8097b18aecf1a6c0007c4a1bd9b21f8f3e98e58a32279e9827"
+  },
+  {
+    "message": "Hello, Constantine!",
+    "privateKey": "0x1fc6c933b4f47451cc09db8071792ef5feda71113d1c5809d5e0d5044dfe9c31",
+    "publicKeyX": "0xc0ab9dbed4534b090865432b1ddcea4844ef504aedd69a66afe80fa2a4c41ab4",
+    "publicKeyY": "0xd8db593e93eb432f226c433acb9f1476a3dcf0dc7be2ce03f9e8496c3d0214b3",
+    "r": "0x263fe33a9faf349a8fb2278a4c895411752a1157cf75d4122e25f159cac5787e",
+    "s": "0x3b9fc9b21fe5e1acaaab5bbb13dde0a32420e032316cab0738a3c9ef5add4ddc"
+  },
+  {
+    "message": "Hello, Constantine!",
+    "privateKey": "0xddba67e7d19fd7e23a3fcba09fdac0d8ef04abdd0709b68e4160a0adbbd0714d",
+    "publicKeyX": "0x57c8ff99412c0bea729c77820fd695ccd5aae174d5a77bb01bb388b5f9a29339",
+    "publicKeyY": "0x36319a8016c96866b301ac23fb7dd194e2513c8154b84e7de62703672f4589bd",
+    "r": "0xfc01b7c9c9ef3c876cafe18850eb6f19915e48762432ba1f8bc0d89a467b2225",
+    "s": "0x308f8e317f4bb38b41abeaafc19e46a392c1a0f8a2d3da73bfb3243ade59f114"
+  },
+  {
+    "message": "Hello, Constantine!",
+    "privateKey": "0x75061b24004f09bc201197d3dfbdd31702aa851d423028d174b02ac9c6ee0e6b",
+    "publicKeyX": "0xdc56f5ba2301ff776006935d446aca77be29c7ecf80b371db72576a0d105bc4a",
+    "publicKeyY": "0x0369ae2f661f2142477dafd4c60fc79e88a986311f78c5ab31a7257504e0ede8",
+    "r": "0xa7f2e685681f74ccb2ea58dcdde123b40e980c1703900200d34fa45a816900db",
+    "s": "0x8e22971d7270db3e70ddc2897a7f087548c1f1d77a65517714866b4f4da95b78"
+  },
+  {
+    "message": "Hello, Constantine!",
+    "privateKey": "0xbac0b31a6416866f012652846f958646afc253e4491465b6b405fd1ea2d00f7e",
+    "publicKeyX": "0x5ac12a3d7d10a4efcf8d39b104d9427a97d4ee92f117670d30c710ad2619926f",
+    "publicKeyY": "0xe00c161d99c692e918e9d88d644664bfcdd5043e23d64b7542c191fb67852c7f",
+    "r": "0x4639db7be1b2fb9cd438fa0193e8f9b7f547fa73a21a0fed3e5570d4bc4f79a5",
+    "s": "0x8f0763583c1cefd1a94ea3ae9d567529a3a6e9039d5e2c8c90fe3757a7015ea8"
+  },
+  {
+    "message": "Hello, Constantine!",
+    "privateKey": "0x27bc1016ca234abb27a5ed4d155294221d0ca091567022a6610440291930bc9d",
+    "publicKeyX": "0xfc0fb22385d2f44c0baf3ebb1e7ecd1d9c906a439a0d00b226f7a204cc1c0d0d",
+    "publicKeyY": "0x2db3f2b91a27f5c8b4d1b693b6d84540f6659e2f1a737db752806907b58ecec9",
+    "r": "0xfbc73650d98de44d17fc8a441105318c8eb580b82deca2c1ce1584b5d9580758",
+    "s": "0x3c10dee8c45d5dad238d97b724556d66bc1ec9deeda784fddfac2e96a0640f29"
+  },
+  {
+    "message": "Hello, Constantine!",
+    "privateKey": "0x9191e0d56713ab93454cb0f3f8a9881d0a53f6da6c285b452e4d5f4847c64b84",
+    "publicKeyX": "0x4f6df1f0acf0fd68b74a4d41920718ab84fed5e0642c663407245be1c7914629",
+    "publicKeyY": "0xb0532e2807c075335b27c93b3218178669e4b3705b4d784493df9784bdbdfeb4",
+    "r": "0x503198ef113526713e6b18628742ba19ad8817e32b6dd1890b3606e9e382da8e",
+    "s": "0x915f30acb77e07c6923c34482e09e6a5f34c0cf30c8ecc4dbb81fa066029a94e"
+  },
+  {
+    "message": "Hello, Constantine!",
+    "privateKey": "0x99a913bb0e8a74da4edca08307c15b0b81d8fad41825fe6fc2dce721e0dcd617",
+    "publicKeyX": "0x53e22946172e0a73d61733c563377d8d8c8fe8d3446b79cd6883e25410715882",
+    "publicKeyY": "0xadcbcbbe249cd0e786ba6d374b64c66b32d7a917eb48c4dd3e1556054dc95430",
+    "r": "0x5e1ce1b3c21f6d616fecd54718356a704e89855da529f9163ff68ae2425ee607",
+    "s": "0xcf228448c3327191e1dcbd8da97f22f432c9d4b74335d8271d53753bbbcbe2d3"
+  }
+]
