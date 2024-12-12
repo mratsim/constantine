@@ -22,7 +22,7 @@ type
 
 # For easier readibility, define the curve and generator
 # as globals in this file
-const C = Secp256k1
+const C* = Secp256k1
 const G = Secp256k1.getGenerator("G1")
 
 proc hashMessage(message: string): array[32, byte] =
