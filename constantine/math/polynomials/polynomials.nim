@@ -159,7 +159,7 @@ func diff*(r: var PolynomialEval, f, g: PolynomialEval) =
     r.evals[i].diff(f.evals[i], g.evals[i])
 
 func `-=`*(f: var PolynomialEval, g: PolynomialEval) =
-  ## Polynomial addition
+  ## Polynomial substraction
   for i in 0 ..< f.evals.len:
     f.evals[i] -= g.evals[i]
 
