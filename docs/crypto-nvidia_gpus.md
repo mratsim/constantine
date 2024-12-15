@@ -177,11 +177,11 @@ There are a couple of caveats:
 - There was a ABI breaking bug making the 7.0.1 and 7.1.0 versions messy (https://www.phoronix.com/news/LLVM-7.0.1-Released)
 - LLVM 7.0.1 does not have LLVMBuildCall2 and relies on the deprecated LLVMBuildCall meaning
   supporting that and latest LLVM (for AMDGPU and SPIR-V backends) will likely have heavy costs
-- When generating a add-with-carry kernel with inline ASM calls from LLVM-14,
+- When generating an add-with-carry kernel with inline ASM calls from LLVM-14,
   if the LLVM IR is passed as bitcode,
   the kernel content is silently discarded, this does not happen with built-in add.
   It is unsure if it's call2 or inline ASM incompatibility that causes the issues
-- When generating a add-with-carry kernel with inline ASM calls from LLVM-14,
+- When generating an add-with-carry kernel with inline ASM calls from LLVM-14,
   if the LLVM IR is passed as testual IR, the code is refused with NVVM_ERROR_INVALID_IR
 
 Hence, using LLVM NVPTX backend instead of libNVVM is likely the sustainable way forward
