@@ -35,7 +35,7 @@ Cryptographic references:
 
 ## Deep learning compilers & computation graphs
 
-A cryptographic constraint system is derived from an computation graph
+A cryptographic constraint system is derived from a computation graph
 whose representation is extremely similar to deep learning computation graphs.
 
 For example you can map the concept of deep learning computation graphs, addition and multiplication gates forming a circuit

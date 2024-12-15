@@ -109,7 +109,7 @@ and lines are sparse (xyz000 or xy000z) Scott mentions the following costs:
 Hence when accumulating lines from multiple points:
 - 2x Dense-sparse is 26m
 - sparse-sparse then Dense-(somewhat sparse) is 23m
-a 11.5% speedup
+an 11.5% speedup
 
 We can use Aranha approach but process lines function 2-by-2 merging them
 before merging them to the dense Fp12 accumulator.
