@@ -75,7 +75,7 @@ There is a "hidden" instruction called xmad on Nvidia GPUs described in
 On Maxwell and Pascal GPUs (SM 5.3), there was no native 32-bit integer multiplication, probably due to die size constraint.
 So 32-bit mul was based on 16-bit muladd (XMAD) with some PTX->SASS compiler pattern matching to detect optimal XMAD
 scheduling.
-Starting from Volta (SM 7.0 / RTX 2XXX), there is now an hardware integer multiply again
+Starting from Volta (SM 7.0 / RTX 2XXX), there is now a hardware integer multiply again
 https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#arithmetic-instructions
 
 Code to generate the proper XMAD is available in:
