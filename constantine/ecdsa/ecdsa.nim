@@ -20,6 +20,14 @@ type
     nsRandom, ## pure uniform random sampling
     nsRfc6979 ## deterministic according to RFC 6979
 
+  ## Helper type for ASN.1 DER signatures to avoid allocation.
+  ## Has a `data` buffer of 72 bytes (maximum possible size for
+  ## a signature) and `len` of actually used data.
+  ## `data[0 ..< len]` is the actual signature.
+  DERSignature* = object
+    data*: array[72, byte] # Max size: 6 bytes overhead + 33 bytes each for r,s
+    len*: int # Actual length used
+
 # For easier readibility, define the curve and generator
 # as globals in this file
 const C* = Secp256k1
@@ -35,41 +43,72 @@ proc hashMessage(message: string): array[32, byte] =
 proc toBytes(res: var array[32, byte], x: Fr[C] | Fp[C]) =
   discard res.marshal(x.toBig(), bigEndian)
 
-proc toDER*(r, s: Fr[C]): seq[byte] =
-  ## Converts the given signature `(r, s)` into a signature in
-  ## ASN.1 DER encoding following SEC1.
+proc toDER*(derSig: var DERSignature, r, s: Fr[C]) =
+  ## Converts signature (r,s) to DER format without allocation.
+  ## Max size is 72 bytes: 6 bytes overhead + up to 33 bytes each for r,s.
+  ## 6 byte 'overhead' for:
+  ## - `0x30` byte SEQUENCE designator
+  ## - total length of the array
+  ## - integer type designator `0x02` (before `r` and `s`)
+  ## - length of `r` and `s`
   ##
-  ## Note that the implementation is not written for efficiency
-  ## and should be viewed as a convenience tool for the time being.
-  # Convert signature to DER format
-  result = @[byte(0x30)]  # sequence marker
+  ## Implementation follows ideas of Bitcoin's secp256k1 implementation:
+  ## https://github.com/bitcoin-core/secp256k1/blob/f79f46c70386c693ff4e7aef0b9e7923ba284e56/src/ecdsa_impl.h#L171-L193
 
-  template toByteSeq(x: Fr[C]): untyped =
-    var a: array[32, byte]
-    a.toBytes(x)
-    @a
+  template toByteArray(x: Fr[C]): untyped =
+    ## Convert to a 33 byte array. Leading zero byte required if
+    ## first real byte (idx 1) highest bit set (> 0x80).
+    var a: array[33, byte]
+    discard toOpenArray[byte](a, 1, 32).marshal(x.toBig(), bigEndian)
+    a
 
-  # Convert r and s to big-endian bytes
-  var rBytes = r.toByteSeq()
-  var sBytes = s.toByteSeq()
+  # 1. Prepare the data & determine required sizes
 
-  # Add padding if needed (if high bit is set)
-  if (rBytes[0] and 0x80) != 0:
-    rBytes = @[byte(0)] & rBytes
-  if (sBytes[0] and 0x80) != 0:
-    sBytes = @[byte(0)] & sBytes
+  # Convert r,s to big-endian bytes
+  var rBytes = r.toByteArray()
+  var sBytes = s.toByteArray()
+  var rLen = 33
+  var sLen = 33
 
-  # Add integer markers and lengths
-  let rEncoded = @[byte(0x02), byte(rBytes.len)] & rBytes
-  let sEncoded = @[byte(0x02), byte(sBytes.len)] & sBytes
+  # Skip leading zeros but ensure high bit constraint
+  var rPos = 0
+  while rLen > 1 and rBytes[rPos] == 0 and (rBytes[rPos+1] < 0x80.byte):
+    dec rLen
+    inc rPos
+  var sPos = 0
+  while sLen > 1 and sBytes[sPos] == 0 and (sBytes[sPos+1] < 0x80.byte):
+    dec sLen
+    inc sPos
 
-  # Total length
-  let totalLen = rEncoded.len + sEncoded.len
-  result.add(byte(totalLen))
+  # Set total length
+  derSig.len = 6 + rLen + sLen
 
-  # Add r and s encodings
-  result.add(rEncoded)
-  result.add(sEncoded)
+
+  # 2. Write the actual data
+
+  template setInc(val: byte): untyped =
+    # Set `val` at `pos` and increase `pos`
+    derSig.data[pos] = val
+    inc pos
+
+  # Write DER structure
+  var pos = 0
+  setInc 0x30                   # sequence
+  setInc (4 + rLen + sLen).byte # total length
+  setInc 0x02                   # integer
+  setInc rLen.byte              # length of `r`
+
+  # Write `r` bytes in valid region
+  derSig.data.rawCopy(pos, rBytes, rPos, rLen)
+  inc pos, rLen
+
+  setInc 0x02                   # integer
+  setInc sLen.byte              # length of `s`
+
+  derSig.data.rawCopy(pos, sBytes, sPos, sLen)
+  inc pos, sLen
+
+  assert derSig.len == pos
 
 func fromDigest(dst: var Fr[C], src: array[32, byte]): bool {.discardable.} =
   ## Convert a SHA256 digest to an element in the scalar field `Fr[Secp256k1]`.
