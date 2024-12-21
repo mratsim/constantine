@@ -262,32 +262,37 @@ proc getPublicKey*(pk: Fr[C]): EC_ShortW_Aff[Fp[C], G1] {.noinit.} =
   ## `privateKey · G` in affine coordinates.
   result = (pk * G).getAffine()
 
-proc toPemPrivateKey(privateKey: Fr[C]): seq[byte] =
+template toOA(x: openArray[byte]): untyped = toOpenArray[byte](x, 0, x.len - 1)
+
+proc toPemPrivateKey(res: var array[48, byte], privateKey: Fr[C]) =
   # Start with SEQUENCE
-  result = @[byte(0x30)]
+  res.rawCopy(0, toOA [byte(0x30), byte(0x2E)], 0, 2)
 
   # Version (always 1)
-  let version = @[byte(0x02), byte(1), byte(1)]
+  res.rawCopy(2, toOA [byte(0x02), 1, 1], 0, 3)
+
 
   # Private key as octet string
-  let privKeyBytes = privateKey.toBytes()
-  let privKeyEncoded = @[byte(0x04), byte(privKeyBytes.len)] & @privKeyBytes
+  var privKeyBytes {.noinit.}: array[32, byte]
+  privKeyBytes.toBytes(privateKey)
+
+  res.rawCopy(5, toOA [byte(0x04), byte(privKeyBytes.len)], 0, 2)
+  res.rawCopy(7, toOA privKeyBytes, 0, 32)
 
   # Parameters (secp256k1 OID: 1.3.132.0.10)
-  let parameters = @[byte(0xA0), byte(7), byte(6), byte(5),
-                     byte(0x2B), byte(0x81), byte(0x04), byte(0x00), byte(0x0A)]
+  const Secp256k1Oid = [byte(0xA0), byte(7), byte(6), byte(5),
+                        byte(0x2B), byte(0x81), byte(0x04), byte(0x00), byte(0x0A)]
+  res.rawCopy(39, toOA Secp256k1Oid, 0, 9)
 
-  # Combine all parts
-  let contents = version & privKeyEncoded & parameters
-  result.add(byte(contents.len))
-  result.add(contents)
+proc toPemPrivateKey(privateKey: Fr[C]): array[48, byte] =
+  result.toPemPrivateKey(privateKey)
 
-proc toPemPublicKey(publicKey: EC_ShortW_Aff[Fp[C], G1]): seq[byte] =
+proc toPemPublicKey(res: var array[88, byte], publicKey: EC_ShortW_Aff[Fp[C], G1]) =
   # Start with SEQUENCE
-  result = @[byte(0x30)]
+  res.rawCopy(0, toOA [byte(0x30), byte(0x58)], 0, 2)
 
   # Algorithm identifier
-  let algoId = @[
+  const algoId = [
     byte(0x30), byte(0x10),                    # SEQUENCE
     byte(0x06), byte(0x07),                    # OID for EC
     byte(0x2A), byte(0x86), byte(0x48),        # 1.2.840.10045.2.1
@@ -296,18 +301,27 @@ proc toPemPublicKey(publicKey: EC_ShortW_Aff[Fp[C], G1]): seq[byte] =
     byte(0x2B), byte(0x81), byte(0x04), byte(0x00), byte(0x0A) # 1.3.132.0.10
   ]
 
+  res.rawCopy(2, toOA algoId, 0, 18)
+
   # Public key as bit string
-  let pubKeyBytes = @[
+  const encoding = [byte(0x03), byte(0x42)] # 2+32+32 prefix & coordinates
+  const prefix = [
     byte(0x00),  # DER BIT STRING: number of unused bits (always 0 for keys)
     byte(0x04)   # SEC1: uncompressed point format marker
-  ] & @(publicKey.x.toBytes()) & @(publicKey.y.toBytes()) # x & y coordinates
+  ]
 
-  let pubKeyEncoded = @[byte(0x03), byte(pubKeyBytes.len)] & pubKeyBytes
+  template toByteArray(x: Fp[C] | Fr[C]): untyped =
+    var a: array[32, byte]
+    a.toBytes(x)
+    a
 
-  # Combine all parts
-  let contents = algoId & pubKeyEncoded
-  result.add(byte(contents.len))
-  result.add(contents)
+  res.rawCopy(20, toOA encoding, 0, 2)
+  res.rawCopy(22, toOA prefix, 0, 2)
+  res.rawCopy(24, toOA publicKey.x.toByteArray(), 0, 32)
+  res.rawCopy(56, toOA publicKey.y.toByteArray(), 0, 32)
+
+proc toPemPublicKey(publicKey: EC_ShortW_Aff[Fp[C], G1]): array[88, byte] =
+  result.toPemPublicKey(publicKey)
 
 ## NOTE:
 ## The below procs / code is currently "unsuited" for Constantine in the sense that
