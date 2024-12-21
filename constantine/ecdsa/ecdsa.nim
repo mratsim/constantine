@@ -198,9 +198,8 @@ proc signMessage*(message: string, privateKey: Fr[C],
     # `r = k·G (mod n)`
     let r_point = k * G
     # get x coordinate of the point `r` *in affine coordinates*
-    let rx = r_point.getAffine().x # element of Fp
-    ## XXX: smarter way for this?
-    let r = Fr[C].fromBig(rx.toBig())
+    let rx = r_point.getAffine().x    # element of `Fp`
+    let r = Fr[C].fromBig(rx.toBig()) # convert to `Fr`
 
     if bool(r.isZero()):
       continue # try again
@@ -247,7 +246,7 @@ proc verifySignature*(
   let point2 = u2 * publicKey
   let R = point1 + point2
 
-  # 5. Get x coordinate and convert to Fr (like in signing)
+  # 5. Get x coordinate (in `Fp`) and convert to `Fr` (like in signing)
   let x = R.getAffine().x
   let r_computed = Fr[C].fromBig(x.toBig())
 
