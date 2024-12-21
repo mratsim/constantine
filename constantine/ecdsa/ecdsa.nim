@@ -32,9 +32,8 @@ proc hashMessage(message: string): array[32, byte] =
   h.update(message)
   h.finish(result)
 
-proc toBytes(x: Fr[C] | Fp[C]): array[32, byte] =
-  let bi = x.toBig()
-  discard result.marshal(bi, bigEndian)
+proc toBytes(res: var array[32, byte], x: Fr[C] | Fp[C]) =
+  discard res.marshal(x.toBig(), bigEndian)
 
 proc toDER*(r, s: Fr[C]): seq[byte] =
   ## Converts the given signature `(r, s)` into a signature in
@@ -45,9 +44,14 @@ proc toDER*(r, s: Fr[C]): seq[byte] =
   # Convert signature to DER format
   result = @[byte(0x30)]  # sequence marker
 
+  template toByteSeq(x: Fr[C]): untyped =
+    var a: array[32, byte]
+    a.toBytes(x)
+    @a
+
   # Convert r and s to big-endian bytes
-  var rBytes = @(r.toBytes())
-  var sBytes = @(s.toBytes())
+  var rBytes = r.toByteSeq()
+  var sBytes = s.toByteSeq()
 
   # Add padding if needed (if high bit is set)
   if (rBytes[0] and 0x80) != 0:
@@ -90,9 +94,9 @@ proc randomFieldElement[FF](): FF =
 
   result.fromBig(b)
 
-proc arrayWith[N: static int](val: byte): array[N, byte] {.noinit.} =
+proc arrayWith[N: static int](res: var array[N, byte], val: byte) =
   for i in 0 ..< N:
-    result[i] = val
+    res[i] = val
 
 macro update[T](hmac: var HMAC[T], args: varargs[untyped]): untyped =
   ## Mini helper to allow HMAC to act on multiple arguments in succession
@@ -115,19 +119,21 @@ proc nonceRfc6979(msgHash, privateKey: Fr[C]): Fr[C] {.noinit.} =
   ## Spec:
   ## https://datatracker.ietf.org/doc/html/rfc6979#section-3.2
   # Step a: `h1 = H(m)` hash message (already done, input is hash), convert to array of bytes
-  let msgHashBytes = msgHash.toBytes()
+  var msgHashBytes {.noinit.}: array[32, byte]
+  msgHashBytes.toBytes(msgHash)
   # Piece of step d: Conversion of the private key to a byte array.
   # No need for `bits2octets`, because the private key is already a valid
   # scalar in the field `Fr[C]` and thus < p-1 (`bits2octets` converts
   # `r` bytes to a BigInt, reduces modulo prime order `p` and converts to
   # a byte array).
-  let privKeyBytes = privateKey.toBytes()
+  var privKeyBytes {.noinit.}: array[32, byte]
+  privKeyBytes.toBytes(privateKey)
 
   # Initial values
   # Step b: `V = 0x01 0x01 0x01 ... 0x01`
-  var v = arrayWith[32](byte 0x01)
+  var v: array[32, byte]; v.arrayWith(byte 0x01)
   # Step c: `K = 0x00 0x00 0x00 ... 0x00`
-  var k = arrayWith[32](byte 0x00)
+  var k: array[32, byte]; k.arrayWith(byte 0x00)
 
   # Create HMAC contexts
   var hmac {.noinit.}: HMAC[sha256]
