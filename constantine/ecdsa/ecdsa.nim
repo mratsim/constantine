@@ -90,7 +90,7 @@ proc randomFieldElement[FF](): FF =
 
   result.fromBig(b)
 
-proc arrayWith[N: static int](val: byte): array[N, byte] =
+proc arrayWith[N: static int](val: byte): array[N, byte] {.noinit.} =
   for i in 0 ..< N:
     result[i] = val
 
@@ -109,7 +109,7 @@ template round(hmac, input, output: typed, args: varargs[untyped]): untyped =
   hmac.update(args)
   hmac.finish(output)
 
-proc nonceRfc6979(msgHash, privateKey: Fr[C]): Fr[C] =
+proc nonceRfc6979(msgHash, privateKey: Fr[C]): Fr[C] {.noinit.} =
   ## Generate deterministic nonce according to RFC 6979.
   ##
   ## Spec:
@@ -150,7 +150,7 @@ proc nonceRfc6979(msgHash, privateKey: Fr[C]): Fr[C] =
     hmac.round(k, v, v) # v becomes T
 
     # Step h.3: `k = bits2int(T)`
-    var candidate: Fr[C]
+    var candidate {.noinit.}: Fr[C]
     # `fromDigest` returns `false` if the array is larger than the field modulus,
     # important for uniform sampling in valid range `[1, q-1]`!
     let smaller = candidate.fromDigest(v)
@@ -165,13 +165,13 @@ proc nonceRfc6979(msgHash, privateKey: Fr[C]): Fr[C] =
     hmac.round(k, k, v, [byte 0x00])
     hmac.round(k, v, v)
 
-proc generateNonce(kind: NonceSampler, msgHash, privateKey: Fr[C]): Fr[C] =
+proc generateNonce(kind: NonceSampler, msgHash, privateKey: Fr[C]): Fr[C] {.noinit.} =
   case kind
   of nsRandom: randomFieldElement[Fr[C]]()
   of nsRfc6979: nonceRfc6979(msgHash, privateKey)
 
 proc signMessage*(message: string, privateKey: Fr[C],
-                  nonceSampler: NonceSampler = nsRandom): tuple[r, s: Fr[C]] =
+                  nonceSampler: NonceSampler = nsRandom): tuple[r, s: Fr[C]] {.noinit.} =
   ## Sign a given `message` using the `privateKey`.
   ##
   ## By default we use a purely random nonce (uniform random number),
@@ -225,7 +225,7 @@ proc verifySignature*(
   ## Verify a given `signature` for a `message` using the given `publicKey`.
   # 1. Hash the message (same as in signing)
   let h = hashMessage(message)
-  var e: Fr[C]
+  var e {.noinit.}: Fr[C]
   e.fromDigest(h)
 
   # 2. Compute w = s⁻¹
@@ -248,11 +248,11 @@ proc verifySignature*(
   # 6. Verify r_computed equals provided r
   result = bool(r_computed == signature.r)
 
-proc generatePrivateKey*(): Fr[C] =
+proc generatePrivateKey*(): Fr[C] {.noinit.} =
   ## Generate a new private key using a cryptographic random number generator.
   result = randomFieldElement[Fr[C]]()
 
-proc getPublicKey*(pk: Fr[C]): EC_ShortW_Aff[Fp[C], G1] =
+proc getPublicKey*(pk: Fr[C]): EC_ShortW_Aff[Fp[C], G1] {.noinit.} =
   ## Derives the public key from a given private key,
   ## `privateKey · G` in affine coordinates.
   result = (pk * G).getAffine()
