@@ -22,8 +22,9 @@ template toByte*(x: SomeUnsignedInt): byte =
   else:
     byte(x)
 
-template blobFrom*(dst: var openArray[byte], src: SomeUnsignedInt, startIdx: int, endian: static Endianness) =
+func blobFrom*(dst: var openArray[byte], src: SomeUnsignedInt, startIdx: int, endian: static Endianness) {.inline.} =
   ## Write an integer into a raw binary blob
+  ## The whole binary blob is interpreted as big-endian/little-endian
   ## Swapping endianness if needed
   ## startidx is the first written array item if littleEndian is requested
   ## or the last if bigEndian is requested
@@ -34,42 +35,12 @@ template blobFrom*(dst: var openArray[byte], src: SomeUnsignedInt, startIdx: int
     for i in 0 ..< sizeof(src):
       dst[startIdx+sizeof(src)-1-i] = toByte(src shr (i * 8))
 
-func parseFromBlob*(
-           dst: var SomeUnsignedInt,
-           src: openArray[byte],
-           cursor: var uint, endian: static Endianness) {.inline.} =
-  ## Read an unsigned integer from a raw binary blob.
-  ## The `cursor` represents the current index in the array and is updated
-  ## by N bytes where N is the size of `dst` type in bytes.
-  ## The binary blob is interpreted as:
-  ## - an array of words traversed from 0 ..< len (little-endian), via an incremented `cursor`
-  ## - with each word being of `endian` ordering for deserialization purpose.
-  debug:
-    doAssert 0 <= cursor and cursor < src.len.uint
-    doAssert cursor + sizeof(dst).uint <= src.len.uint,
-      "cursor (" & $cursor & ") + sizeof(dst) (" & $sizeof(dst) &
-      ") <= src.len (" & $src.len & ")"
-
-  type U = typeof(dst)
-  const L = sizeof(dst)
-
-  var accum: U = 0
-  when endian == littleEndian:
-    for i in 0'u ..< L:
-      accum = accum or (U(src[cursor+i]) shl (i * 8))
-  else:
-    for i in 0'u ..< L:
-      accum = accum or (U(src[cursor+i]) shl ((L - 1 - i) * 8))
-  dst = accum
-  cursor.inc(L)
-
 func dumpRawInt*(
            dst: var openArray[byte],
            src: SomeUnsignedInt,
            cursor: uint, endian: static Endianness) {.inline.} =
   ## Dump an integer into raw binary form
-  ## The `cursor` represents the current index in the array and is updated
-  ## by N bytes where N is the size of `src` type in bytes.
+  ## The `cursor` represents the current index in the array
   ## The binary blob is interpreted as:
   ## - an array of words traversed from 0 ..< len (little-endian), via an incremented `cursor`
   ## - with each word being of `endian` ordering for deserialization purpose.
@@ -99,11 +70,8 @@ func toBytes*(num: SomeUnsignedInt, endianness: static Endianness): array[sizeof
     for i in 0 ..< L:
       result[i] = toByte(num shr (i * 8))
 
-func fromBytes*(T: type SomeUnsignedInt, bytes: openArray[byte], endianness: static Endianness): T {.inline.} =
+func fromBytes*(T: type SomeUnsignedInt, bytes: array[sizeof(T), byte], endianness: static Endianness): T {.inline.} =
   const L = sizeof(T)
-  debug:
-    doAssert bytes.len == L
-
   # Note: result is zero-init
   when endianness == cpuEndian:
     for i in 0 ..< L:
@@ -111,3 +79,50 @@ func fromBytes*(T: type SomeUnsignedInt, bytes: openArray[byte], endianness: sta
   else:
     for i in 0 ..< L:
       result = result or (T(bytes[i]) shl ((L-1-i) * 8))
+
+template fromBytesImpl(
+      r: var SomeUnsignedInt,
+      bytes: openArray[byte] or ptr UncheckedArray[byte],
+      offset: int,
+      endianness: static Endianness) =
+  # With a function array[N, byte] doesn't match "openArray[byte] or something"
+  # https://github.com/nim-lang/Nim/issues/7432
+  type T = typeof(r)
+  const L = sizeof(r)
+  r.reset()
+  when endianness == cpuEndian:
+    for i in 0 ..< L:
+      r = r or (T(bytes[i+offset]) shl (i*8))
+  else:
+    for i in 0 ..< L:
+      r = r or (T(bytes[i+offset]) shl ((L-1-i) * 8))
+
+func fromBytes*(
+      T: type SomeUnsignedInt,
+      bytes: openArray[byte],
+      offset: int,
+      endianness: static Endianness): T {.inline.} =
+  ## Read an unsigned integer from a raw binary blob.
+  ## The `offset` represents the current index in the array
+  ## The binary blob is interpreted as:
+  ## - an array of words traversed from 0 ..< len (little-endian)
+  ## - with each word being of `endian` ordering for deserialization purpose.
+  debug:
+    doAssert 0 <= offset and offset < bytes.len
+    doAssert offset + sizeof(T) <= bytes.len,
+      "offset (" & $offset & ") + sizeof(T) (" & $sizeof(T) &
+      ") <= bytes.len (" & $bytes.len & ")"
+
+  result.fromBytesImpl(bytes, offset, endianness)
+
+func fromBytes*(
+      T: type SomeUnsignedInt,
+      bytes: ptr UncheckedArray[byte],
+      offset: int,
+      endianness: static Endianness): T {.inline.} =
+  ## Read an unsigned integer from a raw binary blob.
+  ## The `offset` represents the current index in the array
+  ## The binary blob is interpreted as:
+  ## - an array of words traversed from 0 ..< len (little-endian)
+  ## - with each word being of `endian` ordering for deserialization purpose.
+  result.fromBytesImpl(bytes, offset, endianness)

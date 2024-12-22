@@ -7,7 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  constantine/platforms/primitives
+  constantine/platforms/primitives,
+  constantine/serialization/endians
 
 # SHA256, a hash function from the SHA2 family
 # --------------------------------------------------------------------------------
@@ -90,22 +91,6 @@ template s1(x: uint32): uint32 =
   # σ₁
   rotr(x, 17) xor rotr(x, 19) xor (x shr 10)
 
-# Message schedule
-# ------------------------------------------------
-
-template u32BE(blob: array[4, byte]): uint32 =
-  ## Interpret a data blob as a big-endian uint32
-  when nimvm:
-    (blob[0].uint32 shl 24) or (blob[1].uint32 shl 16) or (blob[2].uint32 shl 8) or blob[3].uint32
-  else:
-    when cpuEndian == littleEndian:
-      (blob[0].uint32 shl 24) or (blob[1].uint32 shl 16) or (blob[2].uint32 shl 8) or blob[3].uint32
-    else:
-      cast[uint32](blob)
-
-template getU32at(msg: ptr UncheckedArray[byte], pos: SomeInteger): uint32 =
-  u32BE(cast[ptr array[4, byte]](msg[pos].addr)[])
-
 # State updates
 # ------------------------------------------------
 
@@ -147,7 +132,7 @@ func sha256_rounds_0_15(
        ms: var Sha256_MessageSchedule,
        message: ptr UncheckedArray[byte]) {.inline.} =
   staticFor t, 0, 16:
-    ms.w[t] = message.getU32at(t * sizeof(Word))
+    ms.w[t] = uint32.fromBytes(message, t * sizeof(Word), bigEndian)
     sha256_round(s, ms.w[t], K256[t])
 
 func sha256_rounds_16_63(

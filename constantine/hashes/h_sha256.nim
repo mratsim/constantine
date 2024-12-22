@@ -6,11 +6,11 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ../zoo_exports
+import constantine/zoo_exports
 
 import
-  ../platforms/[abstractions, views],
-  ../serialization/endians,
+  constantine/platforms/[abstractions, views],
+  constantine/serialization/endians,
   ./sha256/sha256_generic
 
 when UseASM_X86_32:
@@ -33,7 +33,7 @@ when UseASM_X86_32:
 
 type
   Sha256Context* = object
-    ## Align to 64 for cache line and SIMD friendliness
+    # Align to 64 for cache line and SIMD friendliness
     s{.align: 64}: Sha256_state
     buf{.align: 64}: array[BlockSize, byte]
     msgLen: uint64
@@ -130,7 +130,7 @@ func update*(ctx: var Sha256Context, message: openarray[byte]) {.libPrefix: pref
   ## in an internal buffer.
   ## if sensitive content is used, ensure that
   ## `ctx.finish(...)` and `ctx.clear()` are called as soon as possible.
-  ## Additionally ensure that the message(s) passed were stored
+  ## Additionally ensure that the message(s) passed was(were) stored
   ## in memory considered secure for your threat model.
   ##
   ## For passwords and secret keys, you MUST NOT use raw SHA-256

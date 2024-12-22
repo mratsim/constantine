@@ -106,12 +106,14 @@ func chacha20_cipher*(
   var keyU{.noInit.}: array[8, uint32]
   var nonceU{.noInit.}: array[3, uint32]
 
-  var pos = 0'u
+  var pos = 0
   for i in 0 ..< 8:
-    keyU[i].parseFromBlob(key, pos, littleEndian)
-  pos = 0'u
+    keyU[i] = uint32.fromBytes(key, pos, littleEndian)
+    pos += sizeof(uint32)
+  pos = 0
   for i in 0 ..< 3:
-    nonceU[i].parseFromBlob(nonce, pos, littleEndian)
+    nonceU[i] = uint32.fromBytes(nonce, pos, littleEndian)
+    pos += sizeof(uint32)
 
   var counter = counter
   var eaten = 0

@@ -30,35 +30,25 @@ else:
 
 # OpenSSL removed direct use of their SHA256 function. https://github.com/openssl/openssl/commit/4d49b68504cc494e552bce8e0b82ec8b501d5abe
 # It isn't accessible anymore in Windows CI on Github Action.
-# But the new API isn't expose on Linux :/
-
+# But the new API EVP_Q_digest isn't accesible either
 # TODO: fix Windows
 when not defined(windows):
-  proc SHA256[T: byte|char](
-        msg: openarray[T],
-        digest: ptr array[32, byte] = nil
-      ): ptr array[32, byte] {.noconv, dynlib: DLLSSLName, importc.}
-
-  # proc EVP_Q_digest[T: byte|char](
-  #                 ossl_libctx: pointer,
-  #                 algoName: cstring,
-  #                 propq: cstring,
-  #                 data: openArray[T],
-  #                 digest: var array[32, byte],
-  #                 size: ptr uint): int32 {.noconv, dynlib: DLLSSLName, importc.}
+  proc EVP_Q_digest[T: byte|char](
+                  ossl_libctx: pointer,
+                  algoName: cstring,
+                  propq: cstring,
+                  data: openArray[T],
+                  digest: var array[32, byte],
+                  size: ptr uint): int32 {.noconv, dynlib: DLLSSLName, importc.}
 
   proc SHA256_OpenSSL[T: byte|char](
         digest: var array[32, byte],
         s: openArray[T]) =
-    discard SHA256(s, digest.addr)
-    # discard EVP_Q_digest(nil, "SHA256", nil, s, digest, nil)
+    # discard SHA256(s, digest.addr)
+    discard EVP_Q_digest(nil, "SHA256", nil, s, digest, nil)
 
-# Test
+# Test cases
 # --------------------------------------------------------------------
-
-echo "\n------------------------------------------------------\n"
-const SmallSizeIters = 64
-const LargeSizeIters =  1
 
 proc sanityABC =
   var bufCt: array[32, byte]
@@ -83,6 +73,12 @@ proc sanityABC2 =
   sha256.hash(bufCt, msg)
 
   doAssert bufCt == hashed
+
+# Differential fuzzing
+# --------------------------------------------------------------------
+
+const SmallSizeIters = 64
+const LargeSizeIters =  1
 
 when not defined(windows):
   proc innerTest(rng: var RngState, sizeRange: Slice[int]) =
@@ -121,12 +117,15 @@ proc chunkTest(rng: var RngState, sizeRange: Slice[int]) =
 
   doAssert bufOnePass == bufChunked
 
+# --------------------------------------------------------------------
+
 proc main() =
+  echo "\n------------------------------------------------------\n"
   echo "SHA256 - sanity checks"
   sanityABC()
   sanityABC2()
 
-  echo "SHA256 - Starting differential testing vs OpenSSL"
+  echo "SHA256 - Starting differential testing vs OpenSSL (except on Windows)"
 
   var rng: RngState
   rng.seed(0xFACADE)
@@ -156,7 +155,6 @@ proc main() =
       rng.innerTest(1_000_000 ..< 50_000_000)
 
     echo "SHA256 - Differential testing vs OpenSSL - SUCCESS"
-
   else:
     echo "SHA256 - Differential testing vs OpenSSL - [SKIPPED]"
 

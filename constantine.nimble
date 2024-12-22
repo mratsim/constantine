@@ -362,7 +362,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Hashing vs OpenSSL
   # ----------------------------------------------------------
-  ("tests/t_hash_sha256_vs_openssl.nim", false), # skip OpenSSL tests on Windows
+  ("tests/t_hash_sha256_vs_openssl.nim", false),
+  ("tests/t_hash_keccak_sha3_vs_openssl.nim", false),
 
   # Ciphers
   # ----------------------------------------------------------
@@ -682,7 +683,8 @@ const benchDesc = [
   "bench_summary_bn254_snarks",
   "bench_summary_pasta",
   "bench_poly1305",
-  "bench_sha256",
+  "bench_h_sha256",
+  "bench_h_keccak",
   "bench_hash_to_curve",
   "bench_gmp_modexp",
   "bench_gmp_modmul",
@@ -1118,7 +1120,10 @@ task bench_summary_pasta, "Run summary benchmarks for the Pasta curves - CC comp
 # ------------------------------------------
 
 task bench_sha256, "Run SHA256 benchmarks":
-  runBench("bench_sha256")
+  runBench("bench_h_sha256")
+
+task bench_keccak, "Run Keccak256 benchmarks":
+  runBench("bench_h_keccak")
 
 # Hash-to-curve
 # ------------------------------------------
