@@ -42,7 +42,7 @@ when defined(amd64): # TODO defined(i386) but it seems like RDTSC call is miscon
         var lo, hi: int64
         # TODO: Provide a compile-time flag for RDTSCP support
         #       and use it instead of lfence + RDTSC
-        {.emit: """asm volatile(
+        {.emit: """__asm__ volatile(
           "lfence\n"
           "rdtsc\n"
           : "=a"(`lo`), "=d"(`hi`)
