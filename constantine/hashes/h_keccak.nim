@@ -6,10 +6,8 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ../zoo_exports
-
 import
-  ../platforms/[abstractions, views],
+  constantine/platforms/[abstractions, views],
   ./keccak/keccak_generic
 
 # Keccak, the hash function underlying SHA3
@@ -93,9 +91,8 @@ type
     #   Similarly after a squeeze, absorb_offset is incremented by the sponge rate.
     #   The real offset can be recovered with a substraction
     #   to properly update the state.
-
     H {.align: 64.}: KeccakState
-    buf {.align: 64.}: array[bits div 8, byte]
+    buf {.align: 64.}: array[200 - 2*(bits div 8), byte]
     absorb_offset: int32
     squeeze_offset: int32
 
@@ -125,11 +122,13 @@ func absorbBuffer(ctx: var KeccakContext) {.inline.} =
 
 template digestSize*(H: type KeccakContext): int =
   ## Returns the output size in bytes
-  KeccakContext.bits shr 3
+  # hardcoded for now or concept match issue with CryptoHash
+  32
 
 template internalBlockSize*(H: type KeccakContext): int =
   ## Returns the byte size of the hash function ingested blocks
-  2 * (KeccakContext.bits shr 3)
+  # hardcoded for now or concept match issue with CryptoHash
+  200
 
 func init*(ctx: var KeccakContext) {.inline.} =
   ## Initialize or reinitialize a Keccak context
@@ -144,9 +143,6 @@ func absorb*(ctx: var KeccakContext, message: openArray[byte]) =
   ## `ctx.finish(...)` and `ctx.clear()` are called as soon as possible.
   ## Additionally ensure that the message(s) passed were stored
   ## in memory considered secure for your threat model.
-
-  if message.len == 0:
-    return
 
   var pos = int ctx.absorb_offset
   var cur = 0
@@ -183,13 +179,11 @@ func absorb*(ctx: var KeccakContext, message: openArray[byte]) =
     ctx.buf.rawCopy(dStart = pos, message, sStart = cur, len = bytesLeft)
 
   # Epilogue
-  ctx.absorb_offset = int32 bytesLeft
+  ctx.absorb_offset = int32(pos+bytesLeft)
   # Signal that the next squeeze transition needs a permute
   ctx.squeeze_offset = int32 ctx.rate()
 
 func squeeze*(ctx: var KeccakContext, digest: var openArray[byte]) =
-  if digest.len == 0:
-    return
 
   var pos = ctx.squeeze_offset
   var cur = 0
@@ -246,9 +240,11 @@ func update*(ctx: var KeccakContext, message: openArray[byte]) =
   ## in memory considered secure for your threat model.
   ctx.absorb(message)
 
-func finish*[N: static int](ctx: var KeccakContext, digest: var array[N, byte]) =
+func finish*(ctx: var KeccakContext, digest: var array[32, byte]) =
   ## Finalize a Keccak computation and output the
-  ## message digest to the `digest` buffer
+  ## message digest to the `digest` buffer.
+  ##
+  ## An `update` MUST be called before finish even with empty message.
   ##
   ## Security note: this does not clear the internal buffer.
   ## if sensitive content is used, use "ctx.clear()"
@@ -260,16 +256,3 @@ func clear*(ctx: var KeccakContext) =
   ## Clear the context internal buffers
   # TODO: ensure compiler cannot optimize the code away
   ctx.reset()
-
-when isMainModule:
-  import constantine/serialization/codecs
-
-  var msg: array[32, byte]
-  var digest: array[32, byte]
-  var ctx: keccak256
-
-  ctx.init()
-  ctx.update(msg)
-  ctx.finish(digest)
-
-  echo digest.toHex()

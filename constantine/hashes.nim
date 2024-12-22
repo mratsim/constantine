@@ -63,7 +63,15 @@ func hash*(
 # Exports
 # -----------------------------------------------------------------------
 
-import ./hashes/h_sha256
-export h_sha256
+import ./hashes/[
+  h_keccak,
+  h_sha256
+]
+export
+  h_keccak,
+  h_sha256
 
-static: doAssert sha256 is CryptoHash
+static:
+  doAssert keccak256 is CryptoHash
+  doAssert sha256 is CryptoHash
+  doAssert sha3_256 is CryptoHash

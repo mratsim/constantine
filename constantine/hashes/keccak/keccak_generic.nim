@@ -231,10 +231,10 @@ func xorInSingle(H: var KeccakState, val: byte, offset: int) {.inline.} =
   let lane = uint64(val) shl slot # All bits but the one set in `val` are 0, and 0 is neutral element of xor
   H.state[offset shr 3] ^= lane
 
-func xorInBlock_generic(H: var KeccakState, msg: array[64, byte]) {.inline.} =
+func xorInBlock_generic(H: var KeccakState, msg: array[200 - 2*32, byte]) {.inline.} =
   ## Add new data into the Keccak state
   # This can benefit from vectorized instructions
-  for i in 0 ..< 8:
+  for i in 0 ..< msg.len div 8:
     H.state[i] ^= uint64.fromBytes(msg, i*8, littleEndian)
 
 func xorInPartial*(H: var KeccakState, msg: openArray[byte]) =
@@ -254,7 +254,7 @@ func xorInPartial*(H: var KeccakState, msg: openArray[byte]) =
   #   Lastly, this is only called when transitioning
   #   between absorbing and squeezing, for hashing
   #   this means once, however long a message to hash is.
-  var blck: array[64, byte] # zero-init
+  var blck: array[200 - 2*32, byte] # zero-init
   rawCopy(blck, 0, msg, 0, msg.len)
   H.xorInBlock_generic(blck)
 
@@ -283,7 +283,7 @@ func copyOutPartial*(
   # Implementation details:
   #   we could avoid a temporary block
   #   see `xorInPartial` for rationale
-  var blck {.noInit.}: array[64, byte]
+  var blck {.noInit.}: array[200 - 2*32, byte]
   H.copyOutWords(blck)
   rawCopy(dst, 0, blck, hByteOffset, dst.len)
 
@@ -303,8 +303,8 @@ func hashMessageBlocks_generic*(
   ##      a permutation is needed in-between
 
   var message = message
-  const rate = 64      # TODO: make a generic Keccak state with auto-derived rate
-  const numRounds = 24 # TODO: auto derive number of rounds
+  const rate = 200 - 2*32 # TODO: make a generic Keccak state with auto-derived rate
+  const numRounds = 24    # TODO: auto derive number of rounds
   for _ in 0 ..< numBlocks:
     let msg = cast[ptr array[rate, byte]](message)
     H.xorInBlock_generic(msg[])
@@ -321,8 +321,8 @@ func squeezeDigestBlocks_generic*(
   ## i.e. previous operation cannot be an absorb
   ##      a permutation is needed in-between
   var digest = digest
-  const rate = 64      # TODO: make a generic Keccak state with auto-derived rate
-  const numRounds = 24 # TODO: auto derive number of rounds
+  const rate = 200 - 2*32 # TODO: make a generic Keccak state with auto-derived rate
+  const numRounds = 24    # TODO: auto derive number of rounds
   for _ in 0 ..< numBlocks:
     let msg = cast[ptr array[rate, byte]](digest)
     H.copyOutWords(msg[])
