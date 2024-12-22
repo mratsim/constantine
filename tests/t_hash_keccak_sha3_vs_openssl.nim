@@ -27,19 +27,20 @@ else:
 
 # OpenSSL wrapper
 # --------------------------------------------------------------------
+# Hash API isn't available on Windows
+when not defined(windows):
+  proc EVP_Q_digest[T: byte|char](
+                  ossl_libctx: pointer,
+                  algoName: cstring,
+                  propq: cstring,
+                  data: openArray[T],
+                  digest: var array[32, byte],
+                  size: ptr uint): int32 {.noconv, dynlib: DLLSSLName, importc.}
 
-proc EVP_Q_digest[T: byte|char](
-                ossl_libctx: pointer,
-                algoName: cstring,
-                propq: cstring,
-                data: openArray[T],
-                digest: var array[32, byte],
-                size: ptr uint): int32 {.noconv, dynlib: DLLSSLName, importc.}
-
-proc SHA3_256_OpenSSL[T: byte|char](
-      digest: var array[32, byte],
-      s: openArray[T]) =
-  discard EVP_Q_digest(nil, "SHA3-256", nil, s, digest, nil)
+  proc SHA3_256_OpenSSL[T: byte|char](
+        digest: var array[32, byte],
+        s: openArray[T]) =
+    discard EVP_Q_digest(nil, "SHA3-256", nil, s, digest, nil)
 
 # Test cases
 # --------------------------------------------------------------------
@@ -106,15 +107,16 @@ proc t_keccak256_abclong =
 const SmallSizeIters = 64
 const LargeSizeIters =  1
 
-proc innerTest(rng: var RngState, sizeRange: Slice[int]) =
-  let size = rng.random_unsafe(sizeRange)
-  let msg = rng.random_byte_seq(size)
+when not defined(windows):
+  proc innerTest(rng: var RngState, sizeRange: Slice[int]) =
+    let size = rng.random_unsafe(sizeRange)
+    let msg = rng.random_byte_seq(size)
 
-  var bufCt, bufOssl: array[32, byte]
+    var bufCt, bufOssl: array[32, byte]
 
-  sha3_256.hash(bufCt, msg)
-  SHA3_256_OpenSSL(bufOssl, msg)
-  doAssert bufCt == bufOssl, "Test failed with message of length " & $size
+    sha3_256.hash(bufCt, msg)
+    SHA3_256_OpenSSL(bufOssl, msg)
+    doAssert bufCt == bufOssl, "Test failed with message of length " & $size
 
 template doWhile(a: bool, b: untyped): untyped =
   ## For Keccak / SHA-3, an update MUST be called
@@ -165,39 +167,49 @@ proc main() =
   t_keccak256_abcdef0123456789()
   t_keccak256_abclong()
 
-  echo "SHA3-256 - Starting differential testing vs OpenSSL"
+  echo "SHA3-256 - Starting differential testing vs OpenSSL (except on Windows)"
 
   var rng: RngState
   rng.seed(0xFACADE)
 
-  echo "SHA3-256 - 0 <= size < 64 - exhaustive"
-  for i in 0 ..< 64:
-    rng.innerTest(i .. i)
+  when not defined(windows):
+    echo "SHA3-256 - 0 <= size < 64 - exhaustive"
+    for i in 0 ..< 64:
+      rng.innerTest(i .. i)
+  else:
+    echo "SHA3-256 - 0 <= size < 64 - exhaustive [SKIPPED]"
 
   echo "SHA3-256 - 0 <= size < 64 - exhaustive chunked"
   for i in 0 ..< 64:
     rng.chunkTest(i .. i)
 
-  echo "SHA3-256 - 135 <= size < 138 - exhaustive (sponge rate = 136)"
-  for i in 135 ..< 138:
-    rng.innerTest(i .. i)
+  when not defined(windows):
+    echo "SHA3-256 - 135 <= size < 138 - exhaustive (sponge rate = 136)"
+    for i in 135 ..< 138:
+      rng.innerTest(i .. i)
+  else:
+    echo "SHA3-256 - 135 <= size < 138 - exhaustive (sponge rate = 136) [SKIPPED]"
 
   echo "SHA3-256 - 135 <= size < 138 - exhaustive chunked (sponge rate = 136)"
   for i in 135 ..< 138:
     rng.chunkTest(i .. i)
 
-  echo "SHA3-256 - 64 <= size < 1024B"
-  for _ in 0 ..< SmallSizeIters:
-    rng.innerTest(0 ..< 1024)
+  when not defined(windows):
+    echo "SHA3-256 - 64 <= size < 1024B"
+    for _ in 0 ..< SmallSizeIters:
+      rng.innerTest(0 ..< 1024)
 
   echo "SHA3-256 - 64 <= size < 1024B - chunked"
   for _ in 0 ..< SmallSizeIters:
     rng.chunkTest(0 ..< 1024)
 
-  echo "SHA3-256 - 1MB <= size < 50MB"
-  for _ in 0 ..< LargeSizeIters:
-    rng.innerTest(1_000_000 ..< 50_000_000)
+  when not defined(windows):
+    echo "SHA3-256 - 1MB <= size < 50MB"
+    for _ in 0 ..< LargeSizeIters:
+      rng.innerTest(1_000_000 ..< 50_000_000)
 
-  echo "SHA3-256 - Differential testing vs OpenSSL - SUCCESS"
+    echo "SHA3-256 - Differential testing vs OpenSSL - SUCCESS"
+  else:
+    echo "SHA256 - Differential testing vs OpenSSL - [SKIPPED]"
 
 main()

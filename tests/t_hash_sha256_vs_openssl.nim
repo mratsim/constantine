@@ -28,19 +28,24 @@ else:
 # OpenSSL wrapper
 # --------------------------------------------------------------------
 
-proc EVP_Q_digest[T: byte|char](
-                ossl_libctx: pointer,
-                algoName: cstring,
-                propq: cstring,
-                data: openArray[T],
-                digest: var array[32, byte],
-                size: ptr uint): int32 {.noconv, dynlib: DLLSSLName, importc.}
+# OpenSSL removed direct use of their SHA256 function. https://github.com/openssl/openssl/commit/4d49b68504cc494e552bce8e0b82ec8b501d5abe
+# It isn't accessible anymore in Windows CI on Github Action.
+# But the new API EVP_Q_digest isn't accesible either
+# TODO: fix Windows
+when not defined(windows):
+  proc EVP_Q_digest[T: byte|char](
+                  ossl_libctx: pointer,
+                  algoName: cstring,
+                  propq: cstring,
+                  data: openArray[T],
+                  digest: var array[32, byte],
+                  size: ptr uint): int32 {.noconv, dynlib: DLLSSLName, importc.}
 
-proc SHA256_OpenSSL[T: byte|char](
-      digest: var array[32, byte],
-      s: openArray[T]) =
-  # discard SHA256(s, digest.addr)
-  discard EVP_Q_digest(nil, "SHA256", nil, s, digest, nil)
+  proc SHA256_OpenSSL[T: byte|char](
+        digest: var array[32, byte],
+        s: openArray[T]) =
+    # discard SHA256(s, digest.addr)
+    discard EVP_Q_digest(nil, "SHA256", nil, s, digest, nil)
 
 # Test cases
 # --------------------------------------------------------------------
@@ -75,15 +80,16 @@ proc sanityABC2 =
 const SmallSizeIters = 64
 const LargeSizeIters =  1
 
-proc innerTest(rng: var RngState, sizeRange: Slice[int]) =
-  let size = rng.random_unsafe(sizeRange)
-  let msg = rng.random_byte_seq(size)
+when not defined(windows):
+  proc innerTest(rng: var RngState, sizeRange: Slice[int]) =
+    let size = rng.random_unsafe(sizeRange)
+    let msg = rng.random_byte_seq(size)
 
-  var bufCt, bufOssl: array[32, byte]
+    var bufCt, bufOssl: array[32, byte]
 
-  sha256.hash(bufCt, msg)
-  SHA256_OpenSSL(bufOssl, msg)
-  doAssert bufCt == bufOssl, "Test failed with message of length " & $size
+    sha256.hash(bufCt, msg)
+    SHA256_OpenSSL(bufOssl, msg)
+    doAssert bufCt == bufOssl, "Test failed with message of length " & $size
 
 proc chunkTest(rng: var RngState, sizeRange: Slice[int]) =
   let size = rng.random_unsafe(sizeRange)
@@ -119,14 +125,17 @@ proc main() =
   sanityABC()
   sanityABC2()
 
-  echo "SHA256 - Starting differential testing vs OpenSSL"
+  echo "SHA256 - Starting differential testing vs OpenSSL (except on Windows)"
 
   var rng: RngState
   rng.seed(0xFACADE)
 
-  echo "SHA256 - 0 <= size < 64 - exhaustive"
-  for i in 0 ..< 64:
-    rng.innerTest(i .. i)
+  when not defined(windows):
+    echo "SHA256 - 0 <= size < 64 - exhaustive"
+    for i in 0 ..< 64:
+      rng.innerTest(i .. i)
+  else:
+    echo "SHA256 - 0 <= size < 64 - exhaustive [SKIPPED]"
 
   echo "SHA256 - 0 <= size < 64 - exhaustive chunked"
   for i in 0 ..< 64:
@@ -136,14 +145,17 @@ proc main() =
   for _ in 0 ..< SmallSizeIters:
     rng.chunkTest(0 ..< 1024)
 
-  echo "SHA256 - 64 <= size < 1024B"
-  for _ in 0 ..< SmallSizeIters:
-    rng.innerTest(0 ..< 1024)
+  when not defined(windows):
+    echo "SHA256 - 64 <= size < 1024B"
+    for _ in 0 ..< SmallSizeIters:
+      rng.innerTest(0 ..< 1024)
 
-  echo "SHA256 - 1MB <= size < 50MB"
-  for _ in 0 ..< LargeSizeIters:
-    rng.innerTest(1_000_000 ..< 50_000_000)
+    echo "SHA256 - 1MB <= size < 50MB"
+    for _ in 0 ..< LargeSizeIters:
+      rng.innerTest(1_000_000 ..< 50_000_000)
 
-  echo "SHA256 - Differential testing vs OpenSSL - SUCCESS"
+    echo "SHA256 - Differential testing vs OpenSSL - SUCCESS"
+  else:
+    echo "SHA256 - Differential testing vs OpenSSL - [SKIPPED]"
 
 main()
