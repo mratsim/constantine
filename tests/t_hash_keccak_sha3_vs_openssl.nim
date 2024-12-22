@@ -1,6 +1,7 @@
 import
   # Internals
   constantine/hashes,
+  constantine/serialization/codecs,
   # Helpers
   helpers/prng_unsafe
 
@@ -40,10 +41,68 @@ proc SHA3_256_OpenSSL[T: byte|char](
       s: openArray[T]) =
   discard EVP_Q_digest(nil, "SHA3-256", nil, s, digest, nil)
 
-# Test
+# Test cases
 # --------------------------------------------------------------------
 
-echo "\n------------------------------------------------------\n"
+proc t_sha3_256_empty =
+  var bufCt: array[32, byte]
+  let msg = ""
+  let hashed = array[32, byte].fromHex("a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a")
+  sha3_256.hash(bufCt, msg)
+  doAssert bufCt == hashed
+
+proc t_sha3_256_abc =
+  var bufCt: array[32, byte]
+  let msg = "abc"
+  let hashed = array[32, byte].fromHex("3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532")
+  sha3_256.hash(bufCt, msg)
+  doAssert bufCt == hashed
+
+proc t_sha3_256_abcdef0123456789 =
+  var bufCt: array[32, byte]
+  let msg = "abcdef0123456789"
+  let hashed = array[32, byte].fromHex("11711275e983511cbd160d19d122e1756a44462cef4cc5a83dcc92b46e93a9c4")
+  sha3_256.hash(bufCt, msg)
+  doAssert bufCt == hashed
+
+proc t_sha3_256_abc_long =
+  var bufCt: array[32, byte]
+  let msg = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
+  let hashed = array[32, byte].fromHex("41c0dba2a9d6240849100376a8235e2c82e1b9998a999e21db32dd97496d3376")
+  sha3_256.hash(bufCt, msg)
+  doAssert bufCt == hashed
+
+proc t_keccak256_empty =
+  var bufCt: array[32, byte]
+  let msg = ""
+  let hashed = array[32, byte].fromHex("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
+  keccak256.hash(bufCt, msg)
+  doAssert bufCt == hashed
+
+proc t_keccak256_abc =
+  var bufCt: array[32, byte]
+  let msg = "abc"
+  let hashed = array[32, byte].fromHex("4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45")
+  keccak256.hash(bufCt, msg)
+  doAssert bufCt == hashed
+
+proc t_keccak256_abcdef0123456789 =
+  var bufCt: array[32, byte]
+  let msg = "abcdef0123456789"
+  let hashed = array[32, byte].fromHex("9d0db1e0c6820c62f470dbd81e9db48fdf7d76f62027568e6496566fad3661e0")
+  keccak256.hash(bufCt, msg)
+  doAssert bufCt == hashed
+
+proc t_keccak256_abclong =
+  var bufCt: array[32, byte]
+  let msg = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
+  let hashed = array[32, byte].fromHex("45d3b367a6904e6e8d502ee04999a7c27647f91fa845d456525fd352ae3d7371")
+  keccak256.hash(bufCt, msg)
+  doAssert bufCt == hashed
+
+# Differential fuzzing
+# --------------------------------------------------------------------
+
 const SmallSizeIters = 64
 const LargeSizeIters =  1
 
@@ -92,7 +151,20 @@ proc chunkTest(rng: var RngState, sizeRange: Slice[int]) =
 
   doAssert bufOnePass == bufChunked
 
+# --------------------------------------------------------------------
+
 proc main() =
+  echo "\n------------------------------------------------------\n"
+  echo "SHA3-256 & Keccak256 - sanity checks"
+  t_sha3_256_empty()
+  t_sha3_256_abc()
+  t_sha3_256_abcdef0123456789()
+  t_sha3_256_abc_long()
+  t_keccak256_empty()
+  t_keccak256_abc()
+  t_keccak256_abcdef0123456789()
+  t_keccak256_abclong()
+
   echo "SHA3-256 - Starting differential testing vs OpenSSL"
 
   var rng: RngState

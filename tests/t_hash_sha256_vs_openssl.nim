@@ -42,12 +42,8 @@ proc SHA256_OpenSSL[T: byte|char](
   # discard SHA256(s, digest.addr)
   discard EVP_Q_digest(nil, "SHA256", nil, s, digest, nil)
 
-# Test
+# Test cases
 # --------------------------------------------------------------------
-
-echo "\n------------------------------------------------------\n"
-const SmallSizeIters = 64
-const LargeSizeIters =  1
 
 proc sanityABC =
   var bufCt: array[32, byte]
@@ -72,6 +68,12 @@ proc sanityABC2 =
   sha256.hash(bufCt, msg)
 
   doAssert bufCt == hashed
+
+# Differential fuzzing
+# --------------------------------------------------------------------
+
+const SmallSizeIters = 64
+const LargeSizeIters =  1
 
 proc innerTest(rng: var RngState, sizeRange: Slice[int]) =
   let size = rng.random_unsafe(sizeRange)
@@ -109,7 +111,10 @@ proc chunkTest(rng: var RngState, sizeRange: Slice[int]) =
 
   doAssert bufOnePass == bufChunked
 
+# --------------------------------------------------------------------
+
 proc main() =
+  echo "\n------------------------------------------------------\n"
   echo "SHA256 - sanity checks"
   sanityABC()
   sanityABC2()

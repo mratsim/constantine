@@ -240,7 +240,7 @@ func xorInBlock_generic(H: var KeccakState, msg: array[200 - 2*32, byte]) {.inli
 func xorInPartial*(H: var KeccakState, msg: openArray[byte]) =
   ## Add multiple bytes to the state
   ## The length MUST be less than the state length.
-  debug: doAssert msg.len <= H.state
+  debug: doAssert msg.len <= sizeof(H.state)
 
   # Implementation detail:
   #   We could avoid an intermediate variable but
@@ -278,7 +278,7 @@ func copyOutPartial*(
   ## and write it into `dst`
   ## starting from the state byte offset `hByteOffset`
   ## hByteOffset + dst length MUST be less than the Keccak rate
-  debug: doAssert dst.len + hByteOffset <= sizeof(H.state.size)
+  debug: doAssert dst.len + hByteOffset <= sizeof(H.state)
 
   # Implementation details:
   #   we could avoid a temporary block
