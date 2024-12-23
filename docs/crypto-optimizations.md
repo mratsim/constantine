@@ -50,7 +50,7 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
   - [x] x86: Full Assembly implementation
   - [x] x86: MULX, ADCX, ADOX instructions
 
-- Addition/substraction
+- Addition/subtraction
   - [x] int128
   - [x] add-with-carry, sub-with-borrow intrinsics
   - [x] loop unrolling
@@ -84,7 +84,7 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
   - [ ] NAF recoding
   - [ ] windowed-NAF recoding
   - [ ] SIMD vectorized select in window algorithm
-  - [x] Montgomery Multiplication with no final substraction,
+  - [x] Montgomery Multiplication with no final subtraction,
     - Bos and Montgomery, https://eprint.iacr.org/2017/1057.pdf
       - Colin D Walter, https://colinandmargaret.co.uk/Research/CDW_ELL_99.pdf
       - Hachez and Quisquater, https://link.springer.com/content/pdf/10.1007%2F3-540-44499-8_23.pdf
