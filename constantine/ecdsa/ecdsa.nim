@@ -2,8 +2,8 @@ import
   ../hashes/h_sha256,
   ../named/algebras,
   ../math/io/[io_bigints, io_fields, io_ec],
-  ../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul],
-  ../math/arithmetic,
+  ../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul],
+  ../math/[arithmetic, ec_shortweierstrass],
   ../platforms/abstractions,
   ../serialization/codecs, # for fromHex and (in the future) base64 encoding
   ../mac/mac_hmac, # for deterministic nonce generation via RFC 6979
@@ -229,15 +229,17 @@ proc signMessage*(message: string, privateKey: Fr[C],
   message_hash.fromDigest(h)
 
   # loop until we found a valid (non zero) signature
+
   while true:
     # Generate random nonce
     var k = generateNonce(nonceSampler, message_hash, privateKey)
 
+    var R {.noinit.}: EC_ShortW_Jac[Fp[C], G1]
     # Calculate r (x-coordinate of kG)
     # `r = k·G (mod n)`
-    let r_point = k * G
+    R.scalarMul(k, G)
     # get x coordinate of the point `r` *in affine coordinates*
-    let rx = r_point.getAffine().x    # element of `Fp`
+    let rx = R.getAffine().x
     let r = Fr[C].fromBig(rx.toBig()) # convert to `Fr`
 
     if bool(r.isZero()):
@@ -247,8 +249,11 @@ proc signMessage*(message: string, privateKey: Fr[C],
     # `s = (k⁻¹ · (h + r · p)) (mod n)`
     # with `h`: message hash as `Fr[C]` (if we didn't use SHA256 w/ 32 byte output
     # we'd need to truncate to N bits for N being bits in modulo `n`)
-    k.inv()
-    var s = (k * (message_hash + r * privateKey))
+    var s  {.noinit.}: Fr[C]
+    s.prod(r, privateKey) # `r * privateKey`
+    s += message_hash     # `message_hash + r * privateKey`
+    k.inv()               # `k := k⁻¹`
+    s *= k                # `k⁻¹ * (message_hash + r * privateKey)`
     # get inversion of `s` for 'lower-s normalization'
     var sneg = s # inversion of `s`
     sneg.neg()   # q - s
@@ -277,13 +282,20 @@ proc verifySignature*(
   w.inv() # w = s⁻¹
 
   # 3. Compute u₁ = ew and u₂ = rw
-  let u1 = e * w
-  let u2 = signature.r * w
+  var
+    u1 {.noinit.}: Fr[C]
+    u2 {.noinit.}: Fr[C]
+  u1.prod(e, w)
+  u2.prod(signature.r, w)
 
   # 4. Compute u₁G + u₂Q
-  let point1 = u1 * G
-  let point2 = u2 * publicKey
-  let R = point1 + point2
+  var
+    point1 {.noinit.}: EC_ShortW_Jac[Fp[C], G1]
+    point2 {.noinit.}: EC_ShortW_Jac[Fp[C], G1]
+  point1.scalarMul(u1, G)
+  point2.scalarMul(u2, publicKey)
+  var R {.noinit.}: EC_ShortW_Jac[Fp[C], G1]
+  R.sum(point1, point2)
 
   # 5. Get x coordinate (in `Fp`) and convert to `Fr` (like in signing)
   let x = R.getAffine().x

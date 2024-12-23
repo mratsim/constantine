@@ -67,6 +67,7 @@ proc parseSignature(derSig: string): tuple[r, s: string] =
   ## `0` byte is added). In our case we just parse 32 or 33 bytes,
   ## because we don't care about a leading zero byte.
   doAssert derSig[0] == '\48' # SEQUENCE
+  ## XXX: replace by maximum length 70! Can be anything larger than 2 really (1 for r and s)
   doAssert derSig[1] in {'\67', '\68', '\69', '\70'} # 68-70 bytes long (depending on 0, 1, 2 zero prefixes)
   doAssert derSig[2] == '\02' # INTEGER tag
   let lenX = ord(derSig[3])
@@ -97,6 +98,8 @@ proc generateSignatures(num: int, msg = ""): seq[TestVector] =
     # convert private key to a PEM file and write as temp
     writeFile(privKeyFile, toPemFile(privKey))
 
+    discard toPemFile(pubKey)
+
     # NOTE: We treat the *hex string* as the message, not the raw bytes,
     # including the `0x` prefix!
     let cmd = &"echo -n '{msg}' | openssl dgst -sha256 -sign {privKeyFile} -out {sigFile}"
@@ -118,10 +121,20 @@ proc generateSignatures(num: int, msg = ""): seq[TestVector] =
     doAssert verifySignature(msg, (r: rCTT, s: sCTT), pubKey)
     doAssert verifySignature(msg, (r: Fr[C].fromHex(r), s: Fr[C].fromHex(s)), pubKey)
 
+    #let rOS = Fr[C].fromHex(r)
+    #let sOS = Fr[C].fromHex(s)
+    #echo "SEQ based: ", toDERSeq(rOS, sOS)
+    #var ds: DERSignature; toDER(ds, rOS, sOS)
+    #echo "ARR based: ", @(ds.data)
+    #
+    #doAssert toDERSeq(rOS, sOS) == @(ds.data)[0 ..< ds.len]
+
+
+
 # 1. generate 100 signatures with random messages, private keys and random nonces
 let vecs1 = generateSignatures(100)
 # 2. generate 10 signatures for the same message
 let vecs2 = generateSignatures(10, "Hello, Constantine!")
-
-writeFile("testVectors/ecdsa_openssl_signatures_random.json", (% vecs1).pretty())
-writeFile("testVectors/ecdsa_openssl_signatures_fixed_msg.json", (% vecs2).pretty())
+#
+#writeFile("testVectors/ecdsa_openssl_signatures_random.json", (% vecs1).pretty())
+#writeFile("testVectors/ecdsa_openssl_signatures_fixed_msg.json", (% vecs2).pretty())
