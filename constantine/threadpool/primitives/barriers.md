@@ -44,7 +44,7 @@ More courses:
 It however requires lightweight mutexes like Linux futexes
 that OSX lacks.
 
-This post goes over lightweight mutexes like Benaphores (from BeOS)
+This post goes over lightweight mutexes like Benephores (from BeOS)
 https://preshing.com/20120226/roll-your-own-lightweight-mutex/
 
 This gives a few barrier implementations
