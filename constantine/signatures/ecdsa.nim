@@ -1,5 +1,5 @@
 import
-  ../hashes/h_sha256,
+  ../hashes,
   ../named/algebras,
   ../math/io/[io_bigints, io_fields, io_ec],
   ../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul],
@@ -33,12 +33,6 @@ type
 const C* = Secp256k1
 const G = Secp256k1.getGenerator("G1")
 
-proc hashMessage(message: string): array[32, byte] =
-  # Hash a given message
-  var h {.noinit.}: sha256
-  h.init()
-  h.update(message)
-  h.finish(result)
 
 proc toBytes(res: var array[32, byte], x: Fr[C] | Fp[C]) =
   discard res.marshal(x.toBig(), bigEndian)
@@ -224,9 +218,11 @@ proc signMessage*(message: string, privateKey: Fr[C],
   ## a deterministic nonce (and thus deterministic signature) given
   ## the message and private key as base.
   # 1. hash the message in big endian order
-  let h = hashMessage(message)
-  var message_hash: Fr[C]
-  message_hash.fromDigest(h)
+  var dgst {.noinit.}: array[H.digestSize, byte]
+  H.hash(dgst, message)
+  var message_hash: Fr[Name]
+  # if `dgst` uses more bytes than
+  message_hash.fromDigest(dgst, truncateInput = true)
 
   # loop until we found a valid (non zero) signature
 
@@ -273,9 +269,10 @@ proc verifySignature*(
 ): bool =
   ## Verify a given `signature` for a `message` using the given `publicKey`.
   # 1. Hash the message (same as in signing)
-  let h = hashMessage(message)
-  var e {.noinit.}: Fr[C]
-  e.fromDigest(h)
+  var dgst {.noinit.}: array[H.digestSize, byte]
+  H.hash(dgst, message)
+  var e {.noinit.}: Fr[Name]
+  e.fromDigest(dgst, truncateInput = true)
 
   # 2. Compute w = s⁻¹
   var w = signature.s
