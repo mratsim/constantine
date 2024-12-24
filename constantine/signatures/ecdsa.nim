@@ -4,7 +4,7 @@ import
   ../math/io/[io_bigints, io_fields, io_ec],
   ../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul],
   ../math/[arithmetic, ec_shortweierstrass],
-  ../platforms/abstractions,
+  ../platforms/[abstractions, views],
   ../serialization/codecs, # for fromHex and (in the future) base64 encoding
   ../mac/mac_hmac, # for deterministic nonce generation via RFC 6979
   ../named/zoo_generators, # for generator
@@ -220,9 +220,16 @@ proc generateNonce[Name: static Algebra](
     kind: NonceSampler, msgHash, privateKey: Fr[Name],
     H: type CryptoHash): Fr[Name] {.noinit.} =
   case kind
-proc signMessage*(message: string, privateKey: Fr[C],
-                  nonceSampler: NonceSampler = nsRandom): tuple[r, s: Fr[C]] {.noinit.} =
-  ## Sign a given `message` using the `privateKey`.
+  of nsRandom: randomFieldElement[Fr[Name]]()
+  of nsRfc6979: nonceRfc6979(msgHash, privateKey, H)
+
+proc signImpl[Name: static Algebra; Sig](
+  sig: var Sig,
+  secretKey: Fr[Name],
+  message: openArray[byte],
+  H: type CryptoHash,
+  nonceSampler: NonceSampler = nsRandom) =
+  ## Sign a given `message` using the `secretKey`.
   ##
   ## By default we use a purely random nonce (uniform random number),
   ## but passing `nonceSampler = nsRfc6979` uses RFC 6979 to compute
@@ -235,19 +242,21 @@ proc signMessage*(message: string, privateKey: Fr[C],
   # if `dgst` uses more bytes than
   message_hash.fromDigest(dgst, truncateInput = true)
 
-  # loop until we found a valid (non zero) signature
+  # Generator of the curve
+  const G = Name.getGenerator($G1)
 
+  # loop until we found a valid (non zero) signature
   while true:
     # Generate random nonce
-    var k = generateNonce(nonceSampler, message_hash, privateKey)
+    var k = generateNonce(nonceSampler, message_hash, secretKey, H)
 
-    var R {.noinit.}: EC_ShortW_Jac[Fp[C], G1]
+    var R {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
     # Calculate r (x-coordinate of kG)
     # `r = k·G (mod n)`
     R.scalarMul(k, G)
     # get x coordinate of the point `r` *in affine coordinates*
     let rx = R.getAffine().x
-    let r = Fr[C].fromBig(rx.toBig()) # convert to `Fr`
+    let r = Fr[Name].fromBig(rx.toBig()) # convert to `Fr`
 
     if bool(r.isZero()):
       continue # try again
@@ -256,11 +265,11 @@ proc signMessage*(message: string, privateKey: Fr[C],
     # `s = (k⁻¹ · (h + r · p)) (mod n)`
     # with `h`: message hash as `Fr[C]` (if we didn't use SHA256 w/ 32 byte output
     # we'd need to truncate to N bits for N being bits in modulo `n`)
-    var s  {.noinit.}: Fr[C]
-    s.prod(r, privateKey) # `r * privateKey`
-    s += message_hash     # `message_hash + r * privateKey`
+    var s {.noinit.}: Fr[Name]
+    s.prod(r, secretKey) # `r * secretKey`
+    s += message_hash     # `message_hash + r * secretKey`
     k.inv()               # `k := k⁻¹`
-    s *= k                # `k⁻¹ * (message_hash + r * privateKey)`
+    s *= k                # `k⁻¹ * (message_hash + r * secretKey)`
     # get inversion of `s` for 'lower-s normalization'
     var sneg = s # inversion of `s`
     sneg.neg()   # q - s
@@ -271,12 +280,37 @@ proc signMessage*(message: string, privateKey: Fr[C],
     if bool(s.isZero()):
       continue # try again
 
-    return (r: r, s: s)
+    # Set output and return
+    sig.r = r
+    sig.s = s
+    return
 
-proc verifySignature*(
-    message: string,
-    signature: tuple[r, s: Fr[C]],
-    publicKey: EC_ShortW_Aff[Fp[C], G1]
+proc coreSign*[Sig, SecKey](
+    signature: var Sig,
+    secretKey: SecKey,
+    message: openArray[byte],
+    H: type CryptoHash,
+    nonceSampler: NonceSampler = nsRandom) {.genCharAPI.} =
+  ## Computes a signature for the message from the specified secret key.
+  ##
+  ## Output:
+  ## - `signature` is overwritten with `message` signed with `secretKey`
+  ##
+  ## Inputs:
+  ## - `Hash` a cryptographic hash function.
+  ##   - `Hash` MAY be `sha256`
+  ##   - `Hash` MAY be `keccak`
+  ##   - Otherwise, H MUST be a hash function that has been proved
+  ##    indifferentiable from a random oracle [MRH04] under a reasonable
+  ##    cryptographic assumption.
+  ## - `message` is the message to hash
+  signature.signImpl(secretKey, message, H, nonceSampler)
+
+proc verifyImpl[Name: static Algebra; Sig](
+    publicKey: EC_ShortW_Aff[Fp[Name], G1],
+    signature: Sig, # tuple[r, s: Fr[Name]],
+    message: openArray[byte],
+    H: type CryptoHash,
 ): bool =
   ## Verify a given `signature` for a `message` using the given `publicKey`.
   # 1. Hash the message (same as in signing)
@@ -291,27 +325,40 @@ proc verifySignature*(
 
   # 3. Compute u₁ = ew and u₂ = rw
   var
-    u1 {.noinit.}: Fr[C]
-    u2 {.noinit.}: Fr[C]
+    u1 {.noinit.}: Fr[Name]
+    u2 {.noinit.}: Fr[Name]
   u1.prod(e, w)
   u2.prod(signature.r, w)
 
   # 4. Compute u₁G + u₂Q
   var
-    point1 {.noinit.}: EC_ShortW_Jac[Fp[C], G1]
-    point2 {.noinit.}: EC_ShortW_Jac[Fp[C], G1]
+    point1 {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
+    point2 {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
+  # Generator of the curve
+  const G = publicKey.F.Name.getGenerator($publicKey.G)
   point1.scalarMul(u1, G)
   point2.scalarMul(u2, publicKey)
-  var R {.noinit.}: EC_ShortW_Jac[Fp[C], G1]
+  var R {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
   R.sum(point1, point2)
 
   # 5. Get x coordinate (in `Fp`) and convert to `Fr` (like in signing)
   let x = R.getAffine().x
-  let r_computed = Fr[C].fromBig(x.toBig())
+  let r_computed = Fr[Name].fromBig(x.toBig())
 
   # 6. Verify r_computed equals provided r
   result = bool(r_computed == signature.r)
 
+func coreVerify*[Pubkey, Sig](
+    pubkey: Pubkey,
+    message: openarray[byte],
+    signature: Sig,
+    H: type CryptoHash): bool {.genCharAPI.} =
+  ## Check that a signature is valid
+  ## for a message under the provided public key
+  ## This assumes that the PublicKey and Signatures
+  ## have been pre-checked for non-infinity and being in the correct subgroup
+  ## (likely on deserialization)
+  result = pubKey.verifyImpl(signature, message, H)
 proc generatePrivateKey*(): Fr[C] {.noinit.} =
   ## Generate a new private key using a cryptographic random number generator.
   result = randomFieldElement[Fr[C]]()
