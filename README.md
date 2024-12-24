@@ -256,7 +256,7 @@ and modify Constantine's [`build.rs`](https://github.com/mratsim/constantine/blo
 
 ### From Nim
 
-You can install the developement version of the library through nimble with the following command
+You can install the development version of the library through nimble with the following command
 ```
 nimble install https://github.com/mratsim/constantine@#master
 ```
