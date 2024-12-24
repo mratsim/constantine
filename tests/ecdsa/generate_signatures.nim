@@ -12,7 +12,8 @@ with OpenSSL.
 
 import
   constantine/csprngs/sysrand,
-  constantine/ecdsa/ecdsa,
+  #constantine/signatures/ecdsa,
+  constantine/ecdsa_secp256k1,
   constantine/named/algebras,
   constantine/math/io/[io_bigints, io_fields, io_ec],
   constantine/serialization/codecs
