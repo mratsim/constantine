@@ -22,24 +22,27 @@ type
 
   ## Helper type for ASN.1 DER signatures to avoid allocation.
   ## Has a `data` buffer of 72 bytes (maximum possible size for
-  ## a signature) and `len` of actually used data.
+  ## a signature for `secp256k1`) and `len` of actually used data.
   ## `data[0 ..< len]` is the actual signature.
-  DERSignature* = object
-    data*: array[72, byte] # Max size: 6 bytes overhead + 33 bytes each for r,s
+  DERSignature*[N: static int] = object
+    data*: array[N, byte] # Max size: 6 bytes overhead + 33 bytes each for r,s
     len*: int # Actual length used
 
 # For easier readibility, define the curve and generator
 # as globals in this file
 const C* = Secp256k1
 const G = Secp256k1.getGenerator("G1")
+template DERSigSize*(Name: static Algebra): int =
+  6 + 2 * (Fr[Name].bits.ceilDiv_vartime(sizeof(pointer)) + 1)
 
 
 proc toBytes(res: var array[32, byte], x: Fr[C] | Fp[C]) =
   discard res.marshal(x.toBig(), bigEndian)
 
-proc toDER*(derSig: var DERSignature, r, s: Fr[C]) =
+proc toDER*[Name: static Algebra; N: static int](derSig: var DERSignature[N], r, s: Fr[Name]) =
   ## Converts signature (r,s) to DER format without allocation.
-  ## Max size is 72 bytes: 6 bytes overhead + up to 33 bytes each for r,s.
+  ## Max size is 72 bytes (for Secp256k1 or any curve with 32 byte scalars in `Fr`):
+  ## 6 bytes overhead + up to 32+1 bytes each for r,s.
   ## 6 byte 'overhead' for:
   ## - `0x30` byte SEQUENCE designator
   ## - total length of the array
@@ -49,11 +52,14 @@ proc toDER*(derSig: var DERSignature, r, s: Fr[C]) =
   ## Implementation follows ideas of Bitcoin's secp256k1 implementation:
   ## https://github.com/bitcoin-core/secp256k1/blob/f79f46c70386c693ff4e7aef0b9e7923ba284e56/src/ecdsa_impl.h#L171-L193
 
-  template toByteArray(x: Fr[C]): untyped =
+  const WordSize = sizeof(BaseType)
+  const N = Fr[Name].bits.ceilDiv_vartime(WordSize) # 32 for `secp256k1`
+
+  template toByteArray(x: Fr[Name]): untyped =
     ## Convert to a 33 byte array. Leading zero byte required if
     ## first real byte (idx 1) highest bit set (> 0x80).
-    var a: array[33, byte]
-    discard toOpenArray[byte](a, 1, 32).marshal(x.toBig(), bigEndian)
+    var a: array[N+1, byte]
+    discard toOpenArray[byte](a, 1, N).marshal(x.toBig(), bigEndian)
     a
 
   # 1. Prepare the data & determine required sizes
@@ -61,8 +67,8 @@ proc toDER*(derSig: var DERSignature, r, s: Fr[C]) =
   # Convert r,s to big-endian bytes
   var rBytes = r.toByteArray()
   var sBytes = s.toByteArray()
-  var rLen = 33
-  var sLen = 33
+  var rLen = N + 1
+  var sLen = N + 1
 
   # Skip leading zeros but ensure high bit constraint
   var rPos = 0
@@ -79,26 +85,27 @@ proc toDER*(derSig: var DERSignature, r, s: Fr[C]) =
 
 
   # 2. Write the actual data
-
+  var pos = 0
   template setInc(val: byte): untyped =
     # Set `val` at `pos` and increase `pos`
     derSig.data[pos] = val
     inc pos
 
-  # Write DER structure
-  var pos = 0
+  # Write DER structure, global
   setInc 0x30                   # sequence
   setInc (4 + rLen + sLen).byte # total length
+
+  # `r` prefix
   setInc 0x02                   # integer
   setInc rLen.byte              # length of `r`
-
   # Write `r` bytes in valid region
   derSig.data.rawCopy(pos, rBytes, rPos, rLen)
   inc pos, rLen
 
+  # `s` prefix
   setInc 0x02                   # integer
   setInc sLen.byte              # length of `s`
-
+  # Write `s` bytes in valid region
   derSig.data.rawCopy(pos, sBytes, sPos, sLen)
   inc pos, sLen
 
