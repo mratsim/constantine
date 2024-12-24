@@ -106,13 +106,39 @@ proc toDER*[Name: static Algebra; N: static int](derSig: var DERSignature[N], r,
 
   assert derSig.len == pos
 
-func fromDigest[Name: static Algebra; N: static int](dst: var Fr[Name], src: array[N, byte]): bool {.discardable.} =
+func fromDigest[Name: static Algebra; N: static int](
+    dst: var Fr[Name], src: array[N, byte],
+    truncateInput: static bool): bool {.discardable.} =
   ## Convert a hash function digest to an element in the scalar field `Fr[Name]`.
   ## The proc returns a boolean indicating whether the data in `src` is
   ## smaller than the field modulus. It is discardable, because in some
   ## use cases this is fine (e.g. constructing a field element from a hash),
   ## but invalid in the nonce generation following RFC6979.
+  ##
+  ## The `truncateInput` argument handles how `src` arrays larger than the BigInt
+  ## underlying `Fr[Name]` are handled. If it is `false` we will simply throw
+  ## an assertion error on `unmarshal` (used in RFC6979 nonce generation where
+  ## the array size cannot be larger than `Fr[Name]`). If it is `true`, we truncate
+  ## the digest array to the left most bits of up to the number of bits underlying
+  ## the BigInt of `Fr[Name]` following SEC1v2 [0] (page 45, 5.1-5.4).
+  ##
+  ## [0]: https://www.secg.org/sec1-v2.pdf
   var scalar {.noInit.}: matchingOrderBigInt(Name)
+  when truncateInput: # for signature & verification
+    # If the `src` array is larger than the BigInt underlying `Fr[Name]`, need
+    # to truncate the `src`.
+    const WordSize = sizeof(BaseType)
+    const FrBytes = Fr[Name].bits.ceildiv_vartime(WordSize)
+    # effectively: `scalar ~ array[0 ..< scalar.len]`
+    scalar.unmarshal(toOpenArray[byte](src, 0, FrBytes-1), bigEndian)
+    # Now still need to right shift potential individual bits.
+    # e.g. 381 bit BigInt fits into 384 bit (48 bytes), so need to
+    # right shift 3 bits to truncate correctly.
+    const toShift = FrBytes * WordSize - Fr[Name].bits
+    when toShift > 0:
+      scalar.shiftRight(toShift)
+  else: # for RFC 6979 nonce sampling. If larger than modulus, sample again
+    scalar.unmarshal(src, bigEndian)
   scalar.unmarshal(src, bigEndian)
   # `true` if smaller than modulus
   result = bool(scalar < Fr[Name].getModulus())
@@ -200,7 +226,7 @@ proc nonceRfc6979[Name: static Algebra](
     var candidate {.noinit.}: Fr[Name]
     # `fromDigest` returns `false` if the array is larger than the field modulus,
     # important for uniform sampling in valid range `[1, q-1]`!
-    let smaller = candidate.fromDigest(v)
+    let smaller = candidate.fromDigest(v, truncateInput = false) # do not truncate!
 
     if not bool(candidate.isZero()) and smaller:
       return candidate
