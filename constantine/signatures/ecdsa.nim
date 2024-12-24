@@ -35,8 +35,7 @@ const G = Secp256k1.getGenerator("G1")
 template DERSigSize*(Name: static Algebra): int =
   6 + 2 * (Fr[Name].bits.ceilDiv_vartime(sizeof(pointer)) + 1)
 
-
-proc toBytes(res: var array[32, byte], x: Fr[C] | Fp[C]) =
+proc toBytes[Name: static Algebra; N: static int](res: var array[N, byte], x: FF[Name]) =
   discard res.marshal(x.toBig(), bigEndian)
 
 proc toDER*[Name: static Algebra; N: static int](derSig: var DERSignature[N], r, s: Fr[Name]) =
@@ -111,16 +110,16 @@ proc toDER*[Name: static Algebra; N: static int](derSig: var DERSignature[N], r,
 
   assert derSig.len == pos
 
-func fromDigest(dst: var Fr[C], src: array[32, byte]): bool {.discardable.} =
-  ## Convert a SHA256 digest to an element in the scalar field `Fr[Secp256k1]`.
+func fromDigest[Name: static Algebra; N: static int](dst: var Fr[Name], src: array[N, byte]): bool {.discardable.} =
+  ## Convert a hash function digest to an element in the scalar field `Fr[Name]`.
   ## The proc returns a boolean indicating whether the data in `src` is
   ## smaller than the field modulus. It is discardable, because in some
   ## use cases this is fine (e.g. constructing a field element from a hash),
   ## but invalid in the nonce generation following RFC6979.
-  var scalar {.noInit.}: BigInt[256]
+  var scalar {.noInit.}: matchingOrderBigInt(Name)
   scalar.unmarshal(src, bigEndian)
   # `true` if smaller than modulus
-  result = bool(scalar < Fr[C].getModulus())
+  result = bool(scalar < Fr[Name].getModulus())
   dst.fromBig(scalar)
 
 proc randomFieldElement[FF](): FF =
@@ -153,30 +152,36 @@ template round(hmac, input, output: typed, args: varargs[untyped]): untyped =
   hmac.update(args)
   hmac.finish(output)
 
-proc nonceRfc6979(msgHash, privateKey: Fr[C]): Fr[C] {.noinit.} =
+proc nonceRfc6979[Name: static Algebra](
+    msgHash, privateKey: Fr[Name],
+    H: type CryptoHash): Fr[Name] {.noinit.} =
   ## Generate deterministic nonce according to RFC 6979.
   ##
   ## Spec:
   ## https://datatracker.ietf.org/doc/html/rfc6979#section-3.2
+
+  const WordSize = sizeof(BaseType)
+  const N = Fr[Name].bits.ceilDiv_vartime(WordSize)
+
   # Step a: `h1 = H(m)` hash message (already done, input is hash), convert to array of bytes
-  var msgHashBytes {.noinit.}: array[32, byte]
+  var msgHashBytes {.noinit.}: array[N, byte]
   msgHashBytes.toBytes(msgHash)
   # Piece of step d: Conversion of the private key to a byte array.
   # No need for `bits2octets`, because the private key is already a valid
   # scalar in the field `Fr[C]` and thus < p-1 (`bits2octets` converts
   # `r` bytes to a BigInt, reduces modulo prime order `p` and converts to
   # a byte array).
-  var privKeyBytes {.noinit.}: array[32, byte]
+  var privKeyBytes {.noinit.}: array[N, byte]
   privKeyBytes.toBytes(privateKey)
 
   # Initial values
   # Step b: `V = 0x01 0x01 0x01 ... 0x01`
-  var v: array[32, byte]; v.arrayWith(byte 0x01)
+  var v: array[N, byte]; v.arrayWith(byte 0x01)
   # Step c: `K = 0x00 0x00 0x00 ... 0x00`
-  var k: array[32, byte]; k.arrayWith(byte 0x00)
+  var k: array[N, byte]; k.arrayWith(byte 0x00)
 
   # Create HMAC contexts
-  var hmac {.noinit.}: HMAC[sha256]
+  var hmac {.noinit.}: HMAC[H]
 
   # Step d: `K = HMAC_K(V || 0x00 || int2octets(x) || bits2octets(h1))`
   hmac.round(k, k, v, [byte 0x00], privKeyBytes, msgHashBytes)
@@ -196,7 +201,7 @@ proc nonceRfc6979(msgHash, privateKey: Fr[C]): Fr[C] {.noinit.} =
     hmac.round(k, v, v) # v becomes T
 
     # Step h.3: `k = bits2int(T)`
-    var candidate {.noinit.}: Fr[C]
+    var candidate {.noinit.}: Fr[Name]
     # `fromDigest` returns `false` if the array is larger than the field modulus,
     # important for uniform sampling in valid range `[1, q-1]`!
     let smaller = candidate.fromDigest(v)
@@ -211,11 +216,10 @@ proc nonceRfc6979(msgHash, privateKey: Fr[C]): Fr[C] {.noinit.} =
     hmac.round(k, k, v, [byte 0x00])
     hmac.round(k, v, v)
 
-proc generateNonce(kind: NonceSampler, msgHash, privateKey: Fr[C]): Fr[C] {.noinit.} =
+proc generateNonce[Name: static Algebra](
+    kind: NonceSampler, msgHash, privateKey: Fr[Name],
+    H: type CryptoHash): Fr[Name] {.noinit.} =
   case kind
-  of nsRandom: randomFieldElement[Fr[C]]()
-  of nsRfc6979: nonceRfc6979(msgHash, privateKey)
-
 proc signMessage*(message: string, privateKey: Fr[C],
                   nonceSampler: NonceSampler = nsRandom): tuple[r, s: Fr[C]] {.noinit.} =
   ## Sign a given `message` using the `privateKey`.
