@@ -1,16 +1,27 @@
+# Constantine
+# Copyright (c) 2018-2019    Status Research & Development GmbH
+# Copyright (c) 2020-Present Mamy André-Ratsimbazafy
+# Licensed and distributed under either of
+#   * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
+#   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
+# at your option. This file may not be copied, modified, or distributed except according to those terms.
+
 import
-  ../hashes,
-  ../named/algebras,
-  ../math/io/[io_bigints, io_fields, io_ec],
-  ../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul],
-  ../math/[arithmetic, ec_shortweierstrass],
-  ../platforms/[abstractions, views],
-  ../serialization/codecs, # for fromHex and (in the future) base64 encoding
-  ../mac/mac_hmac, # for deterministic nonce generation via RFC 6979
-  ../named/zoo_generators, # for generator
-  ../csprngs/sysrand
+  constantine/hashes,
+  constantine/named/algebras,
+  constantine/math/io/[io_bigints, io_fields, io_ec],
+  constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul],
+  constantine/math/[arithmetic, ec_shortweierstrass],
+  constantine/platforms/[abstractions, views],
+  constantine/serialization/codecs, # for fromHex and (in the future) base64 encoding
+  constantine/mac/mac_hmac, # for deterministic nonce generation via RFC 6979
+  constantine/named/zoo_generators, # for generator
+  constantine/csprngs/sysrand,
+  constantine/signatures/common_signature_ops # for `derivePubkey`
 
 import std / macros # for `update` convenience helper
+
+export common_signature_ops
 
 type
   ## Decides the type of sampler we use for the nonce. By default

@@ -15,7 +15,10 @@ import
     constantine/named/algebras,
     constantine/hash_to_curve/[hash_to_curve, h2c_hash_to_field],
     constantine/hashes,
-    constantine/platforms/views
+    constantine/platforms/views,
+    constantine/signatures/common_signature_ops # for `derivePubkey`
+
+export common_signature_ops
 
 # ############################################################
 #
@@ -33,20 +36,6 @@ import
 
 {.push raises: [].} # No exceptions allowed in core cryptographic operations
 {.push checks: off.} # No defects due to array bound checking or signed integer overflow allowed
-
-func derivePubkey*[Pubkey, SecKey](pubkey: var Pubkey, seckey: SecKey) =
-  ## Generates the public key associated with the input secret key.
-  ##
-  ## The secret key MUST be in range (0, curve order)
-  ## 0 is INVALID
-  const Group = Pubkey.G
-  type Field = Pubkey.F
-  const EC = Field.Name
-
-  var pk {.noInit.}: EC_ShortW_Jac[Field, Group]
-  pk.setGenerator()
-  pk.scalarMul(seckey)
-  pubkey.affine(pk)
 
 func coreSign*[Sig, SecKey](
     signature: var Sig,
