@@ -28,10 +28,6 @@ type
     data*: array[N, byte] # Max size: 6 bytes overhead + 33 bytes each for r,s
     len*: int # Actual length used
 
-# For easier readibility, define the curve and generator
-# as globals in this file
-const C* = Secp256k1
-const G = Secp256k1.getGenerator("G1")
 template DERSigSize*(Name: static Algebra): int =
   6 + 2 * (Fr[Name].bits.ceilDiv_vartime(sizeof(pointer)) + 1)
 
