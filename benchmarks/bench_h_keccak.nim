@@ -84,5 +84,6 @@ when isMainModule:
       let iters = int(target_cycles div (s.int64 * worst_cycles_per_bytes))
       benchKeccak256_constantine(msg, $s & "B", iters)
       benchSHA3_256_openssl(msg, $s & "B", iters)
+      echo "----"
 
   main()

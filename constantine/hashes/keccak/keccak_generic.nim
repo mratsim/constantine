@@ -176,9 +176,19 @@ func genRho(): array[5*5, int] =
     y = Y
 
 func rotl(x: uint64, k: static int): uint64 {.inline.} =
-  return (x shl k) or (x shr (64 - k))
+  when k == 0 or k == 64:
+    # Rho[0, 0] = 0 and is miscompiled with Clang+optimizations
+    # https://github.com/mratsim/constantine/issues/499
+    x
+  else:
+    (x shl k) or (x shr (64 - k))
 
-func permute_generic*(A: var KeccakState, NumRounds: static int) =
+func permute_impl*(A: var KeccakState, NumRounds: static int) {.inline.} =
+  ## Implementation of Keccak permutation
+  ## Tagged inline so it's copied in:
+  ## - keccak_generic.nim
+  ## - keccak_x86_bmi1.nim
+  ## and uses CPU features such as SIMD or andnot instructions
   # We use algorithm 4 in https://keccak.team/files/Keccak-implementation-3.2.pdf
   const Rho = genRho()
 
@@ -219,44 +229,30 @@ func permute_generic*(A: var KeccakState, NumRounds: static int) =
       # ι step: break symmetries
       A[0, 0] = A[0, 0] xor KRC[i+j]
 
+func permute_generic*(A: var KeccakState, NumRounds: static int) =
+  permuteImpl(A, NumRounds)
+
 template `^=`(accum: var SomeInteger, b: SomeInteger) =
   accum = accum xor b
 
-func xorInSingle(H: var KeccakState, val: byte, offset: int) {.inline.} =
+template `|=`(accum: var SomeInteger, b: SomeInteger) =
+  accum = accum or b
+
+func xorInSingle(H: var KeccakState, hByteOffset: int, val: byte) {.inline.} =
   ## Add a single byte in the Keccak state
+  ## at hByteOffset
 
   # Shift of 3    = log2(sizeof(byte) * 8) - Find the word to read/write
   # WordMask of 7 = sizeof(byte) * 8 - 1   - In the word, shift to the offset to read/write
-  let slot = (offset and 7) shl 3
+  let slot = (hByteOffset and 7) shl 3
   let lane = uint64(val) shl slot # All bits but the one set in `val` are 0, and 0 is neutral element of xor
-  H.state[offset shr 3] ^= lane
+  H.state[hByteOffset shr 3] ^= lane
 
-func xorInBlock_generic(H: var KeccakState, msg: array[200 - 2*32, byte]) {.inline.} =
+func xorInBlock(H: var KeccakState, msg: array[200 - 2*32, byte]) {.inline.} =
   ## Add new data into the Keccak state
   # This can benefit from vectorized instructions
   for i in 0 ..< msg.len div 8:
     H.state[i] ^= uint64.fromBytes(msg, i*8, littleEndian)
-
-func xorInPartial*(H: var KeccakState, msg: openArray[byte]) =
-  ## Add multiple bytes to the state
-  ## The length MUST be less than the state length.
-  debug: doAssert msg.len <= sizeof(H.state)
-
-  # Implementation detail:
-  #   We could avoid an intermediate variable but
-  #   dealing with non-multiple of size(T) length
-  #   would be verbose, and require less than size(T)
-  #   endianness handling.
-  #   Furthermore 2 copies without the "multiple-of"
-  #   tracking overhead might be faster, especially
-  #   if the compiler vectorize the second one
-  #   or is able to fuse the 2 together.
-  #   Lastly, this is only called when transitioning
-  #   between absorbing and squeezing, for hashing
-  #   this means once, however long a message to hash is.
-  var blck: array[200 - 2*32, byte] # zero-init
-  rawCopy(blck, 0, msg, 0, msg.len)
-  H.xorInBlock_generic(blck)
 
 func copyOutWords[W: static int](
       H: KeccakState,
@@ -270,7 +266,76 @@ func copyOutWords[W: static int](
     for i in 0 ..< 8:
       dst[w*8+i] = toByte(word shr (i*8))
 
-func copyOutPartial*(
+func xorInPartialWord(
+        H: var KeccakState, hByteOffset: int,
+        msg: openArray[byte]) {.inline.} =
+  type T = uint64
+  const S = log2_vartime(uint sizeof(T))
+  let laneOffset = hByteOffset and (sizeof(T) - 1)
+  let slot = hByteOffset shr S
+  var lane = T(0)
+  for i in 0 ..< msg.len:
+    lane |= T(msg[i]) shl ((laneOffset+i)*sizeof(T))
+  H.state[slot] ^= lane
+
+func copyOutPartialWord(
+        H: KeccakState, hByteOffset: int,
+        dst: var openArray[byte]) {.inline.} =
+  type T = uint64
+  const S = log2_vartime(uint sizeof(T))
+  var lane = H.state[hByteOffset shr S] shr (hByteOffset*sizeof(T))
+  for i in 0 ..< dst.len:
+    dst[i] = toByte(lane)
+    lane = lane shr sizeof(T)
+
+func xorInPartial_impl*(H: var KeccakState, hByteOffset: int, msg: openArray[byte]) {.inline.} =
+  ## Add multiple bytes to the state
+  ## The hByteOffset+length MUST be less than the state length.
+  debug: doAssert hByteOffset + msg.len <= sizeof(H.state)
+
+  # Implementation detail:
+  #   For small inputs, i.e. less than the rate (136 bytes)
+  #   copying data to/from the state to an intermediate buffer
+  #   has a very high cost.
+  #   This is problematic for tree hashing / Merkle tries
+  #   hence we directly write to the state.
+  type T = uint64
+  var pos = hByteOffset # offset in Keccak state (in bytes)
+  var cur = 0           # offset in message      (in bytes)
+  var bytesLeft = msg.len
+
+  # 1. Prologue - Loop peeling, offset landing in middle of uint64
+  let posMod = pos mod sizeof(T)
+  if posMod != 0 and posMod+bytesLeft >= sizeof(T):
+    # Previous partial word update
+    let free = sizeof(T) - posMod
+    H.xorInPartialWord(pos, msg.toOpenArray(0, free-1))
+    pos += free
+    cur = free
+    bytesLeft -= free
+
+  # 2. Steady state - copy whole uint64s
+  if bytesLeft >= sizeof(T):
+    let numWords = bytesLeft div sizeof(T)
+    let posW = pos div sizeof(T)
+    for w in 0 ..< numWords:
+      H.state[posW + w] ^= uint64.fromBytes(msg, cur + w*sizeof(T), littleEndian)
+    let adv = numWords * sizeof(T)
+    pos += adv
+    cur += adv
+    bytesLeft -= adv
+
+  # 3. Epilogue - partial uint64 update
+  if bytesLeft != 0:
+    # Store the tail in buffer
+    H.xorInPartialWord(pos, msg.toOpenArray(cur, cur+bytesLeft-1))
+
+func xorInPartial_generic*(H: var KeccakState, hByteOffset: int, msg: openArray[byte]) =
+  ## Add multiple bytes to the state
+  ## The hByteOffset+length MUST be less than the state length.
+  xorInPartial_impl(H, hByteOffset, msg)
+
+func copyOutPartial_impl*(
       H: KeccakState,
       hByteOffset: int,
       dst: var openArray[byte]) {.inline.} =
@@ -280,22 +345,62 @@ func copyOutPartial*(
   ## hByteOffset + dst length MUST be less than the Keccak rate
   debug: doAssert dst.len + hByteOffset <= sizeof(H.state)
 
-  # Implementation details:
-  #   we could avoid a temporary block
-  #   see `xorInPartial` for rationale
-  var blck {.noInit.}: array[200 - 2*32, byte]
-  H.copyOutWords(blck)
-  rawCopy(dst, 0, blck, hByteOffset, dst.len)
+  # Implementation detail:
+  #   For small inputs, i.e. less than the rate (136 bytes)
+  #   copying data to/from the state to an intermediate buffer
+  #   has a very high cost.
+  #   Hashing outputs 32B, hence we incur 4x the cost
+  #   if we use an intermediate buffer of size the `rate`
+  type T = uint64
+  var pos = hByteOffset # offset in Keccak state (in bytes)
+  var cur = 0           # offset in dst digest   (in bytes)
+  var bytesLeft = dst.len
+
+  # 1. Prologue - Loop peeling, offset landing in middle of uint64
+  let posMod = pos mod sizeof(T)
+  if posMod != 0 and posMod+bytesLeft >= sizeof(T):
+    # previous partial word copy
+    let free = sizeof(T) - posMod
+    H.copyOutPartialWord(pos, dst.toOpenArray(0, free-1))
+    pos += free
+    cur = free
+    bytesLeft -= free
+
+  # 2. Steady state - copy whole uint64s
+  if bytesLeft >= sizeof(T):
+    let numWords = bytesLeft div sizeof(T)
+    let posW = pos div sizeof(T)
+    for w in 0 ..< numWords:
+      dst.dumpRawInt(H.state[posW + w], cur + w*sizeof(T), littleEndian)
+    let adv = numWords * sizeof(T)
+    pos += adv
+    cur += adv
+    bytesLeft -= adv
+
+  # 3. Epilogue - partial uint64 dump
+  if bytesLeft != 0:
+    # Store the tail in buffer
+    H.copyOutPartialWord(pos, dst.toOpenArray(cur, cur+bytesLeft-1))
+
+func copyOutPartial_generic*(
+      H: KeccakState,
+      hByteOffset: int,
+      dst: var openArray[byte]) =
+  ## Read data from the Keccak state
+  ## and write it into `dst`
+  ## starting from the state byte offset `hByteOffset`
+  ## hByteOffset + dst length MUST be less than the Keccak rate
+  copyOutPartial_impl(H, hByteOffset, dst)
 
 func pad*(H: var KeccakState, hByteOffset: int, delim: static byte, rate: static int) {.inline.} =
   debug: doAssert hByteOffset < rate
-  H.xorInSingle(delim, hByteOffset)
-  H.xorInSingle(0x80, rate-1)
+  H.xorInSingle(hByteOffset, delim)
+  H.xorInSingle(hByteOffset = rate-1, 0x80)
 
-func hashMessageBlocks_generic*(
+func hashMessageBlocks_impl*(
       H: var KeccakState,
       message: ptr UncheckedArray[byte],
-      numBlocks: int) =
+      numBlocks: int) {.inline.} =
   ## Hash a message block by block
   ## Keccak block size is the rate: 64
   ## The state MUST be absorb ready
@@ -307,11 +412,22 @@ func hashMessageBlocks_generic*(
   const numRounds = 24    # TODO: auto derive number of rounds
   for _ in 0 ..< numBlocks:
     let msg = cast[ptr array[rate, byte]](message)
-    H.xorInBlock_generic(msg[])
-    H.permute_generic(numRounds)
+    H.xorInBlock(msg[])
+    H.permute_impl(numRounds)
     message +%= rate
 
-func squeezeDigestBlocks_generic*(
+func hashMessageBlocks_generic*(
+      H: var KeccakState,
+      message: ptr UncheckedArray[byte],
+      numBlocks: int) =
+  ## Hash a message block by block
+  ## Keccak block size is the rate: 64
+  ## The state MUST be absorb ready
+  ## i.e. previous operation cannot be a squeeze
+  ##      a permutation is needed in-between
+  hashMessageBlocks_impl(H, message, numBlocks)
+
+func squeezeDigestBlocks_impl*(
       H: var KeccakState,
       digest: ptr UncheckedArray[byte],
       numBlocks: int) =
@@ -328,3 +444,14 @@ func squeezeDigestBlocks_generic*(
     H.copyOutWords(msg[])
     H.permute_generic(numRounds)
     digest +%= rate
+
+func squeezeDigestBlocks_generic*(
+      H: var KeccakState,
+      digest: ptr UncheckedArray[byte],
+      numBlocks: int) =
+  ## Squeeze a digest block by block
+  ## Keccak block digest is the rate: 64
+  ## The state MUST be squeeze ready
+  ## i.e. previous operation cannot be an absorb
+  ##      a permutation is needed in-between
+  squeezeDigestBlocks_impl(H, digest, numBlocks)

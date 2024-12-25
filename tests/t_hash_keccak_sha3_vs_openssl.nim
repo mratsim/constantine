@@ -131,27 +131,27 @@ proc chunkTest(rng: var RngState, sizeRange: Slice[int]) =
   let size = rng.random_unsafe(sizeRange)
   let msg = rng.random_byte_seq(size)
 
-  let chunkSize = rng.random_unsafe(2 ..< 20)
-
   var bufOnePass: array[32, byte]
   sha3_256.hash(bufOnePass, msg)
 
   var bufChunked: array[32, byte]
   let maxChunk = max(2, sizeRange.b div 10) # Consume up to 10% at once
 
-  var ctx: sha3_256
+  var ctx {.noInit.}: sha3_256
   ctx.init()
   var cur = 0
   doWhile size - cur > 0:
     let chunkSize = rng.random_unsafe(0 ..< maxChunk)
-    let stop = min(cur+chunkSize-1, size-1)
-    let consumed = stop-cur+1
-    ctx.update(msg.toOpenArray(cur, stop))
+    let len = min(chunkSize, size-cur)
+    let consumed = len
+    ctx.update(msg.toOpenArray(cur, cur+len-1))
     cur += consumed
 
   ctx.finish(bufChunked)
 
-  doAssert bufOnePass == bufChunked
+  doAssert bufOnePass == bufChunked, block:
+    "Test failed with message of length " & $size & "\n" &
+    "  and chunk range in [" & $sizeRange.a & ", " & $sizeRange.b & ")"
 
 # --------------------------------------------------------------------
 
