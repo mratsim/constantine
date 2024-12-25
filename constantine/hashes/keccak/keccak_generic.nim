@@ -176,7 +176,12 @@ func genRho(): array[5*5, int] =
     y = Y
 
 func rotl(x: uint64, k: static int): uint64 {.inline.} =
-  return (x shl k) or (x shr (64 - k))
+  when k == 0 or k == 64:
+    # Rho[0, 0] = 0 and is miscompiled with Clang+optimizations
+    # https://github.com/mratsim/constantine/issues/499
+    x
+  else:
+    (x shl k) or (x shr (64 - k))
 
 func permute_impl*(A: var KeccakState, NumRounds: static int) {.inline.} =
   ## Implementation of Keccak permutation
