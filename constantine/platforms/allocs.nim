@@ -55,20 +55,6 @@ else:
   proc aligned_alloc(alignment, size: int): pointer {.tags:[HeapAlloc],importc, header:"<stdlib.h>".}
   proc aligned_free(p: pointer) {.tags:[HeapAlloc], importc: "free", header: "<stdlib.h>".}
 
-# Helpers
-# ----------------------------------------------------------------------------------
-
-proc isPowerOfTwo(n: int): bool {.inline.} =
-  (n and (n - 1)) == 0 and (n != 0)
-
-func roundNextMultipleOf(x: int, n: static int): int {.inline.} =
-  ## Round the input to the next multiple of "n"
-  when n.isPowerOfTwo():
-    # n is a power of 2. (If compiler cannot prove that x>0 it does not make the optim)
-    result = (x + n - 1) and not(n - 1)
-  else:
-    result = x.ceilDiv_vartime(n) * n
-
 # Stack allocation
 # ----------------------------------------------------------------------------------
 
@@ -104,7 +90,7 @@ proc allocHeapAligned*(T: typedesc, alignment: static Natural): ptr T {.inline.}
   # aligned_alloc requires allocating in multiple of the alignment.
   let # Cannot be static with bitfields. Workaround https://github.com/nim-lang/Nim/issues/19040
     size = sizeof(T)
-    requiredMem = size.roundNextMultipleOf(alignment)
+    requiredMem = size.roundround_step_up(alignment)
 
   cast[ptr T](aligned_alloc(alignment, requiredMem))
 
@@ -112,7 +98,7 @@ proc allocHeapUncheckedAligned*(T: typedesc, size: int, alignment: static Natura
   ## Aligned heap allocation for types containing a variable-sized UncheckedArray field
   ## or an importc type with missing size information
   # aligned_alloc requires allocating in multiple of the alignment.
-  let requiredMem = size.roundNextMultipleOf(alignment)
+  let requiredMem = size.roundround_step_up(alignment)
 
   cast[ptr T](aligned_alloc(alignment, requiredMem))
 
@@ -120,7 +106,7 @@ proc allocHeapArrayAligned*(T: typedesc, len: int, alignment: static Natural): p
   # aligned_alloc requires allocating in multiple of the alignment.
   let
     size = sizeof(T) * len
-    requiredMem = size.roundNextMultipleOf(alignment)
+    requiredMem = size.roundround_step_up(alignment)
 
   cast[ptr UncheckedArray[T]](aligned_alloc(alignment, requiredMem))
 

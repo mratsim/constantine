@@ -8,6 +8,9 @@
 
 import ./intrinsics/bitops
 
+{.push raises:[].}  # No exceptions for crypto
+{.push checks:off.} # No int->size_t exceptions
+
 # ############################################################
 #
 #                           Bit hacks
@@ -147,7 +150,7 @@ func countTrailingZeroBits_vartime*[T: SomeUnsignedInt](n: T): T {.inline.} =
   else:
     T(ctz_c_compiler_vartime(n))
 
-func isPowerOf2_vartime*(n: SomeUnsignedInt): bool {.inline.} =
+func isPowerOf2_vartime*(n: SomeInteger): bool {.inline.} =
   ## Returns true if n is a power of 2
   ## ⚠️ Result is bool instead of Secretbool,
   ## for compile-time or explicit vartime proc only.
@@ -157,6 +160,22 @@ func nextPowerOfTwo_vartime*(n: SomeUnsignedInt): SomeUnsignedInt {.inline.} =
   ## Returns x if x is a power of 2
   ## or the next biggest power of 2
   1.SomeUnsignedInt shl (log2_vartime(n-1) + 1)
+
+func round_step_down*(x: int, step: static int): int {.inline.} =
+  ## Round the input to the previous multiple of "step"
+  when step.isPowerOf2_vartime():
+    # Step is a power of 2. (If compiler cannot prove that x>0 it does not make the optim)
+    result = x and not(step - 1)
+  else:
+    result = x - x mod step
+
+func round_step_up*(x: int, step: static int): int {.inline.} =
+  ## Round the input to the next multiple of "step"
+  when step.isPowerOf2_vartime():
+    # Step is a power of 2. (If compiler cannot prove that x>0 it does not make the optim)
+    result = (x + step - 1) and not(step - 1)
+  else:
+    result = ((x + step - 1) div step) * step
 
 func swapBytes_impl(n: uint32): uint32 {.inline.} =
   result = n
@@ -196,3 +215,25 @@ func reverseBits*(n, k: uint64): uint64 {.inline.} =
   n = ((n and 0x3333333333333333'u64) shl 2) or ((n and 0xcccccccccccccccc'u64) shr 2)
   n = ((n and 0x0f0f0f0f0f0f0f0f'u64) shl 4) or ((n and 0xf0f0f0f0f0f0f0f0'u64) shr 4)
   return n shr (64 - k)
+
+
+when isMainModule:
+  doAssert round_step_up(10, 4) == 12
+  doAssert round_step_up(10, 8) == 16
+  doAssert round_step_up(65, 64) == 128
+  doAssert round_step_up(1, 3) == 3
+  doAssert round_step_up(19, 24) == 24
+  doAssert round_step_up(8, 4) == 8
+  doAssert round_step_up(64, 64) == 64
+  doAssert round_step_up(24, 24) == 24
+  doAssert round_step_up(3, 3) == 3
+
+  doAssert round_step_down(10, 4) == 8
+  doAssert round_step_down(10, 8) == 8
+  doAssert round_step_down(65, 64) == 64
+  doAssert round_step_down(1, 3) == 0
+  doAssert round_step_down(19, 24) == 0
+  doAssert round_step_down(8, 4) == 8
+  doAssert round_step_down(64, 64) == 64
+  doAssert round_step_down(24, 24) == 24
+  doAssert round_step_down(3, 3) == 3

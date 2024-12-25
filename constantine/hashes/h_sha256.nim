@@ -65,10 +65,10 @@ func dumpHash(
        digest: var array[DigestSize, byte],
        s: Sha256_state) {.inline.} =
   ## Convert the internal hash into a message digest
-  var dstIdx = 0'u
+  var dstIdx = 0
   for i in 0 ..< s.H.len:
     digest.dumpRawInt(s.H[i], dstIdx, bigEndian)
-    dstIdx += uint sizeof(uint32)
+    dstIdx += sizeof(uint32)
 
 func hashBuffer(ctx: var Sha256Context) {.inline.} =
   ctx.s.hashMessageBlocks(ctx.buf.asUnchecked(), numBlocks = 1)

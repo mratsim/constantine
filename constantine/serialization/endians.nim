@@ -38,7 +38,7 @@ func blobFrom*(dst: var openArray[byte], src: SomeUnsignedInt, startIdx: int, en
 func dumpRawInt*(
            dst: var openArray[byte],
            src: SomeUnsignedInt,
-           cursor: uint, endian: static Endianness) {.inline.} =
+           cursor: int, endian: static Endianness) {.inline.} =
   ## Dump an integer into raw binary form
   ## The `cursor` represents the current index in the array
   ## The binary blob is interpreted as:
@@ -50,13 +50,13 @@ func dumpRawInt*(
       "cursor (" & $cursor & ") + sizeof(src) (" & $sizeof(src) &
       ") <= dst.len (" & $dst.len & ")"
 
-  const L = uint sizeof(src)
+  const L = sizeof(src)
 
   when endian == littleEndian:
-    for i in 0'u ..< L:
+    for i in 0 ..< L:
       dst[cursor+i] = toByte(src shr (i * 8))
   else:
-    for i in 0'u ..< L:
+    for i in 0 ..< L:
       dst[cursor+i] = toByte(src shr ((L-i-1) * 8))
 
 func toBytes*(num: SomeUnsignedInt, endianness: static Endianness): array[sizeof(num), byte] {.noInit, inline.}=
