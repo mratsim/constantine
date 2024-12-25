@@ -90,7 +90,7 @@ proc allocHeapAligned*(T: typedesc, alignment: static Natural): ptr T {.inline.}
   # aligned_alloc requires allocating in multiple of the alignment.
   let # Cannot be static with bitfields. Workaround https://github.com/nim-lang/Nim/issues/19040
     size = sizeof(T)
-    requiredMem = size.roundround_step_up(alignment)
+    requiredMem = size.round_step_up(alignment)
 
   cast[ptr T](aligned_alloc(alignment, requiredMem))
 
@@ -98,7 +98,7 @@ proc allocHeapUncheckedAligned*(T: typedesc, size: int, alignment: static Natura
   ## Aligned heap allocation for types containing a variable-sized UncheckedArray field
   ## or an importc type with missing size information
   # aligned_alloc requires allocating in multiple of the alignment.
-  let requiredMem = size.roundround_step_up(alignment)
+  let requiredMem = size.round_step_up(alignment)
 
   cast[ptr T](aligned_alloc(alignment, requiredMem))
 
@@ -106,7 +106,7 @@ proc allocHeapArrayAligned*(T: typedesc, len: int, alignment: static Natural): p
   # aligned_alloc requires allocating in multiple of the alignment.
   let
     size = sizeof(T) * len
-    requiredMem = size.roundround_step_up(alignment)
+    requiredMem = size.round_step_up(alignment)
 
   cast[ptr UncheckedArray[T]](aligned_alloc(alignment, requiredMem))
 
