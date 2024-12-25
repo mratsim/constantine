@@ -178,7 +178,12 @@ func genRho(): array[5*5, int] =
 func rotl(x: uint64, k: static int): uint64 {.inline.} =
   return (x shl k) or (x shr (64 - k))
 
-func permute_generic*(A: var KeccakState, NumRounds: static int) =
+func permute_impl*(A: var KeccakState, NumRounds: static int) {.inline.} =
+  ## Implementation of Keccak permutation
+  ## Tagged inline so it's copied in:
+  ## - keccak_generic.nim
+  ## - keccak_x86_bmi1.nim
+  ## and uses CPU features such as SIMD or andnot instructions
   # We use algorithm 4 in https://keccak.team/files/Keccak-implementation-3.2.pdf
   const Rho = genRho()
 
@@ -219,6 +224,9 @@ func permute_generic*(A: var KeccakState, NumRounds: static int) =
       # ι step: break symmetries
       A[0, 0] = A[0, 0] xor KRC[i+j]
 
+func permute_generic*(A: var KeccakState, NumRounds: static int) =
+  permuteImpl(A, NumRounds)
+
 template `^=`(accum: var SomeInteger, b: SomeInteger) =
   accum = accum xor b
 
@@ -235,7 +243,7 @@ func xorInSingle(H: var KeccakState, hByteOffset: int, val: byte) {.inline.} =
   let lane = uint64(val) shl slot # All bits but the one set in `val` are 0, and 0 is neutral element of xor
   H.state[hByteOffset shr 3] ^= lane
 
-func xorInBlock_generic(H: var KeccakState, msg: array[200 - 2*32, byte]) {.inline.} =
+func xorInBlock(H: var KeccakState, msg: array[200 - 2*32, byte]) {.inline.} =
   ## Add new data into the Keccak state
   # This can benefit from vectorized instructions
   for i in 0 ..< msg.len div 8:
@@ -275,7 +283,7 @@ func copyOutPartialWord(
     dst[i] = toByte(lane)
     lane = lane shr sizeof(T)
 
-func xorInPartial*(H: var KeccakState, hByteOffset: int, msg: openArray[byte]) =
+func xorInPartial_impl*(H: var KeccakState, hByteOffset: int, msg: openArray[byte]) {.inline.} =
   ## Add multiple bytes to the state
   ## The hByteOffset+length MUST be less than the state length.
   debug: doAssert hByteOffset + msg.len <= sizeof(H.state)
@@ -317,7 +325,12 @@ func xorInPartial*(H: var KeccakState, hByteOffset: int, msg: openArray[byte]) =
     # Store the tail in buffer
     H.xorInPartialWord(pos, msg.toOpenArray(cur, cur+bytesLeft-1))
 
-func copyOutPartial*(
+func xorInPartial_generic*(H: var KeccakState, hByteOffset: int, msg: openArray[byte]) =
+  ## Add multiple bytes to the state
+  ## The hByteOffset+length MUST be less than the state length.
+  xorInPartial_impl(H, hByteOffset, msg)
+
+func copyOutPartial_impl*(
       H: KeccakState,
       hByteOffset: int,
       dst: var openArray[byte]) {.inline.} =
@@ -364,15 +377,25 @@ func copyOutPartial*(
     # Store the tail in buffer
     H.copyOutPartialWord(pos, dst.toOpenArray(cur, cur+bytesLeft-1))
 
+func copyOutPartial_generic*(
+      H: KeccakState,
+      hByteOffset: int,
+      dst: var openArray[byte]) =
+  ## Read data from the Keccak state
+  ## and write it into `dst`
+  ## starting from the state byte offset `hByteOffset`
+  ## hByteOffset + dst length MUST be less than the Keccak rate
+  copyOutPartial_impl(H, hByteOffset, dst)
+
 func pad*(H: var KeccakState, hByteOffset: int, delim: static byte, rate: static int) {.inline.} =
   debug: doAssert hByteOffset < rate
   H.xorInSingle(hByteOffset, delim)
   H.xorInSingle(hByteOffset = rate-1, 0x80)
 
-func hashMessageBlocks_generic*(
+func hashMessageBlocks_impl*(
       H: var KeccakState,
       message: ptr UncheckedArray[byte],
-      numBlocks: int) =
+      numBlocks: int) {.inline.} =
   ## Hash a message block by block
   ## Keccak block size is the rate: 64
   ## The state MUST be absorb ready
@@ -384,11 +407,22 @@ func hashMessageBlocks_generic*(
   const numRounds = 24    # TODO: auto derive number of rounds
   for _ in 0 ..< numBlocks:
     let msg = cast[ptr array[rate, byte]](message)
-    H.xorInBlock_generic(msg[])
-    H.permute_generic(numRounds)
+    H.xorInBlock(msg[])
+    H.permute_impl(numRounds)
     message +%= rate
 
-func squeezeDigestBlocks_generic*(
+func hashMessageBlocks_generic*(
+      H: var KeccakState,
+      message: ptr UncheckedArray[byte],
+      numBlocks: int) =
+  ## Hash a message block by block
+  ## Keccak block size is the rate: 64
+  ## The state MUST be absorb ready
+  ## i.e. previous operation cannot be a squeeze
+  ##      a permutation is needed in-between
+  hashMessageBlocks_impl(H, message, numBlocks)
+
+func squeezeDigestBlocks_impl*(
       H: var KeccakState,
       digest: ptr UncheckedArray[byte],
       numBlocks: int) =
@@ -405,3 +439,14 @@ func squeezeDigestBlocks_generic*(
     H.copyOutWords(msg[])
     H.permute_generic(numRounds)
     digest +%= rate
+
+func squeezeDigestBlocks_generic*(
+      H: var KeccakState,
+      digest: ptr UncheckedArray[byte],
+      numBlocks: int) =
+  ## Squeeze a digest block by block
+  ## Keccak block digest is the rate: 64
+  ## The state MUST be squeeze ready
+  ## i.e. previous operation cannot be an absorb
+  ##      a permutation is needed in-between
+  squeezeDigestBlocks_impl(H, digest, numBlocks)

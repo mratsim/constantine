@@ -10,6 +10,9 @@ import
   constantine/platforms/[abstractions, views],
   ./keccak/keccak_generic
 
+when UseASM_X86_32:
+  import ./keccak/keccak_x86_bmi1
+
 # Keccak, the hash function underlying SHA3
 # --------------------------------------------------------------------------------
 #
@@ -125,8 +128,110 @@ func init*(ctx: var KeccakContext) {.inline.} =
   ## Initialize or reinitialize a Keccak context
   ctx.reset()
 
-# debug
-import constantine/serialization/codecs
+template genAbsorb(isaFeatures: untyped) =
+  func `absorb _ isaFeatures`*(ctx: var KeccakContext, message: openArray[byte]) =
+    ## Absorb a message in the Keccak sponge state
+    ##
+    ## Security note: the tail of your message might be stored
+    ## in an internal buffer.
+    ## if sensitive content is used, ensure that
+    ## `ctx.finish(...)` and `ctx.clear()` are called as soon as possible.
+    ## Additionally ensure that the message(s) passed were stored
+    ## in memory considered secure for your threat model.
+
+    var pos = int ctx.absorb_offset # offset in Keccak state
+    var cur = 0                     # offset in message
+    var bytesLeft = message.len
+
+    # We follow the "absorb-permute-squeeze" approach
+    # originally defined by the Keccak team.
+    # It is compatible with SHA-3 hash spec.
+    # See https://eprint.iacr.org/2022/1340.pdf
+    #
+    # There are no transition/permutation between squeezing -> absorbing
+    # And within this `absorb` function
+    #    the state pos == ctx.rate()
+    # is always followed by a permute and setting `pos = 0`
+
+    if (pos mod ctx.rate()) != 0 and pos+bytesLeft >= ctx.rate():
+      # Previous partial update, fill the state and do one permutation
+      let free = ctx.rate() - pos
+      ctx.H.`xorInPartial _ isaFeatures`(pos, message.toOpenArray(0, free-1))
+      ctx.H.`permute _ isaFeatures`(NumRounds = 24)
+      pos = 0
+      cur = free
+      bytesLeft -= free
+
+    if bytesLeft >= ctx.rate():
+      # Process multiple blocks
+      let numBlocks = bytesLeft div ctx.rate()
+      ctx.H.`hashMessageBlocks _ isaFeatures`(message.asUnchecked() +% cur, numBlocks)
+      cur += numBlocks * ctx.rate()
+      bytesLeft -= numBlocks * ctx.rate()
+
+    if bytesLeft != 0:
+      # Store the tail in buffer
+      ctx.H.`xorInPartial _ isaFeatures`(pos, message.toOpenArray(cur, cur+bytesLeft-1))
+
+    # Epilogue
+    ctx.absorb_offset = int32(pos+bytesLeft)
+    # Signal that the next squeeze transition needs a permute
+    ctx.squeeze_offset = int32 ctx.rate()
+
+genAbsorb(generic)
+when UseASM_X86_32:
+  genAbsorb(x86_bmi1)
+
+template genSqueeze(isaFeatures: untyped) =
+  func `squeeze _ isaFeatures`*(ctx: var KeccakContext, digest: var openArray[byte]) =
+    var pos = ctx.squeeze_offset # offset in Keccak state
+    var cur = 0                  # offset in message
+    var bytesLeft = digest.len
+
+    if pos == ctx.rate():
+      # Transition from absorbing to squeezing
+      #   This state can only come from `absorb` function
+      #   as within `squeeze`, pos == ctx.rate() is always followed
+      #   by a permute and pos = 0
+      ctx.H.pad(ctx.absorb_offset, ctx.delimiter, ctx.rate())
+      ctx.H.`permute _ isaFeatures`(NumRounds = 24)
+      pos = 0
+      ctx.absorb_offset = 0
+
+    if (pos mod ctx.rate()) != 0 and pos+bytesLeft >= ctx.rate():
+      # Previous partial squeeze, fill up to rate and do one permutation
+      let free = ctx.rate() - pos
+      ctx.H.`copyOutPartial _ isaFeatures`(hByteOffset = pos, digest.toOpenArray(0, free-1))
+      ctx.H.`permute _ isaFeatures`(NumRounds = 24)
+      pos = 0
+      ctx.absorb_offset = 0
+      cur = free
+      bytesLeft -= free
+
+    if bytesLeft >= ctx.rate():
+      # Process multiple blocks
+      let numBlocks = bytesLeft div ctx.rate()
+      ctx.H.`squeezeDigestBlocks _ isaFeatures`(digest.asUnchecked() +% cur, numBlocks)
+      ctx.absorb_offset = 0
+      cur += numBlocks * ctx.rate()
+      bytesLeft -= numBlocks * ctx.rate()
+
+    if bytesLeft != 0:
+      # Output the tail
+      ctx.H.`copyOutPartial _ isaFeatures`(hByteOffset = pos, digest.toOpenArray(cur, bytesLeft-1))
+
+    # Epilogue
+    ctx.squeeze_offset = int32 bytesLeft
+    # We don't signal absorb_offset to permute the state if called next
+    # as per
+    #   - original keccak spec that uses "absorb-permute-squeeze" protocol
+    #   - https://eprint.iacr.org/2022/1340.pdf
+    #   - https://eprint.iacr.org/2023/522.pdf
+    #     https://hackmd.io/@7dpNYqjKQGeYC7wMlPxHtQ/ByIbpfX9c#2-SAFE-definition
+
+genSqueeze(generic)
+when UseASM_X86_32:
+  genSqueeze(x86_bmi1)
 
 func absorb*(ctx: var KeccakContext, message: openArray[byte]) =
   ## Absorb a message in the Keccak sponge state
@@ -137,91 +242,22 @@ func absorb*(ctx: var KeccakContext, message: openArray[byte]) =
   ## `ctx.finish(...)` and `ctx.clear()` are called as soon as possible.
   ## Additionally ensure that the message(s) passed were stored
   ## in memory considered secure for your threat model.
+  when UseASM_X86_32:
+    if ({.noSideEffect.}: hasBmi1()):
+      ctx.absorb_x86_bmi1(message)
+    else:
+      ctx.absorb_generic(message)
+  else:
+    ctx.absorb_generic(message)
 
-  var pos = int ctx.absorb_offset # offset in Keccak state
-  var cur = 0                     # offset in message
-  var bytesLeft = message.len
-
-  # We follow the "absorb-permute-squeeze" approach
-  # originally defined by the Keccak team.
-  # It is compatible with SHA-3 hash spec.
-  # See https://eprint.iacr.org/2022/1340.pdf
-  #
-  # There are no transition/permutation between squeezing -> absorbing
-  # And within this `absorb` function
-  #    the state pos == ctx.rate()
-  # is always followed by a permute and setting `pos = 0`
-
-  if (pos mod ctx.rate()) != 0 and pos+bytesLeft >= ctx.rate():
-    # Previous partial update, fill the state and do one permutation
-    let free = ctx.rate() - pos
-    ctx.H.xorInPartial(pos, message.toOpenArray(0, free-1))
-    ctx.H.permute_generic(NumRounds = 24)
-    pos = 0
-    cur = free
-    bytesLeft -= free
-
-  if bytesLeft >= ctx.rate():
-    # Process multiple blocks
-    let numBlocks = bytesLeft div ctx.rate()
-    ctx.H.hashMessageBlocks_generic(message.asUnchecked() +% cur, numBlocks)
-    cur += numBlocks * ctx.rate()
-    bytesLeft -= numBlocks * ctx.rate()
-
-  if bytesLeft != 0:
-    # Store the tail in buffer
-    ctx.H.xorInPartial(pos, message.toOpenArray(cur, cur+bytesLeft-1))
-
-  # Epilogue
-  ctx.absorb_offset = int32(pos+bytesLeft)
-  # Signal that the next squeeze transition needs a permute
-  ctx.squeeze_offset = int32 ctx.rate()
-
-func squeeze*(ctx: var KeccakContext, digest: var openArray[byte]) =
-  var pos = ctx.squeeze_offset # offset in Keccak state
-  var cur = 0                  # offset in message
-  var bytesLeft = digest.len
-
-  if pos == ctx.rate():
-    # Transition from absorbing to squeezing
-    #   This state can only come from `absorb` function
-    #   as within `squeeze`, pos == ctx.rate() is always followed
-    #   by a permute and pos = 0
-    ctx.H.pad(ctx.absorb_offset, ctx.delimiter, ctx.rate())
-    ctx.H.permute_generic(NumRounds = 24)
-    pos = 0
-    ctx.absorb_offset = 0
-
-  if (pos mod ctx.rate()) != 0 and pos+bytesLeft >= ctx.rate():
-    # Previous partial squeeze, fill up to rate and do one permutation
-    let free = ctx.rate() - pos
-    ctx.H.copyOutPartial(hByteOffset = pos, digest.toOpenArray(0, free-1))
-    ctx.H.permute_generic(NumRounds = 24)
-    pos = 0
-    ctx.absorb_offset = 0
-    cur = free
-    bytesLeft -= free
-
-  if bytesLeft >= ctx.rate():
-    # Process multiple blocks
-    let numBlocks = bytesLeft div ctx.rate()
-    ctx.H.squeezeDigestBlocks_generic(digest.asUnchecked() +% cur, numBlocks)
-    ctx.absorb_offset = 0
-    cur += numBlocks * ctx.rate()
-    bytesLeft -= numBlocks * ctx.rate()
-
-  if bytesLeft != 0:
-    # Output the tail
-    ctx.H.copyOutPartial(hByteOffset = pos, digest.toOpenArray(cur, bytesLeft-1))
-
-  # Epilogue
-  ctx.squeeze_offset = int32 bytesLeft
-  # We don't signal absorb_offset to permute the state if called next
-  # as per
-  #   - original keccak spec that uses "absorb-permute-squeeze" protocol
-  #   - https://eprint.iacr.org/2022/1340.pdf
-  #   - https://eprint.iacr.org/2023/522.pdf
-  #     https://hackmd.io/@7dpNYqjKQGeYC7wMlPxHtQ/ByIbpfX9c#2-SAFE-definition
+func squeeze*(ctx: var KeccakContext, message: var openArray[byte]) =
+  when UseASM_X86_32:
+    if ({.noSideEffect.}: hasBmi1()):
+      ctx.squeeze_x86_bmi1(message)
+    else:
+      ctx.squeeze_generic(message)
+  else:
+    ctx.squeeze_generic(message)
 
 func update*(ctx: var KeccakContext, message: openArray[byte]) =
   ## Append a message to a Keccak context
