@@ -80,12 +80,12 @@ func chacha20_block(
     state.inner_block()
 
   # uint32 are 4 bytes so multiply destination by 4
-  for i in 0'u ..< 4:
+  for i in 0 ..< 4:
     key_stream.dumpRawInt(state[i] + cccc[i], i shl 2, littleEndian)
-  for i in 4'u ..< 12:
+  for i in 4 ..< 12:
     key_stream.dumpRawInt(state[i] + key[i-4], i shl 2, littleEndian)
   key_stream.dumpRawInt(state[12] + block_counter, 12 shl 2, littleEndian)
-  for i in 13'u ..< 16:
+  for i in 13 ..< 16:
     key_stream.dumpRawInt(state[i] + nonce[i-13], i shl 2, littleEndian)
 
 func chacha20_cipher*(
