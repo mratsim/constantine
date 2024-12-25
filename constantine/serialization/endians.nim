@@ -45,8 +45,8 @@ func dumpRawInt*(
   ## - an array of words traversed from 0 ..< len (little-endian), via an incremented `cursor`
   ## - with each word being of `endian` ordering for deserialization purpose.
   debug:
-    doAssert 0 <= cursor and cursor < dst.len.uint
-    doAssert cursor + sizeof(src).uint <= dst.len.uint,
+    doAssert 0 <= cursor and cursor < dst.len
+    doAssert cursor + sizeof(src) <= dst.len,
       "cursor (" & $cursor & ") + sizeof(src) (" & $sizeof(src) &
       ") <= dst.len (" & $dst.len & ")"
 
