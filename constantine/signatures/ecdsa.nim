@@ -117,6 +117,58 @@ proc toDER*[Name: static Algebra; N: static int](derSig: var DERSignature[N], r,
 
   assert derSig.len == pos
 
+proc fromRawDER*(r, s: var array[32, byte], sig: openArray[byte]): bool =
+  ## Extracts the `r` and `s` values from a given DER signature.
+  ##
+  ## Returns `true` if the input is a valid DER encoded signature
+  ## for `secp256k1` (or any curve with 32 byte scalars).
+  var pos = 0
+
+  template checkInc(val: untyped): untyped =
+    if pos > sig.high or sig[pos] != val:
+      # Invalid signature
+      return false
+    inc pos
+  template readInc(val: untyped): untyped =
+    if pos > sig.high:
+      return false
+    val = sig[pos]
+    inc pos
+
+  checkInc(0x30) # SEQUENCE
+  var totalLen: byte; readInc(totalLen)
+
+  template parseElement(el: var array[32, byte]): untyped =
+    var eLen: byte; readInc(eLen) # len of `r`
+    if pos + eLen.int > sig.len: # would need more data than available
+      return false
+    # read `r` into *last* `rLen` bytes
+    var eStart = el.len - eLen.int
+    if eStart < 0: # indicates prefix 0 due to first byte >= 0x80 (highest bit set)
+      doAssert eLen == 33
+      inc pos # skip first byte
+      eStart = 0 # start from 0 in `el`
+      dec eLen # decrease eLen by 1
+    el.rawCopy(eStart, sig, pos, eLen.int)
+    inc pos, eLen.int
+
+  # `r`
+  checkInc(0x02) # INTEGER
+  parseElement(r)
+
+  # `s`
+  checkInc(0x02) # INTEGER
+  parseElement(s)
+
+  assert pos == totalLen.int, "Pos = " & $pos & ", totalLen = " & $totalLen
+
+  result = true
+
+proc fromDER*(r, s: var array[32, byte], derSig: DERSignature) =
+  ## Splits a given `DERSignature` back into the `r` and `s` elements as
+  ## raw byte arrays.
+  fromRawDER(r, s, derSig.data)
+
 func fromDigest[Name: static Algebra; N: static int](
     dst: var Fr[Name], src: array[N, byte],
     truncateInput: static bool): bool {.discardable.} =
