@@ -13,7 +13,8 @@ fn main() {
 
     println!("Building Constantine library ...");
 
-    Command::new("nimble")
+    let mut cmd = Command::new("nimble");
+    let status = cmd
         .env("CC", "clang")
         .arg("make_lib_rust")
         .current_dir(root_dir)
@@ -21,30 +22,15 @@ fn main() {
         .stderr(Stdio::inherit())
         .status()
         .expect("failed to execute process");
+    if !status.success() {
+        panic!("failed to build with {cmd:?}: {status}");
+    }
 
     println!("cargo:rustc-link-search=native={}", out_dir.display());
+    println!("cargo:rustc-link-lib=static=constantine");
 
-    // On windows stable channel (msvc) expects constantine.lib
-    // while stable-gnu channel (gcc) expects libconstantine.a
-    // hence we use +verbatim
-    #[cfg(target_family = "windows")]
-    println!("cargo:rustc-link-lib=static:+verbatim=constantine.lib");
-
-    #[cfg(target_family = "unix")]
-    println!("cargo:rustc-link-lib=static:+verbatim=libconstantine.a");
-
-    // Avoid full recompilation
+    // Recompile when Nim sources changed
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=Cargo.toml");
-    println!("cargo:rerun-if-changed=src");
-    println!(
-        "cargo:rerun-if-changed={}",
-        root_dir.join(".cargo").join("config.toml").display()
-    );
-    println!(
-        "cargo:rerun-if-changed={}",
-        root_dir.join("Cargo.toml").display()
-    );
     println!(
         "cargo:rerun-if-changed={}",
         root_dir.join("constantine").display()
