@@ -44,6 +44,9 @@ proc signAndVerify(num: int, msg = "", nonceSampler = nsRandom) =
   ##
   ## If `msg` is given, use a fixed message. Otherwise will generate a message with
   ## a length up to 1024 bytes.
+  ##
+  ## As a side effect it also verifies our `fromDER` parser and as an additional
+  ## sanity check our `toDER` converter.
   for i in 0 ..< num:
     let msg = if msg.len > 0: msg else: generateMessage(64) # 64 byte long messages
     let privKey = generatePrivateKey()
@@ -69,13 +72,20 @@ proc signAndVerify(num: int, msg = "", nonceSampler = nsRandom) =
     # and verify with CTT & verify just parsed OpenSSL sig
     let (rCTT, sCTT) = msg.signMessage(privKey)
     check verifySignature(msg, (r: rCTT, s: sCTT), pubKey)
-    check verifySignature(msg, (r: Fr[C].fromHex(r), s: Fr[C].fromHex(s)), pubKey)
+    let (rOslFr, sOslFr) = (Fr[C].fromHex(r), Fr[C].fromHex(s))
+    check verifySignature(msg, (r: rOslFr, s: sOslFr), pubKey)
+
+    # Now verify that we can generate a DER signature again from the OpenSSL
+    # data and it is equivalent
+    var derSig: DERSignature[DERSigSize(Secp256k1)]
+    derSig.toDER(rOslFr, sOslFr)
+    check derSig.data == osSig
+
 
 proc signRfc6979(msg: string, num = 10) =
   ## Signs the given message with a randomly generated private key `num` times
   ## using deterministic nonce generation and verifies the signature comes out
   ## identical each time.
-
   var derSig: DERSignature[DERSigSize(Secp256k1)]
 
   let privKey = generatePrivateKey()
@@ -110,18 +120,3 @@ suite "ECDSA over secp256k1":
   test "Verify deterministic nonce generation via RFC6979 yields deterministic signatures":
     signRfc6979("Hello, Constantine!")
     signRfc6979("Foobar is 42")
-
-
-#    let rOS = Fr[C].fromHex(r)
-#    let sOS = Fr[C].fromHex(s)
-#    #echo "SEQ based: ", toDERSeq(rOS, sOS)
-#    echo "rOS = ", rOS.toHex(), " and ", r
-#    echo "sOS = ", sOS.toHex(), " and ", s
-#    const N = DERSigSize(C)
-#    echo "N = ", N
-#    var ds: DERSignature[N]; toDER(ds, rOS, sOS)
-#    echo "ARR based: ", @(ds.data)
-#    #
-#    #doAssert toDERSeq(rOS, sOS) == @(ds.data)[0 ..< ds.len]
-#
-#
