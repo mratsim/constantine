@@ -85,6 +85,20 @@ proc signRfc6979(msg: string, num = 10) =
     check bool(r == r2)
     check bool(s == s2)
 
+suite "General ECDSA related tests":
+  test "DERSigSize correctly computes maximum size of DER encoded signature":
+    # Check that `DerSigSize` correctly computes the maximum DER encoded signature
+    # based on the size of the scalar
+    check DerSigSize(Secp256k1) == 72 # 256 bit subgroup order -> 32 byte scalars
+    check DerSigSize(P256) == 72 # 256 bit subgroup order
+    check DerSigSize(Edwards25519) == 72 # 253 bits subgroup order, fits 256 bit BigInt
+    check DerSigSize(BLS12_381) == 72 # not commonly used, but larger modulo but *same* subgroup order
+    check DerSigSize(P224) == 64 # 224 bit subgroup order -> 28 byte scalars
+    when sizeof(BaseType) == 8:
+      check DerSigSize(BW6_761) == 104 # not commonly used, but larger modulo with *larger* subgroup order
+                                       # 377 bit subgroup order -> 384 BigInt -> 48 byte scalars
+    elif sizeof(BaseType) == 4:
+      check DerSigSize(BW6_761) == 96 # 377 bit subgroup -> 380 bit BigInt -> 44 byte scalars
 
 suite "ECDSA over secp256k1":
   test "Verify OpenSSL generated signatures from a fixed message (different nonces)":
@@ -97,4 +111,17 @@ suite "ECDSA over secp256k1":
     signRfc6979("Hello, Constantine!")
     signRfc6979("Foobar is 42")
 
+
+#    let rOS = Fr[C].fromHex(r)
+#    let sOS = Fr[C].fromHex(s)
+#    #echo "SEQ based: ", toDERSeq(rOS, sOS)
+#    echo "rOS = ", rOS.toHex(), " and ", r
+#    echo "sOS = ", sOS.toHex(), " and ", s
+#    const N = DERSigSize(C)
+#    echo "N = ", N
+#    var ds: DERSignature[N]; toDER(ds, rOS, sOS)
+#    echo "ARR based: ", @(ds.data)
+#    #
+#    #doAssert toDERSeq(rOS, sOS) == @(ds.data)[0 ..< ds.len]
+#
 #
