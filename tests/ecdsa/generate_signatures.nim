@@ -12,23 +12,17 @@ with OpenSSL.
 
 import
   constantine/csprngs/sysrand,
-  #constantine/signatures/ecdsa,
   constantine/ecdsa_secp256k1,
   constantine/named/algebras,
   constantine/math/io/[io_bigints, io_fields, io_ec],
-  constantine/serialization/codecs
+  constantine/serialization/codecs,
+  constantine/math/arithmetic/finite_fields,
+  constantine/platforms/abstractions
+
+import ./openssl_wrapper
 
 import
-  std / [os, osproc, strutils, strformat, json]
-
-type
-  TestVector = object
-    message: string # A hex string, which is fed as-is into OpenSSL, not the raw bytes incl 0x prefix
-    privateKey: string
-    publicKeyX: string
-    publicKeyY: string
-    r: string
-    s: string
+  std / [os, strutils, strformat, unittest]
 
 proc generateMessage(len: int): string =
   ## Returns a randomly generated message of `len` bytes as a
@@ -42,17 +36,14 @@ proc generateMessage(len: int): string =
 proc toHex(s: string): string =
   result = s.toOpenArrayByte(0, s.len-1).toHex()
 
-import ./openssl_wrapper
-import constantine/math/arithmetic/finite_fields
-
 proc toBytes[Name: static Algebra; N: static int](res: var array[N, byte], x: FF[Name]) =
   discard res.marshal(x.toBig(), bigEndian)
 
-proc generateSignatures(num: int, msg = ""): seq[TestVector] =
-  ## Generates `num` signatures.
-  result = newSeq[TestVector](num)
-  let dir = getTempDir()
-  # temp filename for private key PEM file
+proc signAndVerify(num: int, msg = "", nonceSampler = nsRandom) =
+  ## Generates `num` signatures and verify them against OpenSSL.
+  ##
+  ## If `msg` is given, use a fixed message. Otherwise will generate a message with
+  ## a length up to 1024 bytes.
   for i in 0 ..< num:
     let msg = if msg.len > 0: msg else: generateMessage(64) # 64 byte long messages
     let privKey = generatePrivateKey()
@@ -71,37 +62,39 @@ proc generateSignatures(num: int, msg = ""): seq[TestVector] =
     var rOSL: array[32, byte]
     var sOSL: array[32, byte]
     # And turn into hex strings
-    doAssert fromRawDER(rOSL, sOSL, osSig), "Deconstructing DER signature from OpenSSL failed: " & $osSig
+    check fromRawDER(rOSL, sOSL, osSig)
     let (r, s) = (rOSL.toHex(), sOSL.toHex())
-
-    let vec = TestVector(message: msg,
-                         privateKey: privKey.toHex(),
-                         publicKeyX: pubKey.x.toHex(),
-                         publicKeyY: pubKey.y.toHex(),
-                         r: r,
-                         s: s)
-    result[i] = vec
 
     # sanity check here that our data is actually good. Sign
     # and verify with CTT & verify just parsed OpenSSL sig
     let (rCTT, sCTT) = msg.signMessage(privKey)
-    doAssert verifySignature(msg, (r: rCTT, s: sCTT), pubKey)
-    doAssert verifySignature(msg, (r: Fr[C].fromHex(r), s: Fr[C].fromHex(s)), pubKey)
+    check verifySignature(msg, (r: rCTT, s: sCTT), pubKey)
+    check verifySignature(msg, (r: Fr[C].fromHex(r), s: Fr[C].fromHex(s)), pubKey)
 
-    #let rOS = Fr[C].fromHex(r)
-    #let sOS = Fr[C].fromHex(s)
-    #echo "SEQ based: ", toDERSeq(rOS, sOS)
-    #var ds: DERSignature; toDER(ds, rOS, sOS)
-    #echo "ARR based: ", @(ds.data)
-    #
-    #doAssert toDERSeq(rOS, sOS) == @(ds.data)[0 ..< ds.len]
+proc signRfc6979(msg: string, num = 10) =
+  ## Signs the given message with a randomly generated private key `num` times
+  ## using deterministic nonce generation and verifies the signature comes out
+  ## identical each time.
+
+  var derSig: DERSignature[DERSigSize(Secp256k1)]
+
+  let privKey = generatePrivateKey()
+  let (r, s) = msg.signMessage(privKey, nonceSampler = nsRfc6979)
+  for i in 0 ..< num:
+    let (r2, s2) = msg.signMessage(privKey, nonceSampler = nsRfc6979)
+    check bool(r == r2)
+    check bool(s == s2)
 
 
+suite "ECDSA over secp256k1":
+  test "Verify OpenSSL generated signatures from a fixed message (different nonces)":
+    signAndVerify(100, "Hello, Constantine!") # fixed message
 
-# 1. generate 100 signatures with random messages, private keys and random nonces
-let vecs1 = generateSignatures(100)
-# 2. generate 10 signatures for the same message
-let vecs2 = generateSignatures(10, "Hello, Constantine!")
+  test "Verify OpenSSL generated signatures for different messages":
+    signAndVerify(100) # randomly generated message
+
+  test "Verify deterministic nonce generation via RFC6979 yields deterministic signatures":
+    signRfc6979("Hello, Constantine!")
+    signRfc6979("Foobar is 42")
+
 #
-writeFile("testVectors/ecdsa_openssl_signatures_random.json", (% vecs1).pretty())
-writeFile("testVectors/ecdsa_openssl_signatures_fixed_msg.json", (% vecs2).pretty())
