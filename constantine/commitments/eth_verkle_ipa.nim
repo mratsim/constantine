@@ -136,8 +136,8 @@ func innerProduct[F](r: var F, a, b: distinct(View[F] or MutableView[F])) =
     t.prod(a[i], b[i])
     r += t
 
-func ipa_commit*[N: static int, EC, F](
-      crs: PolynomialEval[N, EC],
+func ipa_commit*[N: static int, EC, EcAff, F](
+      crs: PolynomialEval[N, EcAff],
       r: var EC,
       poly: PolynomialEval[N, F]) =
   crs.pedersen_commit(r, poly)
