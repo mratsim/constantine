@@ -15,7 +15,7 @@ import
   constantine/ecdsa_secp256k1,
   constantine/named/algebras,
   constantine/math/io/[io_bigints, io_fields, io_ec],
-  constantine/serialization/[codecs, codecs_ecdsa_secp256k1],
+  constantine/serialization/[codecs, codecs_ecdsa, codecs_ecdsa_secp256k1],
   constantine/math/arithmetic/finite_fields,
   constantine/platforms/abstractions
 
