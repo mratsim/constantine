@@ -12,17 +12,35 @@ with OpenSSL.
 
 import
   constantine/csprngs/sysrand,
-  constantine/ecdsa_secp256k1,
   constantine/named/algebras,
   constantine/math/io/[io_bigints, io_fields, io_ec],
   constantine/serialization/[codecs, codecs_ecdsa, codecs_ecdsa_secp256k1],
-  constantine/math/arithmetic/finite_fields,
-  constantine/platforms/abstractions
+  constantine/math/arithmetic/[bigints, finite_fields],
+  constantine/platforms/abstractions,
+  constantine/ecdsa_secp256k1
 
 import ../openssl_wrapper
 
 import
-  std / [os, osproc, strutils, strformat, unittest]
+  std / [os, osproc, strutils, strformat, unittest, importutils]
+
+const C = Secp256k1
+
+proc randomFieldElement[FF](): FF =
+  ## random element in ~Fp[T]/Fr[T]~
+  let m = FF.getModulus()
+  var b: matchingBigInt(FF.Name)
+
+  while b.isZero().bool or (b > m).bool:
+    ## XXX: raise / what else to do if `sysrand` call fails?
+    doAssert b.limbs.sysrand()
+
+  result.fromBig(b)
+
+proc generatePrivateKey(): SecretKey {.noinit.} =
+  ## Generate a new private key using a cryptographic random number generator.
+  privateAccess(SecretKey)
+  result = SecretKey(raw: randomFieldElement[Fr[C]]())
 
 proc generateMessage(len: int): string =
   ## Returns a randomly generated message of `len` bytes as a
@@ -39,6 +57,11 @@ proc toHex(s: string): string =
 proc toBytes[Name: static Algebra; N: static int](res: var array[N, byte], x: FF[Name]) =
   discard res.marshal(x.toBig(), bigEndian)
 
+func getPublicKey(secKey: SecretKey): PublicKey {.noinit.} =
+  result.derive_pubkey(secKey)
+
+template toOA(x: string): untyped = toOpenArrayByte(x, 0, x.len-1)
+
 proc signAndVerify(num: int, msg = "", nonceSampler = nsRandom) =
   ## Generates `num` signatures and verify them against OpenSSL.
   ##
@@ -54,7 +77,8 @@ proc signAndVerify(num: int, msg = "", nonceSampler = nsRandom) =
 
     # Get bytes of private key & initialize an OpenSSL key
     var skBytes: array[32, byte]
-    skBytes.toBytes(secKey)
+    privateAccess(SecretKey) # access to `raw`
+    skBytes.toBytes(secKey.raw)
     var osSecKey: EVP_PKEY
     osSecKey.initPrivateKeyOpenSSL(skBytes)
 
@@ -69,10 +93,13 @@ proc signAndVerify(num: int, msg = "", nonceSampler = nsRandom) =
     let (r, s) = (rOSL.toHex(), sOSL.toHex())
     # Convert to scalar and verify signature
     let (rOslFr, sOslFr) = (Fr[C].fromHex(r), Fr[C].fromHex(s))
-    check verifySignature(msg, (r: rOslFr, s: sOslFr), pubKey)
+    privateAccess(Signature) # make `r`, `s` accessible in scope
+    let sigOsl = Signature(r: rOslFr, s: sOslFr)
+    check pubKey.verify(toOA msg, sigOsl)
     # Now also sign with CTT and verify
-    let (rCTT, sCTT) = msg.signMessage(secKey)
-    check verifySignature(msg, (r: rCTT, s: sCTT), pubKey)
+    var sigCTT {.noinit.}: Signature
+    sigCTT.sign(secKey, toOA msg)
+    check pubKey.verify(toOA msg, sigCTT)
 
     # Verify that we can generate a DER signature again from the OpenSSL
     # data and it is equivalent to original
@@ -119,11 +146,12 @@ proc signRfc6979(msg: string, num = 10) =
   var derSig: DERSignature[DERSigSize(Secp256k1)]
 
   let secKey = generatePrivateKey()
-  let (r, s) = msg.signMessage(secKey, nonceSampler = nsRfc6979)
+  var sig {.noinit.}: Signature
+  sig.sign(secKey, toOA msg, nonceSampler = nsRfc6979)
   for i in 0 ..< num:
-    let (r2, s2) = msg.signMessage(secKey, nonceSampler = nsRfc6979)
-    check bool(r == r2)
-    check bool(s == s2)
+    var sig2 {.noinit.}: Signature
+    sig2.sign(secKey, toOA msg, nonceSampler = nsRfc6979)
+    check signatures_are_equal(sig, sig2)
 
 suite "General ECDSA related tests":
   test "DERSigSize correctly computes maximum size of DER encoded signature":

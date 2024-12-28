@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  constantine/zoo_exports,
   constantine/signatures/ecdsa,
   constantine/hashes/h_sha256,
   constantine/named/algebras,
@@ -18,41 +19,53 @@ import
   constantine/named/zoo_generators, # for generator
   constantine/csprngs/sysrand
 
-export ecdsa ## XXX: shouldn't be needed once serialization is in submodules
+export NonceSampler
 
-## XXX: Move this as API in `constantine/ecdsa_secp256k1.nim`
-# For easier readibility, define the curve and generator
-# as globals in this file
-const C* = Secp256k1
+const prefix_ffi = "ctt_ecdsa_secp256k1_"
+type
+  SecretKey* {.byref, exportc: prefix_ffi & "seckey".} = object
+    ## A Secp256k1 secret key
+    raw*: Fr[Secp256k1]
 
-## XXX: Still need to adjust secp256k1 specific API & tests
-proc signMessage*(message: string, secretKey: Fr[C],
-                  nonceSampler: NonceSampler = nsRandom): tuple[r, s: Fr[C]] =
-  ## WARNING: Convenience for development
-  result.coreSign(secretKey, message.toOpenArrayByte(0, message.len-1), sha256, nonceSampler)
+  PublicKey* {.byref, exportc: prefix_ffi & "pubkey".} = object
+    ## A Secp256k1 public key for ECDSA signatures
+    raw*: EC_ShortW_Aff[Fp[Secp256k1], G1]
 
-proc verifySignature*(
-    message: string,
-    signature: tuple[r, s: Fr[C]],
-    publicKey: EC_ShortW_Aff[Fp[C], G1]
-): bool =
-  ## WARNING: Convenience for development
-  result = publicKey.coreVerify(message.toOpenArrayByte(0, message.len-1), signature, sha256)
+  Signature* {.byref, exportc: prefix_ffi & "signature".} = object
+    ## A Secp256k1 signature for ECDSA signatures
+    r: Fr[Secp256k1]
+    s: Fr[Secp256k1]
 
-proc randomFieldElement[FF](): FF =
-  ## random element in ~Fp[T]/Fr[T]~
-  let m = FF.getModulus()
-  var b: matchingBigInt(FF.Name)
+func pubkey_is_zero*(pubkey: PublicKey): bool {.libPrefix: prefix_ffi.} =
+  ## Returns true if input is 0
+  bool(pubkey.raw.isNeutral())
 
-  while b.isZero().bool or (b > m).bool:
-    ## XXX: raise / what else to do if `sysrand` call fails?
-    doAssert b.limbs.sysrand()
+func pubkeys_are_equal*(a, b: PublicKey): bool {.libPrefix: prefix_ffi.} =
+  ## Returns true if inputs are equal
+  bool(a.raw == b.raw)
 
-  result.fromBig(b)
+func signatures_are_equal*(a, b: Signature): bool {.libPrefix: prefix_ffi.} =
+  ## Returns true if inputs are equal
+  bool(a.r == b.r and a.s == b.s)
 
-proc generatePrivateKey*(): Fr[C] {.noinit.} =
-  ## Generate a new private key using a cryptographic random number generator.
-  result = randomFieldElement[Fr[C]]()
+proc sign*(sig: var Signature,
+           secretKey: SecretKey,
+           message: openArray[byte],
+           nonceSampler: NonceSampler = nsRandom) {.libPrefix: prefix_ffi, genCharAPI.} =
+  ## Sign `message` using `secretKey` and store the signature in `sig`. The nonce
+  ## will either be randomly sampled `nsRandom` or deterministically calculated according
+  ## to RFC6979 (`nsRfc6979`)
+  sig.coreSign(secretKey.raw, message, sha256, nonceSampler)
 
-proc getPublicKey*(secKey: Fr[C]): EC_ShortW_Aff[Fp[C], G1] {.noinit.} =
-  result.derivePubkey(secKey)
+proc verify*(
+    publicKey: PublicKey,
+    message: openArray[byte],
+    signature: Signature
+): bool {.libPrefix: prefix_ffi, genCharAPI.} =
+  result = publicKey.raw.coreVerify(message, signature, sha256)
+
+func derive_pubkey*(public_key: var PublicKey, secret_key: SecretKey) {.libPrefix: prefix_ffi.} =
+  ## Derive the public key matching with a secret key
+  ##
+  ## The secret_key MUST be validated
+  public_key.raw.derivePubkey(secret_key.raw)

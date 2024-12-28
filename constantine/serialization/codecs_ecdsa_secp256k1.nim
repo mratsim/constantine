@@ -37,9 +37,10 @@ import
   constantine/platforms/primitives,
   constantine/math/arithmetic/finite_fields,
   constantine/math/elliptic/ec_shortweierstrass_affine,
-  constantine/math/io/io_bigints
+  constantine/math/io/io_bigints,
+  constantine/ecdsa_secp256k1
 
-import std / [strutils, base64, math]
+import std / [strutils, base64, math, importutils]
 
 const C = Secp256k1
 
@@ -127,14 +128,15 @@ proc wrap(s: string, maxLineWidth = 64): string =
     if i < lines-1:
       result.add "\n"
 
-proc toPemFile*(publicKey: EC_ShortW_Aff[Fp[C], G1]): string =
+proc toPemFile*(publicKey: PublicKey): string =
   ## Convert a given private key to data in PEM format following SEC1
   ##
   ## RFC 7468 describes the textual encoding of these files:
   ## https://www.rfc-editor.org/rfc/rfc7468#section-10
   # 1. Convert public key to ASN.1 DER
   var derB: array[88, byte]
-  derB.toPemPublicKey(publicKey)
+  privateAccess(PublicKey) # for `raw` access
+  derB.toPemPublicKey(publicKey.raw)
   # 2. Encode bytes in base64
   let der64 = derB.encode().wrap()
   # 3. Wrap in begin/end public key template
@@ -142,7 +144,7 @@ proc toPemFile*(publicKey: EC_ShortW_Aff[Fp[C], G1]): string =
   result.add der64 & "\n"
   result.add "-----END PUBLIC KEY-----\n"
 
-proc toPemFile*(privateKey: Fr[C]): string =
+proc toPemFile*(privateKey: SecretKey): string =
   ## XXX: For now using `std/base64` but will need to write base64 encoder
   ## & add tests for CTT base64 decoder!
   ## Convert a given private key to data in PEM format following SEC1
@@ -151,7 +153,8 @@ proc toPemFile*(privateKey: Fr[C]): string =
   ## https://www.rfc-editor.org/rfc/rfc7468#section-13
   # 1. Convert private key to ASN.1 DER encoding
   var derB {.noinit.}: array[48, byte]
-  derB.toPemPrivateKey(privateKey)
+  privateAccess(SecretKey) # for `raw` access
+  derB.toPemPrivateKey(privateKey.raw)
   # 2. Encode bytes in base64
   let der64 = derB.encode().wrap()
   # 3. Wrap in begin/end private key template
