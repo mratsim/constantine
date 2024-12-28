@@ -22,7 +22,7 @@ import
 import ./openssl_wrapper
 
 import
-  std / [os, strutils, strformat, unittest]
+  std / [os, osproc, strutils, strformat, unittest]
 
 proc generateMessage(len: int): string =
   ## Returns a randomly generated message of `len` bytes as a
@@ -49,12 +49,12 @@ proc signAndVerify(num: int, msg = "", nonceSampler = nsRandom) =
   ## sanity check our `toDER` converter.
   for i in 0 ..< num:
     let msg = if msg.len > 0: msg else: generateMessage(64) # 64 byte long messages
-    let privKey = generatePrivateKey()
-    let pubKey = getPublicKey(privKey)
+    let secKey = generatePrivateKey()
+    let pubKey = getPublicKey(secKey)
 
     # Get bytes of private key & initialize an OpenSSL key
     var skBytes: array[32, byte]
-    skBytes.toBytes(privKey)
+    skBytes.toBytes(secKey)
     var osSecKey: EVP_PKEY
     osSecKey.initPrivateKeyOpenSSL(skBytes)
 
@@ -67,20 +67,50 @@ proc signAndVerify(num: int, msg = "", nonceSampler = nsRandom) =
     # And turn into hex strings
     check fromRawDER(rOSL, sOSL, osSig)
     let (r, s) = (rOSL.toHex(), sOSL.toHex())
-
-    # sanity check here that our data is actually good. Sign
-    # and verify with CTT & verify just parsed OpenSSL sig
-    let (rCTT, sCTT) = msg.signMessage(privKey)
-    check verifySignature(msg, (r: rCTT, s: sCTT), pubKey)
+    # Convert to scalar and verify signature
     let (rOslFr, sOslFr) = (Fr[C].fromHex(r), Fr[C].fromHex(s))
     check verifySignature(msg, (r: rOslFr, s: sOslFr), pubKey)
+    # Now also sign with CTT and verify
+    let (rCTT, sCTT) = msg.signMessage(secKey)
+    check verifySignature(msg, (r: rCTT, s: sCTT), pubKey)
 
-    # Now verify that we can generate a DER signature again from the OpenSSL
-    # data and it is equivalent
+    # Verify that we can generate a DER signature again from the OpenSSL
+    # data and it is equivalent to original
     var derSig: DERSignature[DERSigSize(Secp256k1)]
     derSig.toDER(rOslFr, sOslFr)
     check derSig.data == osSig
 
+proc verifyPemWriter(num: int, msg = "") =
+  ## We verify our PEM writers in a bit of a roundabout way.
+  ##
+  ## TODO: Ideally we would simply write a given raw private and public key
+  ## using the C API of OpenSSL and compare writing the same key using
+  ## our serialization logic.
+  let dir = getTempDir()
+  # temp filename for private key PEM file
+  let pubKeyFile = dir / "public_key.pem"
+  let secKeyFile = dir / "private_key.pem"
+  let sigFile = dir / "msg.sig"
+  for i in 0 ..< num:
+    let msg = if msg.len > 0: msg else: generateMessage(64) # 64 byte long messages
+    let secKey = generatePrivateKey()
+    let pubKey = getPublicKey(secKey)
+
+    writeFile(secKeyFile, toPemFile(secKey))
+    writeFile(pubKeyFile, toPemFile(pubKey))
+
+    # Write a PEM file for public and private key using CTT and use it
+    # to sign and verify a message.
+    # NOTE: I tried using OpenSSL's C API, but couldn't get it to work
+    # 1. Sign using the private key and message
+    let sign = &"echo -n '{msg}' | openssl dgst -sha256 -sign {secKeyFile} -out {sigFile}"
+    let (resS, errS) = execCmdEx(sign)
+    check errS == 0
+
+    # 2. Verify using public key
+    let verify = &"echo -n '{msg}' | openssl dgst -sha256 -verify {pubKeyFile} -signature {sigFile}"
+    let (resV, errV) = execCmdEx(verify)
+    check errV == 0
 
 proc signRfc6979(msg: string, num = 10) =
   ## Signs the given message with a randomly generated private key `num` times
@@ -88,10 +118,10 @@ proc signRfc6979(msg: string, num = 10) =
   ## identical each time.
   var derSig: DERSignature[DERSigSize(Secp256k1)]
 
-  let privKey = generatePrivateKey()
-  let (r, s) = msg.signMessage(privKey, nonceSampler = nsRfc6979)
+  let secKey = generatePrivateKey()
+  let (r, s) = msg.signMessage(secKey, nonceSampler = nsRfc6979)
   for i in 0 ..< num:
-    let (r2, s2) = msg.signMessage(privKey, nonceSampler = nsRfc6979)
+    let (r2, s2) = msg.signMessage(secKey, nonceSampler = nsRfc6979)
     check bool(r == r2)
     check bool(s == s2)
 
@@ -120,3 +150,6 @@ suite "ECDSA over secp256k1":
   test "Verify deterministic nonce generation via RFC6979 yields deterministic signatures":
     signRfc6979("Hello, Constantine!")
     signRfc6979("Foobar is 42")
+
+  test "Verify PEM file serialization for public and private keys":
+    verifyPemWriter(100)
