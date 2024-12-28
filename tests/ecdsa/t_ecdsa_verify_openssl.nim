@@ -15,11 +15,11 @@ import
   constantine/ecdsa_secp256k1,
   constantine/named/algebras,
   constantine/math/io/[io_bigints, io_fields, io_ec],
-  constantine/serialization/codecs,
+  constantine/serialization/[codecs, codecs_ecdsa_secp256k1],
   constantine/math/arithmetic/finite_fields,
   constantine/platforms/abstractions
 
-import ./openssl_wrapper
+import ../openssl_wrapper
 
 import
   std / [os, osproc, strutils, strformat, unittest]
