@@ -60,40 +60,45 @@ proc getPublicKey*(secKey: Fr[C]): EC_ShortW_Aff[Fp[C], G1] {.noinit.} =
 
 ## XXX: move to serialization submodule
 
-template toOA(x: openArray[byte]): untyped = toOpenArray[byte](x, 0, x.len - 1)
-
 proc toBytes[Name: static Algebra; N: static int](res: var array[N, byte], x: FF[Name]) =
   discard res.marshal(x.toBig(), bigEndian)
 
 proc toPemPrivateKey(res: var array[48, byte], privateKey: Fr[C]) =
+  ## Encodes a private key as ASN.1 DER encoded private keys.
+  ##
+  ## See: https://www.secg.org/sec1-v2.pdf appendix C.4
+  ##
+  ## TODO: Adjust to support different curves.
   # Start with SEQUENCE
-  res.rawCopy(0, toOA [byte(0x30), byte(0x2E)], 0, 2) ## XXX: Calc size
+  res.rawCopy(0, [byte(0x30), byte(0x2E)], 0, 2)
 
   # Version (always 1)
-  res.rawCopy(2, toOA [byte(0x02), 1, 1], 0, 3)
-
+  res.rawCopy(2, [byte(0x02), 1, 1], 0, 3)
 
   # Private key as octet string
-  var privKeyBytes {.noinit.}: array[32, byte]  ## XXX: array size
-  privKeyBytes.toBytes(privateKey)
+  var secKeyBytes {.noinit.}: array[32, byte]
+  secKeyBytes.toBytes(privateKey)
 
-  res.rawCopy(5, toOA [byte(0x04), byte(privKeyBytes.len)], 0, 2)
-  res.rawCopy(7, toOA privKeyBytes, 0, 32) ## XXX: array size
+  res.rawCopy(5, [byte(0x04), byte(secKeyBytes.len)], 0, 2)
+  res.rawCopy(7, secKeyBytes, 0, 32) ## XXX: array size
 
-  ## XXX: OID for curve!
   # Parameters (secp256k1 OID: 1.3.132.0.10)
   const Secp256k1Oid = [byte(0xA0), byte(7), byte(6), byte(5),
                         byte(0x2B), byte(0x81), byte(0x04), byte(0x00), byte(0x0A)]
-  res.rawCopy(39, toOA Secp256k1Oid, 0, 9)
+  res.rawCopy(39, Secp256k1Oid, 0, 9)
 
 proc toPemPrivateKey(privateKey: Fr[C]): array[48, byte] =
   result.toPemPrivateKey(privateKey)
 
-proc toPemPublicKey(res: var array[88, byte], publicKey: EC_ShortW_Aff[Fp[C], G1]) = ## XXX: array size
+proc toPemPublicKey(res: var array[88, byte], publicKey: EC_ShortW_Aff[Fp[C], G1]) =
+  ## Encodes a public key as ASN.1 DER encoded public keys.
+  ##
+  ## See: https://www.secg.org/sec1-v2.pdf appendix C.3
+  ##
+  ## TODO: Adjust to support different curves.
   # Start with SEQUENCE
-  res.rawCopy(0, toOA [byte(0x30), byte(0x58)], 0, 2) ## XXX: ADjust total length!
+  res.rawCopy(0, [byte(0x30), byte(0x56)], 0, 2)
 
-  ## XXX: OID for curve!
   # Algorithm identifier
   const algoId = [
     byte(0x30), byte(0x10),                    # SEQUENCE
@@ -104,26 +109,24 @@ proc toPemPublicKey(res: var array[88, byte], publicKey: EC_ShortW_Aff[Fp[C], G1
     byte(0x2B), byte(0x81), byte(0x04), byte(0x00), byte(0x0A) # 1.3.132.0.10
   ]
 
-  res.rawCopy(2, toOA algoId, 0, 18)
+  res.rawCopy(2, algoId, 0, algoId.len) # algoId.len == 18
 
   # Public key as bit string
-  ## XXX: adjust length
-  const encoding = [byte(0x03), byte(0x42)] # 2+32+32 prefix & coordinates
+  const encoding = [byte(0x03), byte(0x42)] # [BIT-STRING, 2+32+32 prefix & coordinates]
   const prefix = [
     byte(0x00),  # DER BIT STRING: number of unused bits (always 0 for keys)
     byte(0x04)   # SEC1: uncompressed point format marker
   ]
 
   template toByteArray(x: Fp[C] | Fr[C]): untyped =
-    var a: array[32, byte] ## XXX: array size
+    var a: array[32, byte]
     a.toBytes(x)
     a
 
-  ## XXX: copy indices & sizes!
-  res.rawCopy(20, toOA encoding, 0, 2)
-  res.rawCopy(22, toOA prefix, 0, 2)
-  res.rawCopy(24, toOA publicKey.x.toByteArray(), 0, 32)
-  res.rawCopy(56, toOA publicKey.y.toByteArray(), 0, 32)
+  res.rawCopy(20, encoding, 0, 2)
+  res.rawCopy(22, prefix, 0, 2)
+  res.rawCopy(24, publicKey.x.toByteArray(), 0, 32)
+  res.rawCopy(56, publicKey.y.toByteArray(), 0, 32)
 
 proc toPemPublicKey(publicKey: EC_ShortW_Aff[Fp[C], G1]): array[88, byte] =
   result.toPemPublicKey(publicKey)
@@ -136,17 +139,7 @@ proc toPemPublicKey(publicKey: EC_ShortW_Aff[Fp[C], G1]): array[88, byte] =
 ## public keys would be nice to have in CTT, I think (at least for the curves that
 ## we support for the related operations; secp256k1 at the moment).
 
-## XXX: Might also need to replace this by header / tail approach to avoid
-## stdlib `%`!
 import std / [strutils, base64, math]
-const PrivateKeyTmpl = """-----BEGIN EC PRIVATE KEY-----
-$#
------END EC PRIVATE KEY-----
-"""
-const PublicKeyTmpl = """-----BEGIN PUBLIC KEY-----
-$#
------END PUBLIC KEY-----
-"""
 
 proc wrap(s: string, maxLineWidth = 64): string =
   ## Wrap the given string at `maxLineWidth` over multiple lines
@@ -161,20 +154,30 @@ proc wrap(s: string, maxLineWidth = 64): string =
 
 proc toPemFile*(publicKey: EC_ShortW_Aff[Fp[C], G1]): string =
   ## Convert a given private key to data in PEM format following SEC1
+  ##
+  ## RFC 7468 describes the textual encoding of these files:
+  ## https://www.rfc-editor.org/rfc/rfc7468#section-10
   # 1. Convert public key to ASN.1 DER
   let derB = publicKey.toPemPublicKey()
   # 2. Encode bytes in base64
   let der64 = derB.encode().wrap()
   # 3. Wrap in begin/end public key template
-  result = PublicKeyTmpl % [der64]
+  result = "-----BEGIN PUBLIC KEY-----\n"
+  result.add der64 & "\n"
+  result.add "-----END PUBLIC KEY-----\n"
 
 proc toPemFile*(privateKey: Fr[C]): string =
   ## XXX: For now using `std/base64` but will need to write base64 encoder
   ## & add tests for CTT base64 decoder!
   ## Convert a given private key to data in PEM format following SEC1
+  ##
+  ## RFC 7468 describes the textual encoding of these files:
+  ## https://www.rfc-editor.org/rfc/rfc7468#section-13
   # 1. Convert private key to ASN.1 DER encoding
   let derB = toPemPrivateKey(privateKey)
   # 2. Encode bytes in base64
   let der64 = derB.encode().wrap()
   # 3. Wrap in begin/end private key template
-  result = PrivateKeyTmpl % [der64]
+  result = "-----BEGIN EC PRIVATE KEY-----\n"
+  result.add der64 & "\n"
+  result.add "-----END EC PRIVATE KEY-----\n"
