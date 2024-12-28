@@ -17,26 +17,12 @@ In contrast to `codecs_ecdsa_secp256k1.nim` this file is generic under the choic
 of elliptic curve.
 ]##
 
-#import
-#  constantine/named/algebras,
-#  constantine/platforms/primitives,
-#  constantine/platforms/abstractions,
-#  constantine/math/arithmetic/finite_fields,
-#  constantine/math/elliptic/ec_shortweierstrass_affine,
-#  constantine/math/io/io_bigints
-
 import
-  constantine/hashes,
   constantine/named/algebras,
-  constantine/math/io/[io_bigints, io_fields, io_ec],
-  constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul],
-  constantine/math/[arithmetic, ec_shortweierstrass],
+  constantine/math/io/[io_bigints, io_fields],
+  constantine/math/elliptic/[ec_shortweierstrass_affine],
   constantine/platforms/[abstractions, views],
-  constantine/serialization/codecs, # for fromHex and (in the future) base64 encoding
-  constantine/mac/mac_hmac, # for deterministic nonce generation via RFC 6979
-  constantine/named/zoo_generators, # for generator
-  constantine/csprngs/sysrand,
-  constantine/signatures/common_signature_ops # for `derivePubkey`
+  constantine/serialization/codecs # for fromHex and (in the future) base64 encoding
 
 type
   ## Helper type for ASN.1 DER signatures to avoid allocation.
