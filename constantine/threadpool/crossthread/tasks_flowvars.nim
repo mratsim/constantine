@@ -142,18 +142,16 @@ proc isCompleted*(task: ptr Task): bool {.inline.} =
 proc setCompleted*(task: ptr Task) {.inline.} =
   ## Set a task to `complete`
   ## Wake a waiter thread if there is one
-  task.state.completed.store(1, moRelaxed)
-  fence(moSequentiallyConsistent)
-  let waiter = task.state.synchro.load(moRelaxed)
+  task.state.completed.store(1, moRelease)
+  let waiter = task.state.synchro.load(moAcquire)
   if (waiter and kWaiterMask) != SentinelWaiter:
     task.state.completed.wake()
 
 proc sleepUntilComplete*(task: ptr Task, waiterID: int32) {.inline.} =
   ## Sleep while waiting for task completion
   let waiter = (cast[uint32](waiterID) shl kWaiterShift) - SentinelWaiter
-  discard task.state.synchro.fetchAdd(waiter, moRelaxed)
-  fence(moAcquire)
-  while task.state.completed.load(moRelaxed) == 0:
+  discard task.state.synchro.fetchAdd(waiter, moRelease)
+  while task.state.completed.load(moAcquire) == 0:
     task.state.completed.wait(0)
 
 # Leapfrogging synchronization
