@@ -62,6 +62,7 @@ proc verify*(
     message: openArray[byte],
     signature: Signature
 ): bool {.libPrefix: prefix_ffi, genCharAPI.} =
+  ## Verify `signature` using `publicKey` for `message`.
   result = publicKey.raw.coreVerify(message, signature, sha256)
 
 func derive_pubkey*(public_key: var PublicKey, secret_key: SecretKey) {.libPrefix: prefix_ffi.} =
