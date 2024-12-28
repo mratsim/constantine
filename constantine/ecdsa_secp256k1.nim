@@ -11,13 +11,9 @@ import
   constantine/signatures/ecdsa,
   constantine/hashes/h_sha256,
   constantine/named/algebras,
-  constantine/math/io/[io_bigints, io_fields, io_ec],
-  constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul],
+  constantine/math/elliptic/[ec_shortweierstrass_affine],
   constantine/math/[arithmetic, ec_shortweierstrass],
-  constantine/platforms/[abstractions, views],
-  constantine/serialization/codecs, # for fromHex and (in the future) base64 encoding
-  constantine/named/zoo_generators, # for generator
-  constantine/csprngs/sysrand
+  constantine/platforms/[abstractions, views]
 
 export NonceSampler
 
