@@ -21,11 +21,11 @@ const prefix_ffi = "ctt_ecdsa_secp256k1_"
 type
   SecretKey* {.byref, exportc: prefix_ffi & "seckey".} = object
     ## A Secp256k1 secret key
-    raw*: Fr[Secp256k1]
+    raw: Fr[Secp256k1]
 
   PublicKey* {.byref, exportc: prefix_ffi & "pubkey".} = object
     ## A Secp256k1 public key for ECDSA signatures
-    raw*: EC_ShortW_Aff[Fp[Secp256k1], G1]
+    raw: EC_ShortW_Aff[Fp[Secp256k1], G1]
 
   Signature* {.byref, exportc: prefix_ffi & "signature".} = object
     ## A Secp256k1 signature for ECDSA signatures
