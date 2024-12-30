@@ -5,7 +5,14 @@ import
   helpers/prng_unsafe,
   ./bench_blueprint
 
-import ../tests/openssl_wrapper
+## NOTE: For a reason that evades me at the moment, if we only `import`
+## the wrapper, we get a linker error of the form:
+##
+## @mopenssl_wrapper.nim.c:(.text+0x110): undefined reference to `Dl_1073742356_'
+## /usr/bin/ld: warning: creating DT_TEXTREL in a PIE
+##
+## So for the moment, we just include the wrapper.
+include ../tests/openssl_wrapper
 
 proc separator*() = separator(69)
 

@@ -5,7 +5,14 @@ import
   # Helpers
   helpers/prng_unsafe
 
-import ./openssl_wrapper
+## NOTE: For a reason that evades me at the moment, if we only `import`
+## the wrapper, we get a linker error of the form:
+##
+## @mopenssl_wrapper.nim.c:(.text+0x110): undefined reference to `Dl_1073742356_'
+## /usr/bin/ld: warning: creating DT_TEXTREL in a PIE
+##
+## So for the moment, we just include the wrapper.
+include ./openssl_wrapper
 
 # Test cases
 # --------------------------------------------------------------------
