@@ -308,7 +308,8 @@ func coreVerify*[Pubkey, Sig](
   msgHash.fromDigest(dgst, truncateInput = true)
   # 2. verify
   result = pubKey.verifyImpl(signature, msgHash)
-proc recoverPubkeyImpl_vartime[Name: static Algebra; Sig](
+
+proc recoverPubkeyImpl_vartime*[Name: static Algebra; Sig](
     recovered: var EC_ShortW_Aff[Fp[Name], G1],
     signature: Sig,
     msgHash: Fr[Name],
