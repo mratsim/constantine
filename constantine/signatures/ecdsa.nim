@@ -381,6 +381,7 @@ proc recoverPubkeyImpl_vartime*[Name: static Algebra; Sig](
     recovered.ccopy(Q.getAffine(), SecretBool validSig) # Copy `Q` if valid
     # 6. try next `i` in `x1 = r + i·M`
     x1 += M
+
 proc recoverPubkey*[Pubkey; Sig](
     recovered: var Pubkey,
     signature: Sig,
