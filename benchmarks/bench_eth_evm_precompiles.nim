@@ -49,15 +49,15 @@ const gasSchedule = {
   "BN254_G1MUL":          6000,
   "BN254_PAIRINGCHECK":     -1,
   # EIP 2537
-  "BLS12_G1ADD":           500,
+  "BLS12_G1ADD":           375,
   "BLS12_G1MUL":         12000,
   "BLS12_G1MSM":            -1,
-  "BLS12_G2ADD":           800,
-  "BLS12_G2MUL":         45000,
+  "BLS12_G2ADD":           600,
+  "BLS12_G2MUL":         22500,
   "BLS12_G2MSM":            -1,
   "BLS12_PAIRINGCHECK":     -1,
   "BLS12_MAP_FP_TO_G1":   5500,
-  "BLS12_MAP_FP2_TO_G2": 75000,
+  "BLS12_MAP_FP2_TO_G2": 23800,
 }.toTable()
 
 func gasSha256(length: int): int =
@@ -67,8 +67,13 @@ func gasSha256(length: int): int =
 func gasBN254PairingCheck(length: int): int =
   return 34000*length + 45000
 
-func gasBls12Msm(length: int, baseCost: int): int =
-  const discount: array[1..128, int] = [1200, 888, 764, 641, 594, 547, 500, 453, 438, 423, 408, 394, 379, 364, 349, 334, 330, 326, 322, 318, 314, 310, 306, 302, 298, 294, 289, 285, 281, 277, 273, 269, 268, 266, 265, 263, 262, 260, 259, 257, 256, 254, 253, 251, 250, 248, 247, 245, 244, 242, 241, 239, 238, 236, 235, 233, 232, 231, 229, 228, 226, 225, 223, 222, 221, 220, 219, 219, 218, 217, 216, 216, 215, 214, 213, 213, 212, 211, 211, 210, 209, 208, 208, 207, 206, 205, 205, 204, 203, 202, 202, 201, 200, 199, 199, 198, 197, 196, 196, 195, 194, 193, 193, 192, 191, 191, 190, 189, 188, 188, 187, 186, 185, 185, 184, 183, 182, 182, 181, 180, 179, 179, 178, 177, 176, 176, 175, 174]
+func gasBls12MsmG1(length: int, baseCost: int): int =
+  const discount: array[1..128, int] = [1000, 949, 848, 797, 764, 750, 738, 728, 719, 712, 705, 698, 692, 687, 682, 677, 673, 669, 665, 661, 658, 654, 651, 648, 645, 642, 640, 637, 635, 632, 630, 627, 625, 623, 621, 619, 617, 615, 613, 611, 609, 608, 606, 604, 603, 601, 599, 598, 596, 595, 593, 592, 591, 589, 588, 586, 585, 584, 582, 581, 580, 579, 577, 576, 575, 574, 573, 572, 570, 569, 568, 567, 566, 565, 564, 563, 562, 561, 560, 559, 558, 557, 556, 555, 554, 553, 552, 551, 550, 549, 548, 547, 547, 546, 545, 544, 543, 542, 541, 540, 540, 539, 538, 537, 536, 536, 535, 534, 533, 532, 532, 531, 530, 529, 528, 528, 527, 526, 525, 525, 524, 523, 522, 522, 521, 520, 520, 519]
+  const multiplier = 1000
+  return length * baseCost * discount[min(length, discount.high)] div multiplier
+
+func gasBls12MsmG2(length: int, baseCost: int): int =
+  const discount: array[1..128, int] = [1000, 1000, 923, 884, 855, 832, 812, 796, 782, 770, 759, 749, 740, 732, 724, 717, 711, 704, 699, 693, 688, 683, 679, 674, 670, 666, 663, 659, 655, 652, 649, 646, 643, 640, 637, 634, 632, 629, 627, 624, 622, 620, 618, 615, 613, 611, 609, 607, 606, 604, 602, 600, 598, 597, 595, 593, 592, 590, 589, 587, 586, 584, 583, 582, 580, 579, 578, 576, 575, 574, 573, 571, 570, 569, 568, 567, 566, 565, 563, 562, 561, 560, 559, 558, 557, 556, 555, 554, 553, 552, 552, 551, 550, 549, 548, 547, 546, 545, 545, 544, 543, 542, 541, 541, 540, 539, 538, 537, 537, 536, 535, 535, 534, 533, 532, 532, 531, 530, 530, 529, 528, 528, 527, 526, 526, 525, 524, 524]
   const multiplier = 1000
   return length * baseCost * discount[min(length, discount.high)] div multiplier
 
@@ -275,14 +280,14 @@ proc benchBls12MsmG1(msmCtx: seq[byte], size, iters: int) =
   var inputs = @(msmCtx.toOpenArray(0, 160*size-1))
   var output = newSeq[byte](128)
 
-  bench(&"BLS12_G1MSM {size:>3}", gasBls12Msm(size, gasSchedule["BLS12_G1MUL"]), iters):
+  bench(&"BLS12_G1MSM {size:>3}", gasBls12MsmG1(size, gasSchedule["BLS12_G1MUL"]), iters):
     discard output.eth_evm_bls12381_g1msm(inputs)
 
 proc benchBls12MsmG2(msmCtx: seq[byte], size, iters: int) =
   var inputs = @(msmCtx.toOpenArray(0, 288*size-1))
   var output = newSeq[byte](256)
 
-  bench(&"BLS12_G2MSM {size:>3}", gasBls12Msm(size, gasSchedule["BLS12_G2MUL"]), iters):
+  bench(&"BLS12_G2MSM {size:>3}", gasBls12MsmG2(size, gasSchedule["BLS12_G2MUL"]), iters):
     discard output.eth_evm_bls12381_g2msm(inputs)
 
 const Iters        =  1000
