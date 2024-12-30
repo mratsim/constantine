@@ -22,7 +22,9 @@ import
   ./hash_to_curve/hash_to_curve,
   # For KZG point precompile
   ./ethereum_eip4844_kzg,
-  ./serialization/codecs_status_codes
+  ./serialization/codecs_status_codes,
+  # ECDSA for ECRecover
+  ./ecdsa_secp256k1
 
 # For KZG point precompile
 export EthereumKZGContext, TrustedSetupFormat, TrustedSetupStatus, trusted_setup_load, trusted_setup_delete
@@ -48,6 +50,8 @@ type
     cttEVM_PointNotOnCurve
     cttEVM_PointNotInSubgroup
     cttEVM_VerificationFailure
+    cttEVM_InvalidSignature
+    cttEVM_InvalidV # `v` of signature `(r, s, v)` is invalid
 
 func eth_evm_sha256*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## SHA256
@@ -1274,5 +1278,80 @@ func eth_evm_kzg_point_evaluation*(ctx: ptr EthereumKZGContext,
   # `return Bytes(U256(FIELD_ELEMENTS_PER_BLOB).to_be_bytes32() + U256(BLS_MODULUS).to_be_bytes32())`
   r.toOpenArray( 0, 32-1).marshal([FIELD_ELEMENTS_PER_BLOB], WordBitWidth, bigEndian)
   r.toOpenArray(32, 64-1).marshal(Fr[BLS12_381].getModulus(), bigEndian)
+
+  result = cttEVM_Success
+
+import std / importutils # Alternatively make `r`, `s` visible or define setter or constructor
+func eth_evm_ecrecover*(r: var openArray[byte],
+                        input: openArray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
+  ## Attempts to recover the public key, which was used to sign the given `data`
+  ## to obtain the given signature `sig`.
+  ##
+  ## If the signature is invalid, the result array `r` will contain the neutral
+  ## element of the curve.
+  ##
+  ## Inputs:
+  ##   - `r`: Array of the recovered public key. An elliptic curve point in affine
+  ##     coordinates (`EC_ShortW_Aff[Fp[Secp256k1], G1]`).
+  ##   - `input`: The input data as an array of 128 bytes. The data is as follows:
+  ##     - 32 byte: `keccak256` digest of the message that was signed
+  ##     - 32 byte: `v`, decides if the even or odd coordinate in `R` was used
+  ##     - 32 byte: `r` of the signature, scalar `Fr[Secp256k1]`
+  ##     - 32 byte: `s` of the signature, scalar `Fr[Secp256k1]`
+  ##
+  ## Implementation follows Geth here:
+  ## https://github.com/ethereum/go-ethereum/blob/341647f1865dab437a690dc1424ba71495de2dd8/core/vm/contracts.go#L243-L272
+  ##
+  ## and to a lesser extent the Ethereum Yellow Paper in appendix F:
+  ## https://ethereum.github.io/yellowpaper/paper.pdf
+  ##
+  ## Internal Geth implementation in:
+  ## https://github.com/ethereum/go-ethereum/blob/master/signer/core/signed_data.go#L292-L319
+  if len(input) != 128:
+    return cttEVM_InvalidInputSize
+
+  if len(r) != 32:
+    return cttEVM_InvalidOutputSize
+
+  # 1. construct message hash as scalar in field `Fr[Secp256k1]`
+  var msgBI {.noinit.}: BigInt[256]
+  msgBI.unmarshal(input.toOpenArray(0, 32-1), bigEndian)
+  var msgHash {.noinit.}: Fr[Secp256k1]
+  msgHash.fromBig(msgBI)
+
+  # 2. verify `v` data is valid
+  ## XXX: Or construct a `BigInt[256]` instead and compare? (or compare with uint64s?)
+  for i in 32 ..< 63: # first 31 bytes must be zero for a valid `v`
+    if input[i] != byte 0:
+      return cttEVM_InvalidV
+  let v = input[63]
+  if v notin [byte 0, 1, 27, 28]:
+    return cttEVM_InvalidSignature
+  # 2a. determine if even or odd `y` coordinate
+  let evenY = v in [byte 0, 27] # 0 / 27 indicates `y` to be even, 1 / 28 odd
+
+  # 3. unmarshal signature data
+  var signature {.noinit.}: Signature
+  privateAccess(Signature)
+  var rSig {.noinit}, sSig {.noinit.}: BigInt[256]
+  rSig.unmarshal(input.toOpenArray(64,  96-1), bigEndian)
+  sSig.unmarshal(input.toOpenArray(96, 128-1), bigEndian)
+  signature.r = Fr[Secp256k1].fromBig(rSig)
+  signature.s = Fr[Secp256k1].fromBig(sSig)
+
+  # 4. perform pubkey recovery
+  var pubKey {.noinit.}: PublicKey
+  pubKey.recoverPubkey(msgHash, signature, evenY) # , keccak256)
+
+  # 4. now calculate the Ethereum address of the public key (keccak256)
+  privateAccess(PublicKey)
+  var rawPubkey {.noinit.}: array[64, byte] # `[x, y]` coordinates of public key
+  rawPubkey.toOpenArray( 0, 32-1).marshal(pubKey.raw.x, bigEndian)
+  rawPubkey.toOpenArray(32, 64-1).marshal(pubKey.raw.y, bigEndian)
+  var dgst {.noinit.}: array[32, byte] # keccak256 digest
+  keccak256.hash(dgst, rawPubkey)
+
+  # 5. and effectively truncate to last 20 bytes of digest
+  r.rawCopy(12, dgst, 12, 20)
 
   result = cttEVM_Success
