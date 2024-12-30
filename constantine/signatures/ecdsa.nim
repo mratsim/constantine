@@ -308,3 +308,101 @@ func coreVerify*[Pubkey, Sig](
   msgHash.fromDigest(dgst, truncateInput = true)
   # 2. verify
   result = pubKey.verifyImpl(signature, msgHash)
+proc recoverPubkeyImpl_vartime[Name: static Algebra; Sig](
+    recovered: var EC_ShortW_Aff[Fp[Name], G1],
+    signature: Sig,
+    msgHash: Fr[Name],
+    evenY: bool) =
+  ## Attempts to recover an associated public key to the given `signature` and
+  ## hash of a message `msgHash`.
+  ##
+  ## Note that as the signature is only dependent on the `x` coordinate of the
+  ## curve point `R`, two public keys verify the signature. The one with even
+  ## and the one with odd `y` coordinate (one even & one odd due to curve prime
+  ## order).
+  ##
+  ## `evenY` decides whether we recover the public key associated with the even
+  ## `y` coordinate of `R` or the odd one. Both verify the (message, signature)
+  ## pair.
+  ##
+  ## If the signature is invalid, `recovered` will be set to the neutral element.
+  type
+    ECAff = EC_ShortW_Aff[Fp[Name], G1]
+    ECJac = EC_ShortW_Jac[Fp[Name], G1]
+  # 1. Set to neutral so if we don't find a valid signature, return neutral
+  recovered.setNeutral()
+  const G = Name.getGenerator($G1)
+
+  let rInit = signature.r.toBig() # initial `r`
+  var x1 = Fp[Name].fromBig(signature.r.toBig()) # as coordinate in Fp
+  let M = Fp[Name].fromBig(Fr[Name].getModulus())
+
+  # Due to the conversion of the `x` coordinate in `Fp` of the point `R` in the signing process
+  # to a scalar in `Fr`, we potentially reduce it modulo the subgroup order (if `x > M` with
+  # `M` the subgroup order).
+  # As we don't know if this is the case, we need to loop until we either find a valid signature,
+  # adding `M` each iteration or until we roll over again, in which case the signature is invalid.
+  # NOTE: For secp256k1 this is _extremely_ unlikely, because prime of the curve `p` and subgroup
+  # order `M` are so close!
+  var validSig = false
+  while (not validSig) and bool(x1.toBig() <= rInit):
+    # 1. Get base `R` point
+    var R {.noinit.}: EC_ShortW_Aff[Fp[Name], G1]
+    let valid = R.trySetFromCoordX(x1) # from `r = x1`
+    if not bool(valid):
+      x1 += M # add modulus of `Fr`. As long as we don't overflow in `Fp` we try again
+      continue # try next `i` in `x1 = r + i·M`
+
+    let isEven = R.y.toBig().isEven()
+    # 2. only negate `y ↦ -y` if current and target even-ness disagree
+    R.y.cneg(isEven xor SecretBool evenY)
+
+    # 3. perform recovery calculation, `Q = -m·r⁻¹ * G + s·r⁻¹ * R`
+    # Note: Calculate with `r⁻¹` included in each coefficient to avoid 3rd `scalarMul`.
+    var rInv = signature.r
+    rInv.inv() # `r⁻¹`
+
+    var u1 {.noinit.}, u2 {.noinit.}: Fr[Name]
+    u1.prod(msgHash, rInv)     # `u₁ = m·r⁻¹`
+    u1.neg()                   # `u₁ = -m·r⁻¹`
+    u2.prod(signature.s, rInv) # `u₂ = s·r⁻¹`
+
+    var Q {.noinit.}: ECJac # the potential public key
+    var point1 {.noinit.}, point2 {.noinit.}: ECJac
+    point1.scalarMul(u1, G)    # `p₁ = u₁ * G`
+    point2.scalarMul(u2, R)    # `p₂ = u₂ * R`
+    Q.sum(point1, point2)      # `Q = p₁ + p₂`
+
+    # 4. Verify signature with this point
+    validSig = Q.getAffine().verifyImpl(signature, msgHash)
+
+    # 5. If valid copy to `recovered`, else keep neutral point
+    recovered.ccopy(Q.getAffine(), SecretBool validSig) # Copy `Q` if valid
+    # 6. try next `i` in `x1 = r + i·M`
+    x1 += M
+proc recoverPubkey*[Pubkey; Sig](
+    recovered: var Pubkey,
+    signature: Sig,
+    message: openArray[byte],
+    evenY: bool,
+    H: type CryptoHash) =
+  ## Attempts to recover an associated public key to the given `signature` and
+  ## hash of a message `msgHash`.
+  ##
+  ## Note that as the signature is only dependent on the `x` coordinate of the
+  ## curve point `R`, two public keys verify the signature. The one with even
+  ## and the one with odd `y` coordinate (one even & one odd due to curve prime
+  ## order).
+  ##
+  ## `evenY` decides whether we recover the public key associated with the even
+  ## `y` coordinate of `R` or the odd one. Both verify the (message, signature)
+  ## pair.
+  ##
+  ## If the signature is invalid, `recovered` will be set to the neutral element.
+  # 1. Hash the message (same as in signing)
+  var dgst {.noinit.}: array[H.digestSize, byte]
+  H.hash(dgst, message)
+  var msgHash {.noinit.}: Fr[recovered.F.Name]
+  msgHash.fromDigest(dgst, truncateInput = true)
+  # 2. recover
+  recovered.recoverPubkeyImpl_vartime(signature, msgHash, evenY)
