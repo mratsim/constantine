@@ -66,7 +66,7 @@ func getPublicKey(secKey: SecretKey): PublicKey {.noinit.} =
 template toOA(x: string): untyped = toOpenArrayByte(x, 0, x.len-1)
 
 when not defined(windows) and not defined(macosx): # see above
-  proc signAndVerify(num: int, msg = "", nonceSampler = nsRandom) =
+  proc signVerifyRecover(num: int, msg = "", nonceSampler = nsRandom) =
     ## Generates `num` signatures and verify them against OpenSSL.
     ##
     ## If `msg` is given, use a fixed message. Otherwise will generate a message with
@@ -111,6 +111,22 @@ when not defined(windows) and not defined(macosx): # see above
       derSig.toDER(rOslFr, sOslFr)
       check derSig.data == osSig
 
+      # Attempt to recover public key from signature and hash. Two possible public keys
+      # verify the signature. Only one of them is the public key we actually derived from
+      # our private key. So recover both, check they verify the signature and one of them
+      # is equal to our initial public key.
+      var recEven {.noinit.}: PublicKey
+      var recOdd {.noinit.}: PublicKey
+      recEven.recoverPubkey(toOA msg, sigCTT, evenY = true)
+      recOdd.recoverPubkey(toOA msg, sigCTT, evenY = false)
+
+      # Check both verify signature
+      check recEven.verify(toOA msg, sigCTT)
+      check recOdd.verify(toOA msg, sigCTT)
+
+      # Check one of them is equal to our initial pubkey
+      check pubkeys_are_equal(recEven, pubKey) or pubkeys_are_equal(recOdd, pubKey)
+
   proc verifyPemWriter(num: int, msg = "") =
     ## We verify our PEM writers in a bit of a roundabout way.
     ##
@@ -148,7 +164,6 @@ when not defined(windows) and not defined(macosx): # see above
     ## using deterministic nonce generation and verifies the signature comes out
     ## identical each time.
     var derSig: DerSignature[DerSigSize(Secp256k1)]
-
     let secKey = generatePrivateKey()
     var sig {.noinit.}: Signature
     sig.sign(secKey, toOA msg, nonceSampler = nsRfc6979)
@@ -171,10 +186,10 @@ when not defined(windows) and not defined(macosx): # see above
 
   suite "ECDSA over secp256k1":
     test "Verify OpenSSL generated signatures from a fixed message (different nonces)":
-      signAndVerify(100, "Hello, Constantine!") # fixed message
+      signVerifyRecover(100, "Hello, Constantine!") # fixed message
 
     test "Verify OpenSSL generated signatures for different messages":
-      signAndVerify(100) # randomly generated message
+      signVerifyRecover(100) # randomly generated message
 
     test "Verify deterministic nonce generation via RFC6979 yields deterministic signatures":
       signRfc6979("Hello, Constantine!")
