@@ -66,3 +66,12 @@ func derive_pubkey*(public_key: var PublicKey, secret_key: SecretKey) {.libPrefi
   ##
   ## The secret_key MUST be validated
   public_key.raw.derivePubkey(secret_key.raw)
+
+proc recoverPubkey*(
+    publicKey: var PublicKey,
+    message: openArray[byte],
+    signature: Signature,
+    evenY: bool
+) {.libPrefix: prefix_ffi, genCharAPI.} =
+  ## Verify `signature` using `publicKey` for `message`.
+  publicKey.raw.recoverPubkey(signature, message, evenY, sha256)
