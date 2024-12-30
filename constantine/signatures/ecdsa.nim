@@ -176,7 +176,7 @@ proc generateNonce[Name: static Algebra](
 proc signImpl[Name: static Algebra; Sig](
   sig: var Sig,
   secretKey: Fr[Name],
-  message: openArray[byte],
+  msgHash: Fr[Name],
   H: type CryptoHash,
   nonceSampler: NonceSampler = nsRandom) =
   ## Sign a given `message` using the `secretKey`.
@@ -185,20 +185,13 @@ proc signImpl[Name: static Algebra; Sig](
   ## but passing `nonceSampler = nsRfc6979` uses RFC 6979 to compute
   ## a deterministic nonce (and thus deterministic signature) given
   ## the message and private key as base.
-  # 1. hash the message in big endian order
-  var dgst {.noinit.}: array[H.digestSize, byte]
-  H.hash(dgst, message)
-  var message_hash: Fr[Name]
-  # if `dgst` uses more bytes than
-  message_hash.fromDigest(dgst, truncateInput = true)
-
   # Generator of the curve
   const G = Name.getGenerator($G1)
 
   # loop until we found a valid (non zero) signature
   while true:
     # Generate random nonce
-    var k = generateNonce(nonceSampler, message_hash, secretKey, H)
+    var k = generateNonce(nonceSampler, msgHash, secretKey, H)
 
     var R {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
     # Calculate r (x-coordinate of kG)
@@ -217,9 +210,9 @@ proc signImpl[Name: static Algebra; Sig](
     # we'd need to truncate to N bits for N being bits in modulo `n`)
     var s {.noinit.}: Fr[Name]
     s.prod(r, secretKey) # `r * secretKey`
-    s += message_hash     # `message_hash + r * secretKey`
-    k.inv()               # `k := k⁻¹`
-    s *= k                # `k⁻¹ * (message_hash + r * secretKey)`
+    s += msgHash         # `msgHash + r * secretKey`
+    k.inv()              # `k := k⁻¹`
+    s *= k               # `k⁻¹ * (msgHash + r * secretKey)`
     # get inversion of `s` for 'lower-s normalization'
     var sneg = s # inversion of `s`
     sneg.neg()   # q - s
@@ -254,33 +247,33 @@ proc coreSign*[Sig, SecKey](
   ##    indifferentiable from a random oracle [MRH04] under a reasonable
   ##    cryptographic assumption.
   ## - `message` is the message to hash
-  signature.signImpl(secretKey, message, H, nonceSampler)
+  # 1. hash the message in big endian order
+  var dgst {.noinit.}: array[H.digestSize, byte]
+  H.hash(dgst, message)
+  var msgHash: Fr[SecKey.Name]
+  # if `dgst` uses more bits than scalar in `Fr`, truncate
+  msgHash.fromDigest(dgst, truncateInput = true)
+  # 2. sign
+  signature.signImpl(secretKey, msgHash, H, nonceSampler)
 
 proc verifyImpl[Name: static Algebra; Sig](
     publicKey: EC_ShortW_Aff[Fp[Name], G1],
-    signature: Sig, # tuple[r, s: Fr[Name]],
-    message: openArray[byte],
-    H: type CryptoHash,
+    signature: Sig,
+    msgHash: Fr[Name]
 ): bool =
   ## Verify a given `signature` for a `message` using the given `publicKey`.
-  # 1. Hash the message (same as in signing)
-  var dgst {.noinit.}: array[H.digestSize, byte]
-  H.hash(dgst, message)
-  var e {.noinit.}: Fr[Name]
-  e.fromDigest(dgst, truncateInput = true)
-
-  # 2. Compute w = s⁻¹
+  # 1. Compute w = s⁻¹
   var w = signature.s
   w.inv() # w = s⁻¹
 
-  # 3. Compute u₁ = ew and u₂ = rw
+  # 2. Compute u₁ = ew and u₂ = rw
   var
     u1 {.noinit.}: Fr[Name]
     u2 {.noinit.}: Fr[Name]
-  u1.prod(e, w)
+  u1.prod(msgHash, w)
   u2.prod(signature.r, w)
 
-  # 4. Compute u₁G + u₂Q
+  # 3. Compute u₁G + u₂Q
   var
     point1 {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
     point2 {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
@@ -291,11 +284,11 @@ proc verifyImpl[Name: static Algebra; Sig](
   var R {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
   R.sum(point1, point2)
 
-  # 5. Get x coordinate (in `Fp`) and convert to `Fr` (like in signing)
+  # 4. Get x coordinate (in `Fp`) and convert to `Fr` (like in signing)
   let x = R.getAffine().x
   let r_computed = Fr[Name].fromBig(x.toBig())
 
-  # 6. Verify r_computed equals provided r
+  # 5. Verify r_computed equals provided r
   result = bool(r_computed == signature.r)
 
 func coreVerify*[Pubkey, Sig](
@@ -308,4 +301,10 @@ func coreVerify*[Pubkey, Sig](
   ## This assumes that the PublicKey and Signatures
   ## have been pre-checked for non-infinity and being in the correct subgroup
   ## (likely on deserialization)
-  result = pubKey.verifyImpl(signature, message, H)
+  # 1. Hash the message (same as in signing)
+  var dgst {.noinit.}: array[H.digestSize, byte]
+  H.hash(dgst, message)
+  var msgHash {.noinit.}: Fr[pubkey.F.Name]
+  msgHash.fromDigest(dgst, truncateInput = true)
+  # 2. verify
+  result = pubKey.verifyImpl(signature, msgHash)
