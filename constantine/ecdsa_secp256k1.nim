@@ -81,3 +81,21 @@ proc recoverPubkey*(
   ## `evenY == true` returns the public key corresponding to the
   ## even `y` coordinate of the `R` point.
   publicKey.raw.recoverPubkey(signature, message, evenY, H)
+
+proc recoverPubkey*(
+    publicKey: var PublicKey,
+    msgHash: Fr[Secp256k1],
+    signature: Signature,
+    evenY: bool
+) {.libPrefix: prefix_ffi.} =
+  ## Verify `signature` using `publicKey` for the given message digest
+  ## given as a scalar in the field `Fr[Secp256k1]`.
+  ##
+  ## `evenY == true` returns the public key corresponding to the
+  ## even `y` coordinate of the `R` point.
+  ##
+  ## As this overload works directly with a message hash as a scalar,
+  ## it requires no hash function. Internally, it also calls the
+  ## `verify` implementation, which already takes a scalar and thus
+  ## requires no hash function there either.
+  publicKey.raw.recoverPubkeyImpl_vartime(signature, msgHash, evenY)
