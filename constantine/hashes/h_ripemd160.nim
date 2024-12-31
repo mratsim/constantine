@@ -56,7 +56,7 @@ template internalBlockSize*(H: type ripemd160): int =
 
 func init*(ctx: var Ripemd160Context) =
   ## Initialize or reinitialize a Ripemd160 context
-  ctx.initialize()
+  ctx.reset()
 
 func update*(ctx: var Ripemd160Context, message: openarray[byte]) =
   ## Append a message to a Ripemd160 context for incremental Ripemd160 computation.
