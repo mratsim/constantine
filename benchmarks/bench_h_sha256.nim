@@ -56,6 +56,7 @@ when isMainModule:
       let msg = rng.random_byte_seq(s)
       let iters = int(target_cycles div (s.int64 * worst_cycles_per_bytes))
       benchSHA256_constantine(msg, $s & "B", iters)
-      benchSHA256_openssl(msg, $s & "B", iters)
+      when not defined(windows): # not available on Windows in GH actions atm
+        benchSHA256_openssl(msg, $s & "B", iters)
 
   main()
