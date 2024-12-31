@@ -34,7 +34,8 @@ type
     len*: int # Actual length used
 
 template DERSigSize*(Name: static Algebra): int =
-  6 + 2 * (Fr[Name].bits.ceilDiv_vartime(sizeof(pointer)) + 1)
+  const OctetWidth = 8
+  6 + 2 * (Fr[Name].bits.ceilDiv_vartime(OctetWidth) + 1)
 
 proc toDER*[Name: static Algebra; N: static int](derSig: var DERSignature[N], r, s: Fr[Name]) =
   ## Converts signature (r,s) to DER format without allocation.
