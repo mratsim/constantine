@@ -33,7 +33,7 @@ import
 # ----------------------------------------------------------------
 
 type
-  ripemd256* = Ripemd160Context # defined in generic file atm
+  ripemd160* = Ripemd160Context # defined in generic file atm
 
 # Internals
 # ----------------------------------------------------------------
@@ -69,7 +69,7 @@ func update*(ctx: var Ripemd160Context, message: openarray[byte]) =
   ## in memory considered secure for your threat model.
   ctx.write(message, message.len.uint64)
 
-func finish*(ctx: var Ripemd160Context, digest: var array[HashSize, byte])  =
+func finish*(ctx: var Ripemd160Context, digest: var array[DigestSize, byte])  =
   ## Finalize a Ripemd160 computation and output the
   ## message digest to the `digest` buffer.
   ##
