@@ -162,11 +162,8 @@ suite "General ECDSA related tests":
     check DerSigSize(Edwards25519) == 72 # 253 bits subgroup order, fits 256 bit BigInt
     check DerSigSize(BLS12_381) == 72 # not commonly used, but larger modulo but *same* subgroup order
     check DerSigSize(P224) == 64 # 224 bit subgroup order -> 28 byte scalars
-    when sizeof(BaseType) == 8:
-      check DerSigSize(BW6_761) == 104 # not commonly used, but larger modulo with *larger* subgroup order
-                                       # 377 bit subgroup order -> 384 BigInt -> 48 byte scalars
-    elif sizeof(BaseType) == 4:
-      check DerSigSize(BW6_761) == 96 # 377 bit subgroup -> 380 bit BigInt -> 44 byte scalars
+    check DerSigSize(BW6_761) == 104 # not commonly used, but larger modulo with *larger* subgroup order
+                                     # 377 bit subgroup order -> 384 BigInt -> 48 byte scalars
 
 suite "ECDSA over secp256k1":
   test "Verify OpenSSL generated signatures from a fixed message (different nonces)":
