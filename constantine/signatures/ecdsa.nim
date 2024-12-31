@@ -55,14 +55,14 @@ func fromDigest[Name: static Algebra; N: static int](
   when truncateInput: # for signature & verification
     # If the `src` array is larger than the BigInt underlying `Fr[Name]`, need
     # to truncate the `src`.
-    const WordSize = sizeof(BaseType)
-    const FrBytes = Fr[Name].bits.ceildiv_vartime(WordSize)
+    const OctetWidth = 8
+    const FrBytes = Fr[Name].bits.ceildiv_vartime(OctetWidth)
     # effectively: `scalar ~ array[0 ..< scalar.len]`
     scalar.unmarshal(toOpenArray[byte](src, 0, FrBytes-1), bigEndian)
     # Now still need to right shift potential individual bits.
     # e.g. 381 bit BigInt fits into 384 bit (48 bytes), so need to
     # right shift 3 bits to truncate correctly.
-    const toShift = FrBytes * WordSize - Fr[Name].bits
+    const toShift = FrBytes * OctetWidth - Fr[Name].bits
     when toShift > 0:
       scalar.shiftRight(toShift)
   else: # for RFC 6979 nonce sampling. If larger than modulus, sample again
@@ -110,8 +110,8 @@ proc nonceRfc6979[Name: static Algebra](
   ## Spec:
   ## https://datatracker.ietf.org/doc/html/rfc6979#section-3.2
 
-  const WordSize = sizeof(BaseType)
-  const N = Fr[Name].bits.ceilDiv_vartime(WordSize)
+  const OctetWidth = 8
+  const N = Fr[Name].bits.ceilDiv_vartime(OctetWidth)
 
   # Step a: `h1 = H(m)` hash message (already done, input is hash), convert to array of bytes
   var msgHashBytes {.noinit.}: array[N, byte]

@@ -48,9 +48,8 @@ proc toDER*[Name: static Algebra; N: static int](derSig: var DERSignature[N], r,
   ##
   ## Implementation follows ideas of Bitcoin's secp256k1 implementation:
   ## https://github.com/bitcoin-core/secp256k1/blob/f79f46c70386c693ff4e7aef0b9e7923ba284e56/src/ecdsa_impl.h#L171-L193
-
-  const WordSize = sizeof(BaseType)
-  const N = Fr[Name].bits.ceilDiv_vartime(WordSize) # 32 for `secp256k1`
+  const OctetWidth = 8
+  const N = Fr[Name].bits.ceilDiv_vartime(OctetWidth) # 32 for `secp256k1`
 
   template toByteArray(x: Fr[Name]): untyped =
     ## Convert to a 33 byte array. Leading zero byte required if
