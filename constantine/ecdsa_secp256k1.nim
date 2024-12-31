@@ -9,7 +9,7 @@
 import
   constantine/zoo_exports,
   constantine/signatures/ecdsa,
-  constantine/hashes/h_sha256,
+  constantine/hashes,
   constantine/named/algebras,
   constantine/math/elliptic/[ec_shortweierstrass_affine],
   constantine/math/[arithmetic, ec_shortweierstrass],
@@ -47,22 +47,55 @@ func signatures_are_equal*(a, b: Signature): bool {.libPrefix: prefix_ffi.} =
 proc sign*(sig: var Signature,
            secretKey: SecretKey,
            message: openArray[byte],
-           nonceSampler: NonceSampler = nsRandom) {.libPrefix: prefix_ffi, genCharAPI.} =
+           nonceSampler: NonceSampler = nsRandom,
+           H: type CryptoHash = sha256) {.libPrefix: prefix_ffi, genCharAPI.} =
   ## Sign `message` using `secretKey` and store the signature in `sig`. The nonce
   ## will either be randomly sampled `nsRandom` or deterministically calculated according
   ## to RFC6979 (`nsRfc6979`)
-  sig.coreSign(secretKey.raw, message, sha256, nonceSampler)
+  sig.coreSign(secretKey.raw, message, H, nonceSampler)
 
 proc verify*(
     publicKey: PublicKey,
     message: openArray[byte],
-    signature: Signature
+    signature: Signature,
+    H: type CryptoHash = sha256
 ): bool {.libPrefix: prefix_ffi, genCharAPI.} =
   ## Verify `signature` using `publicKey` for `message`.
-  result = publicKey.raw.coreVerify(message, signature, sha256)
+  result = publicKey.raw.coreVerify(message, signature, H)
 
 func derive_pubkey*(public_key: var PublicKey, secret_key: SecretKey) {.libPrefix: prefix_ffi.} =
   ## Derive the public key matching with a secret key
   ##
   ## The secret_key MUST be validated
   public_key.raw.derivePubkey(secret_key.raw)
+
+proc recoverPubkey*(
+    publicKey: var PublicKey,
+    message: openArray[byte],
+    signature: Signature,
+    evenY: bool,
+    H: type CryptoHash = sha256
+) {.libPrefix: prefix_ffi, genCharAPI.} =
+  ## Verify `signature` using `publicKey` for `message`.
+  ##
+  ## `evenY == true` returns the public key corresponding to the
+  ## even `y` coordinate of the `R` point.
+  publicKey.raw.recoverPubkey(signature, message, evenY, H)
+
+proc recoverPubkey*(
+    publicKey: var PublicKey,
+    msgHash: Fr[Secp256k1],
+    signature: Signature,
+    evenY: bool
+) {.libPrefix: prefix_ffi.} =
+  ## Verify `signature` using `publicKey` for the given message digest
+  ## given as a scalar in the field `Fr[Secp256k1]`.
+  ##
+  ## `evenY == true` returns the public key corresponding to the
+  ## even `y` coordinate of the `R` point.
+  ##
+  ## As this overload works directly with a message hash as a scalar,
+  ## it requires no hash function. Internally, it also calls the
+  ## `verify` implementation, which already takes a scalar and thus
+  ## requires no hash function there either.
+  publicKey.raw.recoverPubkeyImpl_vartime(signature, msgHash, evenY)
