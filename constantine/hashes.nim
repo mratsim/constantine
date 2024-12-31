@@ -65,13 +65,16 @@ func hash*(
 
 import ./hashes/[
   h_keccak,
-  h_sha256
+  h_sha256,
+  h_ripemd160
 ]
 export
   h_keccak,
-  h_sha256
+  h_sha256,
+  h_ripemd160
 
 static:
   doAssert keccak256 is CryptoHash
   doAssert sha256 is CryptoHash
   doAssert sha3_256 is CryptoHash
+  doAssert ripemd160 is CryptoHash
