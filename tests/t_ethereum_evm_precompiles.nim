@@ -128,9 +128,38 @@ proc testSha256() =
 
   stdout.write "Success\n"
 
+proc testRipemd160() =
+  # https://github.com/ethereum/go-ethereum/blob/v1.14.0/core/vm/contracts_test.go#L216-L224
+  let input = "38d18acb67d25c8bb9942764b62f18e17054f66a817bd4295423adf9ed98873e000000000000000000000000000000000000000000000000000000000000001b38d18acb67d25c8bb9942764b62f18e17054f66a817bd4295423adf9ed98873e789d1dd423d25f0772d2748d60f7e4b81bb14d086eba8e8e8efb6dcff8a4ae02"
+  let expected = "0000000000000000000000009215b8d9882ff46f0dfde6684d78e831467f65e6"
+
+  echo "Running RIPEMD160 tests"
+  stdout.write "    Testing RIPEMD160 ... "
+
+  var inputbytes = newSeq[byte](input.len div 2)
+  inputbytes.fromHex(input)
+
+  var expectedbytes = newSeq[byte](expected.len div 2)
+  expectedbytes.fromHex(expected)
+
+  var r = newSeq[byte](expected.len div 2)
+
+  let status = eth_evm_ripemd160(r, inputbytes)
+  if status != cttEVM_Success:
+    reset(r)
+
+  doAssert r == expectedbytes, "[Test Failure]\n" &
+    "  eth_evm_ripemd160 status: " & $status & "\n" &
+    "  " & "result:   " & r.toHex() & "\n" &
+    "  " & "expected: " & expectedbytes.toHex() & '\n'
+
+  stdout.write "Success\n"
+
+
 # ----------------------------------------------------------------------
 
 testSha256()
+testRipemd160()
 
 runPrecompileTests("modexp.json", eth_evm_modexp, 0)
 runPrecompileTests("modexp_eip2565.json", eth_evm_modexp, 0)
