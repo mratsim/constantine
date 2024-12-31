@@ -67,6 +67,25 @@ func eth_evm_sha256*(r: var openArray[byte], inputs: openArray[byte]): CttEVMSta
   sha256.hash(cast[ptr array[32, byte]](r[0].addr)[], inputs)
   return cttEVM_Success
 
+func eth_evm_ripemd160*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
+  ## RIPEMD160
+  ##
+  ## Inputs:
+  ## - Message to hash
+  ##
+  ## Output:
+  ## - 32-byte digest (first 12 bytes zero)
+  ## - status code:
+  ##   cttEVM_Success
+  ##   cttEVM_InvalidOutputSize
+
+  if r.len != 32:
+    return cttEVM_InvalidOutputSize
+
+  # Need to only write to last 20 bytes. Hence fist `toOpenArray` & then cast & deref
+  ripemd160.hash(cast[ptr array[20, byte]](toOpenArray(r, 12, 31)[0].addr)[], inputs)
+  return cttEVM_Success
+
 func eth_evm_modexp_result_size*(size: var uint64, inputs: openArray[byte]): CttEVMStatus {.noInline, tags:[Alloca, Vartime], libPrefix: prefix_ffi, meter.} =
   ## Helper for `eth_evm_modexp`. Returns the size required to be allocated based on the
   ## given input. Call this function first, then allocate space for the result buffer
