@@ -6,11 +6,19 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+const prefix_ffi = "ctt_eth_verkle_ipa_"
+
+import ./zoo_exports
+
 import
+  ./platforms/[abstractions, views],
+  ./named/zoo_subgroups,
   ./commitments/eth_verkle_ipa,
-  ./math/[arithmetic, ec_twistededwards],
+  ./math/[arithmetic, ec_twistededwards, extension_fields],
   constantine/named/algebras,
-  ./serialization/[codecs_status_codes, codecs_banderwagon]
+  ./serialization/[codecs_status_codes, codecs_banderwagon],
+  constantine/math/polynomials/polynomials,
+  ./commitments/eth_verkle_transcripts
 
 # ------------------------------------------------------------
 # TODO: finish refactoring generate_random_points
@@ -20,8 +28,20 @@ import
   ./serialization/endians,
   ./math/io/[io_bigints, io_fields]
 
-const EthVerkleSeed* = "eth_verkle_oct_2021"
+export 
+  hashes,
+  abstractions,
+  ec_twistededwards,
+  CttCodecScalarStatus,
+  CttCodecEccStatus
 
+{.checks: off.}
+
+const EthVerkleSeed* = "eth_verkle_oct_2021"
+export EthVerkleTranscript 
+  
+# func add(a: int, b: int): int {.libPrefix: prefix_ffi.} =
+#     return a + b
 func generate_random_points*(r: var openArray[EC_TwEdw_Aff[Fp[Banderwagon]]]) =
   ## generate_random_points generates random points on the curve with the hardcoded EthVerkleSeed
   let points = allocHeapArrayAligned(EC_TwEdw_Aff[Fp[Banderwagon]], r.len, alignment = 64)
@@ -137,10 +157,21 @@ template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.}
 # ------------------------------------------------------------------------------------
 
 type
-  EthVerkleIpaProofBytes* = array[544, byte]
-  EthVerkleIpaMultiProofBytes* = array[576, byte]
-  EthVerkleIpaProof* = IpaProof[8, EC_TwEdw[Fp[Banderwagon]], Fr[Banderwagon]]
-  EthVerkleIpaMultiProof* = IpaMultiProof[8, EC_TwEdw[Fp[Banderwagon]], Fr[Banderwagon]]
+  EthVerkleIpaProofBytes* {.exportc: prefix_ffi & "proof_bytes".}= object
+    raw: array[544, byte]
+  EthVerkleIpaMultiProofBytes* {.exportc: prefix_ffi & "multi_proof_bytes".}= object
+    raw: array[576, byte]
+  EthVerkleIpaProof* {.exportc: prefix_ffi & "proof".} = object
+    aff: IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+    prj: IpaProof[8, EC_TwEdw_Prj[Fp[Banderwagon]], Fr[Banderwagon]]
+  EthVerkleIpaMultiProof* {.exportc: prefix_ffi & "multi_proof".} = object
+    aff: IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+    prj: IpaMultiProof[8, EC_TwEdw_Prj[Fp[Banderwagon]], Fr[Banderwagon]]
+  EthVerkleIpaPolyEvalCrs* {.exportc: prefix_ffi & "poly_eval".} = object
+    aff: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
+    prj: PolynomialEval[EthVerkleDomain, EC_TwEdw_Prj[Fp[Banderwagon]]]
+  EthVerkleIpaPolyEvalPoly* {.exportc: prefix_ffi & "poly_eval_poly".} = object
+    raw: PolynomialEval[256, Fr[Banderwagon]]
 
   # The aliases may throw strange errors like:
   # - Error: invalid type: 'EthVerkleIpaProof' for var
@@ -154,9 +185,9 @@ func serialize*(dst: var EthVerkleIpaProofBytes,
   const fpb = sizeof(Fp[Banderwagon])
   const frb = sizeof(Fr[Banderwagon])
 
-  let L = cast[ptr array[8, array[fpb, byte]]](dst.addr)
-  let R = cast[ptr array[8, array[fpb, byte]]](dst[8 * fpb].addr)
-  let a0 = cast[ptr array[frb, byte]](dst[2 * 8 * fpb].addr)
+  let L = cast[ptr array[8, array[fpb, byte]]](dst.raw.addr)
+  let R = cast[ptr array[8, array[fpb, byte]]](dst.raw[8 * fpb].addr)
+  let a0 = cast[ptr array[frb, byte]](dst.raw[2 * 8 * fpb].addr)
 
   for i in 0 ..< 8:
     L[i].serialize(src.L[i])
@@ -167,15 +198,27 @@ func serialize*(dst: var EthVerkleIpaProofBytes,
   a0[].serialize_fr(src.a0, littleEndian)
   return cttEthVerkleIpa_Success
 
-func deserialize*(dst: var EthVerkleIpaProof,
+func serialize_aff*(dst: var EthVerkleIpaProofBytes,
+                src: EthVerkleIpaProof
+                ): cttEthVerkleIpaStatus {.libPrefix: prefix_ffi.} =
+  
+  return serialize(dst, src.aff)
+
+func serialize_prj*(dst: var EthVerkleIpaProofBytes,
+                src: EthVerkleIpaProof
+                ): cttEthVerkleIpaStatus {.libPrefix: prefix_ffi.} =
+  
+  return serialize(dst, src.prj)
+
+func deserialize*(dst: var IpaProof[8, EC_TwEdw[Fp[Banderwagon]], Fr[Banderwagon]],
                   src: EthVerkleIpaProofBytes): cttEthVerkleIpaStatus {.discardable.} =
 
   const fpb = sizeof(Fp[Banderwagon])
   const frb = sizeof(Fr[Banderwagon])
 
-  let L = cast[ptr array[8, array[fpb, byte]]](src.unsafeAddr)
-  let R = cast[ptr array[8, array[fpb, byte]]](src[8 * fpb].unsafeAddr)
-  let a0 = cast[ptr array[frb, byte]](src[2 * 8 * fpb].unsafeAddr)
+  let L = cast[ptr array[8, array[fpb, byte]]](src.raw.unsafeAddr)
+  let R = cast[ptr array[8, array[fpb, byte]]](src.raw[8 * fpb].unsafeAddr)
+  let a0 = cast[ptr array[frb, byte]](src.raw[2 * 8 * fpb].unsafeAddr)
 
   for i in 0 ..< 8:
     checkReturn dst.L[i].deserialize_vartime(L[i])
@@ -186,28 +229,54 @@ func deserialize*(dst: var EthVerkleIpaProof,
   checkReturn dst.a0.deserialize_fr(a0[], littleEndian)
   return cttEthVerkleIpa_Success
 
-func serialize*(dst: var EthVerkleIpaMultiProofBytes,
+func deserialize_aff*(dst: var EthVerkleIpaProof,
+                  src: EthVerkleIpaProofBytes): cttEthVerkleIpaStatus {.libPrefix:prefix_ffi.} =
+  return deserialize(dst.aff, src)
+
+# func deserialize_prj*(dst: var EthVerkleIpaProof,
+#                   src: EthVerkleIpaProofBytes): cttEthVerkleIpaStatus {.libPrefix: prefix_ffi.} =
+#   return deserialize(dst.prj, src)
+
+func batch_serialize*(dst: var EthVerkleIpaMultiProofBytes,
                 src: IpaMultiProof[8, EC_TwEdw[Fp[Banderwagon]], Fr[Banderwagon]]
                 ): cttEthVerkleIpaStatus {.discardable.} =
 
   const frb = sizeof(Fr[Banderwagon])
-  let D = cast[ptr array[frb, byte]](dst.addr)
-  let g2Proof = cast[ptr EthVerkleIpaProofBytes](dst[frb].addr)
+  let D = cast[ptr array[frb, byte]](dst.raw.addr)
+  let g2Proof = cast[ptr EthVerkleIpaProofBytes](dst.raw[frb].addr)
 
   D[].serialize(src.D)
   g2Proof[].serialize(src.g2_proof)
   return cttEthVerkleIpa_Success
 
-func deserialize*(dst: var EthVerkleIpaMultiProof,
+func batch_serialize_aff*(dst: var EthVerkleIpaMultiProofBytes,
+                src: EthVerkleIpaMultiProof
+                ): cttEthVerkleIpaStatus {.libPrefix: prefix_ffi.} =
+  
+  return batch_serialize(dst, src.aff)
+
+func batch_serialize_prj*(dst: var EthVerkleIpaMultiProofBytes,
+                src: EthVerkleIpaMultiProof
+                ): cttEthVerkleIpaStatus {.libPrefix: prefix_ffi.} =
+  
+  return batch_serialize(dst, src.prj)
+
+func batch_deserialize*(dst: var IpaMultiProof[8, EC_TwEdw[Fp[Banderwagon]], Fr[Banderwagon]],
                   src: EthVerkleIpaMultiProofBytes
                   ): cttEthVerkleIpaStatus =
 
   const frb = sizeof(Fr[Banderwagon])
-  let D = cast[ptr array[frb, byte]](src.unsafeAddr)
-  let g2Proof = cast[ptr EthVerkleIpaProofBytes](src[frb].unsafeAddr)
+  let D = cast[ptr array[frb, byte]](src.raw.unsafeAddr)
+  let g2Proof = cast[ptr EthVerkleIpaProofBytes](src.raw[frb].unsafeAddr)
 
   checkReturn dst.D.deserialize_vartime(D[])
   return dst.g2_proof.deserialize(g2Proof[])
+
+func batch_deserialize_aff*(dst: var EthVerkleIpaMultiProof,
+                  src: EthVerkleIpaMultiProofBytes
+                  ): cttEthVerkleIpaStatus {.libPrefix: prefix_ffi.} =
+  
+  return batch_deserialize(dst.aff, src)
 
 # Mapping EC to scalars
 # ------------------------------------------------------------------------------------
@@ -227,6 +296,12 @@ func map_to_base_field*(dst: var Fp[Banderwagon],p: EC_TwEdw[Fp[Banderwagon]]) {
   invY.inv(p.y)             # invY = 1/Y
   dst.prod(p.x, invY)       # dst = (X) * (1/Y)
 
+func map_to_base_field_aff*(dst: var Fp[Banderwagon], p: EC_TwEdw_Aff[Fp[Banderwagon]]) {.libPrefix: prefix_ffi.} =
+  map_to_base_field(dst, p)
+
+func map_to_base_field_prj*(dst: var Fp[Banderwagon], p: EC_TwEdw_Prj[Fp[Banderwagon]]) {.libPrefix: prefix_ffi.} =
+  map_to_base_field(dst, p)
+
 func map_to_scalar_field*(res: var Fr[Banderwagon], p: EC_TwEdw[Fp[Banderwagon]]): bool {.discardable.} =
   ## This function takes the x/y value from the above function as Fp element
   ## and convert that to bytes in Big Endian,
@@ -243,6 +318,12 @@ func map_to_scalar_field*(res: var Fr[Banderwagon], p: EC_TwEdw[Fp[Banderwagon]]
   let check2 = res.unmarshalBE(baseFieldBytes)      # bytes -> Fr
 
   return check1 and check2
+
+func map_to_scalar_field_aff*(res: var Fr[Banderwagon], p: EC_TwEdw_Aff[Fp[Banderwagon]]): bool {.libPrefix: prefix_ffi.} =
+  return map_to_scalar_field(res, p)
+
+func map_to_scalar_field_prj*(res: var Fr[Banderwagon], p: EC_TwEdw_Prj[Fp[Banderwagon]]): bool {.libPrefix: prefix_ffi.} =
+  return map_to_scalar_field(res, p)
 
 func batch_map_to_scalar_field*(
       res: var openArray[Fr[Banderwagon]],
@@ -280,6 +361,15 @@ func batch_map_to_scalar_field*(
 
   return check
 
+func batch_map_to_scalar_field_aff*(
+      res: var openArray[Fr[Banderwagon]],
+      points: openArray[EC_TwEdw_Aff[Fp[Banderwagon]]]): bool {.libPrefix: prefix_ffi.} =
+  return batch_map_to_scalar_field(res, points)
+
+func batch_map_to_scalar_field_prj*(
+      res: var openArray[Fr[Banderwagon]],
+      points: openArray[EC_TwEdw_Prj[Fp[Banderwagon]]]): bool {.libPrefix: prefix_ffi.} =
+  return batch_map_to_scalar_field(res, points)
 # Inner Product Argument
 # ------------------------------------------------------------------------------------
 # TODO: proper IPA wrapper for https://github.com/status-im/nim-eth-verkle
@@ -288,5 +378,59 @@ func batch_map_to_scalar_field*(
 # - eth_verkle_ipa
 # - sha256 for transcripts
 
+func commit*(
+      crs: EthVerkleIpaPolyEvalCrs,
+      r: var EC_TwEdw_Prj[Fp[Banderwagon]], 
+      poly: EthVerkleIpaPolyEvalPoly) {.libPrefix: prefix_ffi.} =
+  ipa_commit(crs.aff, r, poly.raw)
+
+func prove*(
+      crs: EthVerkleIpaPolyEvalCrs, 
+      domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]],
+      transcript_label: string,
+      eval_at_challenge: var Fr[Banderwagon], 
+      proof: var IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]], 
+      poly: EthVerkleIpaPolyEvalPoly, 
+      commitment: EC_TwEdw_Aff[Fp[Banderwagon]], 
+      opening_challenge: Fr[Banderwagon]) {.libPrefix: prefix_ffi.} =
+  var transcript: sha256
+  transcript.initTranscript(transcript_label)
+  ipa_prove(crs.aff, domain, transcript, eval_at_challenge, proof, poly.raw, commitment, opening_challenge)
+
+func verify*(
+      crs: EthVerkleIpaPolyEvalCrs, 
+      domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]], 
+      transcript_label: string, 
+      commitment: EC_TwEdw_Aff[Fp[Banderwagon]],
+      opening_challenge: Fr[Banderwagon],
+      eval_at_challenge: var Fr[Banderwagon], 
+      proof: IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]): bool {.libPrefix: prefix_ffi.} =
+  var transcript: sha256
+  transcript.initTranscript(transcript_label)
+  return ipa_verify(crs.aff, domain, transcript, commitment, opening_challenge, eval_at_challenge, proof)
+
+func multi_prove*(
+      crs: EthVerkleIpaPolyEvalCrs, 
+      domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]], 
+      transcript_label: string, 
+      proof: var IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]], 
+      polys: openArray[PolynomialEval[256, Fr[Banderwagon]]], 
+      commitments: openArray[EC_TwEdw_Aff[Fp[Banderwagon]]], 
+      opening_challenges_in_domain: openArray[uint64]) {.libPrefix: prefix_ffi.} =
+  var transcript: sha256
+  transcript.initTranscript(transcript_label)
+  ipa_multi_prove(crs.aff, domain, transcript, proof, polys, commitments, opening_challenges_in_domain)
+
+func multi_verify*(
+      crs: EthVerkleIpaPolyEvalCrs, 
+      domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]], 
+      transcript_label: string, 
+      commitments: openArray[EC_TwEdw_Aff[Fp[Banderwagon]]],
+      opening_challenges_in_domain: openArray[uint64],
+      evals_at_challenges: openArray[Fr[Banderwagon]], 
+      proof: IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]): bool {.libPrefix: prefix_ffi.} =
+  var transcript: sha256
+  transcript.initTranscript(transcript_label)
+  return ipa_multi_verify(crs.aff, domain, transcript, commitments, opening_challenges_in_domain, evals_at_challenges, proof)
+
 export eth_verkle_ipa
-export hashes

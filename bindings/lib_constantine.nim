@@ -27,6 +27,7 @@ import
   constantine/ethereum_eip4844_kzg_parallel,
 
   constantine/ethereum_evm_precompiles,
+  constantine/ethereum_verkle_ipa,
 
   # Ensure globals like proc from kernel32.dll are populated at library load time
   ./lib_autoload
