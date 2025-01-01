@@ -11,94 +11,50 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <string.h>
 #include <constantine.h>
 
+void hex_to_bytes(const char *hex_string, byte *byte_array, size_t array_size) {
+    size_t hex_len = strlen(hex_string);
+    if (hex_len % 2 != 0 || hex_len / 2 > array_size) {
+        fprintf(stderr, "Error: Hex string length invalid or too large.\n");
+        return;
+    }
+    for (size_t i = 0; i < hex_len / 2; i++) {
+        sscanf(&hex_string[2 * i], "%2hhx", &byte_array[i]);
+    }
+}
+
+// TODO: complete testing
 int main(){
   // Protocol and deserialization statuses
-  ctt_eth_bls_status      bls_status;
-  ctt_codec_scalar_status scalar_status;
-  ctt_codec_ecc_status    ecc_status;
+  ctt_eth_verkle_ipa_status      ipa_status;
 
-  // Declare an example insecure non-cryptographically random non-secret key. DO NOT USE IN PRODUCTION.
-  byte raw_seckey[32] = "Security pb becomes key mgmt pb!";
-  ctt_eth_bls_seckey seckey;
+  banderwagon_ec_prj point;
+  char *endptr;
+  char *endptrX;
+  char *endptrY;
+  char *endptrZ;
+  // point.x = (banderwagon_fp) { .limbs = { strtol("0x0e7e3748db7c5c999a7bcd93d71d671f1f40090423792266f94cb27ca43fce5c", &endptrX, 16) } };
+  // point.y = (banderwagon_fp) { .limbs = { strtol("0x563a625521456130dc66f9fd6bda67330c7bb183b7f2223216c1c9536e1c622f", &endptrY, 16) } };
+  // point.z = (banderwagon_fp) { .limbs = { strtol("0x01", &endptrZ, 16) } };
 
-  scalar_status = ctt_eth_bls_deserialize_seckey(&seckey, raw_seckey);
-  if (scalar_status != cttCodecScalar_Success) {
-    printf(
-      "Secret key deserialization failure: status %d - %s\n",
-      scalar_status,
-      ctt_codec_scalar_status_to_string(scalar_status)
-    );
-    exit(1);
-  }
+  const ctt_eth_verkle_ipa_proof_bytes proof_bytes = { {0} };
 
-  // Derive the matching public key
-  ctt_eth_bls_pubkey pubkey;
-  ctt_eth_bls_derive_pubkey(&pubkey, &seckey);
+  hex_to_bytes("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002d3e383cf2ca36482707617daf4230f2261cff2abeb98a7d1e139cf386970f7a67cea4e0dcf8c437e5cd9852d95613a255ef625412a3ac7fb1a0d27227a32a7c1292f14b7c189f033c91217f02b34c7832958afc7ae3bb498b29ca08277dc60d1c53bb5f07280c16238a7f99c059cbbdbbc933bef4b74d604721a09b526aac1751a4bdf0df2d303418e7e5642ac4aacc730625514c87a4bcce5369cc4c1e1d2a1ee9125e09db763e7d99fa857928fabeb94ba822d5cf1cc8f5be372683ee7089082c0ca302a243f0124cc25319d069e0c689f03e4cb32e266fffd4b8c9a5e1cb2c708dc7960531ecea4331e376d7f6604228fc0606a08bda95ee3350c8bca83f37b23160af7bae3db95f0c66ed4535fc5397b43dcdc1d09c1e3a0376a6705d916d96cb64feb47d00ebf1ddbad7eaf3b5d8c381d31098c5c8a909793bd6063c2f0450320af78de387938261eba3e984271f31c3f71a55b33631b90505f8209b384aa55feb1c1c72a5e2abce15f24eb18715a309f5517ac3079c64c8ff157d3e35d5bad17b86f9599b1e34f1f4b7c6600a83913261645a0811fba0ad1ed104fe0c", proof_bytes.raw, sizeof(proof_bytes.raw));
+  // printf("Converted raw bytes (%zu bytes):\n", strlen("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002d3e383cf2ca36482707617daf4230f2261cff2abeb98a7d1e139cf386970f7a67cea4e0dcf8c437e5cd9852d95613a255ef625412a3ac7fb1a0d27227a32a7c1292f14b7c189f033c91217f02b34c7832958afc7ae3bb498b29ca08277dc60d1c53bb5f07280c16238a7f99c059cbbdbbc933bef4b74d604721a09b526aac1751a4bdf0df2d303418e7e5642ac4aacc730625514c87a4bcce5369cc4c1e1d2a1ee9125e09db763e7d99fa857928fabeb94ba822d5cf1cc8f5be372683ee7089082c0ca302a243f0124cc25319d069e0c689f03e4cb32e266fffd4b8c9a5e1cb2c708dc7960531ecea4331e376d7f6604228fc0606a08bda95ee3350c8bca83f37b23160af7bae3db95f0c66ed4535fc5397b43dcdc1d09c1e3a0376a6705d916d96cb64feb47d00ebf1ddbad7eaf3b5d8c381d31098c5c8a909793bd6063c2f0450320af78de387938261eba3e984271f31c3f71a55b33631b90505f8209b384aa55feb1c1c72a5e2abce15f24eb18715a309f5517ac3079c64c8ff157d3e35d5bad17b86f9599b1e34f1f4b7c6600a83913261645a0811fba0ad1ed104fe0c") / 2);
+  //   for (size_t i = 0; i < strlen("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002d3e383cf2ca36482707617daf4230f2261cff2abeb98a7d1e139cf386970f7a67cea4e0dcf8c437e5cd9852d95613a255ef625412a3ac7fb1a0d27227a32a7c1292f14b7c189f033c91217f02b34c7832958afc7ae3bb498b29ca08277dc60d1c53bb5f07280c16238a7f99c059cbbdbbc933bef4b74d604721a09b526aac1751a4bdf0df2d303418e7e5642ac4aacc730625514c87a4bcce5369cc4c1e1d2a1ee9125e09db763e7d99fa857928fabeb94ba822d5cf1cc8f5be372683ee7089082c0ca302a243f0124cc25319d069e0c689f03e4cb32e266fffd4b8c9a5e1cb2c708dc7960531ecea4331e376d7f6604228fc0606a08bda95ee3350c8bca83f37b23160af7bae3db95f0c66ed4535fc5397b43dcdc1d09c1e3a0376a6705d916d96cb64feb47d00ebf1ddbad7eaf3b5d8c381d31098c5c8a909793bd6063c2f0450320af78de387938261eba3e984271f31c3f71a55b33631b90505f8209b384aa55feb1c1c72a5e2abce15f24eb18715a309f5517ac3079c64c8ff157d3e35d5bad17b86f9599b1e34f1f4b7c6600a83913261645a0811fba0ad1ed104fe0c") / 2; i++) {
+  //       printf("%02X ", proof_bytes.raw[i]);
+  //       if ((i + 1) % 16 == 0) {
+  //           printf("\n"); // Add a newline for readability after every 16 bytes
+  //       }
+  //   }
+  //   printf("\n");
+  ctt_eth_verkle_ipa_proof_aff proof;
 
-  // Sign a message
-  byte message[32];
-  ctt_eth_bls_signature sig;
-  ctt_sha256_hash(message, (const byte*)"Mr F was here", 13, /* clear_memory = */ 0);
-  ctt_eth_bls_sign(&sig, &seckey, message, 32);
-
-  // Verify that a signature is valid for a message under the provided public key
-  bls_status = ctt_eth_bls_verify(&pubkey, message, 32, &sig);
-  if (bls_status != cttEthBls_Success) {
-    printf("Signature verification failure: status %d - %s\n", bls_status, ctt_eth_bls_status_to_string(bls_status));
-    exit(1);
-  }
-  printf("Example BLS signature/verification protocol completed successfully\n");
-
-
-  // ------------------------------
-  // Batch verification
-  // ------------------------------
-
-  // try to use batch verify; We just reuse the data from above 3 times
-  const ctt_eth_bls_pubkey pkeys[3] = { pubkey, pubkey, pubkey };
-  ctt_span messages[3] = { // already hashed message, reuse 3 times
-      { message, 32 },
-      { message, 32 },
-      { message, 32 }
-  };
-  const ctt_eth_bls_signature sigs[3] = { sig, sig, sig };
-
-  // Use constantine's `sysrand` to fill the secure random bytes
-  byte srb[32];
-  if(!ctt_csprng_sysrand(srb, 32)){
-      printf("Failed to fill `srb` using `sysrand`\n");
-      exit(1);
-  }
-
-  bls_status = ctt_eth_bls_batch_verify(pkeys, messages, sigs, 3, srb);
-  if (bls_status != cttEthBls_Success) {
-    printf("Batch verification failure: status %d - %s\n", bls_status, ctt_eth_bls_status_to_string(bls_status));
-    exit(1);
-  }
-
-  printf("Example BLS batch verification completed successfully\n");
-
-  // ------------------------------
-  // Batch verification, parallel
-  // ------------------------------
-
-  // and now try to use a threadpool and do the same in parallel
-
-  struct ctt_threadpool* tp = ctt_threadpool_new(4);
-  printf("Constantine: Threadpool init successful.\n");
-  bls_status = ctt_eth_bls_batch_verify_parallel(tp, pkeys, messages, sigs, 3, srb);
-  if (bls_status != cttEthBls_Success) {
-    printf("Batch verification failure: status %d - %s\n", bls_status, ctt_eth_bls_status_to_string(bls_status));
-    exit(1);
-  }
-  printf("Example parallel BLS batch verification completed successfully\n");
-
-  ctt_threadpool_shutdown(tp);
-  printf("Constantine: Threadpool shutdown successful.\n");
-
-
-
+  ctt_eth_verkle_ipa_status stat = ctt_eth_verkle_ipa_deserialize_aff(&proof, &proof_bytes);
+  printf("ctt_eth_verkle_ipa_deserialize_aff: %d\n", stat);
+//   printf("proof.g2_proof.l[0].x.limbs[0]: %lu\n", proof.g2_proof.l[0].x.limbs[0]);
+  
   return 0;
 }
