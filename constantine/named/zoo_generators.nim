@@ -12,7 +12,8 @@ import
   ./constants/bls12_381_generators,
   ./constants/bn254_snarks_generators,
   ./constants/bandersnatch_generators,
-  ./constants/banderwagon_generators
+  ./constants/banderwagon_generators,
+  ./constants/secp256k1_generators
 
 {.experimental: "dynamicbindsym".}
 

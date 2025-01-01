@@ -607,6 +607,9 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_ethereum_verkle_primitives.nim", false),
   ("tests/t_ethereum_verkle_ipa_primitives.nim", false),
 
+  # Signatures
+  ("tests/ecdsa/t_ecdsa_verify_openssl.nim", false),
+
   # Proof systems
   # ----------------------------------------------------------
   ("tests/proof_systems/t_r1cs_parser.nim", false),
