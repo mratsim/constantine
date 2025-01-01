@@ -103,7 +103,7 @@ proc signAndVerify(num: int, msg = "", nonceSampler = nsRandom) =
 
     # Verify that we can generate a DER signature again from the OpenSSL
     # data and it is equivalent to original
-    var derSig: DERSignature[DERSigSize(Secp256k1)]
+    var derSig: DerSignature[DerSigSize(Secp256k1)]
     derSig.toDER(rOslFr, sOslFr)
     check derSig.data == osSig
 
@@ -143,7 +143,7 @@ proc signRfc6979(msg: string, num = 10) =
   ## Signs the given message with a randomly generated private key `num` times
   ## using deterministic nonce generation and verifies the signature comes out
   ## identical each time.
-  var derSig: DERSignature[DERSigSize(Secp256k1)]
+  var derSig: DerSignature[DerSigSize(Secp256k1)]
 
   let secKey = generatePrivateKey()
   var sig {.noinit.}: Signature

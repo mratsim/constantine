@@ -29,15 +29,15 @@ type
   ## Has a `data` buffer of 72 bytes (maximum possible size for
   ## a signature for `secp256k1`) and `len` of actually used data.
   ## `data[0 ..< len]` is the actual signature.
-  DERSignature*[N: static int] = object
+  DerSignature*[N: static int] = object
     data*: array[N, byte] # Max size: 6 bytes overhead + 33 bytes each for r,s
     len*: int # Actual length used
 
-template DERSigSize*(Name: static Algebra): int =
+template DerSigSize*(Name: static Algebra): int =
   const OctetWidth = 8
   6 + 2 * (Fr[Name].bits.ceilDiv_vartime(OctetWidth) + 1)
 
-proc toDER*[Name: static Algebra; N: static int](derSig: var DERSignature[N], r, s: Fr[Name]) =
+proc toDER*[Name: static Algebra; N: static int](derSig: var DerSignature[N], r, s: Fr[Name]) =
   ## Converts signature (r,s) to DER format without allocation.
   ## Max size is 72 bytes (for Secp256k1 or any curve with 32 byte scalars in `Fr`):
   ## 6 bytes overhead + up to 32+1 bytes each for r,s.
@@ -156,7 +156,7 @@ proc fromRawDER*(r, s: var array[32, byte], sig: openArray[byte]): bool =
 
   result = true
 
-proc fromDER*(r, s: var array[32, byte], derSig: DERSignature) =
-  ## Splits a given `DERSignature` back into the `r` and `s` elements as
+proc fromDER*(r, s: var array[32, byte], derSig: DerSignature) =
+  ## Splits a given `DerSignature` back into the `r` and `s` elements as
   ## raw byte arrays.
   fromRawDER(r, s, derSig.data)
