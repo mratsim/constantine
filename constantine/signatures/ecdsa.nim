@@ -17,11 +17,11 @@ import
   constantine/mac/mac_hmac, # for deterministic nonce generation via RFC 6979
   constantine/named/zoo_generators, # for generator
   constantine/csprngs/sysrand,
-  constantine/signatures/common_signature_ops # for `derivePubkey`
+  constantine/signatures/ecc_sig_ops # for `derivePubkey`
 
 import std / macros # for `update` convenience helper
 
-export common_signature_ops
+export ecc_sig_ops
 
 type
   ## Decides the type of sampler we use for the nonce. By default

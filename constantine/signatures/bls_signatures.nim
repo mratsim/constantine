@@ -16,9 +16,9 @@ import
     constantine/hash_to_curve/[hash_to_curve, h2c_hash_to_field],
     constantine/hashes,
     constantine/platforms/views,
-    constantine/signatures/common_signature_ops # for `derivePubkey`
+    constantine/signatures/ecc_sig_ops # for `derivePubkey`
 
-export common_signature_ops
+export ecc_sig_ops
 
 # ############################################################
 #
