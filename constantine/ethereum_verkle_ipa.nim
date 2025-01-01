@@ -384,47 +384,53 @@ func commit*(
       poly: EthVerkleIpaPolyEvalPoly) {.libPrefix: prefix_ffi.} =
   ipa_commit(crs.aff, r, poly.raw)
 
-# func prove*(
-#       crs: EthVerkleIpaPolyEvalCrs, 
-#       domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]], 
-#       transcript: var EthVerkleTranscript, 
-#       eval_at_challenge: var Fr[Banderwagon], 
-#       proof: var IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]], 
-#       poly: EthVerkleIpaPolyEvalPoly, 
-#       commitment: EC_TwEdw_Aff[Fp[Banderwagon]], 
-#       opening_challenge: Fr[Banderwagon]) {.libPrefix: prefix_ffi.} =
-#   ipa_prove(crs, domain, transcript, eval_at_challenge, proof, poly, commitment, opening_challenge)
+func prove*(
+      crs: EthVerkleIpaPolyEvalCrs, 
+      domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]],
+      transcript_label: string,
+      eval_at_challenge: var Fr[Banderwagon], 
+      proof: var IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]], 
+      poly: EthVerkleIpaPolyEvalPoly, 
+      commitment: EC_TwEdw_Aff[Fp[Banderwagon]], 
+      opening_challenge: Fr[Banderwagon]) {.libPrefix: prefix_ffi.} =
+  var transcript: sha256
+  transcript.initTranscript(transcript_label)
+  ipa_prove(crs.aff, domain, transcript, eval_at_challenge, proof, poly.raw, commitment, opening_challenge)
 
-# func verify*(
-#       crs: EthVerkleIpaPolyEvalCrs, 
-#       domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]], 
-#       transcript: var EthVerkleTranscript, 
-#       commitment: EC_TwEdw_Aff[Fp[Banderwagon]],
-#       opening_challenge: Fr[Banderwagon],
-#       eval_at_challenge: var Fr[Banderwagon], 
-#       proof: IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]): bool {.libPrefix: prefix_ffi.} =
-#   return ipa_verify(crs, domain, transcript, commitment, opening_challenge, eval_at_challenge, proof)
+func verify*(
+      crs: EthVerkleIpaPolyEvalCrs, 
+      domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]], 
+      transcript_label: string, 
+      commitment: EC_TwEdw_Aff[Fp[Banderwagon]],
+      opening_challenge: Fr[Banderwagon],
+      eval_at_challenge: var Fr[Banderwagon], 
+      proof: IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]): bool {.libPrefix: prefix_ffi.} =
+  var transcript: sha256
+  transcript.initTranscript(transcript_label)
+  return ipa_verify(crs.aff, domain, transcript, commitment, opening_challenge, eval_at_challenge, proof)
 
-# func multi_prove*(
-#       crs: EthVerkleIpaPolyEvalCrs, 
-#       domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]], 
-#       transcript: var EthVerkleTranscript, 
-#       proof: var IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]], 
-#       polys: ptr UncheckedArray[EthVerkleIpaPolyEvalPoly], 
-#       commitments: ptr UncheckedArray[EC_TwEdw_Aff[Fp[Banderwagon]]], 
-#       opening_challenges_in_domain: ptr UncheckedArray[SomeUnsignedInt],
-#       len: int) {.libPrefix: prefix_ffi.} =
-#   ipa_multi_prove(crs, domain, transcript, proof, polys, commitments, opening_challenges_in_domain)
+func multi_prove*(
+      crs: EthVerkleIpaPolyEvalCrs, 
+      domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]], 
+      transcript_label: string, 
+      proof: var IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]], 
+      polys: openArray[PolynomialEval[256, Fr[Banderwagon]]], 
+      commitments: openArray[EC_TwEdw_Aff[Fp[Banderwagon]]], 
+      opening_challenges_in_domain: openArray[uint64]) {.libPrefix: prefix_ffi.} =
+  var transcript: sha256
+  transcript.initTranscript(transcript_label)
+  ipa_multi_prove(crs.aff, domain, transcript, proof, polys, commitments, opening_challenges_in_domain)
 
-# func multi_verify*(
-#       crs: EthVerkleIpaPolyEvalCrs, 
-#       domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]], 
-#       transcript: var EthVerkleTranscript, 
-#       commitments: ptr UncheckedArray[EC_TwEdw_Aff[Fp[Banderwagon]]],
-#       opening_challenges_in_domain: ptr UncheckedArray[SomeUnsignedInt],
-#       evals_at_challenges: ptr UncheckedArray[Fr[Banderwagon]], 
-#       proof: IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]],
-#       len: int): bool {.libPrefix: prefix_ffi.} =
-#   return ipa_multi_verify(crs, domain, transcript, commitments, opening_challenges_in_domain, evals_at_challenges, proof)
+func multi_verify*(
+      crs: EthVerkleIpaPolyEvalCrs, 
+      domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]], 
+      transcript_label: string, 
+      commitments: openArray[EC_TwEdw_Aff[Fp[Banderwagon]]],
+      opening_challenges_in_domain: openArray[uint64],
+      evals_at_challenges: openArray[Fr[Banderwagon]], 
+      proof: IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]): bool {.libPrefix: prefix_ffi.} =
+  var transcript: sha256
+  transcript.initTranscript(transcript_label)
+  return ipa_multi_verify(crs.aff, domain, transcript, commitments, opening_challenges_in_domain, evals_at_challenges, proof)
 
 export eth_verkle_ipa
