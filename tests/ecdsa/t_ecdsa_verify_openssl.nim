@@ -123,8 +123,8 @@ proc verifyPemWriter(num: int, msg = "") =
     let secKey = generatePrivateKey()
     let pubKey = getPublicKey(secKey)
 
-    writeFile(secKeyFile, toPemFile(secKey))
-    writeFile(pubKeyFile, toPemFile(pubKey))
+    writeFile(secKeyFile, toPem(secKey))
+    writeFile(pubKeyFile, toPem(pubKey))
 
     # Write a PEM file for public and private key using CTT and use it
     # to sign and verify a message.

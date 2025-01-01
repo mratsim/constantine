@@ -128,7 +128,7 @@ proc wrap(s: string, maxLineWidth = 64): string =
     if i < lines-1:
       result.add "\n"
 
-proc toPemFile*(publicKey: PublicKey): string =
+proc toPem*(publicKey: PublicKey): string =
   ## Convert a given private key to data in PEM format following SEC1
   ##
   ## RFC 7468 describes the textual encoding of these files:
@@ -144,7 +144,7 @@ proc toPemFile*(publicKey: PublicKey): string =
   result.add der64 & "\n"
   result.add "-----END PUBLIC KEY-----\n"
 
-proc toPemFile*(privateKey: SecretKey): string =
+proc toPem*(privateKey: SecretKey): string =
   ## XXX: For now using `std/base64` but will need to write base64 encoder
   ## & add tests for CTT base64 decoder!
   ## Convert a given private key to data in PEM format following SEC1
