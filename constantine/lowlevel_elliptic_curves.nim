@@ -11,6 +11,7 @@ import
     ./named/algebras,
     ./named/[zoo_subgroups, zoo_generators],
     ./math/ec_shortweierstrass,
+    ./math/ec_twistededwards,
     ./math/elliptic/[
       ec_scalar_mul_vartime,
       ec_multi_scalar_mul],
@@ -58,6 +59,13 @@ export
   affine, jacobian, projective,
   projectiveFromJacobian
 
+export 
+  ec_twistededwards.EC_TwEdw_Aff,
+  ec_twistededwards.EC_TwEdw_Prj,
+  ec_twistededwards.EC_TwEdw,
+  ec_twistededwards.getName,
+  affine, projective
+
 export ec_shortweierstrass.`==`
 export ec_shortweierstrass.isNeutral
 export ec_shortweierstrass.setNeutral
@@ -86,6 +94,37 @@ export ec_shortweierstrass.mixedDiff
 export ec_shortweierstrass.scalarMul
 export ec_scalar_mul_vartime.scalarMul_vartime
 export ec_multi_scalar_mul.multiScalarMul_vartime
+
+# Twisted edwards curve
+export ec_twistededwards.`==`
+export ec_twistededwards.isNeutral
+export ec_twistededwards.setNeutral
+export ec_twistededwards.ccopy
+export ec_twistededwards.isOnCurve
+export ec_twistededwards.neg
+export ec_twistededwards.cneg
+
+export ec_twistededwards.sum
+export ec_twistededwards.mixedSum
+export ec_twistededwards.double
+export ec_twistededwards.`+=`
+export ec_twistededwards.diff
+export ec_twistededwards.mixedDiff
+export ec_twistededwards.`-=`
+export ec_twistededwards.affine
+export ec_twistededwards.projective
+export ec_twistededwards.fromAffine
+export ec_twistededwards.batchAffine
+export ec_twistededwards.sum_vartime
+export ec_twistededwards.mixedSum_vartime
+export ec_twistededwards.diff_vartime
+export ec_twistededwards.mixedDiff_vartime
+export ec_twistededwards.`~+=`
+export ec_twistededwards.`~-=`
+export ec_twistededwards.`+`
+export ec_twistededwards.`~+`
+export ec_twistededwards.`-`
+export ec_twistededwards.`~-`
 
 export zoo_generators.getGenerator
 export zoo_subgroups.clearCofactor

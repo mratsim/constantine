@@ -27,6 +27,7 @@
 #include "constantine/curves/vesta.h"
 
 #include "constantine/curves/bls12_381_codecs.h"
+#include "constantine/curves/banderwagon.h"
 
 #include "constantine/curves/bls12_381_parallel.h"
 #include "constantine/curves/bn254_snarks_parallel.h"
@@ -40,5 +41,6 @@
 #include "constantine/protocols/ethereum_eip4844_kzg_parallel.h"
 
 #include "constantine/protocols/ethereum_evm_precompiles.h"
+#include "constantine/protocols/ethereum_verkle_ipa.h"
 
 #endif

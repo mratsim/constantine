@@ -19,11 +19,13 @@ import
 export c_curve_decls, c_curve_decls_parallel
 
 type
+  big253 = BigInt[253]
   big254 = BigInt[254]
   big255 = BigInt[255]
   big381 = BigInt[381]
 
 collectBindings(cBindings_big):
+  genBindingsBig(big253)
   genBindingsBig(big254)
   genBindingsBig(big255)
   genBindingsBig(big381)
@@ -140,3 +142,16 @@ collectBindings(cBindings_vesta_parallel):
   genParallelBindings_EC_ShortW_NonAffine(vesta_ec_prj, vesta_ec_aff, vesta_fr)
 
 # ----------------------------------------------------------
+
+type 
+  banderwagon_fr = Fr[Banderwagon]
+  banderwagon_fp = Fp[Banderwagon]
+  banderwagon_ec_aff = EC_TwEdw_Aff[Fp[Banderwagon]]
+  banderwagon_ec_prj = EC_TwEdw_Prj[Fp[Banderwagon]]
+
+collectBindings(cBindings_banderwagon):
+  genBindingsField(big253, banderwagon_fr)
+  genBindingsField(big255, banderwagon_fp)
+  genBindingsFieldSqrt(banderwagon_fp)
+  genBindings_EC_TwEdw_Affine(banderwagon_ec_aff, banderwagon_fp)
+  genBindings_EC_TwEdw_Projective(banderwagon_ec_prj, banderwagon_ec_aff, big253, banderwagon_fr)
