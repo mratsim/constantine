@@ -158,6 +158,9 @@ proc writeCurveParallelHeaders(dir: string) =
     bigSizes.incl(Fp[curveMappings[i][0]].bits())
     bigSizes.incl(Fr[curveMappings[i][0]].bits())
 
+  #bigInt header for banderwagon
+  bigSizes.incl(Fp[Banderwagon].bits())
+  bigSizes.incl(Fr[Banderwagon].bits())
   dir.writeBigIntHeader(bigSizes, cBindings_big)
 
 when isMainModule:

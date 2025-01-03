@@ -146,12 +146,12 @@ collectBindings(cBindings_vesta_parallel):
 type 
   banderwagon_fr = Fr[Banderwagon]
   banderwagon_fp = Fp[Banderwagon]
-  banderwagon_twedw_aff = EC_TwEdw_Aff[Fp[Banderwagon]]
-  banderwagon_twedw_prj = EC_TwEdw_Prj[Fp[Banderwagon]]
+  banderwagon_ec_aff = EC_TwEdw_Aff[Fp[Banderwagon]]
+  banderwagon_ec_prj = EC_TwEdw_Prj[Fp[Banderwagon]]
 
 collectBindings(cBindings_banderwagon):
   genBindingsField(big253, banderwagon_fr)
   genBindingsField(big255, banderwagon_fp)
   genBindingsFieldSqrt(banderwagon_fp)
-  genBindings_EC_TwEdw_Affine(banderwagon_twedw_aff, banderwagon_fp)
-  genBindings_EC_TwEdw_Projective(banderwagon_twedw_prj, banderwagon_twedw_aff, big253, banderwagon_fr)
+  genBindings_EC_TwEdw_Affine(banderwagon_ec_aff, banderwagon_fp)
+  genBindings_EC_TwEdw_Projective(banderwagon_ec_prj, banderwagon_ec_aff, big253, banderwagon_fr)
