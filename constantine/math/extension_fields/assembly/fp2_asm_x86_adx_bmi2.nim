@@ -29,9 +29,9 @@ static: doAssert UseASM_X86_64
 # No exceptions allowed
 {.push raises: [].}
 
-template c0*(a: array): auto =
+template c0(a: array): auto =
   a[0]
-template c1*(a: array): auto =
+template c1(a: array): auto =
   a[1]
 
 func has1extraBit(F: type Fp): bool =

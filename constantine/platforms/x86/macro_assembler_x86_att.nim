@@ -130,7 +130,7 @@ const OutputReg = {asmOutputEarlyClobber, asmInputOutput, asmInputOutputEarlyClo
 
 func toString*(nimSymbol: NimNode): string =
   # We need to dereference the hidden pointer of var param
-  let isPtr = nimSymbol.kind in {nnkHiddenDeref, nnkPtrTy}
+  let isPtr = nimSymbol.kind in {nnkHiddenDeref, nnkPtrTy, nnkDerefExpr}
   let isAddr = nimSymbol.kind in {nnkInfix, nnkCall} and (nimSymbol[0].eqIdent"addr" or nimSymbol[0].eqIdent"unsafeAddr")
 
   let nimSymbol = if isPtr: nimSymbol[0]
