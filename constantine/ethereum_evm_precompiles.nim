@@ -50,8 +50,7 @@ type
     cttEVM_PointNotOnCurve
     cttEVM_PointNotInSubgroup
     cttEVM_VerificationFailure
-    cttEVM_InvalidSignature
-    cttEVM_InvalidV # `v` of signature `(r, s, v)` is invalid
+    cttEVM_MalformedSignature
 
 func eth_evm_sha256*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## SHA256
@@ -1323,10 +1322,10 @@ func eth_evm_ecrecover*(r: var openArray[byte],
   ## XXX: Or construct a `BigInt[256]` instead and compare? (or compare with uint64s?)
   for i in 32 ..< 63: # first 31 bytes must be zero for a valid `v`
     if input[i] != byte 0:
-      return cttEVM_InvalidV
+      return cttEVM_MalformedSignature
   let v = input[63]
   if v notin [byte 0, 1, 27, 28]:
-    return cttEVM_InvalidSignature
+    return cttEVM_MalformedSignature
   # 2a. determine if even or odd `y` coordinate
   let evenY = v in [byte 0, 27] # 0 / 27 indicates `y` to be even, 1 / 28 odd
 
