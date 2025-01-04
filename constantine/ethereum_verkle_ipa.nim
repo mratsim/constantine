@@ -157,10 +157,8 @@ template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.}
 # ------------------------------------------------------------------------------------
 
 type
-  EthVerkleIpaProofBytes* {.exportc: prefix_ffi & "proof_bytes".}= object
-    raw: array[544, byte]
-  EthVerkleIpaMultiProofBytes* {.exportc: prefix_ffi & "multi_proof_bytes".}= object
-    raw: array[576, byte]
+  EthVerkleIpaProofBytes* {.exportc: prefix_ffi & "proof_bytes".}= array[544, byte]
+  EthVerkleIpaMultiProofBytes* {.exportc: prefix_ffi & "multi_proof_bytes".}= array[576, byte]
   EthVerkleIpaProof* {.exportc: prefix_ffi & "proof".} = object
     aff: IpaProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
     prj: IpaProof[8, EC_TwEdw_Prj[Fp[Banderwagon]], Fr[Banderwagon]]
@@ -185,9 +183,9 @@ func serialize*(dst: var EthVerkleIpaProofBytes,
   const fpb = sizeof(Fp[Banderwagon])
   const frb = sizeof(Fr[Banderwagon])
 
-  let L = cast[ptr array[8, array[fpb, byte]]](dst.raw.addr)
-  let R = cast[ptr array[8, array[fpb, byte]]](dst.raw[8 * fpb].addr)
-  let a0 = cast[ptr array[frb, byte]](dst.raw[2 * 8 * fpb].addr)
+  let L = cast[ptr array[8, array[fpb, byte]]](dst.addr)
+  let R = cast[ptr array[8, array[fpb, byte]]](dst[8 * fpb].addr)
+  let a0 = cast[ptr array[frb, byte]](dst[2 * 8 * fpb].addr)
 
   for i in 0 ..< 8:
     L[i].serialize(src.L[i])
@@ -216,9 +214,9 @@ func deserialize*(dst: var IpaProof[8, EC_TwEdw[Fp[Banderwagon]], Fr[Banderwagon
   const fpb = sizeof(Fp[Banderwagon])
   const frb = sizeof(Fr[Banderwagon])
 
-  let L = cast[ptr array[8, array[fpb, byte]]](src.raw.unsafeAddr)
-  let R = cast[ptr array[8, array[fpb, byte]]](src.raw[8 * fpb].unsafeAddr)
-  let a0 = cast[ptr array[frb, byte]](src.raw[2 * 8 * fpb].unsafeAddr)
+  let L = cast[ptr array[8, array[fpb, byte]]](src.unsafeAddr)
+  let R = cast[ptr array[8, array[fpb, byte]]](src[8 * fpb].unsafeAddr)
+  let a0 = cast[ptr array[frb, byte]](src[2 * 8 * fpb].unsafeAddr)
 
   for i in 0 ..< 8:
     checkReturn dst.L[i].deserialize_vartime(L[i])
@@ -242,8 +240,8 @@ func batch_serialize*(dst: var EthVerkleIpaMultiProofBytes,
                 ): cttEthVerkleIpaStatus {.discardable.} =
 
   const frb = sizeof(Fr[Banderwagon])
-  let D = cast[ptr array[frb, byte]](dst.raw.addr)
-  let g2Proof = cast[ptr EthVerkleIpaProofBytes](dst.raw[frb].addr)
+  let D = cast[ptr array[frb, byte]](dst.addr)
+  let g2Proof = cast[ptr EthVerkleIpaProofBytes](dst[frb].addr)
 
   D[].serialize(src.D)
   g2Proof[].serialize(src.g2_proof)
@@ -266,8 +264,8 @@ func batch_deserialize*(dst: var IpaMultiProof[8, EC_TwEdw[Fp[Banderwagon]], Fr[
                   ): cttEthVerkleIpaStatus =
 
   const frb = sizeof(Fr[Banderwagon])
-  let D = cast[ptr array[frb, byte]](src.raw.unsafeAddr)
-  let g2Proof = cast[ptr EthVerkleIpaProofBytes](src.raw[frb].unsafeAddr)
+  let D = cast[ptr array[frb, byte]](src.unsafeAddr)
+  let g2Proof = cast[ptr EthVerkleIpaProofBytes](src[frb].unsafeAddr)
 
   checkReturn dst.D.deserialize_vartime(D[])
   return dst.g2_proof.deserialize(g2Proof[])

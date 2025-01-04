@@ -760,12 +760,12 @@ suite "Multiproof Tests":
 
       ## Deserialize it into the Multiproof type
       var multiproof {.noInit.}: IpaMultiProof[8, EC_TwEdw_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
-      let s1 = multiproof.deserialize(validMultiproof_bytes)
+      let s1 = multiproof.batch_deserialize(validMultiproof_bytes)
       doAssert s1 == cttEthVerkleIpa_Success, "Failed to deserialize Multiproof"
 
       ## Serialize the Multiproof type in to a serialize Multiproof byte array
       var validMultiproof_bytes2 {.noInit} : EthVerkleIpaMultiProofBytes
-      validMultiproof_bytes2.serialize(multiproof)
+      validMultiproof_bytes2.batch_serialize(multiproof)
       doAssert validMultiproof_bytes2.toHex() == validMultiproof, "Error in the multiproof serialization!\n" & (block:
         "  expected: " & validMultiproof & "\n" &
         "  computed: " & validMultiproof_bytes2.toHex()
