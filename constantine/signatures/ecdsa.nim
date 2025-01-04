@@ -339,7 +339,7 @@ proc recoverPubkeyImpl_vartime*[Name: static Algebra; Sig](
   let M = Fp[Name].fromBig(Fr[Name].getModulus())
 
   # Due to the conversion of the `x` coordinate in `Fp` of the point `R` in the signing process
-  # to a scalar in `Fr`, we potentially reduce it modulo the subgroup order (if `x > M` with
+  # to a scalar in `Fr`, we potentially reduce it modulo the curve order (if `x >= r` with
   # `M` the subgroup order).
   # As we don't know if this is the case, we need to loop until we either find a valid signature,
   # adding `M` each iteration or until we roll over again, in which case the signature is invalid.
