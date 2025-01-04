@@ -340,7 +340,7 @@ proc recoverPubkeyImpl_vartime*[Name: static Algebra; Sig](
 
   # Due to the conversion of the `x` coordinate in `Fp` of the point `R` in the signing process
   # to a scalar in `Fr`, we potentially reduce it modulo the curve order (if `x >= r` with
-  # `M` the subgroup order).
+  # `r` the curve order).
   # As we don't know if this is the case, we need to loop until we either find a valid signature,
   # adding `M` each iteration or until we roll over again, in which case the signature is invalid.
   # NOTE: For secp256k1 this is _extremely_ unlikely, because prime of the curve `p` and subgroup
