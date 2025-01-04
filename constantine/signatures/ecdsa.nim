@@ -344,7 +344,7 @@ proc recoverPubkeyImpl_vartime*[Name: static Algebra; Sig](
   # As we don't know if this is the case, we need to loop until we either find a valid signature,
   # adding `M` each iteration or until we roll over again, in which case the signature is invalid.
   # NOTE: For secp256k1 this is _extremely_ unlikely, because prime of the curve `p` and subgroup
-  # order `M` are so close!
+  # order `r` are so close!
   var validSig = false
   while (not validSig) and bool(x1.toBig() <= rInit):
     # 1. Get base `R` point
