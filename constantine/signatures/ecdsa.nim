@@ -83,9 +83,9 @@ proc randomFieldElement[FF](): FF =
 
   result.fromBig(b)
 
-proc arrayWith[N: static int](res: var array[N, byte], val: byte) =
+proc byteArrayWith(N: static int, val: byte): array[N, byte] {.noinit, inline.} =
   for i in 0 ..< N:
-    res[i] = val
+    result[i] = val
 
 macro update[T](hmac: var HMAC[T], args: varargs[untyped]): untyped =
   ## Mini helper to allow HMAC to act on multiple arguments in succession
@@ -126,9 +126,9 @@ proc nonceRfc6979[Name: static Algebra](
 
   # Initial values
   # Step b: `V = 0x01 0x01 0x01 ... 0x01`
-  var v: array[N, byte]; v.arrayWith(byte 0x01)
+  var v = byteArrayWith(N, byte 0x01)
   # Step c: `K = 0x00 0x00 0x00 ... 0x00`
-  var k: array[N, byte]; k.arrayWith(byte 0x00)
+  var k = byteArrayWith(N, byte 0x00)
 
   # Create HMAC contexts
   var hmac {.noinit.}: HMAC[H]
