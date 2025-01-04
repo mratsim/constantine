@@ -17,7 +17,7 @@ import
   constantine/serialization/[codecs, codecs_ecdsa, codecs_ecdsa_secp256k1],
   constantine/math/arithmetic/[bigints, finite_fields],
   constantine/platforms/abstractions,
-  constantine/ecdsa_secp256k1
+  constantine/eth_ecdsa_signatures
 
 when not defined(windows) and not defined(macosx):
   # Windows (at least in GH actions CI) does not provide, among others `BN_new`

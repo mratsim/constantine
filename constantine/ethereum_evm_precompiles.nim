@@ -24,7 +24,7 @@ import
   ./ethereum_eip4844_kzg,
   ./serialization/codecs_status_codes,
   # ECDSA for ECRecover
-  ./ecdsa_secp256k1
+  ./eth_ecdsa_signatures
 
 # For KZG point precompile
 export EthereumKZGContext, TrustedSetupFormat, TrustedSetupStatus, trusted_setup_load, trusted_setup_delete
