@@ -99,19 +99,19 @@ extern "C"
     ctt_eth_verkle_ipa_poly_eval_domain *domain;
     banderwagon_fr domain_inverses[256];
   } ctt_eth_verkle_ipa_poly_eval_linear_domain;
-  typedef struct 
-  {
-    size_t digest_size;
-    size_t internal_block_size;
+  // typedef struct 
+  // {
+  //   size_t digest_size;
+  //   size_t internal_block_size;
 
-    void (*init)(void* ctx);
-    void (*update)(void* ctx, const byte data[], size_t length);
-    void (*finish)(void* ctx, byte data[], size_t digest_size);
-    void (*clear)(void* ctx);
-  } ctt_eth_verkle_ipa_transcript;
+  //   void (*init)(void* ctx);
+  //   void (*update)(void* ctx, const byte data[], size_t length);
+  //   void (*finish)(void* ctx, byte data[], size_t digest_size);
+  //   void (*clear)(void* ctx);
+  // } ctt_eth_verkle_ipa_transcript;
 
-  // ctt_eth_verkle_ipa_status ctt_eth_verkle_ipa_serialize(ctt_eth_verkle_ipa_proof_bytes *dst, const ctt_eth_verkle_ipa_proof_aff *src) __attribute__((warn_unused_result));
-  // ctt_eth_verkle_ipa_status ctt_eth_verkle_ipa_serialize_prj(ctt_eth_verkle_ipa_proof_bytes *dst, const ctt_eth_verkle_ipa_proof_prj *src) __attribute__((warn_unused_result));
+  ctt_eth_verkle_ipa_status ctt_eth_verkle_ipa_serialize_aff(ctt_eth_verkle_ipa_proof_bytes *dst, const ctt_eth_verkle_ipa_proof_aff *src) __attribute__((warn_unused_result));
+  ctt_eth_verkle_ipa_status ctt_eth_verkle_ipa_serialize_prj(ctt_eth_verkle_ipa_proof_bytes *dst, const ctt_eth_verkle_ipa_proof_prj *src) __attribute__((warn_unused_result));
   ctt_eth_verkle_ipa_status ctt_eth_verkle_ipa_deserialize_aff(ctt_eth_verkle_ipa_proof_aff *src, const ctt_eth_verkle_ipa_proof_bytes *dst) __attribute__((warn_unused_result));
   // ctt_eth_verkle_ipa_status ctt_eth_verkle_ipa_deserialize_prj(ctt_eth_verkle_ipa_proof_prj *src, const ctt_eth_verkle_ipa_proof_bytes *dst) __attribute__((warn_unused_result));
   // void ctt_eth_verkle_ipa_map_to_base_field_aff(banderwagon_fp *dst, const banderwagon_ec_aff *p) __attribute__((warn_unused_result));
