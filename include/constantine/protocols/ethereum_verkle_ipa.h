@@ -15,6 +15,7 @@
 extern "C"
 {
 #endif
+#include <string.h>
 
   typedef enum __attribute__((__packed__))
   {
@@ -113,19 +114,20 @@ extern "C"
   ctt_eth_verkle_ipa_status ctt_eth_verkle_ipa_serialize_aff(ctt_eth_verkle_ipa_proof_bytes *dst, const ctt_eth_verkle_ipa_proof_aff *src) __attribute__((warn_unused_result));
   ctt_eth_verkle_ipa_status ctt_eth_verkle_ipa_serialize_prj(ctt_eth_verkle_ipa_proof_bytes *dst, const ctt_eth_verkle_ipa_proof_prj *src) __attribute__((warn_unused_result));
   ctt_eth_verkle_ipa_status ctt_eth_verkle_ipa_deserialize_aff(ctt_eth_verkle_ipa_proof_aff *src, const ctt_eth_verkle_ipa_proof_bytes *dst) __attribute__((warn_unused_result));
-  // ctt_eth_verkle_ipa_status ctt_eth_verkle_ipa_deserialize_prj(ctt_eth_verkle_ipa_proof_prj *src, const ctt_eth_verkle_ipa_proof_bytes *dst) __attribute__((warn_unused_result));
-  // void ctt_eth_verkle_ipa_map_to_base_field_aff(banderwagon_fp *dst, const banderwagon_ec_aff *p) __attribute__((warn_unused_result));
-  // void ctt_eth_verkle_ipa_map_to_base_field_prj(banderwagon_fp *dst, const banderwagon_ec_prj *p) __attribute__((warn_unused_result));
-  // ctt_bool ctt_eth_verkle_ipa_map_to_scalar_field_aff(banderwagon_fr *res, const banderwagon_ec_aff *p) __attribute__((warn_unused_result));
-  // ctt_bool ctt_eth_verkle_ipa_map_to_scalar_field_prj(banderwagon_fr *res, const banderwagon_ec_prj *p) __attribute__((warn_unused_result));
-  // ctt_bool ctt_eth_verkle_ipa_batch_map_to_scalar_field_aff(banderwagon_fr res[], const banderwagon_ec_aff points[], size_t len) __attribute__((warn_unused_result));
-  // ctt_bool ctt_eth_verkle_ipa_batch_map_to_scalar_field_prj(banderwagon_fr res[], const banderwagon_ec_prj points[], size_t len) __attribute__((warn_unused_result));
-  // void ctt_eth_verkle_ipa_commit(const ctt_eth_verkle_ipa_polynomial_eval_crs *crs, banderwagon_ec_aff res, const ctt_eth_verkle_ipa_polynomial_eval_poly *poly) __attribute__((warn_unused_result));
-  // void ctt_eth_verkle_ipa_commit_prj(const ctt_eth_verkle_ipa_polynomial_eval_crs *crs, banderwagon_ec_prj res, const ctt_eth_verkle_ipa_polynomial_eval_poly *poly) __attribute__((warn_unused_result));
-  // void ctt_eth_verkle_ipa_prove(const ctt_eth_verkle_ipa_polynomial_eval_crs *crs, const ctt_eth_verkle_ipa_poly_eval_linear_domain *domain, ctt_eth_verkle_ipa_transcript *transcript, banderwagon_fr *eval_at_challenge, ctt_eth_verkle_ipa_proof_aff *proof, const ctt_eth_verkle_ipa_polynomial_eval_poly *poly, const banderwagon_ec_aff *commitment, const banderwagon_fr *opening_challenge) __attribute__((warn_unused_result));
-  // void ctt_eth_verkle_ipa_verify(const ctt_eth_verkle_ipa_polynomial_eval_crs *crs, const ctt_eth_verkle_ipa_poly_eval_linear_domain *domain, ctt_eth_verkle_ipa_transcript *transcript, const banderwagon_ec_aff *commitment, const banderwagon_fr *opening_challenge, banderwagon_fr *eval_at_challenge, const ctt_eth_verkle_ipa_proof_aff *proof) __attribute__((warn_unused_result));
-  // void ctt_eth_verkle_ipa_multi_prove(const ctt_eth_verkle_ipa_polynomial_eval_crs *crs, const ctt_eth_verkle_ipa_poly_eval_linear_domain *domain, ctt_eth_verkle_ipa_transcript *transcript, ctt_eth_verkle_ipa_multi_proof_aff *proof, const ctt_eth_verkle_ipa_polynomial_eval_poly polys[], size_t poly_len, const banderwagon_ec_aff commitments[], size_t commitment_len, const uint64_t opening_challenges_in_domain[], size_t opening_challenges_len) __attribute__((warn_unused_result));
-  // void ctt_eth_verkle_ipa_multi_verify(const ctt_eth_verkle_ipa_polynomial_eval_crs *crs, const ctt_eth_verkle_ipa_poly_eval_linear_domain *domain, ctt_eth_verkle_ipa_transcript *transcript, const banderwagon_ec_aff commitments[], size_t commitments_len, const uint64_t opening_challenges_in_domain[], size_t opening_challenges_len, const banderwagon_fr evals_at_challenge[], size_t evals_len, const ctt_eth_verkle_ipa_multi_proof_aff *proof) __attribute__((warn_unused_result));
+  ctt_eth_verkle_ipa_status ctt_eth_verkle_ipa_batch_serialize_aff(ctt_eth_verkle_ipa_multi_proof_bytes *dst, const ctt_eth_verkle_ipa_multi_proof_aff *src) __attribute__((warn_unused_result));
+  ctt_eth_verkle_ipa_status ctt_eth_verkle_ipa_batch_serialize_prj(ctt_eth_verkle_ipa_multi_proof_bytes *dst, const ctt_eth_verkle_ipa_multi_proof_prj *src) __attribute__((warn_unused_result));
+  ctt_eth_verkle_ipa_status ctt_eth_verkle_ipa_batch_deserialize_aff(ctt_eth_verkle_ipa_multi_proof_aff *src, const ctt_eth_verkle_ipa_multi_proof_bytes *dst) __attribute__((warn_unused_result));
+  void ctt_eth_verkle_ipa_map_to_base_field_aff(banderwagon_fp *dst, const banderwagon_ec_aff *p) __attribute__((warn_unused_result));
+  void ctt_eth_verkle_ipa_map_to_base_field_prj(banderwagon_fp *dst, const banderwagon_ec_prj *p) __attribute__((warn_unused_result));
+  ctt_bool ctt_eth_verkle_ipa_map_to_scalar_field_aff(banderwagon_fr *res, const banderwagon_ec_aff *p) __attribute__((warn_unused_result));
+  ctt_bool ctt_eth_verkle_ipa_map_to_scalar_field_prj(banderwagon_fr *res, const banderwagon_ec_prj *p) __attribute__((warn_unused_result));
+  ctt_bool ctt_eth_verkle_ipa_batch_map_to_scalar_field_aff(banderwagon_fr res[], const banderwagon_ec_aff points[], size_t len) __attribute__((warn_unused_result));
+  ctt_bool ctt_eth_verkle_ipa_batch_map_to_scalar_field_prj(banderwagon_fr res[], const banderwagon_ec_prj points[], size_t len) __attribute__((warn_unused_result));
+  void ctt_eth_verkle_ipa_commit(const ctt_eth_verkle_ipa_polynomial_eval_crs *crs, banderwagon_ec_aff res, const ctt_eth_verkle_ipa_polynomial_eval_poly *poly) __attribute__((warn_unused_result));
+  void ctt_eth_verkle_ipa_prove(const ctt_eth_verkle_ipa_polynomial_eval_crs *crs, const ctt_eth_verkle_ipa_poly_eval_linear_domain *domain, const char *label[], banderwagon_fr *eval_at_challenge, ctt_eth_verkle_ipa_proof_aff *proof, const ctt_eth_verkle_ipa_polynomial_eval_poly *poly, const banderwagon_ec_aff *commitment, const banderwagon_fr *opening_challenge) __attribute__((warn_unused_result));
+  void ctt_eth_verkle_ipa_verify(const ctt_eth_verkle_ipa_polynomial_eval_crs *crs, const ctt_eth_verkle_ipa_poly_eval_linear_domain *domain, const char *label[], const banderwagon_ec_aff *commitment, const banderwagon_fr *opening_challenge, banderwagon_fr *eval_at_challenge, const ctt_eth_verkle_ipa_proof_aff *proof) __attribute__((warn_unused_result));
+  void ctt_eth_verkle_ipa_multi_prove(const ctt_eth_verkle_ipa_polynomial_eval_crs *crs, const ctt_eth_verkle_ipa_poly_eval_linear_domain *domain, const char *label[], ctt_eth_verkle_ipa_multi_proof_aff *proof, const ctt_eth_verkle_ipa_polynomial_eval_poly polys[], size_t poly_len, const banderwagon_ec_aff commitments[], size_t commitment_len, const uint64_t opening_challenges_in_domain[], size_t opening_challenges_len) __attribute__((warn_unused_result));
+  void ctt_eth_verkle_ipa_multi_verify(const ctt_eth_verkle_ipa_polynomial_eval_crs *crs, const ctt_eth_verkle_ipa_poly_eval_linear_domain *domain, const char *transcript[], const banderwagon_ec_aff commitments[], size_t commitments_len, const uint64_t opening_challenges_in_domain[], size_t opening_challenges_len, const banderwagon_fr evals_at_challenge[], size_t evals_len, const ctt_eth_verkle_ipa_multi_proof_aff *proof) __attribute__((warn_unused_result));
 
 #ifdef __cplusplus
 }
