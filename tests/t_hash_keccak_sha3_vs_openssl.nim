@@ -27,8 +27,8 @@ else:
 
 # OpenSSL wrapper
 # --------------------------------------------------------------------
-# Hash API isn't available on Windows
-when not defined(windows):
+# Hash API isn't available on Windows, MacOS uses LibreSSL which doesn't provide OpenSSL 3.0 API as well
+when not defined(windows) and not defined(macosx):
   proc EVP_Q_digest[T: byte|char](
                   ossl_libctx: pointer,
                   algoName: cstring,
@@ -107,7 +107,7 @@ proc t_keccak256_abclong =
 const SmallSizeIters = 64
 const LargeSizeIters =  1
 
-when not defined(windows):
+when not defined(windows) and not defined(macosx):
   proc innerTest(rng: var RngState, sizeRange: Slice[int]) =
     let size = rng.random_unsafe(sizeRange)
     let msg = rng.random_byte_seq(size)
@@ -172,7 +172,7 @@ proc main() =
   var rng: RngState
   rng.seed(0xFACADE)
 
-  when not defined(windows):
+  when not defined(windows) and not defined(macosx):
     echo "SHA3-256 - 0 <= size < 64 - exhaustive"
     for i in 0 ..< 64:
       rng.innerTest(i .. i)
@@ -183,7 +183,7 @@ proc main() =
   for i in 0 ..< 64:
     rng.chunkTest(i .. i)
 
-  when not defined(windows):
+  when not defined(windows)and not defined(macosx):
     echo "SHA3-256 - 135 <= size < 138 - exhaustive (sponge rate = 136)"
     for i in 135 ..< 138:
       rng.innerTest(i .. i)
@@ -194,7 +194,7 @@ proc main() =
   for i in 135 ..< 138:
     rng.chunkTest(i .. i)
 
-  when not defined(windows):
+  when not defined(windows) and not defined(macosx):
     echo "SHA3-256 - 64 <= size < 1024B"
     for _ in 0 ..< SmallSizeIters:
       rng.innerTest(0 ..< 1024)
@@ -203,7 +203,7 @@ proc main() =
   for _ in 0 ..< SmallSizeIters:
     rng.chunkTest(0 ..< 1024)
 
-  when not defined(windows):
+  when not defined(windows) and not defined(macosx):
     echo "SHA3-256 - 1MB <= size < 50MB"
     for _ in 0 ..< LargeSizeIters:
       rng.innerTest(1_000_000 ..< 50_000_000)
