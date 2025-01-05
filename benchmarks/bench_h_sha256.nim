@@ -5,40 +5,16 @@ import
   helpers/prng_unsafe,
   ./bench_blueprint
 
+## NOTE: For a reason that evades me at the moment, if we only `import`
+## the wrapper, we get a linker error of the form:
+##
+## @mopenssl_wrapper.nim.c:(.text+0x110): undefined reference to `Dl_1073742356_'
+## /usr/bin/ld: warning: creating DT_TEXTREL in a PIE
+##
+## So for the moment, we just include the wrapper.
+include ../tests/openssl_wrapper
+
 proc separator*() = separator(69)
-
-# Deal with platform mess
-# --------------------------------------------------------------------
-when defined(windows):
-  when sizeof(int) == 8:
-    const DLLSSLName* = "(libssl-1_1-x64|ssleay64|libssl64).dll"
-  else:
-    const DLLSSLName* = "(libssl-1_1|ssleay32|libssl32).dll"
-else:
-  when defined(macosx) or defined(macos) or defined(ios):
-    const versions = "(.1.1|.38|.39|.41|.43|.44|.45|.46|.47|.48|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
-  else:
-    const versions = "(.1.1|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|.48|.47|.46|.45|.44|.43|.41|.39|.38|.10|)"
-
-  when defined(macosx) or defined(macos) or defined(ios):
-    const DLLSSLName* = "libssl" & versions & ".dylib"
-  elif defined(genode):
-    const DLLSSLName* = "libssl.lib.so"
-  else:
-    const DLLSSLName* = "libssl.so" & versions
-
-# OpenSSL wrapper
-# --------------------------------------------------------------------
-
-proc SHA256[T: byte|char](
-       msg: openarray[T],
-       digest: ptr array[32, byte] = nil
-     ): ptr array[32, byte] {.noconv, dynlib: DLLSSLName, importc.}
-
-proc SHA256_OpenSSL[T: byte|char](
-       digest: var array[32, byte],
-       s: openarray[T]) =
-  discard SHA256(s, digest.addr)
 
 # --------------------------------------------------------------------
 
@@ -80,6 +56,7 @@ when isMainModule:
       let msg = rng.random_byte_seq(s)
       let iters = int(target_cycles div (s.int64 * worst_cycles_per_bytes))
       benchSHA256_constantine(msg, $s & "B", iters)
-      benchSHA256_openssl(msg, $s & "B", iters)
+      when not defined(windows): # not available on Windows in GH actions atm
+        benchSHA256_openssl(msg, $s & "B", iters)
 
   main()

@@ -5,47 +5,14 @@ import
   # Helpers
   helpers/prng_unsafe
 
-# Deal with platform mess
-# --------------------------------------------------------------------
-when defined(windows):
-  when sizeof(int) == 8:
-    const DLLSSLName* = "(libssl-1_1-x64|ssleay64|libssl64).dll"
-  else:
-    const DLLSSLName* = "(libssl-1_1|ssleay32|libssl32).dll"
-else:
-  when defined(macosx) or defined(macos) or defined(ios):
-    const versions = "(.1.1|.38|.39|.41|.43|.44|.45|.46|.47|.48|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
-  else:
-    const versions = "(.1.1|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|.48|.47|.46|.45|.44|.43|.41|.39|.38|.10|)"
-
-  when defined(macosx) or defined(macos) or defined(ios):
-    const DLLSSLName* = "libssl" & versions & ".dylib"
-  elif defined(genode):
-    const DLLSSLName* = "libssl.lib.so"
-  else:
-    const DLLSSLName* = "libssl.so" & versions
-
-# OpenSSL wrapper
-# --------------------------------------------------------------------
-
-# OpenSSL removed direct use of their SHA256 function. https://github.com/openssl/openssl/commit/4d49b68504cc494e552bce8e0b82ec8b501d5abe
-# It isn't accessible anymore in Windows CI on Github Action.
-# But the new API EVP_Q_digest isn't accesible either
-# TODO: fix Windows
-when not defined(windows):
-  proc EVP_Q_digest[T: byte|char](
-                  ossl_libctx: pointer,
-                  algoName: cstring,
-                  propq: cstring,
-                  data: openArray[T],
-                  digest: var array[32, byte],
-                  size: ptr uint): int32 {.noconv, dynlib: DLLSSLName, importc.}
-
-  proc SHA256_OpenSSL[T: byte|char](
-        digest: var array[32, byte],
-        s: openArray[T]) =
-    # discard SHA256(s, digest.addr)
-    discard EVP_Q_digest(nil, "SHA256", nil, s, digest, nil)
+## NOTE: For a reason that evades me at the moment, if we only `import`
+## the wrapper, we get a linker error of the form:
+##
+## @mopenssl_wrapper.nim.c:(.text+0x110): undefined reference to `Dl_1073742356_'
+## /usr/bin/ld: warning: creating DT_TEXTREL in a PIE
+##
+## So for the moment, we just include the wrapper.
+include ./openssl_wrapper
 
 # Test cases
 # --------------------------------------------------------------------
