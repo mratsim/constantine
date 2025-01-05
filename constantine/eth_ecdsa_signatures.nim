@@ -47,21 +47,19 @@ func signatures_are_equal*(a, b: Signature): bool {.libPrefix: prefix_ffi.} =
 proc sign*(sig: var Signature,
            secretKey: SecretKey,
            message: openArray[byte],
-           nonceSampler: NonceSampler = nsRandom,
-           H: type CryptoHash = sha256) {.libPrefix: prefix_ffi, genCharAPI.} =
+           nonceSampler: NonceSampler = nsRandom) {.libPrefix: prefix_ffi, genCharAPI.} =
   ## Sign `message` using `secretKey` and store the signature in `sig`. The nonce
   ## will either be randomly sampled `nsRandom` or deterministically calculated according
   ## to RFC6979 (`nsRfc6979`)
-  sig.coreSign(secretKey.raw, message, H, nonceSampler)
+  sig.coreSign(secretKey.raw, message, keccak256, nonceSampler)
 
 proc verify*(
     publicKey: PublicKey,
     message: openArray[byte],
-    signature: Signature,
-    H: type CryptoHash = sha256
+    signature: Signature
 ): bool {.libPrefix: prefix_ffi, genCharAPI.} =
   ## Verify `signature` using `publicKey` for `message`.
-  result = publicKey.raw.coreVerify(message, signature, H)
+  result = publicKey.raw.coreVerify(message, signature, keccak256)
 
 func derive_pubkey*(public_key: var PublicKey, secret_key: SecretKey) {.libPrefix: prefix_ffi.} =
   ## Derive the public key matching with a secret key
@@ -73,14 +71,13 @@ proc recoverPubkey*(
     publicKey: var PublicKey,
     message: openArray[byte],
     signature: Signature,
-    evenY: bool,
-    H: type CryptoHash = sha256
+    evenY: bool
 ) {.libPrefix: prefix_ffi, genCharAPI.} =
   ## Verify `signature` using `publicKey` for `message`.
   ##
   ## `evenY == true` returns the public key corresponding to the
   ## even `y` coordinate of the `R` point.
-  publicKey.raw.recoverPubkey(signature, message, evenY, H)
+  publicKey.raw.recoverPubkey(signature, message, evenY, keccak256)
 
 proc recoverPubkey*(
     publicKey: var PublicKey,
