@@ -1340,7 +1340,7 @@ func eth_evm_ecrecover*(r: var openArray[byte],
 
   # 4. perform pubkey recovery
   var pubKey {.noinit.}: PublicKey
-  pubKey.recoverPubkey(msgHash, signature, evenY) # , keccak256)
+  pubKey.recoverPubkeyFromDigest(msgHash, signature, evenY)
 
   # 4. now calculate the Ethereum address of the public key (keccak256)
   privateAccess(PublicKey)

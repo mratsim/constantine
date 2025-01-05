@@ -79,7 +79,7 @@ proc recoverPubkey*(
   ## even `y` coordinate of the `R` point.
   publicKey.raw.recoverPubkey(signature, message, evenY, keccak256)
 
-proc recoverPubkey*(
+proc recoverPubkeyFromDigest*(
     publicKey: var PublicKey,
     msgHash: Fr[Secp256k1],
     signature: Signature,
