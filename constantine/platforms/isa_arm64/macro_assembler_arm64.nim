@@ -611,6 +611,19 @@ func codeFragment(a: var Assembler_arm64, instr: string, op: OperandReuse, reg0,
   if reg1 != xzr:
     a.regClobbers.incl reg1
 
+func codeFragment(a: var Assembler_arm64, instr: string, dst: Register, lhs: Operand, rhs: Register) =
+  # Generate a code fragment
+  let lhs_off = a.getStrOffset(lhs)
+
+  a.code &= instr & " " & $dst & ", " & lhs_off & ", " & $rhs & '\n'
+
+  if dst != xzr:
+    a.regClobbers.incl dst
+  if lhs.desc.constraint != asmClobberedRegister:
+    a.operands.incl lhs.desc
+  if rhs != xzr:
+    a.regClobbers.incl rhs
+
 func codeFragment(a: var Assembler_arm64, instr: string, dst: Register, lhs: OperandReuse, rhs: Register) =
   # Generate a code fragment
 
@@ -745,6 +758,11 @@ func sbcs*(a: var Assembler_arm64, dst, lhs, rhs: Operand) =
   ## Subtraction with borrow (set carry flag):
   ##   (borrow, dst) <- lhs - rhs - borrow
   doAssert dst.isOutput(), $dst.repr
+  a.codeFragment("sbcs", dst, lhs, rhs)
+
+func sbcs*(a: var Assembler_arm64, dst: Register, lhs: Operand, rhs: Register) =
+  ## Subtraction with borrow (set carry flag):
+  ##   (borrow, dst) <- lhs - rhs - borrow
   a.codeFragment("sbcs", dst, lhs, rhs)
 
 func sbcs*(a: var Assembler_arm64, dst: Register, lhs: OperandReuse, rhs: Register) =
