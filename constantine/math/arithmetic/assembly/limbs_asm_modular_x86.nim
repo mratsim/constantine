@@ -126,7 +126,6 @@ macro finalSub_gen*[N: static int](
 # Field addition
 # ------------------------------------------------------------
 
-
 macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_MEM: Limbs[N], spareBits: static int): untyped =
   ## Generate an optimized modular addition kernel
   # Register pressure note:

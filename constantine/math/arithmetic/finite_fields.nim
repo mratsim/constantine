@@ -36,6 +36,8 @@ import
 
 when UseASM_X86_64:
   import ./assembly/limbs_asm_modular_x86
+when UseASM_ARM64:
+  import ./assembly/limbs_asm_modular_arm64
 
 when nimvm:
   from constantine/named/deriv/precompute import montyResidue_precompute
@@ -193,6 +195,8 @@ func `+=`*(a: var FF, b: FF) {.meter.} =
   ## In-place addition modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
     addmod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
+  elif UseASM_ARM64:
+    addmod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = add(a.mres, b.mres)
     overflowed = overflowed or not(a.mres < FF.getModulus())
@@ -210,6 +214,8 @@ func double*(a: var FF) {.meter.} =
   ## Double ``a`` modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
     addmod_asm(a.mres.limbs, a.mres.limbs, a.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
+  elif UseASM_ARM64:
+    addmod_asm(a.mres.limbs, a.mres.limbs, a.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = double(a.mres)
     overflowed = overflowed or not(a.mres < FF.getModulus())
@@ -219,6 +225,8 @@ func sum*(r: var FF, a, b: FF) {.meter.} =
   ## Sum ``a`` and ``b`` into ``r`` modulo p
   ## r is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
+    addmod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
+  elif UseASM_ARM64:
     addmod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = r.mres.sum(a.mres, b.mres)
@@ -248,6 +256,8 @@ func double*(r: var FF, a: FF) {.meter.} =
   ## Double ``a`` into ``r``
   ## `r` is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
+    addmod_asm(r.mres.limbs, a.mres.limbs, a.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
+  elif UseASM_ARM64:
     addmod_asm(r.mres.limbs, a.mres.limbs, a.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = r.mres.double(a.mres)

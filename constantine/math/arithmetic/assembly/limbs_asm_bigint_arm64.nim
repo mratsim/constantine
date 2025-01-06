@@ -32,7 +32,7 @@ macro ccopy_gen[N: static int](a_PIR: var Limbs[N], b_PIR: Limbs[N], ctl: Secret
   let
     # MemOffsettable is the better constraint but
     # with ARM64 we cannot generate array offsets from it due to inline ASM auto-bracketings
-    a = asmArray(a_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memReadWrite)
+    a = asmArray(a_PIR, N, PointerInReg, asmInput, memIndirect = memReadWrite)
     b = asmArray(b_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
 
     control = asmValue(ctl, Reg, asmInput)
@@ -96,7 +96,7 @@ macro add_gen[N: static int](carry: var Carry, r_PIR: var Limbs[N], a_PIR, b_PIR
   let
     # MemOffsettable is the better constraint but
     # with ARM64 we cannot generate array offsets from it due to inline ASM auto-bracketings
-    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite)
+    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
     a = asmArray(a_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
     b = asmArray(b_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
 
@@ -159,7 +159,7 @@ macro sub_gen[N: static int](borrow: var Borrow, r_PIR: var Limbs[N], a_PIR, b_P
   let
     # MemOffsettable is the better constraint but
     # with ARM64 we cannot generate array offsets from it due to inline ASM auto-bracketings
-    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite)
+    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
     a = asmArray(a_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
     b = asmArray(b_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
 

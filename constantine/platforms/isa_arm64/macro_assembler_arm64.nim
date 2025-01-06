@@ -562,6 +562,26 @@ func codeFragment(a: var Assembler_arm64, instr: string, op0, op1, op2: Operand,
   if op2.desc.constraint != asmClobberedRegister:
     a.operands.incl op2.desc
 
+func codeFragment(a: var Assembler_arm64, instr: string, op: OperandReuse, reg0, reg1: Register) =
+  # Generate a code fragment
+
+  a.code &= instr & " %" & $op.asmId & ", " & $reg0 & ", " & $reg1 & '\n'
+
+  if reg0 != xzr:
+    a.regClobbers.incl reg0
+  if reg1 != xzr:
+    a.regClobbers.incl reg1
+
+func codeFragment(a: var Assembler_arm64, instr: string, dst: Register, lhs: OperandReuse, rhs: Register) =
+  # Generate a code fragment
+
+  a.code &= instr & " " & $dst & ", %" & $lhs.asmId & ", " & $rhs & '\n'
+
+  if dst != xzr:
+    a.regClobbers.incl dst
+  if rhs != xzr:
+    a.regClobbers.incl rhs
+
 func reuseRegister*(reg: OperandArray): OperandReuse =
   doAssert reg.buf[0].desc.constraint in {asmInputOutput, asmInputOutputEarlyClobber}
   result.asmId = reg.buf[0].desc.asmId
@@ -638,6 +658,11 @@ func adc*(a: var Assembler_arm64, dst, lhs, rhs: Operand) =
   doAssert dst.isOutput(), $dst.repr
   a.codeFragment("adc", dst, lhs, rhs)
 
+func adc*(a: var Assembler_arm64, dst: OperandReuse, lhs, rhs: Register) =
+  ## Addition-with-carry (no carry flag):
+  ##   dst <- lhs + rhs + carry
+  a.codeFragment("adc", dst, lhs, rhs)
+
 func adcs*(a: var Assembler_arm64, dst, lhs, rhs: Operand) =
   ## Addition-with-carry (set carry flag):
   ##   (carry, dst) <- lhs + rhs + carry
@@ -666,6 +691,11 @@ func sbcs*(a: var Assembler_arm64, dst, lhs, rhs: Operand) =
   ## Subtraction with borrow (set carry flag):
   ##   (borrow, dst) <- lhs - rhs - borrow
   doAssert dst.isOutput(), $dst.repr
+  a.codeFragment("sbcs", dst, lhs, rhs)
+
+func sbcs*(a: var Assembler_arm64, dst: Register, lhs: OperandReuse, rhs: Register) =
+  ## Subtraction with borrow (set carry flag):
+  ##   (borrow, dst) <- lhs - rhs - borrow
   a.codeFragment("sbcs", dst, lhs, rhs)
 
 func csel*(a: var Assembler_arm64, dst, lhs, rhs: Operand, cc: ConditionCode) =
