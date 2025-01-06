@@ -19,7 +19,7 @@ import
   constantine/platforms/abstractions,
   constantine/ecdsa_secp256k1
 
-when not defined(windows):
+when not defined(windows) and not defined(macosx):
   # Windows (at least in GH actions CI) does not provide, among others `BN_new`
   # so we disable this test for Windows for the time being.
   import ../openssl_wrapper
@@ -65,7 +65,7 @@ func getPublicKey(secKey: SecretKey): PublicKey {.noinit.} =
 
 template toOA(x: string): untyped = toOpenArrayByte(x, 0, x.len-1)
 
-when not defined(windows): # see above
+when not defined(windows) and not defined(macosx): # see above
   proc signAndVerify(num: int, msg = "", nonceSampler = nsRandom) =
     ## Generates `num` signatures and verify them against OpenSSL.
     ##
