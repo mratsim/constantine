@@ -22,6 +22,7 @@ static: doAssert UseASM_X86_32
 
 # Copy
 # ------------------------------------------------------------
+
 macro ccopy_gen[N: static int](a_PIR: var Limbs[N], b_MEM: Limbs[N], ctl: SecretBool): untyped =
   ## Generate an optimized conditional copy kernel
   result = newStmtList()
@@ -108,11 +109,11 @@ func add_asm*(r: var Limbs, a, b: Limbs): Carry =
   ## Constant-time addition
   add_gen(result, r, a, b)
 
-# Substraction
+# Subtraction
 # ------------------------------------------------------------
 
 macro sub_gen[N: static int](borrow: var Borrow, r_PIR: var Limbs[N], a_MEM, b_MEM: Limbs[N]): untyped =
-  ## Generate an optimized out-of-place substraction kernel
+  ## Generate an optimized out-of-place subtraction kernel
 
   result = newStmtList()
 
@@ -150,5 +151,5 @@ macro sub_gen[N: static int](borrow: var Borrow, r_PIR: var Limbs[N], a_MEM, b_M
   result.add ctx.generate()
 
 func sub_asm*(r: var Limbs, a, b: Limbs): Borrow =
-  ## Constant-time substraction
+  ## Constant-time subtraction
   sub_gen(result, r, a, b)

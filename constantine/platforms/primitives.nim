@@ -8,13 +8,13 @@
 
 import
   ./config,
-  constant_time/[
+  ./constant_time/[
     ct_types,
     ct_routines,
     multiplexers,
     ct_division
   ],
-  intrinsics/[
+  ./intrinsics/[
     addcarry_subborrow,
     extended_precision
   ],
@@ -39,8 +39,12 @@ export
 #   This will impact benchmarks that do not need it, such as the threadpool.
 
 when X86 and GCC_Compatible:
-  import x86/[cpudetect_x86, macro_assembler_x86]
+  import ./isa_x86/[cpudetect_x86, macro_assembler_x86]
   export cpudetect_x86, macro_assembler_x86
+
+when ARM64 and GCC_Compatible:
+  import ./isa_arm64/macro_assembler_arm64
+  export macro_assembler_arm64
 
 # No exceptions allowed in core cryptographic operations
 {.push raises: [].}
