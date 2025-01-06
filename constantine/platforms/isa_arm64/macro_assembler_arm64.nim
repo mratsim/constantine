@@ -547,6 +547,18 @@ func codeFragment(a: var Assembler_arm64, instr: string, op0, op1, op2: Operand)
   if op2.desc.constraint != asmClobberedRegister:
     a.operands.incl op2.desc
 
+func codeFragment(a: var Assembler_arm64, instr: string, op0, op1: Operand, op2: OperandReuse) =
+  # Generate a code fragment
+  let off0 = a.getStrOffset(op0)
+  let off1 = a.getStrOffset(op1)
+
+  a.code &= instr & " " & off0 & ", " & off1 & ", %" & $op2.asmId & '\n'
+
+  if op0.desc.constraint != asmClobberedRegister:
+    a.operands.incl op0.desc
+  if op1.desc.constraint != asmClobberedRegister:
+    a.operands.incl op1.desc
+
 func codeFragment(a: var Assembler_arm64, instr: string, op0, op1, op2: Operand, cc: ConditionCode) =
   # Generate a code fragment
   let off0 = a.getStrOffset(op0)
@@ -687,6 +699,11 @@ func sbc*(a: var Assembler_arm64, dst, lhs, rhs: Operand) =
   doAssert dst.isOutput(), $dst.repr
   a.codeFragment("sbc", dst, lhs, rhs)
 
+func sbc*(a: var Assembler_arm64, dst: OperandReuse, lhs, rhs: Register) =
+  ## Subtraction-with-borrow (no carry flag):
+  ##   dst <- lhs - rhs - borrow
+  a.codeFragment("sbc", dst, lhs, rhs)
+
 func sbcs*(a: var Assembler_arm64, dst, lhs, rhs: Operand) =
   ## Subtraction with borrow (set carry flag):
   ##   (borrow, dst) <- lhs - rhs - borrow
@@ -706,3 +723,6 @@ func csel*(a: var Assembler_arm64, dst, lhs, rhs: Operand, cc: ConditionCode) =
 func cmp*(a: var Assembler_arm64, lhs: Operand, rhs: Register) =
   ## Compare and set flags / condition code
   a.codeFragment("cmp", lhs, rhs)
+
+func `and`*(a: var Assembler_arm64, dst: Operand, lhs: Operand, rhs: OperandReuse) =
+  a.codeFragment("and", dst, lhs, rhs)
