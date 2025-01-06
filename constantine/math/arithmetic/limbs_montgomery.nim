@@ -18,6 +18,8 @@ when UseASM_X86_64:
     ./assembly/limbs_asm_mul_mont_x86,
     ./assembly/limbs_asm_mul_mont_x86_adx_bmi2,
     ./assembly/limbs_asm_redc_mont_x86_adx_bmi2
+when UseASM_ARM64:
+  import ./assembly/limbs_asm_mul_mont_arm64
 
 # ############################################################
 #
@@ -508,6 +510,8 @@ func mulMont*(
         mulMont_CIOS_sparebit_asm_adx(r, a, b, M, m0ninv, lazyReduce)
       else:
         mulMont_CIOS_sparebit_asm(r, a, b, M, m0ninv, lazyReduce)
+    elif UseASM_ARM64 and a.len in {2 .. 8}:
+      mulMont_CIOS_sparebit_asm(r, a, b, M, m0ninv, lazyReduce)
     else:
       mulMont_CIOS_sparebit(r, a, b, M, m0ninv, lazyReduce)
   else:

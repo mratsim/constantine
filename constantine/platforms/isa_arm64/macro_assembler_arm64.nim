@@ -574,6 +574,33 @@ func codeFragment(a: var Assembler_arm64, instr: string, op0, op1, op2: Operand,
   if op2.desc.constraint != asmClobberedRegister:
     a.operands.incl op2.desc
 
+func codeFragment(a: var Assembler_arm64, instr: string, op0, op1: Operand, reg: Register) =
+  # Generate a code fragment
+  let off0 = a.getStrOffset(op0)
+  let off1 = a.getStrOffset(op1)
+
+  a.code &= instr & " " & off0 & ", " & off1 & ", " & $reg & '\n'
+
+  if op0.desc.constraint != asmClobberedRegister:
+    a.operands.incl op0.desc
+  if op1.desc.constraint != asmClobberedRegister:
+    a.operands.incl op1.desc
+  if reg != xzr:
+    a.regClobbers.incl reg
+
+func codeFragment(a: var Assembler_arm64, instr: string, op: Operand, reg0, reg1: Register) =
+  # Generate a code fragment
+  let off = a.getStrOffset(op)
+
+  a.code &= instr & " " & off & ", " & $reg0 & ", " & $reg1 & '\n'
+
+  if op.desc.constraint != asmClobberedRegister:
+    a.operands.incl op.desc
+  if reg0 != xzr:
+    a.regClobbers.incl reg0
+  if reg1 != xzr:
+    a.regClobbers.incl reg1
+
 func codeFragment(a: var Assembler_arm64, instr: string, op: OperandReuse, reg0, reg1: Register) =
   # Generate a code fragment
 
@@ -675,6 +702,16 @@ func adc*(a: var Assembler_arm64, dst: OperandReuse, lhs, rhs: Register) =
   ##   dst <- lhs + rhs + carry
   a.codeFragment("adc", dst, lhs, rhs)
 
+func adc*(a: var Assembler_arm64, dst: Operand, lhs: Operand, rhs: Register) =
+  ## Addition-with-carry (no carry flag):
+  ##   dst <- lhs + rhs + carry
+  a.codeFragment("adc", dst, lhs, rhs)
+
+func adc*(a: var Assembler_arm64, dst: Operand, lhs, rhs: Register) =
+  ## Addition-with-carry (no carry flag):
+  ##   dst <- lhs + rhs + carry
+  a.codeFragment("adc", dst, lhs, rhs)
+
 func adcs*(a: var Assembler_arm64, dst, lhs, rhs: Operand) =
   ## Addition-with-carry (set carry flag):
   ##   (carry, dst) <- lhs + rhs + carry
@@ -715,6 +752,18 @@ func sbcs*(a: var Assembler_arm64, dst: Register, lhs: OperandReuse, rhs: Regist
   ##   (borrow, dst) <- lhs - rhs - borrow
   a.codeFragment("sbcs", dst, lhs, rhs)
 
+func mul*(a: var Assembler_arm64, dst, lhs, rhs: Operand) =
+  ## Multiplication (no flags):
+  ##   dst <- (lhs * rhs) mod 64
+  doAssert dst.isOutput(), $dst.repr
+  a.codeFragment("mul", dst, lhs, rhs)
+
+func umulh*(a: var Assembler_arm64, dst, lhs, rhs: Operand) =
+  ## Multiplication high-word (no flags):
+  ##   dst <- (lhs * rhs) >> 64
+  doAssert dst.isOutput(), $dst.repr
+  a.codeFragment("umulh", dst, lhs, rhs)
+
 func csel*(a: var Assembler_arm64, dst, lhs, rhs: Operand, cc: ConditionCode) =
   ## Conditional select into dst depending on condition code
   doAssert dst.isOutput(), $dst.repr
@@ -722,7 +771,16 @@ func csel*(a: var Assembler_arm64, dst, lhs, rhs: Operand, cc: ConditionCode) =
 
 func cmp*(a: var Assembler_arm64, lhs: Operand, rhs: Register) =
   ## Compare and set flags / condition code
+  ## This uses SUBS and discards the result
   a.codeFragment("cmp", lhs, rhs)
+
+func cmn*(a: var Assembler_arm64, lhs: Operand, rhs: Operand) =
+  ## Compare-negative and set flags / condition code
+  ## This uses ADDS and discards the result
+  a.codeFragment("cmn", lhs, rhs)
 
 func `and`*(a: var Assembler_arm64, dst: Operand, lhs: Operand, rhs: OperandReuse) =
   a.codeFragment("and", dst, lhs, rhs)
+
+func mov*(a: var Assembler_arm64, dst: Operand, src: Register) =
+  a.codeFragment("mov", dst, src)
