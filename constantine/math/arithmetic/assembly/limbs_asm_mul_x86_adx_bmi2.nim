@@ -14,7 +14,7 @@ import
 
 # ############################################################
 #
-#        Assembly implementation of finite fields
+#        Assembly implementation of bigint multiplication
 #
 # ############################################################
 
@@ -111,7 +111,7 @@ macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_MEM: Limb
   ## The result will be truncated, i.e. it will be
   ## a * b (mod (2^WordBitWidth)^r.limbs.len)
   ##
-  ## Assumes r doesn't aliases a or b
+  ## Assumes r doesn't alias a or b
 
   result = newStmtList()
 

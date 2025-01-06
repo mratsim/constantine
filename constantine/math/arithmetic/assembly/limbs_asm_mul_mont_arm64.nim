@@ -173,6 +173,7 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
       for j in 1 ..< N:
         ctx.mulloadd_cio(t[j], aa[j], bi, t[j])
       ctx.adc A, xzr, xzr                        # assumes N > 1
+
     ctx.mulhiadd_co(t[1], aa[0], bi, t[1])       # assumes N > 1
     for j in 2 ..< N:
       ctx.mulhiadd_cio(t[j], aa[j-1], bi, t[j])

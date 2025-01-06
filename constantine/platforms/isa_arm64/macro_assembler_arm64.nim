@@ -520,6 +520,17 @@ func codeFragment(a: var Assembler_arm64, instr: string, op: Operand, reg: Regis
   if reg != xzr:
     a.regClobbers.incl reg
 
+func codeFragment(a: var Assembler_arm64, instr: string, reg: Register, op: Operand) =
+  # Generate a code fragment
+  let off = a.getStrOffset(op)
+
+  a.code &= instr & " " & $reg & ", " & off & '\n'
+
+  if op.desc.constraint != asmClobberedRegister:
+    a.operands.incl op.desc
+  if reg != xzr:
+    a.regClobbers.incl reg
+
 func codeFragment(a: var Assembler_arm64, instr: string, op0, op1: Operand) =
   # Generate a code fragment
   let off0 = a.getStrOffset(op0)
@@ -683,6 +694,11 @@ func ldp*(a: var Assembler_arm64, dst0, dst1, src: Operand) =
   a.codeFragment("ldp", dst0, dst1, src)
 
 func str*(a: var Assembler_arm64, src, dst: Operand) =
+  ## Store register: src -> dst
+  doAssert dst.isOutput(), $dst.repr
+  a.codeFragment("str", src, dst)
+
+func str*(a: var Assembler_arm64, src: Register, dst: Operand) =
   ## Store register: src -> dst
   doAssert dst.isOutput(), $dst.repr
   a.codeFragment("str", src, dst)
