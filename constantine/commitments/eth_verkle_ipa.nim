@@ -136,8 +136,8 @@ func innerProduct[F](r: var F, a, b: distinct(View[F] or MutableView[F])) =
     t.prod(a[i], b[i])
     r += t
 
-func ipa_commit*[N: static int, EC, EcAff, F](
-      crs: PolynomialEval[N, EcAff],
+func ipa_commit*[N: static int, EC, F](
+      crs: PolynomialEval[N, EC],
       r: var EC,
       poly: PolynomialEval[N, F]) =
   crs.pedersen_commit(r, poly)
@@ -841,8 +841,6 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
       proof: IpaMultiProof[logN, EcAff, F]): bool =
   ## Batch verification of commitments to multiple polynomials
   ## using a single multiproof
-  ##
-  ## TODO: The implementation is currently incomplete!
 
   # Prologue
   # -----------------------------------
@@ -934,8 +932,6 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
     invTminusChallenges[i] *= rpowers[i]
   freeHeapAligned(rpowers)
 
-  # TODO: Incomplete
-  #   g₂(t) disagrees with <a, b> inner product in ipa_multi_prove
   # Compute g₂(t) = ∑rⁱ.yᵢ/(t-zᵢ)
   var g2t {.noInit.}: F
   g2t.setZero()
