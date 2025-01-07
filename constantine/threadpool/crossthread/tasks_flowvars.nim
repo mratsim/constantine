@@ -142,16 +142,18 @@ proc isCompleted*(task: ptr Task): bool {.inline.} =
 proc setCompleted*(task: ptr Task) {.inline.} =
   ## Set a task to `complete`
   ## Wake a waiter thread if there is one
-  task.state.completed.store(1, moRelease)
-  let waiter = task.state.synchro.load(moAcquire)
+  task.state.completed.store(1, moRelease) # Correctness on weak memory models like ARM: tests/t_ethereum_eip4844_deneb_kzg_parallel.nim
+  fence(moSequentiallyConsistent)          # Avoid deadlock on Windows: benchmarks-threadpool/fibonacci/threadpool_fib.nim
+  let waiter = task.state.synchro.load(moRelaxed)
   if (waiter and kWaiterMask) != SentinelWaiter:
     task.state.completed.wake()
 
 proc sleepUntilComplete*(task: ptr Task, waiterID: int32) {.inline.} =
   ## Sleep while waiting for task completion
   let waiter = (cast[uint32](waiterID) shl kWaiterShift) - SentinelWaiter
-  discard task.state.synchro.fetchAdd(waiter, moRelease)
-  while task.state.completed.load(moAcquire) == 0:
+  discard task.state.synchro.fetchAdd(waiter, moRelaxed)
+  fence(moAcquire)
+  while task.state.completed.load(moRelaxed) == 0:
     task.state.completed.wait(0)
 
 # Leapfrogging synchronization
