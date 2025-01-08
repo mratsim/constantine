@@ -76,7 +76,7 @@ when not(CTT_32) and defined(vcc):
 
 elif not(CTT_32) and GCC_Compatible:
   type
-    uint128{.importc: "unsigned __int128".} = object
+    uint128{.importc: "unsigned __int128", nodecl.} = object
 
   const
     newerNim = (NimMajor, NimMinor) > (1, 6)
