@@ -561,6 +561,36 @@ func mixedSum*[F; G: static Subgroup](
 
   r = o
 
+func dbl_1998_cmo_rescaled_a0_impl[F; G: static Subgroup](r: var EC_ShortW_Jac[F, G], P: EC_ShortW_Jac[F, G]) {.inline.} =
+  static: doAssert F.Name.getCoefA() == 0
+  # "dbl-1998-cmo" doubling formula - https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-1998-cmo
+  # rescaled by 1/2, 1/4, 1/8 (inspiration from Bos et al https://eprint.iacr.org/2014/130.pdf)
+  # See [./ec_shortweierstrass_jacobian.md](./ec_shortweierstrass_jacobian.md)
+  #
+  #     Cost: 3M + 4S + 3add + 1*2 + 1*3 + 1half
+  #
+  #        YY = Y₁²
+  #         M = 3X₁²/2
+  #         S = X₁*YY
+  #        X₃ = M²-2*S
+  #        Y₃ = M*(S-X₃)-YY²
+  #        Z₃ = Y₁*Z₁
+  var Y {.noInit.}, M {.noInit.}, S {.noInit.}: F
+  Y.square(P.y)
+  M.square(P.x)
+  M *= 3
+  M.div2()
+  S.prod(P.x, Y)
+  Y.square()
+
+  r.z.prod(P.z, P.y) # Z₃ = Y₁*Z₁, no aliasing
+  r.x.square(M)      # X₃ = M²
+  r.x -= S           # X₃ = M²-S
+  r.x -= S           # X₃ = M²-2*S
+  r.y.diff(S, r.x)   # Y₃ = S-X₃
+  r.y *= M           # Y₃ = M*(S-X₃)
+  r.y -= Y           # Y₃ = M*(S-X₃)-YY²
+
 func double*[F; G: static Subgroup](r: var EC_ShortW_Jac[F, G], P: EC_ShortW_Jac[F, G]) {.meter.} =
   ## Elliptic curve point doubling for Short Weierstrass curves in projective coordinate
   ##
@@ -575,49 +605,7 @@ func double*[F; G: static Subgroup](r: var EC_ShortW_Jac[F, G], P: EC_ShortW_Jac
   ##
   ## Implementation is constant-time.
   when F.Name.getCoefA() == 0:
-    # "dbl-2009-l" doubling formula - https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
-    #
-    #     Cost: 2M + 5S + 6add + 3*2 + 1*3 + 1*8.
-    #     Source: 2009.04.01 Lange.
-    #     Explicit formulas:
-    #
-    #           A = X₁²
-    #           B = Y₁²
-    #           C = B²
-    #           D = 2*((X₁+B)²-A-C)
-    #           E = 3*A
-    #           F = E²
-    #           X₃ = F-2*D
-    #           Y₃ = E*(D-X₃)-8*C
-    #           Z₃ = 2*Y₁*Z₁
-    #
-    var A {.noInit.}, B{.noInit.}, C {.noInit.}: F
-    A.square(P.x)
-    B.square(P.y)
-    C.square(B)
-    B += P.x
-    # aliasing: we don't use P.x anymore
-
-    B.square()
-    B -= A
-    B -= C
-    B.double()         # D = 2*((X₁+B)²-A-C)
-    A *= 3             # E = 3*A
-    r.x.square(A)      # F = E²
-
-    r.x -= B
-    r.x -= B           # X₃ = F-2*D
-
-    B -= r.x           # (D-X₃)
-    A *= B             # E*(D-X₃)
-    C *= 8
-
-    r.z.prod(P.z, P.y)
-    r.z.double()       # Z₃ = 2*Y₁*Z₁
-    # aliasing: we don't use P.y, P.z anymore
-
-    r.y.diff(A, C)     # Y₃ = E*(D-X₃)-8*C
-
+    dbl_1998_cmo_rescaled_a0_impl(r, P)
   else:
     {.error: "Not implemented.".}
 
@@ -741,7 +729,7 @@ func sum_vartime*[F; G: static Subgroup](
   var U {.noInit.}, S{.noInit.}, H{.noInit.}, R{.noInit.}: F
 
   if not isPz1:                            # case Z₁ != 1
-    R.square(p.z, lazyReduce = true)     #   Z₁Z₁ = Z₁²
+    R.square(p.z, lazyReduce = true)       #   Z₁Z₁ = Z₁²
   if isQz1:                                # case Z₂ = 1
     U = p.x                                #   U₁ = X₁*Z₂Z₂
     if isPz1:                              #   case Z₁ = Z₂ = 1

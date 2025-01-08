@@ -222,3 +222,8 @@ we could use this formula instead:
 | Y₃ = R*(V-X₃)-2*S₁*J               | Y₃ = M*(S-X₃)-8*YY²                      |                 |                |
 | Z₃ = ((Z₁+Z₂)²-Z₁Z₁-Z₂Z₂)*H        | Z₃ = (Y₁+Z₁)² - YY - ZZ                  |                 |                |
 ```
+
+## References
+
+- https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html
+- Bos, Costello, Longa, Naehrig, 2014: https://eprint.iacr.org/2014/130.pdf
