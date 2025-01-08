@@ -18,7 +18,10 @@ extern "C" {
 typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(381)]; } big381;
 typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(255)]; } big255;
 typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(254)]; } big254;
+typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(253)]; } big253;
 
+ctt_bool    ctt_big253_unmarshalBE(big253* dst, const byte src[], size_t src_len) __attribute__((warn_unused_result));
+ctt_bool    ctt_big253_marshalBE(byte dst[], size_t dst_len, const big253* src) __attribute__((warn_unused_result));
 ctt_bool    ctt_big254_unmarshalBE(big254* dst, const byte src[], size_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_big254_marshalBE(byte dst[], size_t dst_len, const big254* src) __attribute__((warn_unused_result));
 ctt_bool    ctt_big255_unmarshalBE(big255* dst, const byte src[], size_t src_len) __attribute__((warn_unused_result));
