@@ -240,10 +240,10 @@ proc genDynamicLib(outdir, nimcache: string) =
     compile "constantine.dll"
 
   elif defined(macosx) or defined(macos):
-    compile "libconstantine.dylib.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
-    compile "libconstantine.dylib.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
-    exec &"lipo {outdir}/libconstantine.dylib.arm " &
-             &" {outdir}/libconstantine.dylib.x64 " &
+    compile "libconstantine.dylib.arm64", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
+    compile "libconstantine.dylib.x86_64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
+    exec &"lipo {outdir}/libconstantine.dylib.arm64 " &
+             &" {outdir}/libconstantine.dylib.x86_64 " &
              &" -output {outdir}/libconstantine.dylib -create"
 
   else:
