@@ -208,6 +208,8 @@ func square*[rLen, aLen](
       square_asm_adx(r, a)
     else:
       square_asm(r, a)
+  elif UseASM_ARM64 and aLen in {4, 6} and rLen == 2*aLen:
+    square_asm(r, a)
   elif UseASM_X86_64:
     square_asm(r, a)
   else:

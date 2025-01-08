@@ -25,7 +25,7 @@ static: doAssert UseASM_ARM64
 
 macro mulMont_CIOS_sparebit_gen[N: static int](
         r_PIR: var Limbs[N], a_PIR, b_PIR,
-        M_PIR: Limbs[N], m0ninv_REG: BaseType,
+        M_REG: Limbs[N], m0ninv_REG: BaseType,
         lazyReduce: static bool): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method
@@ -40,6 +40,7 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
   let
     r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
     b = asmArray(b_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    M = asmArray(M_REG, N, ElemsInReg, asmInput)
 
     tSym = ident"t"
     t = asmArray(tSym, N, ElemsInReg, asmOutputEarlyClobber)
@@ -51,8 +52,6 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
 
     aaSym = ident"aa"
     aa = asmArray(aaSym, N, ElemsInReg, asmInputOutput) # used as buffer for final substraction
-    mmSym = ident"mm"
-    mm = asmArray(mmSym, N, ElemsInReg, asmInput)
     mSym = ident"m"
     m = asmValue(mSym, Reg, asmOutputEarlyClobber)
 
@@ -65,12 +64,11 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
 
   # Prologue
   result.add quote do:
-    var `tSym`{.noinit, used.}, `aaSym`{.noinit, used.}, `mmSym`{.noInit, used.}: typeof(`r_PIR`)
+    var `tSym`{.noinit, used.}: typeof(`r_PIR`)
     var `aSym`{.noinit.}, `biSym`{.noInit.}, `mSym`{.noinit.}: BaseType
     var `uSym`{.noinit.}, `vSym`{.noInit.}: BaseType
 
-    `aaSym` = `a_PIR`
-    `mmSym` = `M_PIR`
+    let `aaSym` {.noinit, used.} = `a_PIR`
 
   # Algorithm
   # -----------------------------------------
@@ -204,19 +202,19 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
     #  t[3] = A + carry          + (m*M[3]).hi
 
     ctx.mul m, t[0], m0ninv
-    ctx.mul u, m, mm[0]
+    ctx.mul u, m, M[0]
     ctx.cmn t[0], u         # TODO: bad latency chain, hopefully done parallel to prev loop
     swap(u, v)
 
     for j in 1 ..< N:
-      ctx.mulloadd_cio(t[j-1], m, mm[j], t[j])
+      ctx.mulloadd_cio(t[j-1], m, M[j], t[j])
     ctx.adc t[N-1], A, xzr
 
     # assumes N > 1
-    ctx.mulhiadd_co(t[0], m, mm[0], t[0])
+    ctx.mulhiadd_co(t[0], m, M[0], t[0])
     for j in 1 ..< N-1:
-      ctx.mulhiadd_cio(t[j], m, mm[j], t[j])
-    ctx.mulhiadd_ci(t[N-1], m, mm[N-1], t[N-1])
+      ctx.mulhiadd_cio(t[j], m, M[j], t[j])
+    ctx.mulhiadd_ci(t[N-1], m, M[N-1], t[N-1])
 
   if lazyReduce:
     for i in 0 ..< N:
@@ -228,9 +226,9 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
 
     for i in 0 ..< N:
       if i == 0:
-        ctx.subs s[i], t[i], mm[i]
+        ctx.subs s[i], t[i], M[i]
       else:
-        ctx.sbcs s[i], t[i], mm[i]
+        ctx.sbcs s[i], t[i], M[i]
 
     # if carry clear t < M, so pick t
     for i in 0 ..< N:

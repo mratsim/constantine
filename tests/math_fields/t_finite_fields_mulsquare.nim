@@ -20,7 +20,7 @@ import
 const Iters = 12
 
 var rng: RngState
-let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+let seed = 0 # uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
 echo "\n------------------------------------------------------\n"
 echo "test_finite_fields_mulsquare xoshiro512** seed: ", seed
@@ -122,8 +122,10 @@ proc randomCurve(Name: static Algebra) =
   r_sqr.square(a)
 
   doAssert bool(r_mul == r_sqr), block:
-    "\nMul: " & r_mul.toHex() &
-    "\nSqr: " & r_sqr.toHex()
+    "\nTest failed for " & $Name &
+    "\nInput: " & a.toHex() &
+    "\nMul:   " & r_mul.toHex() &
+    "\nSqr:   " & r_sqr.toHex()
 
 proc randomHighHammingWeight(Name: static Algebra) =
   let a = rng.random_highHammingWeight(Fp[Name])
