@@ -226,9 +226,13 @@ type
     fd*: FieldDescriptor # of the underlying field
     family*: CurveFamily
     modulus*: string # Modulus as Big-Endian uppercase hex, NOT prefixed with 0x
-    modulusBitWidth*: uint32
+    modulusBitWidth*: uint32 # bits required for elements of `Fp`
     order*: string
-    orderBitWidth*: uint32
+    orderBitWidth*: uint32 # bits required for scalar elements `Fr`
+
+    # type of the field Fr
+    fieldScalarTy*: TypeRef
+    numWordsScalar*: uint32 # num words required for it
 
     cofactor*: string
     eqForm*: CurveEquationForm
@@ -250,7 +254,8 @@ proc configureCurve*(ctx: ContextRef,
       name: string,
       modBits: int, modulus: string,
       v, w: int,
-      coefA, coefB: int): CurveDescriptor =
+      coefA, coefB: int,
+      curveOrderBitWidth: int): CurveDescriptor =
   ## Configure a curve descriptor with:
   ## - v: vector length
   ## - w: base word size in bits
@@ -265,9 +270,14 @@ proc configureCurve*(ctx: ContextRef,
   # Array of 2 arrays for affine coords
   result.curveTyAff = array_t(result.fd.fieldTy, 2)
 
+  # and the type for elements of Fr
+  result.numWordsScalar = uint32 wordsRequired(curveOrderBitWidth, w)
+  result.fieldScalarTy = array_t(result.fd.wordTy, result.numWordsScalar)
+
   # Curve parameters
   result.coef_a = coef_a
   result.coef_b = coef_b # unused
+  result.orderBitWidth = curveOrderBitWidth.uint32
 
 proc definePrimitives*(asy: Assembler_LLVM, cd: CurveDescriptor) =
   asy.definePrimitives(cd.fd)
@@ -294,8 +304,11 @@ type
     elemTy*: TypeRef
     int32_t: TypeRef
 
-proc `[]`*(a: Array, index: SomeInteger): ValueRef {.inline.}
-proc `[]=`*(a: Array, index: SomeInteger, val: ValueRef) {.inline.}
+proc `=copy`*(m: var Array, x: Array) {.error: "Copying an Array is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+proc `[]`*(a: Array, index: SomeInteger | ValueRef): ValueRef {.inline.}
+proc `[]=`*(a: Array, index: SomeInteger | ValueRef, val: ValueRef) {.inline.}
 
 proc asArray*(br: BuilderRef, arrayPtr: ValueRef, arrayTy: TypeRef): Array =
   Array(
@@ -335,13 +348,34 @@ proc getElementPtr*(a: Array, indices: varargs[int]): ValueRef =
     idxs[i] = constInt(a.int32_t, idx)
   result = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, idxs)
 
-proc `[]`*(a: Array, index: SomeInteger): ValueRef {.inline.}=
+proc getElementPtr*(a: Array, indices: varargs[ValueRef]): ValueRef =
+  ## Helper to get an element pointer from a (nested) array using
+  ## indices that are already `ValueRef`
+  let idxs = @indices
+  result = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, idxs)
+
+template asInt(x: SomeInteger | ValueRef): untyped =
+  when typeof(x) is ValueRef: x
+  else: x.int
+
+proc getPtr*(a: Array, index: SomeInteger | ValueRef): ValueRef {.inline.}=
+  ## First dereference the array pointer with 0, then access the `index`
+  ## but do not load the element!
+  when typeof(index) is SomeInteger:
+    result = a.getElementPtr(0, index.int)
+  else:
+    result = a.getElementPtr(constInt(a.int32_t, 0), index)
+
+proc `[]`*(a: Array, index: SomeInteger | ValueRef): ValueRef {.inline.}=
   # First dereference the array pointer with 0, then access the `index`
-  let pelem = a.getElementPtr(0, index.int)
+  let pelem = getPtr(a, index)
   a.builder.load2(a.elemTy, pelem)
 
-proc `[]=`*(a: Array, index: SomeInteger, val: ValueRef) {.inline.}=
-  let pelem = a.getElementPtr(0, index.int)
+proc `[]=`*(a: Array, index: SomeInteger | ValueRef, val: ValueRef) {.inline.}=
+  when typeof(index) is SomeInteger:
+    let pelem = a.getElementPtr(0, index.int)
+  else:
+    let pelem = a.getElementPtr(constInt(a.int32_t, 0), index)
   a.builder.store(val, pelem)
 
 proc store*(asy: Assembler_LLVM, dst: Array, src: Array) {.inline.}=
@@ -354,27 +388,64 @@ proc store*(asy: Assembler_LLVM, dst: Array, src: ValueRef) {.inline.}=
   asy.br.store(src, dst.buf)
 
 # Representation of a finite field point with some utilities
-type Field* {.borrow: `.`.} = distinct Array
 
-proc `[]`*(a: Field, index: SomeInteger): ValueRef = distinctBase(a)[index]
-proc `[]=`*(a: Field, index: SomeInteger, val: ValueRef) = distinctBase(a)[index] = val
+template genField(name, desc, field: untyped): untyped =
+  type name* {.borrow: `.`.} = distinct Array
 
-proc asField*(br: BuilderRef, a: ValueRef, fieldTy: TypeRef): Field =
-  result = Field(br.asArray(a, fieldTy))
-proc asField*(asy: Assembler_LLVM, a: ValueRef, fieldTy: TypeRef): Field =
-  asy.br.asField(a, fieldTy)
-proc asField*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef): Field =
-  asy.br.asField(a, fd.fieldTy)
+  proc `=copy`(m: var name, x: name) {.error: "Copying a " & $name & " is not allowed. " &
+    "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
 
-proc newField*(asy: Assembler_LLVM, fd: FieldDescriptor): Field =
-  ## Use field descriptor for size etc?
-  result = Field(asy.makeArray(fd.fieldTy))
+  proc `[]`*(a: name, index: SomeInteger | ValueRef): ValueRef = distinctBase(a)[index]
+  proc `[]=`*(a: name, index: SomeInteger | ValueRef, val: ValueRef) = distinctBase(a)[index] = val
 
-proc store*(dst: Field, src: Field) =
-  ## Stores the `dst` in `src`. Both must correspond to the same field of course.
-  assert dst.arrayTy.getArrayLength() == src.arrayTy.getArrayLength()
-  for i in 0 ..< dst.arrayTy.getArrayLength:
-    dst[i] = src[i]
+  proc `as name`*(br: BuilderRef, a: ValueRef, fieldTy: TypeRef): name =
+    result = name(br.asArray(a, fieldTy))
+  proc `as name`*(asy: Assembler_LLVM, a: ValueRef, fieldTy: TypeRef): name =
+    asy.br.`as name`(a, fieldTy)
+  proc `as name`*(asy: Assembler_LLVM, d: desc, a: ValueRef): name =
+    asy.br.`as name`(a, d.field)
+
+  proc `new name`*(asy: Assembler_LLVM, d: desc): name =
+    ## Use field descriptor for size etc?
+    result = name(asy.makeArray(d.field))
+
+  proc store*(dst: name, src: name) =
+    ## Stores the `dst` in `src`. Both must correspond to the same field of course.
+    assert dst.arrayTy.getArrayLength() == src.arrayTy.getArrayLength()
+    for i in 0 ..< dst.arrayTy.getArrayLength:
+      dst[i] = src[i]
+
+
+genField(Field, FieldDescriptor, fieldTy)             # intended for elements of `Fp[Curve]`
+genField(FieldScalar, CurveDescriptor, fieldScalarTy) # intended for elements of `Fr[Curve]`
+
+# Representation of a finite field point with some utilities
+type FieldArray* {.borrow: `.`.} = distinct Array
+
+proc `=copy`(m: var FieldArray, x: FieldArray) {.error: "Copying an FieldArray is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+proc `[]`*(a: FieldArray, index: SomeInteger | ValueRef): Field = asField(a.builder, distinctBase(a).getPtr(index), a.elemTy)
+proc `[]=`*(a: FieldArray, index: SomeInteger | ValueRef, val: ValueRef) = distinctBase(a)[index] = val
+
+proc asFieldArray*(asy: Assembler_LLVM, fd: FieldDescriptor, a: ValueRef, num: int): FieldArray =
+  ## Interpret the given value `a` as an array of Field elements.
+  let ty = array_t(fd.fieldTy, num)
+  result = FieldArray(asy.br.asArray(a, ty))
+
+type FieldScalarArray* {.borrow: `.`.} = distinct Array
+
+proc `=copy`(m: var FieldScalarArray, x: FieldScalarArray) {.error: "Copying an FieldScalarArray is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+proc `[]`*(a: FieldScalarArray, index: SomeInteger | ValueRef): FieldScalar = asFieldScalar(a.builder, distinctBase(a).getPtr(index), a.elemTy)
+proc `[]=`*(a: FieldScalarArray, index: SomeInteger | ValueRef, val: ValueRef) = distinctBase(a)[index] = val
+
+proc asFieldScalarArray*(asy: Assembler_LLVM, cd: CurveDescriptor, a: ValueRef, num: int): FieldScalarArray =
+  ## Interpret the given value `a` as an array of Field elements.
+  let ty = array_t(cd.fieldScalarTy, num)
+  result = FieldScalarArray(asy.br.asArray(a, ty))
+
 
 # Conversion to native LLVM int
 # -------------------------------
@@ -636,4 +707,486 @@ template load2*(asy: Assembler_LLVM, ty: TypeRef, `ptr`: ValueRef, name: cstring
   asy.br.load2(ty, `ptr`, name)
 
 template store*(asy: Assembler_LLVM, dst, src: ValueRef, name: cstring = "") =
+  if not dst.getTypeOf.isPointerType():
+    raise newException(ValueError, "The destination argument to `store` is not a pointer type.")
+  if src.getTypeOf.isPointerType():
+    raise newException(ValueError, "The source argument to `store` is a pointer type. " &
+      "You must `load2()` it before the store. Or use the `MutableValue` type, in which case " &
+      "we can load it automatically for you. If you really wish to store the pointer " &
+      "to the destination, use `storePtr` instead.")
   asy.br.store(src, dst)
+
+template storePtr*(asy: Assembler_LLVM, dst, src: ValueRef, name: cstring = "") =
+  if not dst.getTypeOf.isPointerType():
+    raise newException(ValueError, "The destination argument to `storePtr` is not a pointer type.")
+  if not src.getTypeOf.isPointerType():
+    raise newException(ValueError, "The source argument to `storePtr` is not a pointer type. " &
+      "You likely want to call `store` instead.")
+  asy.br.store(src, dst)
+
+## No-op to support calling it on `MutableValue | ConstantValue | ValueRef`
+proc getValueRef*(x: ValueRef): ValueRef = x
+
+proc nimToLlvmType[T](asy: Assembler_LLVM, _: typedesc[T]): TypeRef =
+  when T is SomeInteger:
+    result = asy.ctx.int_t(sizeof(T) * 8)
+  else:
+    {.error: "Unsupported so far: " & $T.}
+
+type
+  ## A value constructed using `constX`
+  ConstantValue* = object
+    br: BuilderRef
+    val: ValueRef
+    typ: TypeRef
+
+proc `=copy`(m: var ConstantValue, x: ConstantValue) {.error: "Copying a constant value is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+
+proc initConstVal*(br: BuilderRef, val: ValueRef): ConstantValue =
+  ## Construct a constant value from a given LLVM value.
+  result = ConstantValue(br: br, val: val, typ: getTypeOf(val))
+
+proc initConstVal*(asy: Assembler_LLVM, val: ValueRef): ConstantValue =
+  asy.br.initConstVal(val)
+
+proc initConstVal*[T: SomeInteger](asy: Assembler_LLVM, x: T): ConstantValue =
+  let t = asy.nimToLlvmType(T)
+  result = initConstVal(asy.br, constInt(t, x))
+
+proc initConstVal*(br: BuilderRef, val: int{lit}, typ: TypeRef): ConstantValue =
+  ## Construct an LLVM value from an integer literal of the targe type `typ`.
+  result = br.initConstVal(constInt(typ, val))
+
+proc initConstVal*(asy: Assembler_LLVM, val: int{lit}, typ: TypeRef): ConstantValue =
+  ## Construct an LLVM value from an integer literal of the targe type `typ`.
+  result = asy.br.initConstVal(constInt(typ, val))
+
+template store*(asy: Assembler_LLVM, dst: ValueRef, src: ConstantValue, name: cstring = "") =
+  if not dst.getTypeOf.isPointerType():
+    raise newException(ValueError, "The destination argument to `store` is not a pointer type.")
+  asy.br.store(src.val, dst)
+
+proc getValueRef*(v: ConstantValue): ValueRef = v.val
+
+proc asLlvmConstInt[T: SomeInteger | ValueRef](x: T, dtype: TypeRef): ValueRef =
+  ## Given either a value that is already an LLVM value ref or
+  ## a Nim value, return a `constInt`
+  when T is ValueRef:
+    ## XXX: check type is int
+    result = x
+  else:
+    result = constInt(dtype, x)
+
+type
+  ## A value constructed using `constX`
+  MutableValue* = object
+    br: BuilderRef
+    buf: ValueRef
+    typ: TypeRef ## type of the *underlying* type, not the pointer
+
+proc `=copy`(m: var MutableValue, x: MutableValue) {.error: "Copying a mutable value is not allowed. " &
+  "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
+
+proc initMutVal*(br: BuilderRef, x: ValueRef): MutableValue =
+  ## Initializes a mutable value from a given LLVM value. Raises if the given
+  ## value is of pointer type.
+  if x.getTypeOf().isPointerType():
+    raise newException(ValueError, "Initializing a mutable value from a pointer type is not supported.")
+  let typ = x.getTypeOf()
+  result = MutableValue(
+    br: br,
+    buf: br.alloca(typ),
+    typ: typ
+  )
+  br.store(x, result.buf) # LLVM store is (source, dest)
+
+proc initMutVal*(br: BuilderRef, x: ConstantValue): MutableValue =
+  br.initMutVal(x.val)
+
+proc initMutVal*(asy: Assembler_LLVM, x: ConstantValue): MutableValue =
+  asy.br.initMutVal(x)
+
+proc initMutVal*(br: BuilderRef, typ: TypeRef): MutableValue =
+  if typ.getTypeKind != tkInteger:
+    raise newException(ValueError, "Initializing a mutable value from a non integer type without value is not supported. " &
+      "Type is: " & $typ)
+  br.initMutVal(constInt(typ, 0))
+
+proc initMutVal*(asy: Assembler_LLVM, typ: TypeRef): MutableValue =
+  asy.br.initMutVal(typ)
+
+proc initMutVal*[T](br: BuilderRef): MutableValue =
+  br.initMutVal(default(T)) # initialize with default value for correct type info
+
+proc initMutVal*[T](asy: Assembler_LLVM): MutableValue =
+  asy.br.initMutVal[:T]()
+
+proc load*(m: MutableValue): ConstantValue =
+  result = m.br.initConstVal(m.br.load2(m.typ, m.buf))
+
+proc store*(m: MutableValue, val: ValueRef) =
+  if val.getTypeOf.isPointerType():
+    raise newException(ValueError, "The source argument to `store` is a pointer type. " &
+      "You must `load2()` it before the store. Or use the `MutableValue` type, in which case " &
+      "we can load it automatically for you. If you really wish to store the pointer " &
+      "to the destination, use `storePtr` instead.")
+  m.br.store(val, m.buf) # LLVM store uses (target, source)
+
+proc store*(asy: Assembler_LLVM, dst: ValueRef, m: MutableValue) =
+  asy.store(dst, m.load().val) # delegate to regular template defined further above
+
+proc store*(asy: Assembler_LLVM, dst: MutableValue, x: ValueRef) =
+  asy.store(dst.buf, x) # delegate to regular template defined further above
+
+proc storePtr*(m: MutableValue, val: ValueRef) =
+  if not val.getTypeOf.isPointerType():
+    raise newException(ValueError, "The source argument to `store` is not a pointer type. " &
+      "You likely want to call `store` instead.")
+  m.br.store(val, m.buf) # LLVM store uses (target, source)
+
+proc store*(m: MutableValue, val: ConstantValue) =
+  m.store(val.val)
+
+proc getValueRef*(m: MutableValue): ValueRef = m.load().val
+
+## Convenience templates that make writing code more succinct
+
+import std / macros
+template llvmForImpl(asy, iter, suffix: untyped, start, stop, isCountup: typed, body: untyped): untyped =
+  ## `asy: Assembler_LLVM`, `fn` need to be in scope!
+  ## Start and stop need to be Nim values (CT or RT)
+  block:
+    let loopEntry = asy.ctx.appendBasicBlock(fn, "loop.entry" & suffix)
+    let loopBody  = asy.ctx.appendBasicBlock(fn, "loop.body" & suffix)
+    let loopExit  = asy.ctx.appendBasicBlock(fn, "loop.exit" & suffix)
+
+    # Branch to loop entry
+    asy.br.br(loopEntry)
+
+    # Position at loop entry
+    asy.br.positionAtEnd(loopEntry)
+
+    # stopping value & increment / decrement per iteration
+    let cStart = asLlvmConstInt(start, asy.ctx.int32_t())
+    let cStop = asLlvmConstInt(stop, asy.ctx.int32_t())
+    let change = if isCountup: 1 else: -1
+    let cChange = constInt(asy.ctx.int32_t(), change)
+
+    # Loop entry condition
+    let cmp = if isCountup: kSLE else: kSGE
+    let condition = asy.br.icmp(cmp, cStart, cStop)
+    asy.br.condBr(condition, loopBody, loopExit)
+
+    # Loop body
+    asy.br.positionAtEnd(loopBody)
+    let phi = asy.br.phi(getTypeOf cStart)
+    phi.addIncoming(cStart, loopEntry)
+
+    # Inject the phi node as the iterator
+    let iter {.inject.} = phi
+    # The loop body
+    body
+
+    # Increment / decrement for next iteration
+    let nextIter = asy.br.add(phi, cChange) # will subtract for countdown
+
+    ## After the loop body the builder may not be in the `loopBody` anymore.
+    ## Consider:
+    ##
+    ## llvmFor i, 0, 10, true:    # Outer loop
+    ##   # Block: outer.body
+    ##   llvmFor j, 0, 5, true:    # Inner loop
+    ##     # Block: inner.body
+    ##     # ... instructions ...
+    ##   # After inner loop - which block are we in?
+    ##
+    ##   # Need to add PHI incoming edge for outer loop
+    ##   phi.addIncoming(nextIter, ????)  # <-- `getInsertBlock` yields the after block of the inner loop
+    ##   # `loopBody` would be incorrect as a result of the inner loop.
+    phi.addIncoming(nextIter, asy.br.getInsertBlock())
+
+    # Check if we should continue looping
+    let continueLoop = asy.br.icmp(cmp, nextIter, cStop)
+    asy.br.condBr(continueLoop, loopBody, loopExit)
+
+    # Loop exit
+    asy.br.positionAtEnd(loopExit)
+
+macro llvmFor*(asy: untyped, iter: untyped, start, stop, isCountup: typed, body: untyped): untyped =
+  let label = $genSym(nskLabel, "loop")
+  result = quote do:
+    llvmForImpl(`asy`, `iter`, `label`, `start`, `stop`, `isCountup`, `body`)
+
+template llvmFor*(asy: untyped, iter: untyped, start, stop: typed, body: untyped): untyped {.dirty.} =
+  ## Start and stop must be Nim values
+  block:
+    let isCountup = start < stop
+    asy.llvmFor iter, start, stop, isCountup:
+      body
+
+template llvmForCountup*(asy: untyped, iter: untyped, start, stop: typed, body: untyped): untyped  {.dirty.} =
+  ## Start and stop can either be Nim or LLVM values
+  block:
+    asy.llvmFor iter, start, stop, true:
+      body
+
+template llvmForCountdown*(asy: untyped, iter: untyped, start, stop: typed, body: untyped): untyped  {.dirty.} =
+  ## Start and stop can either be Nim or LLVM values
+  block:
+    asy.llvmFor iter, start, stop, false:
+      body
+
+## Convenience utilities for `ValueRef` (representing numbers) for LLVM
+template declNumberOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped =
+  ## Declares templates similar to the field and EC ops templates
+  ## for `ValueRef`, `MutableValue` and `ConstantValue` so that one
+  ## can effectively write regular arithmetic / boolean logic code
+  ## with LLVM values to produce the correct code.
+  template genLhsRhsVariants(name, fn: untyped): untyped =
+    ## Generates variants for mix of Nim integer + ValueRef and
+    ## pure ValueRef
+    type T = int | uint32 | uint64
+    type U = ValueRef | MutableValue | ConstantValue
+    type X = MutableValue | ConstantValue
+
+    let I = fd.wordTy
+
+    template name(lhs, rhs: ValueRef): untyped =
+      if $getTypeOf(lhs) != $getTypeOf(rhs):
+        raise newException(ValueError, "Inputs do not have matching types. LHS = " & $getTypeOf(lhs) & ", RHS = " & $getTypeOf(rhs))
+      elif getTypeOf(lhs).isPointerType():
+        raise newException(ValueError, "Inputs must not be pointer types.")
+      asy.br.fn(lhs, rhs)
+    template name(lhs: SomeInteger, rhs: U): untyped =
+      block:
+        let lhsV = constInt(I, lhs)
+        asy.br.fn(lhsV, getValueRef rhs)
+    template name(lhs: U, rhs: SomeInteger): untyped =
+      block:
+        let rhsV = constInt(I, rhs)
+        asy.br.fn(getValueRef lhs, rhsV)
+    template name[T: X; U: X](lhs: T; rhs: U): untyped =
+      asy.br.fn(getValueRef lhs, getValueRef rhs)
+
+  template genLhsRhsBooleanVariants(name, pred: untyped): untyped =
+    ## Generates variants for mix of Nim integer + ValueRef and
+    ## pure ValueRef for boolean operations
+    type T = int | uint32 | uint64
+    type U = ValueRef | MutableValue | ConstantValue
+    type X = MutableValue | ConstantValue
+
+    let I = fd.wordTy
+
+    template name(lhs, rhs: ValueRef): untyped =
+      if $getTypeOf(lhs) != $getTypeOf(rhs):
+        raise newException(ValueError, "Inputs do not have matching types. LHS = " & $getTypeOf(lhs) & ", RHS = " & $getTypeOf(rhs))
+      elif getTypeOf(lhs).isPointerType():
+        raise newException(ValueError, "Inputs must not be pointer types.")
+      asy.br.icmp(pred, lhs, rhs)
+    template name(lhs: T; rhs: U): untyped =
+      block:
+        let lhsV = constInt(I, lhs)
+        name(lhsV, getValueRef rhs)
+    template name(lhs: U; rhs: T): untyped =
+      block:
+        let rhsV = constInt(I, rhs)
+        name(getValueRef lhs, rhsV)
+    template name[T: X; U: X](lhs: T; rhs: U): untyped =
+      name(getValueRef lhs, getValueRef rhs)
+
+  # standard binary operations
+  genLhsRhsVariants(`shl`, lshl)
+  genLhsRhsVariants(`shr`, lshr)
+  genLhsRhsVariants(`and`, `and`)
+  genLhsRhsVariants(`or`, `or`)
+  genLhsRhsVariants(`+`, add)
+  genLhsRhsVariants(`-`, sub)
+  genLhsRhsVariants(`*`, mul)
+
+  # boolean based on `icmp`
+  genLhsRhsBooleanVariants(`<`, kSLT)
+  genLhsRhsBooleanVariants(`<=`, kSLE)
+  genLhsRhsBooleanVariants(`==`, kEQ)
+  ## XXX: The following cause overload resolution errors for
+  ## bog standard types, i.e. `>` of `uint32` or `!=` for `string`.
+  ## I think this is because `!=`, `>` and `>=` are implemented as
+  ## untyped templates in system.nim.
+  ## Slightly problematic, we need to add `not` for LLVM to achieve
+  ## the correct behavior.
+  #genLhsRhsBooleanVariants(`>`, kSGT)
+  #genLhsRhsBooleanVariants(`>=`, kSGE)
+  #genLhsRhsBooleanVariants(`!=`, kNE)
+
+proc collectElifBranches(n: NimNode): tuple[elifs: seq[NimNode], els: NimNode] =
+  ## The `else` branch is an optional second argument, `els`
+  doAssert n.kind == nnkIfStmt
+  result.els = newEmptyNode() # set to empty as default
+  for el in n:
+    case el.kind
+    of nnkElifBranch: result.elifs.add el
+    of nnkElse: result.els = el
+    else: raiseAssert "Invalid branch: " & $el.kind
+
+macro llvmIf*(asy, body: untyped): untyped =
+  ## Rewrites the given body, which *must* contain an if statement
+  ## with (possibly) multiple branches) into conditional branches
+  ## on LLVM. We jump from the current block of `asy` into the
+  ## conditional branches and provide a block at the end, which we
+  ## will reach from every if branch.
+  ##
+  ## NOTE: This can only be used inside of an `llvmInternalFnDef` template,
+  ## because it needs access to the current function, `fn` identifier.
+  ##
+  ## BE CAREFUL: For the moment this macro does not handle using values
+  ## assigned in its body after the if statements. This would require
+  ## creating a φ-node for the value, which we currently do not do.
+  ## Mainly, because this requires a more complicated traversal of the
+  ## macro body to detect such a requirement. Instead we might add
+  ## an alternative `llvmIfUse` or similar in the future, where exactly
+  ## one assignment is allowed.
+  ##
+  ##   IfStmt
+  ##     ElifBranch
+  ##       Ident "true"
+  ##       StmtList
+  ##         Command
+  ##           Ident "echo"
+  ##           StrLit "x"
+  ##     Else
+  ##       StmtList
+  ##         Command
+  ##           Ident "echo"
+  ##           StrLit "y"
+  ##
+  doAssert body.kind in {nnkIfStmt, nnkStmtList}, "Input *must* be an if statement, but is: " & $body.kind
+  var body = body
+  if body.kind == nnkStmtList:
+    doAssert body.len == 1 and body[0].kind == nnkIfStmt, "If a nnkStmtList, must only contain an nnkIfStmt, but: " & $body.treerepr
+    body = body[0]
+
+  # 1. collect all elif branches (and possible else)
+  let (elifs, els) = collectElifBranches(body)
+  let hasElse = els.kind != nnkEmpty
+
+  # For each `elif` (including the first `if`) we need 2 blocks:
+  # - elif condition
+  # - if true body
+  # If `els` is set, need an additional:
+  # - else body
+  # Finally, need an
+  # - after if/else body
+  result = newStmtList()
+
+  # 2. generate all required blocks
+  var elifBranches = newSeq[tuple[cond, body: NimNode]]() # contains the *identifiers* for the blocks
+  for i, el in elifs:
+    # 2.1 create the identifiers
+    let condId = genSym(nskLet, "elifCond")
+    let bodyId = genSym(nskLet, "elifBody")
+    # 2.2 generate let stmts to append the blocks to LLVM context
+    let idx = $i
+    result.add quote do:
+      let `condId` = `asy`.ctx.appendBasicBlock(fn, "elif.condition." & `idx`)
+      let `bodyId` = `asy`.ctx.appendBasicBlock(fn, "elif.body." & `idx`)
+    # 2.3 store
+    elifBranches.add (cond: condId, body: bodyId)
+  # 2.4 create `else` block if needed
+  var elseId: NimNode
+  if hasElse:
+    elseId = genSym(nskLet, "elseBody")
+    result.add quote do:
+      let `elseId` = `asy`.ctx.appendBasicBlock(fn, "else.body")
+  # 2.5 create 'after if/else' block
+  let afterId = genSym(nskLet, "afterBody")
+  result.add quote do:
+    let `afterId` = `asy`.ctx.appendBasicBlock(fn, "after.body")
+
+  # 3. jump to the first if condition
+  let firstCond = elifBranches[0].cond
+  result.add quote do:
+    `asy`.br.br(`firstCond`)
+
+  # 4. fill all the blocks
+  for i, el in elifs:
+    # 4.1 take condition of `elif`
+    # ElifBranch
+    #   Ident "true"       <- `el[0]`
+    #   StmtList           <- `el[1]`
+    #     Command
+    #       Ident "echo"
+    #       StrLit "x"
+    let cond = el[0]
+    # 4.2 set our builder to this block
+    let condId = elifBranches[i].cond
+    let condVal = genSym(nskLet, "condVal")
+    result.add quote do:
+      `asy`.br.positionAtEnd(`condId`)
+    # 4.3 fill the block with the condition
+    result.add quote do:
+      let `condVal` = `cond`
+
+    #result.add nnkBlockStmt.newTree(ident("Block_" & $condId), cond)
+    # 4.4 determine the `else` block to jump to (else, after or next elif)
+    let ifFalseNext =
+      if i < elifBranches.high: # has another elif
+        elifBranches[i+1].cond
+      elif hasElse:             # last, jump to existing else
+        elseId
+      else:                     # neither, jump after if/else
+        afterId
+
+    # 4.5 conditionally branch based on condition the block with a conditional branch
+    let bodyId = elifBranches[i].body
+    result.add quote do:
+      `asy`.br.condBr(`condVal`, `bodyId`, `ifFalseNext`)
+
+    # 4.6 set builder to if body
+    let blkBody = el[1]
+    result.add quote do:
+      `asy`.br.positionAtEnd(`bodyId`)
+    # 4.7 fill the block with the body
+    result.add nnkBlockStmt.newTree(ident("Block_" & $bodyId), blkBody)
+    # 4.8 branch to after if
+    result.add quote do:
+      `asy`.br.br(`afterId`)
+
+  # 5. handle the `else` branch if any
+  if hasElse:
+    # 5.1 position at else block
+    result.add quote do:
+      `asy`.br.positionAtEnd(`elseId`)
+    # 5.2 add the else body to this block
+    result.add els[0]
+    # 5.3 jump to after block
+    result.add quote do:
+      `asy`.br.br(`afterId`)
+
+  # 6. position builder at after block
+  result.add quote do:
+    `asy`.br.positionAtEnd(`afterId`)
+
+proc to*(asy: Assembler_LLVM, x: ValueRef, dtype: TypeRef, signed = false): ValueRef =
+  ## Converts the given integer type of `x` to the target type `T`.
+  ## The numbers are treated as signed integers if `signed` is true, else
+  ## as unsigned.
+  let outsize = getIntTypeWidth(dtype)
+  let tk = x.getTypeOf().getTypeKind()
+  if tk != tkInteger:
+    raise newException(ValueError, "The argument is not an integer type, but: " & $getTypeOf(x))
+  let inSize = getTypeOf(x).getIntTypeWidth()
+  if inSize == outsize:
+    result = x
+  elif inSize < outsize:
+    # extend,
+    if signed:
+      result = asy.br.sext(x, dtype, "to.i" & $outSize)
+    else:
+      result = asy.br.zext(x, dtype, "to.u" & $outSize)
+  else: # trunacte
+    result = asy.br.trunc(x, dtype, "trunc.to.i" & $outSize)
+
+proc to*[T](asy: Assembler_LLVM, x: ValueRef, dtype: typedesc[T], signed = false): ValueRef =
+  let outTyp = asy.nimToLlvmType(T)
+  result = asy.to(x, outTyp, signed)

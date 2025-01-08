@@ -71,15 +71,17 @@ export
 # Cuda Driver API
 # ------------------------------------------------------------
 
-template check*(status: CUresult) =
+template check*(status: CUresult, quitOnFailure = true) =
   ## Check the status code of a CUDA operation
   ## Exit program with error if failure
 
   let code = status # ensure that the input expression is evaluated once only
+
   if code != CUDA_SUCCESS:
     writeStackTrace()
     stderr.write(astToStr(status) & " " & $instantiationInfo() & " exited with error: " & $code & '\n')
-    quit 1
+    if quitOnFailure:
+      quit 1 # NOTE: this hides exceptions if they are thrown!
 
 func cuModuleLoadData*(module: var CUmodule, sourceCode: openArray[char]): CUresult {.inline.}=
   cuModuleLoadData(module, sourceCode[0].unsafeAddr)
@@ -448,6 +450,9 @@ proc execCudaImpl(jitFn, res, inputs: NimNode): NimNode =
         x[0]
       )
     )
+  result = quote do:
+    block:
+      `result`
 
 macro execCuda*(jitFn: CUfunction,
                 res: typed,
@@ -513,8 +518,18 @@ type
 
 proc `=destroy`*(nv: NvidiaAssemblerObj) =
   ## XXX: Need to also call the finalizer for `asy` in the future!
-  check nv.cuMod.cuModuleUnload()
-  check nv.cuCtx.cuCtxDestroy()
+  # NOTE: In the destructor we don't want to quit on a `check` failure.
+  # The reason is that if we throw an exception with an `NvidiaAssembler`
+  # in scope, it will trigger the destructor here (with a likely invalid
+  # state in the CUDA module / context). However, in this case
+  # we will crash anyway and would just end up hiding the actual cause of
+  # the error.
+  # In the unlikely case that all CUDA operations worked correctly up
+  # to this point, but then fail to unload, we currently ignore this
+  # as a failure mode.
+  # Hopefully we find a better solution in the future.
+  check nv.cuMod.cuModuleUnload(), quitOnFailure = false
+  check nv.cuCtx.cuCtxDestroy(), quitOnFailure = false
   `=destroy`(nv.asy)
 
 proc initNvAsm*[Name: static Algebra](field: type FF[Name], wordSize: int = 32, backend = bkNvidiaPTX): NvidiaAssembler =
@@ -571,7 +586,8 @@ proc initNvAsm*[Name: static Algebra](field: type EC_ShortW_Jac[Fp[Name], G1], w
     Fp[Name].getModulus().toHex(),
     v = 1, w = wordSize,
     coef_a = Fp[Name].Name.getCoefA(),
-    coef_B = Fp[Name].Name.getCoefB()
+    coef_B = Fp[Name].Name.getCoefB(),
+    curveOrderBitWidth = Fr[Name].bits()
   )
   result.fd = result.cd.fd
   result.asy.definePrimitives(result.cd)
@@ -580,6 +596,19 @@ proc compile*(nv: NvidiaAssembler, kernName: string): CUfunction =
   ## Overload of `compile` below.
   ## Call this version if you have manually used the Assembler_LLVM object
   ## to build instructions and have a kernel name you wish to compile.
+  ##
+  ## Use this overload if your generator function does not match the `FieldFnGenerator` or
+  ## `CurveFnGenerator` signatures. This is useful if your function requires additional
+  ## arguments that are compile time values in the context of LLVM.
+  ##
+  ## Example:
+  ##
+  ## ```nim
+  ##  let nv = initNvAsm(EC, wordSize)
+  ##  let kernel = nv.compile(asy.genEcMSM(cd, 3, 1000) # window size, num. points
+  ## ```
+  ## where `genEcMSM` returns the name of the kernel.
+
   let ptx = nv.asy.codegenNvidiaPTX(nv.sm) # convert to PTX
 
   # GPU exec
