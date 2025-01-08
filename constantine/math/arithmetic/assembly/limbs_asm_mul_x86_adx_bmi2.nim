@@ -14,7 +14,7 @@ import
 
 # ############################################################
 #
-#        Assembly implementation of finite fields
+#        Assembly implementation of bigint multiplication
 #
 # ############################################################
 
@@ -111,7 +111,7 @@ macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_MEM: Limb
   ## The result will be truncated, i.e. it will be
   ## a * b (mod (2^WordBitWidth)^r.limbs.len)
   ##
-  ## Assumes r doesn't aliases a or b
+  ## Assumes r doesn't alias a or b
 
   result = newStmtList()
 
@@ -198,9 +198,12 @@ func mul_asm_adx*[rLen, aLen, bLen: static int](
 #
 #            r₇r₆r₅r₄r₃r₂r₁r₀
 #
-# The multiplication strategy is to mulx+adox+adcx on a diagonal
+# The multiplication strategy is to mulx+adox+adcx on a row (a₁a₀, a₂a₀, a₃a₀ for example)
 # handling both carry into next mul and partial sums carry into t
 # then saving the lowest word in t into r.
+#
+#   Note: a row is a sequence of multiplication that share a carry chain
+#         a column is a sequence of multiplication that accumulate in the same index of r
 #
 # We want `t` of size N+1 with N the number of limbs just like multiplication,
 # and reuse the multiplication algorithm
@@ -211,8 +214,8 @@ func mul_asm_adx*[rLen, aLen, bLen: static int](
 # ------------------------------
 #                          a₀*a₀
 #                    a₁*a₁
-#               a₂*a₂
-#          a₃*a₃
+#              a₂*a₂
+#        a₃*a₃
 #
 #                 a₂*a₁ a₁*a₀   |
 #              a₃*a₁ a₂*a₀      | * 2
@@ -220,10 +223,10 @@ func mul_asm_adx*[rLen, aLen, bLen: static int](
 #
 #        r₇ r₆ r₅ r₄ r₃ r₂ r₁ r₀
 #
-# Note that while processing the second diagonal we do
+# Note that while processing the second row we do
 # a₂*a₁ then a₃*a₁ then we change word to a₃*a₂.
 #
-# We want to use an index as much as possible in the diagonal.
+# We want to use an index as much as possible in the row.
 # - There is probably a clever solution using graphs
 #   - https://en.wikipedia.org/wiki/Longest_path_problem
 #   - https://en.wikipedia.org/wiki/Longest_increasing_subsequence
@@ -266,21 +269,7 @@ template merge_diag_and_partsum(r, a, hi, lo, zero, i): untyped =
   ctx.mov r[2*i+1], hi
 
 func sqrx_gen4L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray) =
-  #                    a₃ a₂ a₁ a₀
-  # *                  a₃ a₂ a₁ a₀
-  # ------------------------------
-  #                          a₀*a₀
-  #                    a₁*a₁
-  #              a₂*a₂
-  #        a₃*a₃
-  #
-  #                 a₂*a₁ a₁*a₀   |
-  #              a₃*a₁ a₂*a₀      | * 2
-  #           a₃*a₂ a₃*a₀         |
-  #
-  #        r₇ r₆ r₅ r₄ r₃ r₂ r₁ r₀
-
-  # First diagonal. a₀ * [aₙ₋₁ .. a₂ a₁]
+  # First row. a₀ * [aₙ₋₁ .. a₂ a₁]
   # ------------------------------------
   # This assumes that t will be rotated left and so
   # t1 is in t[0] and tn in t[n-1]
@@ -302,7 +291,7 @@ func sqrx_gen4L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray)
   ctx.adc t[2], rax
   ctx.adc t[3], 0                  # final carry in r₄
 
-  # Second diagonal, a₂*a₁, a₃*a₁, a₃*a₂
+  # Second row, a₂*a₁, a₃*a₁, a₃*a₂
   # ------------------------------------
 
   ctx.`xor` t[a.len], t[a.len]     # Clear flags and upper word
@@ -336,20 +325,6 @@ func sqrx_gen4L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray)
 
   # a[i] * a[i] + 2 * r[2n-1 .. 1]
   # ------------------------------
-  #
-  #                    a₃ a₂ a₁ a₀
-  # *                  a₃ a₂ a₁ a₀
-  # ------------------------------
-  #                          a₀*a₀
-  #                    a₁*a₁
-  #              a₂*a₂
-  #        a₃*a₃
-  #
-  #                 a₂*a₁ a₁*a₀   |
-  #              a₃*a₁ a₂*a₀      | * 2
-  #           a₃*a₂ a₃*a₀         |
-  #
-  #        r₇ r₆ r₅ r₄ r₃ r₂ r₁ r₀
 
   # a₀ in RDX
   var
@@ -370,26 +345,7 @@ func sqrx_gen4L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray)
 
 
 func sqrx_gen6L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray) =
-  #                     a₅ a₄ a₃ a₂ a₁ a₀
-  # *                   a₅ a₄ a₃ a₂ a₁ a₀
-  # -------------------------------------
-  #                                 a₀*a₀
-  #                           a₁*a₁
-  #                     a₂*a₂
-  #               a₃*a₃
-  #         a₄*a₄
-  #   a₅*a₅
-  #
-  #                  a₃*a₂ a₂*a₁ a₁*a₀           |
-  #               a₄*a₂ a₃*a₁ a₂*a₀              |
-  #            a₄*a₃ a₄*a₁ a₃*a₀                 | * 2
-  #         a₅*a₃ a₅*a₁ a₄*a₀                    |
-  #      a₅*a₄ a₅*a₂ a₅*a₀                       |
-  #
-  #
-  # r₁₁ r₁₀ r₉ r₈ r₇ r₆ r₅ r₄ r₃ r₂ r₁ r₀
-
-  # First diagonal. a₀ * [aₙ₋₁ .. a₂ a₁]
+  # First row. a₀ * [aₙ₋₁ .. a₂ a₁]
   # ------------------------------------
   # This assumes that t will be rotated left and so
   # t1 is in t[0] and tn in t[n-1]
@@ -419,11 +375,11 @@ func sqrx_gen6L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray)
   ctx.adc t[4], rax
   ctx.adc t[5], 0                  # final carry in r₆
 
-  # Second diagonal, a₂*a₁, a₃*a₁, a₄*a₁, a₅*a₁, a₅*a₂
+  # Second row, a₂*a₁, a₃*a₁, a₄*a₁, a₅*a₁, a₅*a₂
   # --------------------------------------------------
 
   ctx.`xor` t[a.len], t[a.len]     # Clear flags and upper word
-  t.rotateLeft()                   # Our schema are big-endian (rotate right)
+  t.rotateLeft()                   # Our schema is big-endian (rotate right)
   t.rotateLeft()                   # but we are little-endian (rotateLeft)
   # Partial sums: t₀ is r₃, t₁ is r₄, t₂ is r₅, t₃ is r₆, ...
   block:
@@ -459,7 +415,7 @@ func sqrx_gen6L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray)
     ctx.adcx t[5], hi                # t₅ partial sum r₈, terminate carry chains
     ctx.adox t[5], hi
 
-  # Third diagonal, a₃*a₂, a₄*a₂, a₄*a₃, a₅*a₃, a₅*a₄
+  # Third row, a₃*a₂, a₄*a₂, a₄*a₃, a₅*a₃, a₅*a₄
   # --------------------------------------------------
   t.rotateLeft()
   t.rotateLeft()
@@ -507,25 +463,6 @@ func sqrx_gen6L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray)
 
   # a[i] * a[i] + 2 * r[2n-1 .. 1]
   # -------------------------------------
-  #
-  #                     a₅ a₄ a₃ a₂ a₁ a₀
-  # *                   a₅ a₄ a₃ a₂ a₁ a₀
-  # -------------------------------------
-  #                                 a₀*a₀
-  #                           a₁*a₁
-  #                     a₂*a₂
-  #               a₃*a₃
-  #         a₄*a₄
-  #   a₅*a₅
-  #
-  #                  a₃*a₂ a₂*a₁ a₁*a₀           |
-  #               a₄*a₂ a₃*a₁ a₂*a₀              |
-  #            a₄*a₃ a₄*a₁ a₃*a₀                 | * 2
-  #         a₅*a₃ a₅*a₁ a₄*a₀                    |
-  #      a₅*a₄ a₅*a₂ a₅*a₀                       |
-  #
-  #
-  # r₁₁ r₁₀ r₉ r₈ r₇ r₆ r₅ r₄ r₃ r₂ r₁ r₀
 
   # a₀ in RDX
   var
@@ -548,12 +485,10 @@ func sqrx_gen6L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray)
 
 macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_MEM: Limbs[aLen]) =
   ## Squaring
-  ## `a` and `r` can have a different number of limbs
-  ## if `r`.limbs.len < a.limbs.len * 2
-  ## The result will be truncated, i.e. it will be
-  ## a² (mod (2^WordBitWidth)^r.limbs.len)
+  ## r must have double the number of limbs of a
   ##
   ## Assumes r doesn't aliases a
+  doAssert rLen == 2*aLen
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)

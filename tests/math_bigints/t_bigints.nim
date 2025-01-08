@@ -309,6 +309,35 @@ proc mainSquare() =
         rsqr.square(a)
         check: bool(rmul == rsqr)
 
+    test "Squaring is consistent with multiplication (specialized 256-bit)":
+      block:
+        let a = BigInt[256].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF"
+
+        var rmul, rsqr: BigInt[512]
+
+        rmul.prod(a, a)
+        rsqr.square(a)
+        check: bool(rmul == rsqr)
+
+    test "Squaring is consistent with multiplication (specialized 384-bit)":
+      block: # half used - shows zero-init problems
+        let a = BigInt[384].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF"
+
+        var rmul, rsqr: BigInt[768]
+
+        rmul.prod(a, a)
+        rsqr.square(a)
+        check: bool(rmul == rsqr)
+
+      block: # full used
+        let a = BigInt[384].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF"
+
+        var rmul, rsqr: BigInt[768]
+
+        rmul.prod(a, a)
+        rsqr.square(a)
+        check: bool(rmul == rsqr)
+
 proc mainModular() =
   suite "Modular operations - small modulus" & " [" & $WordBitWidth & "-bit words]":
     # Vectors taken from Stint - https://github.com/status-im/nim-stint

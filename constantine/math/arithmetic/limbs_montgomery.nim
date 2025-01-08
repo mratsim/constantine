@@ -18,6 +18,10 @@ when UseASM_X86_64:
     ./assembly/limbs_asm_mul_mont_x86,
     ./assembly/limbs_asm_mul_mont_x86_adx_bmi2,
     ./assembly/limbs_asm_redc_mont_x86_adx_bmi2
+when UseASM_ARM64:
+  import
+    ./assembly/limbs_asm_mul_mont_arm64,
+    ./assembly/limbs_asm_redc_mont_arm64
 
 # ############################################################
 #
@@ -471,6 +475,8 @@ func redc2xMont*[N: static int](
   elif UseASM_X86_32 and r.len in {3..6}:
     # TODO: Assembly faster than GCC but slower than Clang
     redcMont_asm(r, a, M, m0ninv, spareBits, lazyReduce)
+  elif UseASM_ARM64 and r.len in {3..8}:
+    redcMont_asm(r, a, M, m0ninv, spareBits, lazyReduce)
   else:
     redc2xMont_CIOS(r, a, M, m0ninv, lazyReduce)
     # redc2xMont_Comba(r, a, M, m0ninv, lazyReduce)
@@ -508,6 +514,8 @@ func mulMont*(
         mulMont_CIOS_sparebit_asm_adx(r, a, b, M, m0ninv, lazyReduce)
       else:
         mulMont_CIOS_sparebit_asm(r, a, b, M, m0ninv, lazyReduce)
+    elif UseASM_ARM64 and a.len in {2 .. 8}:
+      mulMont_CIOS_sparebit_asm(r, a, b, M, m0ninv, lazyReduce)
     else:
       mulMont_CIOS_sparebit(r, a, b, M, m0ninv, lazyReduce)
   else:
@@ -553,6 +561,8 @@ func sumprodMont*[N: static int](
         r.sumprodMont_CIOS_spare2bits_asm_adx(a, b, M, m0ninv, lazyReduce)
       else:
         r.sumprodMont_CIOS_spare2bits_asm(a, b, M, m0ninv, lazyReduce)
+    elif UseASM_ARM64 and r.len in {2 .. 6}:
+      r.sumprodMont_CIOS_spare2bits_asm(a, b, M, m0ninv, lazyReduce)
     else:
       r.sumprodMont_CIOS_spare2bits(a, b, M, m0ninv, lazyReduce)
   else:

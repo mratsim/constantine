@@ -36,6 +36,8 @@ import
 
 when UseASM_X86_64:
   import ./assembly/limbs_asm_modular_x86
+when UseASM_ARM64:
+  import ./assembly/limbs_asm_modular_arm64
 
 when nimvm:
   from constantine/named/deriv/precompute import montyResidue_precompute
@@ -193,6 +195,8 @@ func `+=`*(a: var FF, b: FF) {.meter.} =
   ## In-place addition modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
     addmod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
+  elif UseASM_ARM64:
+    addmod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = add(a.mres, b.mres)
     overflowed = overflowed or not(a.mres < FF.getModulus())
@@ -202,6 +206,8 @@ func `-=`*(a: var FF, b: FF) {.meter.} =
   ## In-place substraction modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
     submod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs)
+  elif UseASM_ARM64:
+    submod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs)
   else:
     let underflowed = sub(a.mres, b.mres)
     discard cadd(a.mres, FF.getModulus(), underflowed)
@@ -209,6 +215,8 @@ func `-=`*(a: var FF, b: FF) {.meter.} =
 func double*(a: var FF) {.meter.} =
   ## Double ``a`` modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
+    addmod_asm(a.mres.limbs, a.mres.limbs, a.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
+  elif UseASM_ARM64:
     addmod_asm(a.mres.limbs, a.mres.limbs, a.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = double(a.mres)
@@ -219,6 +227,8 @@ func sum*(r: var FF, a, b: FF) {.meter.} =
   ## Sum ``a`` and ``b`` into ``r`` modulo p
   ## r is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
+    addmod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
+  elif UseASM_ARM64:
     addmod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = r.mres.sum(a.mres, b.mres)
@@ -235,6 +245,8 @@ func diff*(r: var FF, a, b: FF) {.meter.} =
   ## Requires r != b
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
     submod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs)
+  elif UseASM_ARM64:
+    submod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.getModulus().limbs)
   else:
     var underflowed = r.mres.diff(a.mres, b.mres)
     discard cadd(r.mres, FF.getModulus(), underflowed)
@@ -248,6 +260,8 @@ func double*(r: var FF, a: FF) {.meter.} =
   ## Double ``a`` into ``r``
   ## `r` is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
+    addmod_asm(r.mres.limbs, a.mres.limbs, a.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
+  elif UseASM_ARM64:
     addmod_asm(r.mres.limbs, a.mres.limbs, a.mres.limbs, FF.getModulus().limbs, FF.getSpareBits())
   else:
     var overflowed = r.mres.double(a.mres)

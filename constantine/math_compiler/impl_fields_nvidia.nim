@@ -250,6 +250,7 @@ proc mtymul_CIOS_sparebit(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: 
     # Hence we can use the dual carry chain approach
     # one chain after the other instead of interleaved like on x86.
 
+    doAssert N >= 2
     for i in 0 ..< N:
       # Multiplication
       # -------------------------------
@@ -287,10 +288,8 @@ proc mtymul_CIOS_sparebit(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: 
         t[0] = asy.br.mulloadd_co(a[0], bi, t[0])
         for j in 1 ..< N:
           t[j] = asy.br.mulloadd_cio(a[j], bi, t[j])
-        if N > 1:
-          A = asy.br.add_ci(fd.zero, fd.zero)
-      if N > 1:
-        t[1] = asy.br.mulhiadd_co(a[0], bi, t[1])
+        A = asy.br.add_ci(fd.zero, fd.zero)          # assumes N > 1
+      t[1] = asy.br.mulhiadd_co(a[0], bi, t[1])      # assumes N > 1
       for j in 2 ..< N:
         t[j] = asy.br.mulhiadd_cio(a[j-1], bi, t[j])
       A = asy.br.mulhiadd_ci(a[N-1], bi, A)
@@ -324,13 +323,12 @@ proc mtymul_CIOS_sparebit(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: 
       for j in 1 ..< N:
         t[j-1] = asy.br.mulloadd_cio(m, M[j], t[j])
       t[N-1] = asy.br.add_ci(A, 0)
-      if N > 1:
-        t[0] = asy.br.mulhiadd_co(m, M[0], t[0])
-        for j in 1 ..< N-1:
-          t[j] = asy.br.mulhiadd_cio(m, M[j], t[j])
-        t[N-1] = asy.br.mulhiadd_ci(m, M[N-1], t[N-1])
-      else:
-        t[0] = asy.br.mulhiadd(m, M[0], t[0])
+
+      # assumes N > 1
+      t[0] = asy.br.mulhiadd_co(m, M[0], t[0])
+      for j in 1 ..< N-1:
+        t[j] = asy.br.mulhiadd_cio(m, M[j], t[j])
+      t[N-1] = asy.br.mulhiadd_ci(m, M[N-1], t[N-1])
 
     if finalReduce:
       asy.finalSubNoOverflow(fd, t, t, M)

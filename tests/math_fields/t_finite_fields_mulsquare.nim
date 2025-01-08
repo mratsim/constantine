@@ -122,8 +122,10 @@ proc randomCurve(Name: static Algebra) =
   r_sqr.square(a)
 
   doAssert bool(r_mul == r_sqr), block:
-    "\nMul: " & r_mul.toHex() &
-    "\nSqr: " & r_sqr.toHex()
+    "\nTest failed for " & $Name &
+    "\nInput: " & a.toHex() &
+    "\nMul:   " & r_mul.toHex() &
+    "\nSqr:   " & r_sqr.toHex()
 
 proc randomHighHammingWeight(Name: static Algebra) =
   let a = rng.random_highHammingWeight(Fp[Name])

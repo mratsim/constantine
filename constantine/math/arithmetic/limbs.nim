@@ -9,7 +9,9 @@
 import constantine/platforms/abstractions
 
 when UseASM_X86_32:
-  import ./assembly/limbs_asm_x86
+  import ./assembly/limbs_asm_bigint_x86
+when UseASM_ARM64:
+  import ./assembly/limbs_asm_bigint_arm64
 
 # ############################################################
 #
@@ -97,7 +99,7 @@ func ccopy*(a: var Limbs, b: Limbs, ctl: SecretBool) =
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is untouched
   ## Time and memory accesses are the same whether a copy occurs or not
-  when UseASM_X86_32:
+  when UseASM_X86_32 or UseASM_ARM64:
     ccopy_asm(a, b, ctl)
   else:
     for i in 0 ..< a.len:
@@ -187,7 +189,7 @@ func shiftRight*(a: var Limbs, k: int) =
 func add*(a: var Limbs, b: Limbs): Carry =
   ## Limbs addition
   ## Returns the carry
-  when UseASM_X86_32:
+  when UseASM_X86_32 or UseASM_ARM64:
     result = add_asm(a, a, b)
   else:
     result = Carry(0)
@@ -207,7 +209,7 @@ func sum*(r: var Limbs, a, b: Limbs): Carry =
   ## `r` is initialized/overwritten
   ##
   ## Returns the carry
-  when UseASM_X86_32:
+  when UseASM_X86_32 or UseASM_ARM64:
     result = add_asm(r, a, b)
   else:
     result = Carry(0)
@@ -217,7 +219,7 @@ func sum*(r: var Limbs, a, b: Limbs): Carry =
 func sub*(a: var Limbs, b: Limbs): Borrow =
   ## Limbs substraction
   ## Returns the borrow
-  when UseASM_X86_32:
+  when UseASM_X86_32 or UseASM_ARM64:
     result = sub_asm(a, a, b)
   else:
     result = Borrow(0)
@@ -237,7 +239,7 @@ func diff*(r: var Limbs, a, b: Limbs): Borrow =
   ## `r` is initialized/overwritten
   ##
   ## Returns the borrow
-  when UseASM_X86_32:
+  when UseASM_X86_32 or UseASM_ARM64:
     result = sub_asm(r, a, b)
   else:
     result = Borrow(0)

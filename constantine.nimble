@@ -240,10 +240,10 @@ proc genDynamicLib(outdir, nimcache: string) =
     compile "constantine.dll"
 
   elif defined(macosx) or defined(macos):
-    compile "libconstantine.dylib.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
-    compile "libconstantine.dylib.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
-    exec &"lipo {outdir}/libconstantine.dylib.arm " &
-             &" {outdir}/libconstantine.dylib.x64 " &
+    compile "libconstantine.arm64.dylib", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
+    compile "libconstantine.x86_64.dylib", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
+    exec &"lipo {outdir}/libconstantine.arm64.dylib " &
+             &" {outdir}/libconstantine.x86_64.dylib " &
              &" -output {outdir}/libconstantine.dylib -create"
 
   else:
@@ -272,10 +272,10 @@ proc genStaticLib(outdir, nimcache: string, extFlags = "") =
     compile "constantine.lib"
 
   elif defined(macosx) or defined(macos):
-    compile "libconstantine.a.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
-    compile "libconstantine.a.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
-    exec &"lipo {outdir}/libconstantine.a.arm " &
-             &" {outdir}/libconstantine.a.x64 " &
+    compile "libconstantine.arm64.a", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
+    compile "libconstantine.x86_64.a", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
+    exec &"lipo {outdir}/libconstantine.arm64.a " &
+             &" {outdir}/libconstantine.x86_64.a " &
              &" -output {outdir}/libconstantine.a -create"
 
   else:

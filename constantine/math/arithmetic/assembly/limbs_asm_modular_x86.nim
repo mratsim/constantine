@@ -126,7 +126,6 @@ macro finalSub_gen*[N: static int](
 # Field addition
 # ------------------------------------------------------------
 
-
 macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_MEM: Limbs[N], spareBits: static int): untyped =
   ## Generate an optimized modular addition kernel
   # Register pressure note:
@@ -173,11 +172,11 @@ func addmod_asm*(r: var Limbs, a, b, M: Limbs, spareBits: static int) =
   ## Constant-time modular addition
   addmod_gen(r, a, b, M, spareBits)
 
-# Field substraction
+# Field subtraction
 # ------------------------------------------------------------
 
 macro submod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_MEM: Limbs[N]): untyped =
-  ## Generate an optimized modular addition kernel
+  ## Generate an optimized modular subtraction kernel
   # Register pressure note:
   #   We could generate a kernel per modulus m by hardocing it as immediate
   #   however this requires

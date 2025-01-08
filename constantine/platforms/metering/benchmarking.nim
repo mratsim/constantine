@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 when defined(amd64): # TODO defined(i386) but it seems like RDTSC call is misconfigured
-  from ../x86/cpudetect_x86 import cpuName_x86
+  from ../isa_x86/cpudetect_x86 import cpuName_x86
 
   const SupportsCPUName* = true
   const SupportsGetTicks* = true

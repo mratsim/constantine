@@ -13,6 +13,8 @@ import
 when UseASM_X86_64:
   import ./assembly/limbs_asm_mul_x86
   import ./assembly/limbs_asm_mul_x86_adx_bmi2
+when UseASM_ARM64:
+  import ./assembly/limbs_asm_mul_arm64
 
 # ############################################################
 #
@@ -77,6 +79,8 @@ func prod*[rLen, aLen, bLen: static int](r{.noalias.}: var Limbs[rLen], a: Limbs
     else:
       mul_asm(r, a, b)
   elif UseASM_X86_64:
+    mul_asm(r, a, b)
+  elif UseASM_ARM64 and aLen in {2..8}:
     mul_asm(r, a, b)
   else:
     prod_comba(r, a, b)
@@ -204,6 +208,8 @@ func square*[rLen, aLen](
       square_asm_adx(r, a)
     else:
       square_asm(r, a)
+  elif UseASM_ARM64 and aLen in {4, 6} and rLen == 2*aLen:
+    square_asm(r, a)
   elif UseASM_X86_64:
     square_asm(r, a)
   else:

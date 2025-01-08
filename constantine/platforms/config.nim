@@ -11,6 +11,7 @@
 
 const GCC_Compatible* = defined(gcc) or defined(clang) or defined(llvm_gcc) or defined(icc)
 const X86* = defined(amd64) or defined(i386)
+const ARM64* = defined(arm64)
 
 when sizeof(int) == 8 and GCC_Compatible:
   type
@@ -24,6 +25,7 @@ const CTT_ASM {.booldefine.} = true
 const CTT_32* {.booldefine.} = bool(sizeof(pointer)*8 == 32)
 const UseASM_X86_32* = CTT_ASM and X86 and GCC_Compatible
 const UseASM_X86_64* = not(CTT_32) and UseASM_X86_32
+const UseASM_ARM64* = CTT_ASM and ARM64 and GCC_Compatible
 
 when UseASM_X86_64:
   static: doAssert bool(sizeof(pointer)*8 == 64), "Only 32-bit and 64-bit platforms are supported"

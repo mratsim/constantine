@@ -28,15 +28,6 @@ static inline double Wtime_usec(void)
 	return tv.tv_sec * 1e6 + tv.tv_usec;
 }
 
-// Read time stamp counter on x86
-static inline unsigned long long readtsc(void)
-{
-	unsigned int lo, hi;
-	// RDTSC copies contents of 64-bit TSC into EDX:EAX
-	asm volatile ("rdtsc" : "=a" (lo), "=d" (hi));
- 	return (unsigned long long)hi << 32 | lo;
-}
-
 #define WTIME_unique_var_name_paste(id, n) id ## n
 #define WTIME_unique_var_name(id, n) WTIME_unique_var_name_paste(id, n)
 #define WTIME_unique_var(id) WTIME_unique_var_name(id, __LINE__)

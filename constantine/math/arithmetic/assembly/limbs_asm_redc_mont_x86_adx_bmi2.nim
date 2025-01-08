@@ -125,11 +125,12 @@ macro redc2xMont_adx_gen[N: static int](
     else:
       ctx.adc u[i], a[i+N]
 
+  # v is invalidated from now on
   let t = repackRegisters(v, u[N])
 
   if spareBits >= 2 and lazyReduce:
     for i in 0 ..< N:
-      ctx.mov r[i], t[i]
+      ctx.mov r[i], u[i]
   elif spareBits >= 1:
     ctx.finalSubNoOverflowImpl(r, u, M, t)
   else:
