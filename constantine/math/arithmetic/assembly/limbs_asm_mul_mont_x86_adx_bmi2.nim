@@ -347,8 +347,7 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
     tN = scratch[2]                                  # High part of extended precision multiplication
     C = scratch[3]                                   # Carry during reduction step
     r = scratch[4]                                   # Stores the `r` operand
-    S = scratch[5]                                   # Mul step: Stores the carry A
-                                                     # Red step: Stores (t[0] * m0ninv) mod 2ʷ
+    A = scratch[5]                                   # Stores the carry A
 
   # Registers used:
   # - 1 for `M`
@@ -394,8 +393,6 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
     ctx.comment "  tN = 0"
     ctx.`xor` tN, tN
     for k in 0 ..< K:
-      template A: untyped = S
-
       ctx.comment "    A = 0"
       ctx.`xor` A, A
       ctx.comment "      (A,t[0])  := t[0] + a[k][0]*b[k][i] + A"

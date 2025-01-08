@@ -561,6 +561,8 @@ func sumprodMont*[N: static int](
         r.sumprodMont_CIOS_spare2bits_asm_adx(a, b, M, m0ninv, lazyReduce)
       else:
         r.sumprodMont_CIOS_spare2bits_asm(a, b, M, m0ninv, lazyReduce)
+    elif UseASM_ARM64 and r.len in {2 .. 6}:
+      r.sumprodMont_CIOS_spare2bits_asm(a, b, M, m0ninv, lazyReduce)
     else:
       r.sumprodMont_CIOS_spare2bits(a, b, M, m0ninv, lazyReduce)
   else:
