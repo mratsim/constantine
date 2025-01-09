@@ -76,7 +76,7 @@ import
 # And implementing them with i256 / i384 is similarly tricky
 # https://github.com/llvm/llvm-project/issues/102868
 
-const SectionName = "ctt.fields"
+const SectionName = "ctt,fields"
 
 proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, rr, a, M, carry: ValueRef) =
   ## If a >= Modulus: r <- a-M

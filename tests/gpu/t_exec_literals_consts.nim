@@ -18,7 +18,7 @@ import
 proc genStoreBool*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   let name = fd.name & "_store_bool"
   let ptrBool = pointer_t(asy.ctx.int1_t())
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [ptrBool, asy.ctx.int1_t()]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [ptrBool, asy.ctx.int1_t()]):
     let (r, condition) = llvmParams
     asy.store(r, condition)
     asy.br.retVoid()
@@ -28,7 +28,7 @@ proc genStoreIntFloat*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   let name = fd.name & "_store_int_float"
   let ptrInt = pointer_t(asy.ctx.int64_t())
   let ptrFloat = pointer_t(asy.ctx.float64_t())
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [ptrInt, ptrFloat, asy.ctx.int64_t(), asy.ctx.float64_t()]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [ptrInt, ptrFloat, asy.ctx.int64_t(), asy.ctx.float64_t()]):
     let (ri, rf, i, f) = llvmParams
     asy.store(ri, i)
     asy.store(rf, f)
@@ -39,7 +39,7 @@ proc genStoreIntFloatFromPtr*(asy: Assembler_LLVM, fd: FieldDescriptor): string 
   let name = fd.name & "_store_int_float"
   let ptrInt = pointer_t(asy.ctx.int64_t())
   let ptrFloat = pointer_t(asy.ctx.float64_t())
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [ptrInt, ptrFloat, ptrInt, ptrFloat]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [ptrInt, ptrFloat, ptrInt, ptrFloat]):
     let (ri, rf, i, f) = llvmParams
     asy.store(ri, asy.load2(ptrInt, i))
     asy.store(rf, asy.load2(ptrFloat, f))
@@ -50,7 +50,7 @@ proc genStoreIntFloat32FromPtr*(asy: Assembler_LLVM, fd: FieldDescriptor): strin
   let name = fd.name & "_store_int_float"
   let ptrInt = pointer_t(asy.ctx.int32_t())
   let ptrFloat = pointer_t(asy.ctx.float32_t())
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [ptrInt, ptrFloat, ptrInt, ptrFloat]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [ptrInt, ptrFloat, ptrInt, ptrFloat]):
     let (ri, rf, i, f) = llvmParams
     asy.store(ri, asy.load2(ptrInt, i))
     asy.store(rf, asy.load2(ptrFloat, f))

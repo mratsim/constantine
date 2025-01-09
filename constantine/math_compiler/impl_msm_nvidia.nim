@@ -18,7 +18,7 @@ import
   std / typetraits # for distinctBase
 
 ## Section name used for `llvmInternalFnDef`
-const SectionName = "ctt.msm_nvidia"
+const SectionName = "ctt,msm_nvidia"
 
 proc msm*(asy: Assembler_LLVM, cd: CurveDescriptor, r, coefs, points: ValueRef,
           c, N: int) {.used.} =

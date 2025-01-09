@@ -16,7 +16,7 @@ import
   ./impl_fields_ops
 
 ## Section name used for `llvmInternalFnDef`
-const SectionName = "ctt.pub_fields"
+const SectionName = "ctt,pub_fields"
 
 proc genFpSetZero*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## Generate a public field setZero procedure
@@ -26,7 +26,7 @@ proc genFpSetZero*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## and return the corresponding name to call it
 
   let name = fd.name & "_setZero"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy]):
     let r = llvmParams
     asy.setZero(fd, r)
     asy.br.retVoid()
@@ -41,7 +41,7 @@ proc genFpSetOne*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## and return the corresponding name to call it
 
   let name = fd.name & "_setOne"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy]):
     let r = llvmParams
     asy.setOne(fd, r)
     asy.br.retVoid()
@@ -56,7 +56,7 @@ proc genFpAdd*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## and return the corresponding name to call it
 
   let name = fd.name & "_add"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy]):
     let M = asy.getModulusPtr(fd)
 
     let (r, a, b) = llvmParams
@@ -72,7 +72,7 @@ proc genFpMul*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## with r the result and a, b the operands
   ## and return the corresponding name to call it
   let name = fd.name & "_mul"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy]):
     let M = asy.getModulusPtr(fd)
     let (r, a, b) = llvmParams
     asy.mul(fd, r, a, b)
@@ -89,7 +89,7 @@ proc genFpCcopy*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ##
   ## Returns the corresponding name to call it
   let name = fd.name & "_ccopy"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int1_t()]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int1_t()]):
     let (a, b, condition) = llvmParams
 
     asy.ccopy(fd, a, b, condition)
@@ -108,7 +108,7 @@ proc genFpCsetOne*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## Returns the name of the kernel to call it.
 
   let name = fd.name & "_csetOne"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, asy.ctx.int1_t()]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy, asy.ctx.int1_t()]):
     let (r, c) = llvmParams
     asy.csetOne(fd, r, c)
     asy.br.retVoid()
@@ -125,7 +125,7 @@ proc genFpCsetZero*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## Returns the name of the kernel to call it.
 
   let name = fd.name & "_csetZero"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, asy.ctx.int1_t()]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy, asy.ctx.int1_t()]):
     let (r, c) = llvmParams
     asy.csetZero(fd, r, c)
     asy.br.retVoid()
@@ -141,7 +141,7 @@ proc genFpCadd*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## and return the corresponding name to call it
 
   let name = fd.name & "_add"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int1_t()]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int1_t()]):
     let (r, a, c) = llvmParams
     asy.cadd(fd, r, a, c)
     asy.br.retVoid()
@@ -156,7 +156,7 @@ proc genFpSub*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## and return the corresponding name to call it
 
   let name = fd.name & "_sub"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy]):
     let (r, a, b) = llvmParams
     asy.sub(fd, r, a, b)
     asy.br.retVoid()
@@ -172,7 +172,7 @@ proc genFpCsub*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## and return the corresponding name to call it
 
   let name = fd.name & "_sub"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int1_t()]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int1_t()]):
     let (r, a, c) = llvmParams
     asy.csub(fd, r, a, c)
     asy.br.retVoid()
@@ -187,7 +187,7 @@ proc genFpDouble*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ##
   ## Returns the corresponding name to call it
   let name = fd.name & "_double"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy]):
     ## We can just reuse `mtymul`
     let (r, a) = llvmParams
     asy.double(fd, r, a)
@@ -204,7 +204,7 @@ proc genFpNsqr*(asy: Assembler_LLVM, fd: FieldDescriptor, count: int): string =
   ##
   ## Returns the corresponding name to call it
   let name = fd.name & "_nsqr_" & $count
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy]):
     ## We can just reuse `mtymul`
     let (r, a) = llvmParams
     asy.nsqr(fd, r, a, count)
@@ -220,7 +220,7 @@ proc genFpIsZero*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
   let name = fd.name & "_isZero"
   let ptrBool = pointer_t(asy.ctx.int1_t())
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [ptrBool, fd.fieldTy]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [ptrBool, fd.fieldTy]):
     let (r, a) = llvmParams
     asy.isZero(fd, r, a)
     asy.br.retVoid()
@@ -236,7 +236,7 @@ proc genFpIsOdd*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
   let name = fd.name & "_isOdd"
   let ptrBool = pointer_t(asy.ctx.int1_t())
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [ptrBool, fd.fieldTy]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [ptrBool, fd.fieldTy]):
     let (r, a) = llvmParams
     asy.isOdd(fd, r, a)
     asy.br.retVoid()
@@ -251,7 +251,7 @@ proc genFpNeg*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ##
   ## Returns the corresponding name to call it
   let name = fd.name & "_neg"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy]):
     let (r, a) = llvmParams
 
     asy.neg(fd, r, a)
@@ -269,7 +269,7 @@ proc genFpCNeg*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ##
   ## Returns the corresponding name to call it
   let name = fd.name & "_cneg"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int1_t()]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int1_t()]):
     let (r, a, c) = llvmParams
     asy.cneg(fd, r, a, c)
     asy.br.retVoid()
@@ -320,7 +320,7 @@ proc genFpNsqrRT*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ##
   ## Returns the corresponding name to call it
   let name = fd.name & "_nsqr"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int32_t()]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, asy.ctx.int32_t()]):
     ## We can just reuse `mtymul`
     let (r, a, count) = llvmParams
     let M = asy.getModulusPtr(fd)
@@ -345,7 +345,7 @@ proc genFpShiftRight*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## and return the corresponding name to call it
 
   let name = fd.name & "_shiftRight"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, asy.ctx.int32_t()]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy, asy.ctx.int32_t()]):
     let (a, k) = llvmParams
     asy.shiftRight(fd, a, k)
     asy.br.retVoid()
@@ -360,7 +360,7 @@ proc genFpDiv2*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## and return the corresponding name to call it
 
   let name = fd.name & "_div2"
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy]):
     let a = llvmParams
     asy.div2(fd, a)
     asy.br.retVoid()
@@ -377,7 +377,7 @@ proc genFpScalarMul*(asy: Assembler_LLVM, fd: FieldDescriptor, b: static int): s
   ## Returns the corresponding name to call it.
 
   let name = fd.name & "_scalarMul_" & $b
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [fd.fieldTy]):
     let a = llvmParams
     asy.scalarMul(fd, a, b)
     asy.br.retVoid()

@@ -12,11 +12,11 @@ import
 
 const Fields = [
   (
-    "bn254_snarks_fp", 254,
+    "bn254_fp", 254,
     "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
   ),
   (
-    "bn254_snarks_fr", 254,
+    "bn254_fr", 254,
     "30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001"
   ),
 
@@ -63,7 +63,7 @@ const Fields = [
 ]
 
 proc t_field_add() =
-  let asy = Assembler_LLVM.new(bkX86_64_Linux, cstring("x86_poc"))
+  let asy = Assembler_LLVM.new(bkArm64_MacOS, cstring("arm64_poc"))
   for F in Fields:
     let fd = asy.ctx.configureField(
       F[0], F[1], F[2],
@@ -83,14 +83,14 @@ proc t_field_add() =
 
   # --------------------------------------------
   # See the assembly - note it might be different from what the JIT compiler did
-  initializeFullNativeTarget()
-  const triple = "x86_64-pc-linux-gnu"
+  initializeFullAArch64Target()
+  const triple = "aarch64-apple-darwin"
 
   let machine = createTargetMachine(
     target = toTarget(triple),
     triple = triple,
     cpu = "",
-    features = "", # "adx,bmi2", # TODO check the proper way to pass options
+    features = "",
     level = CodeGenLevelDefault,
     reloc = RelocDefault,
     codeModel = CodeModelDefault
@@ -101,7 +101,7 @@ proc t_field_add() =
   # However we can't reproduce the code from either
   # - LLVM16 https://github.com/llvm/llvm-project/blob/llvmorg-16.0.6/llvm/tools/llc/llc.cpp
   #   need legacy PassManagerRef and the PassManagerBuilder that interfaces between the
-  #   legacy PssManagerRef and new PassBuilder has been deleted in LLVM17
+  #   legacy PassManagerRef and new PassBuilder has been deleted in LLVM17
   #
   # - and contrary to what is claimed in https://llvm.org/docs/NewPassManager.html#id2
   #   the C API of PassBuilderRef is ghost town.
@@ -113,7 +113,7 @@ proc t_field_add() =
   pbo.setMergeFunctions()
   let err = asy.module.runPasses(
     # "default<O2>,memcpyopt,sroa,mem2reg,function-attrs,inline,gvn,dse,aggressive-instcombine,adce",
-    "function(require<targetir>,require<targetlibinfo>,require<inliner-size-estimator>,require<memdep>,require<da>)" &
+    "function(require<inliner-size-estimator>,require<memdep>,require<da>)" &
     ",function(aa-eval)" &
     ",always-inline,hotcoldsplit,inferattrs,instrprof,recompute-globalsaa" &
     ",cgscc(argpromotion,function-attrs)" &
@@ -129,7 +129,7 @@ proc t_field_add() =
   if not err.pointer().isNil():
     writeStackTrace()
     let errMsg = err.getErrorMessage()
-    stderr.write("\"codegenX86_64\" for module '" & astToStr(module) & "' " & $instantiationInfo() &
+    stderr.write("\"codegen ARM64\" for module '" & astToStr(module) & "' " & $instantiationInfo() &
                  " exited with error: " & $cstring(errMsg) & '\n')
     errMsg.dispose()
     quit 1
@@ -147,7 +147,6 @@ proc t_field_add() =
   echo "========================================="
 
   # var engine: ExecutionEngineRef
-  # initializeFullNativeTarget()
   # createJITCompilerForModule(engine, asy.module, optLevel = 3)
 
   # let fn32 = cm32.genSymbol(opFpAdd)

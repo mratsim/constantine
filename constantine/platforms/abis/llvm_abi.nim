@@ -8,7 +8,11 @@
 
 import ./c_abi
 
-const libLLVM = "libLLVM-(16|17|18).so"
+when defined(macosx):
+  # We assume an install through Homebrew, or that if MacPorts or Fink are used, the $PATH is properly set
+  const libLLVM = "(|/opt/homebrew/opt/llvm/lib/)libLLVM-(16|17|18|19).dylib"
+else:
+  const libLLVM = "libLLVM-(16|17|18|19).so"
 static: echo "[Constantine] Using library " & libLLVM
 
 # ############################################################
@@ -128,6 +132,12 @@ proc initializeX86AsmParser() {.importc: "LLVMInitializeX86AsmParser".}
 proc initializeX86Target() {.importc: "LLVMInitializeX86Target".}
 proc initializeX86TargetInfo() {.importc: "LLVMInitializeX86TargetInfo".}
 proc initializeX86TargetMC() {.importc: "LLVMInitializeX86TargetMC".}
+
+proc initializeAArch64AsmPrinter() {.importc: "LLVMInitializeAArch64AsmPrinter".}
+proc initializeAArch64AsmParser() {.importc: "LLVMInitializeAArch64AsmParser".}
+proc initializeAArch64Target() {.importc: "LLVMInitializeAArch64Target".}
+proc initializeAArch64TargetInfo() {.importc: "LLVMInitializeAArch64TargetInfo".}
+proc initializeAArch64TargetMC() {.importc: "LLVMInitializeAArch64TargetMC".}
 
 proc initializeNVPTXAsmPrinter() {.importc: "LLVMInitializeNVPTXAsmPrinter".}
 proc initializeNVPTXAsmParser() {.importc: "LLVMInitializeNVPTXAsmParser".}

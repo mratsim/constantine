@@ -55,6 +55,7 @@ type
     bkAmdGpu
     bkNvidiaPTX
     bkX86_64_Linux
+    bkArm64_MacOS
 
 proc finalizeAssemblerLLVM(asy: Assembler_LLVM) =
   if not asy.isNil:
@@ -94,6 +95,8 @@ proc configure(asy: var Assembler_LLVM, backend: Backend) =
       "n16:32:64")
   of bkX86_64_Linux:
     asy.module.setTarget("x86_64-pc-linux-gnu")
+  of bkArm64_MacOS:
+    asy.module.setTarget("aarch64-apple-darwin")
 
   asy.datalayout = asy.module.getDataLayout()
   asy.psize = int32 asy.datalayout.getPointerSize()
@@ -505,7 +508,7 @@ proc defineGlobalConstant*(
   # This has the following benefits:
   # - They might all be loaded in memory if they share a cacheline
   # - If a section is unused, it can be garbage collected by the linker
-  g.setSection(cstring("ctt." & section & ".constants"))
+  g.setSection(cstring("ctt," & section)) # mach-o (MacOS), needs a comma
   return g
 
 # ############################################################

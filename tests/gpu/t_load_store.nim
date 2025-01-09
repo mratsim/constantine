@@ -30,7 +30,7 @@ type
 proc genStoreBool*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   let name = fd.name & "_store_bool"
   let ptrBool = pointer_t(asy.ctx.int1_t())
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [ptrBool, asy.ctx.int1_t()]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [ptrBool, asy.ctx.int1_t()]):
     let (r, condition) = llvmParams
     asy.store(r, condition)
     asy.br.retVoid()
@@ -39,7 +39,7 @@ proc genStoreBool*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 proc genStoreBoolPtr*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   let name = fd.name & "_store_bool_ptr"
   let ptrBool = pointer_t(asy.ctx.int1_t())
-  asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [ptrBool, ptrBool]):
+  asy.llvmPublicFnDef(name, "ctt," & fd.name, asy.void_t, [ptrBool, ptrBool]):
     let (r, condition) = llvmParams
     let x = asy.load2(asy.ctx.int1_t(), condition)
     asy.store(r, x)

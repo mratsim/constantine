@@ -47,7 +47,7 @@ import
 #
 # We cannot use i256 on Nvidia target: https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/lib/Target/NVPTX/NVPTXISelLowering.cpp#L244-L276
 
-const SectionName = "ctt.fields"
+const SectionName = "ctt,fields"
 
 proc finalSubMayOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array) =
   ## If a >= Modulus: r <- a-M
