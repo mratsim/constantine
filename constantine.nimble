@@ -686,6 +686,7 @@ const benchDesc = [
   "bench_summary_bn254_nogami",
   "bench_summary_bn254_snarks",
   "bench_summary_pasta",
+  "bench_summary_secp256k1",
   "bench_poly1305",
   "bench_h_sha256",
   "bench_h_keccak",
@@ -1119,6 +1120,11 @@ task bench_summary_bn254_snarks, "Run summary benchmarks for BN254-Snarks - CC c
 
 task bench_summary_pasta, "Run summary benchmarks for the Pasta curves - CC compiler":
   runBench("bench_summary_pasta")
+
+# --
+
+task bench_summary_secp256k1, "Run summary benchmarks for Secp256k1 - CC compiler":
+  runBench("bench_summary_secp256k1")
 
 # Hashes
 # ------------------------------------------
