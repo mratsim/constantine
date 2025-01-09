@@ -14,7 +14,7 @@ import
   ./impl_fields_dispatch
 
 ## Section name used for `llvmInternalFnDef`
-const SectionName = "ctt.impl_fields"
+const SectionName = "ctt,impl_fields"
 
 template declFieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirty.} =
   ## This template can be used to make operations on `Field` elements

@@ -20,7 +20,7 @@ import
 
 template genGetComponent*(asy: Assembler_LLVM, cd: CurveDescriptor, fn: typed): string =
   let name = cd.name & astToStr(fn)
-  asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.fd.fieldTy, cd.curveTy]):
+  asy.llvmPublicFnDef(name, "ctt," & cd.name, asy.void_t, [cd.fd.fieldTy, cd.curveTy]):
     let M = asy.getModulusPtr(cd.fd)
     let (r, a) = llvmParams
 

@@ -18,7 +18,7 @@ import
   std / typetraits # for distinctBase
 
 ## Section name used for `llvmInternalFnDef`
-const SectionName = "ctt.curves_jacobian"
+const SectionName = "ctt,curves_jacobian"
 
 type
   EcPointJac* {.borrow: `.`.} = distinct Array

@@ -16,7 +16,7 @@ import
   ./impl_curves_ops_affine
 
 ## Section name used for `llvmInternalFnDef`
-const SectionName = "ctt.pub_curves_affine"
+const SectionName = "ctt,pub_curves_affine"
 
 proc genEcIsNeutralAff*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
   ## Generate a public elliptic curve point isNeutral proc
@@ -27,7 +27,7 @@ proc genEcIsNeutralAff*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
 
   let name = cd.name & "isNeutralAff"
   let ptrBool = pointer_t(asy.ctx.int1_t())
-  asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [ptrBool, cd.curveTyAff]):
+  asy.llvmPublicFnDef(name, "ctt," & cd.name, asy.void_t, [ptrBool, cd.curveTyAff]):
     let (r, a) = llvmParams
     asy.isNeutralAff_internal(cd, r, a)
     asy.br.retVoid()

@@ -80,14 +80,21 @@ proc toTarget*(triple: cstring): TargetRef =
     quit 1
   target
 
-proc initializeFullNativeTarget* {.inline.} =
-  static: doAssert defined(amd64) or defined(i386), "Only x86 is configured at the moment"
+proc initializeFullX86Target* {.inline.} =
   initializeX86TargetInfo()
   initializeX86Target()
   initializeX86TargetMC()
   # With usual `initializeNativeTarget`
   # it's a separate call but it's mandatory so include it
   initializeX86AsmPrinter()
+
+proc initializeFullAarch64Target* {.inline.} =
+  initializeAarch64TargetInfo()
+  initializeAarch64Target()
+  initializeAarch64TargetMC()
+  # With usual `initializeNativeTarget`
+  # it's a separate call but it's mandatory so include it
+  initializeAarch64AsmPrinter()
 
 proc initializeFullNVPTXTarget* {.inline.} =
   initializeNVPTXTargetInfo()

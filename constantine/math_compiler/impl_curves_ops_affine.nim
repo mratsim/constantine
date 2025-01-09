@@ -17,7 +17,7 @@ import
   std / typetraits # for distinctBase
 
 ## Section name used for `llvmInternalFnDef`
-const SectionName = "ctt.curves_affine"
+const SectionName = "ctt,curves_affine"
 
 type
   EcPointAff* {.borrow: `.`.} = distinct Array

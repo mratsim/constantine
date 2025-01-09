@@ -14,17 +14,17 @@ import
 
 proc modadd*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
   case asy.backend
-  of {bkX86_64_Linux, bkAmdGpu}:
+  of {bkX86_64_Linux, bkArm64_MacOS, bkAmdGpu}:
     asy.modadd_sat(fd, r, a, b, M)
   of bkNvidiaPTX:
     asy.modadd_nvidia(fd, r, a, b, M)
 
 proc modsub*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
   case asy.backend
+  of {bkX86_64_Linux, bkArm64_MacOS, bkAmdGpu}:
+    asy.modsub_sat(fd, r, a, b, M)
   of bkNvidiaPTX:
     asy.modsub_nvidia(fd, r, a, b, M)
-  else:
-    doAssert false, "Unimplemented"
 
 proc mtymul*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef, finalReduce = true) =
   case asy.backend

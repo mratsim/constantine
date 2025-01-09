@@ -79,7 +79,7 @@ proc hi(bld: BuilderRef, val: ValueRef, baseTy: TypeRef, oversize: uint32, prefi
 
   return hi
 
-const SectionName = "ctt.superinstructions"
+const SectionName = "ctt,superinstructions"
 
 proc getInstrName(baseName: string, ty: TypeRef, builtin = false): string =
   var w, v: int # Wordsize and vector size
