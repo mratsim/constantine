@@ -8,7 +8,8 @@
 
 import
   constantine/platforms/llvm/[llvm, super_instructions],
-  ./ir
+  ./ir,
+  ./impl_fields_globals
 
 # ############################################################
 #
@@ -78,7 +79,7 @@ import
 
 const SectionName = "ctt,fields"
 
-proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, rr, a, M, carry: ValueRef) =
+proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array, carry: ValueRef) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -88,21 +89,33 @@ proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, rr, a, M, ca
   ## To be used when the final substraction can
   ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
 
-  # Mask: contains 0xFFFF or 0x0000
-  let (_, mask) = asy.br.subborrow(fd.zero, fd.zero, carry)
+  # We use word-level arithmetic instead of llvm_sub_overflow.u256 or llvm_sub_overflow.u384
+  # due to LLVM adding extra instructions (from 1, 2 to 33% or 66% more): https://github.com/mratsim/constantine/issues/357
+
+  let t = asy.makeArray(fd.fieldTy)
+
+  # Contains 0x0001 (if overflowed limbs) or 0x0000
+  let (_, overflowedLimbs) = asy.br.addcarry(fd.zero, fd.zero, carry)
 
   # Now substract the modulus, and test a < M
   # (underflow) with the last borrow
-  let (borrow, a_minus_M) = asy.br.llvm_sub_overflow(a, M)
+  var B = fd.zero_i1
+  for i in 0 ..< fd.numWords:
+    (B, t[i]) = asy.br.subborrow(a[i], M[i], B)
 
-  # If it underflows here, it means that it was
-  # smaller than the modulus and we don't need `a-M`
-  let (ctl, _) = asy.br.subborrow(mask, fd.zero, borrow)
+  # 1. if `overflowedLimbs`, underflowedModulus >= 0
+  # 2. if a >= M, underflowedModulus >= 0
+  # if underflowedModulus >= 0: a-M else: a
+  # This generates extra instructions whether the arch uses sub-with-borrow (x86-64) or sub-with-carry (ARM64)
+  # and there doesn't seem to be a way around it
+  let (underflowed, _) = asy.br.subborrow(overflowedLimbs, fd.zero, B)
 
-  let t = asy.br.select(ctl, a, a_minus_M)
-  asy.store(rr, t)
+  for i in 0 ..< fd.numWords:
+     t[i] = asy.br.select(underflowed, t[i], a[i])
 
-proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, rr, a, M: ValueRef) =
+  asy.store(r, t)
+
+proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -111,15 +124,19 @@ proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, rr, a, M: Val
   ##
   ## To be used when the modulus does not use the full bitwidth of the storing words
   ## (say using 255 bits for the modulus out of 256 available in words)
+  let t = asy.makeArray(fd.fieldTy)
 
   # Now substract the modulus, and test a < M
   # (underflow) with the last borrow
-  let (borrow, a_minus_M) = asy.br.llvm_sub_overflow(a, M)
+  var B = fd.zero_i1
+  for i in 0 ..< fd.numWords:
+    (B, t[i]) = asy.br.subborrow(a[i], M[i], B)
 
   # If it underflows here, it means that it was
   # smaller than the modulus and we don't need `a-M`
-  let t = asy.br.select(borrow, a, a_minus_M)
-  asy.store(rr, t)
+  for i in 0 ..< fd.numWords:
+    t[i] = asy.br.select(B, a[i], t[i])
+  asy.store(r, t)
 
 proc modadd_sat(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) {.used.} =
   ## Generate an optimized modular addition kernel
@@ -138,16 +155,157 @@ proc modadd_sat(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) 
     let (rr, aa, bb, MM) = llvmParams
 
     # Pointers are opaque in LLVM now
-    let a = asy.load2(fd.intBufTy, aa, "a")
-    let b = asy.load2(fd.intBufTy, bb, "b")
-    let M = asy.load2(fd.intBufTy, MM, "M")
+    let r = asy.asArray(rr, fd.fieldTy)
+    let a = asy.asArray(aa, fd.fieldTy)
+    let b = asy.asArray(bb, fd.fieldTy)
+    let M = asy.asArray(MM, fd.fieldTy)
+    let apb = asy.makeArray(fd.fieldTy)
 
-    let (carry, apb) = asy.br.llvm_add_overflow(a, b)
+    var C = fd.zero_i1
+    for i in 1 ..< fd.numWords:
+      (C, apb[i]) = asy.br.addcarry(a[i], b[i], C)
+
     if fd.spareBits >= 1:
-      asy.finalSubNoOverflow(fd, rr, apb, M)
+      asy.finalSubNoOverflow(fd, r, apb, M)
     else:
-      asy.finalSubMayOverflow(fd, rr, apb, M, carry)
+      asy.finalSubMayOverflow(fd, r, apb, M, C)
 
     asy.br.retVoid()
 
   asy.callFn(name, [r, a, b, M])
+
+proc modsub_sat(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) {.used.} =
+  ## Generate an optimized modular subtraction kernel
+  ## with parameters `a, b, modulus: Limbs -> Limbs`
+
+  let red = if fd.spareBits >= 1: "noo"
+            else: "mayo"
+  let name = "_modadd_" & red & ".u" & $fd.w & "x" & $fd.numWords
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a, b, M]),
+          {kHot}):
+
+    tagParameter(1, "sret")
+
+    let (rr, aa, bb, MM) = llvmParams
+
+    # Pointers are opaque in LLVM now
+    let r = asy.asArray(rr, fd.fieldTy)
+    let a = asy.asArray(aa, fd.fieldTy)
+    let b = asy.asArray(bb, fd.fieldTy)
+    let M = asy.asArray(MM, fd.fieldTy)
+    let apb = asy.makeArray(fd.fieldTy)
+
+    var B = fd.zero_i1
+    for i in 0 ..< fd.numWords:
+      (B, apb[i]) = asy.br.subborrow(a[i], b[i], B)
+
+    let (_, underflowMask) = asy.br.subborrow(fd.zero, fd.zero, B)
+
+    # Now mask the adder, with 0 or the modulus limbs
+    let t = asy.makeArray(fd.fieldTy)
+    for i in 0 ..< fd.numWords:
+      let maskedMi = asy.br.`and`(M[i], underflowMask)
+      t[i] = asy.br.add(apb[i], maskedMi)
+
+    asy.store(r, t)
+    asy.br.retVoid()
+
+  asy.callFn(name, [r, a, b, M])
+
+proc mtymul_sat_CIOS_sparebit_mulhi(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef, finalReduce: bool) =
+  ## Generate an optimized modular multiplication kernel
+  ## with parameters `a, b, modulus: Limbs -> Limbs`
+  ## on architectures:
+  ## - that support "mul" and "mulhi" separate instructions
+  ## - for which multiplication doesn't interfere with the addition carry flag
+  ##
+  ## This is the case for:
+  ## - ARM64
+  ## - Nvidia
+  ## - x86 SIMD
+  ##
+  ## ARM32 and x86_64 supports extended multiplication instead
+
+  let name =
+    if not finalReduce and fd.spareBits >= 2:
+      "_mty_mulur.u" & $fd.w & "x" & $fd.numWords & "b2"
+    else:
+      doAssert fd.spareBits >= 1
+      "_mty_mul.u" & $fd.w & "x" & $fd.numWords & "b1"
+
+  asy.llvmInternalFnDef(
+          name, SectionName,
+          asy.void_t, toTypes([r, a, b, M]),
+          {kHot}):
+
+    tagParameter(1, "sret")
+
+    let (rr, aa, bb, MM) = llvmParams
+
+    # Pointers are opaque in LLVM now
+    let r = asy.asArray(rr, fd.fieldTy)
+    let a = asy.asArray(aa, fd.fieldTy)
+    let b = asy.asArray(bb, fd.fieldTy)
+    let M = asy.asArray(MM, fd.fieldTy)
+
+    let t = asy.makeArray(fd.fieldTy)
+    let N = fd.numWords
+    let m0ninv = asy.getM0ninv(fd)
+
+    doAssert N >= 2
+    for i in 0 ..< N:
+      # Multiplication
+      # -------------------------------
+      #   for j=0 to N-1
+      # 		(A,t[j])  := t[j] + a[j]*b[i] + A
+      let bi = b[i]
+      var A = fd.zero
+      if i == 0:
+        for j in 0 ..< N:
+          t[j] = asy.br.mul(a[j], bi)
+      else:
+        var C = fd.zero_i1
+        for j in 0 ..< N:
+          (C, t[j]) = asy.br.mullo_adc(a[j], bi, t[j], C)
+        (_, A) = asy.br.addcarry(fd.zero, fd.zero, C)
+
+      block:
+        var C = fd.zero_i1
+        for j in 1 ..< N:
+          (C, t[j]) = asy.br.mulhi_adc(a[j-1], bi, t[j], C)
+        (_, A) = asy.br.mulhi_adc(a[N-1], bi, A, C)
+
+      # Reduction
+      # -------------------------------
+      #   m := t[0]*m0ninv mod W
+      #
+      # 	C,_ := t[0] + m*M[0]
+      # 	for j=1 to N-1
+      # 		(C,t[j-1]) := t[j] + m*M[j] + C
+      #   t[N-1] = C + A
+      let m = asy.br.mul(t[0], m0ninv)
+      var (C, _) = asy.br.mullo_adc(m, M[0], t[0], fd.zero_i1)
+      for j in 1 ..< N:
+        (C, t[j-1]) = asy.br.mullo_adc(m, M[j], t[j], C)
+      (_, t[N-1]) = asy.br.addcarry(A, fd.zero, C)
+
+      C = fd.zero_i1
+      for j in 0 ..< N:
+        (C, t[j]) = asy.br.mulhi_adc(m, M[j], t[j], C)
+
+    if finalReduce:
+      asy.finalSubNoOverflow(fd, t, t, M)
+
+    asy.store(r, t)
+    asy.br.retVoid()
+
+  asy.callFn(name, [r, a, b, M])
+
+proc mtymul_sat_mulhi(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef, finalReduce = true) {.used.} =
+  ## Generate an optimized modular multiplication kernel
+  ## with parameters `a, b, modulus: Limbs -> Limbs`
+
+  # TODO: spareBits == 0
+  asy.mtymul_sat_CIOS_sparebit_mulhi(fd, r, a, b, M, finalReduce)

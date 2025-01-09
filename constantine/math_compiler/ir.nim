@@ -218,6 +218,9 @@ proc definePrimitives*(asy: Assembler_LLVM, fd: FieldDescriptor) =
 
   asy.ctx.def_addcarry(asy.module, asy.ctx.int1_t(), fd.wordTy)
   asy.ctx.def_subborrow(asy.module, asy.ctx.int1_t(), fd.wordTy)
+  asy.ctx.def_hi(asy.module, fd.wordTy, fd.word2xTy)
+  asy.ctx.def_mullo_adc(asy.module, asy.ctx.int1_t(), fd.wordTy)
+  asy.ctx.def_mulhi_adc(asy.module, asy.ctx.int1_t(), fd.wordTy)
 
 proc wordTy*(fd: FieldDescriptor, value: SomeInteger) =
   constInt(fd.wordTy, value)

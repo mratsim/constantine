@@ -17,6 +17,7 @@ proc modadd*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
   of {bkX86_64_Linux, bkArm64_MacOS, bkAmdGpu}:
     asy.modadd_sat(fd, r, a, b, M)
   of bkNvidiaPTX:
+    # addcarries are not properly produced and chained with Nvidia backend
     asy.modadd_nvidia(fd, r, a, b, M)
 
 proc modsub*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
@@ -24,11 +25,18 @@ proc modsub*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
   of {bkX86_64_Linux, bkArm64_MacOS, bkAmdGpu}:
     asy.modsub_sat(fd, r, a, b, M)
   of bkNvidiaPTX:
+    # subborrows are not properly produced and chained with Nvidia backend
     asy.modsub_nvidia(fd, r, a, b, M)
 
 proc mtymul*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef, finalReduce = true) =
   case asy.backend
+  of bkX86_64_Linux:
+    # TODO: Fallback code that doesn't use extended precision mul and dual carry chains
+    asy.mtymul_sat_mulhi(fd, r, a, b, M, finalReduce)
+  of {bkArm64_MacOS, bkAmdGpu}:
+    asy.mtymul_sat_mulhi(fd, r, a, b, M, finalReduce)
   of bkNvidiaPTX:
+    # mtymul_sat_mulhi does not produce fused instructions
+    #   mad.lo mad.lo.cc, madc.lo, madc.lo.cc
+    #   mad.hi mad.hi.cc, madc.hi, madc.hi.cc
     asy.mtymul_nvidia(fd, r, a, b, M, finalReduce)
-  else:
-    doAssert false, "Unimplemented"

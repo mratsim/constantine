@@ -62,7 +62,7 @@ const Fields = [
   ),
 ]
 
-proc t_field_add() =
+proc t_field_primitives() =
   let asy = Assembler_LLVM.new(bkArm64_MacOS, cstring("arm64_poc"))
   for F in Fields:
     let fd = asy.ctx.configureField(
@@ -72,6 +72,11 @@ proc t_field_add() =
     asy.definePrimitives(fd)
 
     discard asy.genFpAdd(fd)
+    discard asy.genFpSub(fd)
+    if F[0] != "secp256k1_fp" and F[0] != "secp256k1_fr":
+      discard asy.genFpMul(fd)
+    else:
+      debugEcho "Skipping FpMul generation of " & F[0] & " as it is unimplemented"
 
   echo "========================================="
   echo "LLVM IR unoptimized\n"
@@ -146,23 +151,4 @@ proc t_field_add() =
   echo machine.emitTo[:string](asy.module, AssemblyFile)
   echo "========================================="
 
-  # var engine: ExecutionEngineRef
-  # createJITCompilerForModule(engine, asy.module, optLevel = 3)
-
-  # let fn32 = cm32.genSymbol(opFpAdd)
-  # let fn64 = cm64.genSymbol(opFpAdd)
-
-  # let jitFpAdd64 = cast[proc(r: var array[4, uint64], a, b: array[4, uint64]){.noconv.}](
-  #   engine.getFunctionAddress(cstring fn64)
-  # )
-
-  # var r: array[4, uint64]
-  # r.jitFpAdd64([uint64 1, 2, 3, 4], [uint64 1, 1, 1, 1])
-  # echo "jitFpAdd64 = ", r
-
-  # # block:
-  # #   Cleanup - Assembler_LLVM is auto-managed
-  # #   engine.dispose()  # also destroys the module attached to it, which double_frees Assembler_LLVM asy.module
-  # echo "LLVM JIT - calling FpAdd64 SUCCESS"
-
-t_field_add()
+t_field_primitives()
