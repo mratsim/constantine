@@ -12,11 +12,11 @@ import
 
 const Fields = [
   (
-    "bn254_snarks_fp", 254,
+    "bn254_fp", 254,
     "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
   ),
   (
-    "bn254_snarks_fr", 254,
+    "bn254_fr", 254,
     "30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001"
   ),
 
@@ -63,7 +63,7 @@ const Fields = [
 ]
 
 proc t_field_add() =
-  let asy = Assembler_LLVM.new(bkX86_64_Linux, cstring("x86_poc"))
+  let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("nvidia_poc"))
   for F in Fields:
     let fd = asy.ctx.configureField(
       F[0], F[1], F[2],
@@ -88,15 +88,15 @@ proc t_field_add() =
 
   # --------------------------------------------
   # See the assembly - note it might be different from what the JIT compiler did
-  initializeFullX86Target()
-  const triple = "x86_64-pc-linux-gnu"
+  initializeFullNVPTXTarget()
+  const triple = "nvptx64-nvidia-cuda"
 
   let machine = createTargetMachine(
     target = toTarget(triple),
     triple = triple,
-    cpu = "",
-    features = "+adx,+bmi2", # TODO check the proper way to pass options
-    level = CodeGenLevelDefault,
+    cpu = "sm_89", # RTX4090
+    features = "",
+    level = CodeGenLevelAggressive,
     reloc = RelocDefault,
     codeModel = CodeModelDefault
   )
@@ -117,24 +117,14 @@ proc t_field_add() =
   let pbo = createPassBuilderOptions()
   pbo.setMergeFunctions()
   let err = asy.module.runPasses(
-    # "default<O2>,memcpyopt,sroa,mem2reg,function-attrs,inline,gvn,dse,aggressive-instcombine,adce",
-    "function(require<inliner-size-estimator>,require<memdep>,require<da>)" &
-    ",function(aa-eval)" &
-    ",always-inline,hotcoldsplit,inferattrs,instrprof,recompute-globalsaa" &
-    ",cgscc(argpromotion,function-attrs)" &
-    ",require<inline-advisor>,partial-inliner,called-value-propagation" &
-    ",scc-oz-module-inliner,module-inline" & # Buggy optimization
-    ",function(verify,loop-mssa(loop-reduce),mergeicmps,expand-memcmp,instsimplify)" &
-    ",function(lower-constant-intrinsics,consthoist,partially-inline-libcalls,ee-instrument<post-inline>,scalarize-masked-mem-intrin,verify)" &
-    ",memcpyopt,sroa,dse,aggressive-instcombine,gvn,ipsccp,deadargelim,adce" &
-    "",
+    "default<O2>,function-attrs,memcpyopt,sroa,mem2reg,gvn,dse,instcombine,inline,adce",
     machine,
     pbo
   )
   if not err.pointer().isNil():
     writeStackTrace()
     let errMsg = err.getErrorMessage()
-    stderr.write("\"codegen X86_64\" for module '" & astToStr(module) & "' " & $instantiationInfo() &
+    stderr.write("\"codegen NvidiaPTX\" for module '" & astToStr(module) & "' " & $instantiationInfo() &
                  " exited with error: " & $cstring(errMsg) & '\n')
     errMsg.dispose()
     quit 1
@@ -150,25 +140,5 @@ proc t_field_add() =
 
   echo machine.emitTo[:string](asy.module, AssemblyFile)
   echo "========================================="
-
-  # var engine: ExecutionEngineRef
-  # initializeFullNativeTarget()
-  # createJITCompilerForModule(engine, asy.module, optLevel = 3)
-
-  # let fn32 = cm32.genSymbol(opFpAdd)
-  # let fn64 = cm64.genSymbol(opFpAdd)
-
-  # let jitFpAdd64 = cast[proc(r: var array[4, uint64], a, b: array[4, uint64]){.noconv.}](
-  #   engine.getFunctionAddress(cstring fn64)
-  # )
-
-  # var r: array[4, uint64]
-  # r.jitFpAdd64([uint64 1, 2, 3, 4], [uint64 1, 1, 1, 1])
-  # echo "jitFpAdd64 = ", r
-
-  # # block:
-  # #   Cleanup - Assembler_LLVM is auto-managed
-  # #   engine.dispose()  # also destroys the module attached to it, which double_frees Assembler_LLVM asy.module
-  # echo "LLVM JIT - calling FpAdd64 SUCCESS"
 
 t_field_add()

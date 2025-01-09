@@ -64,21 +64,6 @@ import ./llvm
 #   and while using @llvm.usub.with.overflow.i64 allows ARM64 to solve the missing optimization
 #   it is also missed on AMDGPU (or nvidia)
 
-proc hi(bld: BuilderRef, val: ValueRef, baseTy: TypeRef, oversize: uint32, prefix: string): ValueRef =
-  let ctx = bld.getContext()
-  let bits = baseTy.getIntTypeWidth()
-  let overTy = ctx.int_t(bits + oversize)
-
-  # %hi_shift_1 = zext i8 64 to i128
-  let s = constInt(ctx.int8_t(), oversize)
-  let shift = bld.zext(s, overTy, name = cstring(prefix & "S_"))
-  # %hiLarge_1 = lshr i128 %input, %hi_shift_1
-  let hiLarge = bld.lshr(val, shift, name = cstring(prefix & "L_"))
-  # %hi_1 = trunc i128 %hiLarge_1 to i64
-  let hi = bld.trunc(hiLarge, baseTy, name = cstring(prefix & "_"))
-
-  return hi
-
 const SectionName = "ctt,superinstructions"
 
 proc getInstrName(baseName: string, ty: TypeRef, builtin = false): string =
@@ -109,7 +94,7 @@ proc def_llvm_add_overflow*(ctx: ContextRef, m: ModuleRef, wordTy: TypeRef) =
     let fnTy = function_t(retTy, [wordTy, wordTy])
     discard m.addFunction(cstring name, fnTy)
 
-proc llvm_add_overflow*(br: BuilderRef, a, b: ValueRef, name = ""): tuple[carryOut, r: ValueRef] =
+proc llvm_add_overflow_unsplit(br: BuilderRef, a, b: ValueRef, name = ""): ValueRef =
   ## (cOut, result) <- a+b+cIn
   let ty = a.getTypeOf()
   let intrin_name = "llvm.uadd.with.overflow".getInstrName(ty, builtin = true)
@@ -122,6 +107,11 @@ proc llvm_add_overflow*(br: BuilderRef, a, b: ValueRef, name = ""): tuple[carryO
   let retTy = ctx.struct_t([ty, ctx.int1_t()])
   let fnTy = function_t(retTy, [ty, ty])
   let addo = br.call2(fnTy, fn, [a, b], cstring name)
+  return addo
+
+proc llvm_add_overflow*(br: BuilderRef, a, b: ValueRef, name = ""): tuple[carryOut, r: ValueRef] =
+  ## (cOut, result) <- a+b+cIn
+  let addo = llvm_add_overflow_unsplit(br, a, b, name)
   let lo = br.extractValue(addo, 0, cstring(name & ".lo"))
   let cOut = br.extractValue(addo, 1, cstring(name & ".carry"))
   return (cOut, lo)
@@ -189,6 +179,42 @@ template defSuperInstruction[N: static int](
     fn.setSection(SectionName)
     fn.addAttribute(kAttrFnIndex, ctx.createAttr("alwaysinline"))
 
+proc def_hi*(ctx: ContextRef, m: ModuleRef, toTy: TypeRef, fromTy: TypeRef) =
+  ## Define result <- a >> oversize
+  ## with oversize the number of bits of `a` shifted out
+  ## and baseTy the type of `a` after shifting
+
+  let retType = toTy
+  let inType = [fromTy]
+  let toBits = toTy.getIntTypeWidth()
+  let fromBits = fromTy.getIntTypeWidth()
+  let shift = fromBits - toBits
+
+  m.defSuperInstruction("hi.u" & $toBits & ".from", retType, inType):
+    let a = llvmParams
+
+    let s = constInt(ctx.int8_t(), shift)
+    let shift = br.zext(s, fromTy, name = "hiS_")
+    let hiLarge = br.lshr(a, shift, name = "hiL_")
+    let hi = br.trunc(hiLarge, toTy, name = "hiT")
+    br.ret(hi)
+
+proc hi*(br: BuilderRef, a: ValueRef, toTy: TypeRef): ValueRef =
+  ## Get the high part of the input
+  ##   result <- a >> oversize
+  let fromTy = a.getTypeOf()
+  let toBits = toTy.getIntTypeWidth()
+  let name = ("hi.u" & $toBits & ".from").getInstrName(fromTy)
+
+  let fn = br.getCurrentModule().getFunction(cstring name)
+  doAssert not fn.pointer.isNil, "Function '" & name & "' does not exist in the module\n"
+
+  let retTy = toTy
+  let fnTy = function_t(retTy, [fromTy])
+  let hi = br.call2(fnTy, fn, [a], name = "hi")
+  hi.setInstrCallConv(Fast)
+  return hi
+
 proc def_addcarry*(ctx: ContextRef, m: ModuleRef, carryTy, wordTy: TypeRef) =
   ## Define (carryOut, result) <- a+b+carryIn
 
@@ -207,7 +233,7 @@ proc def_addcarry*(ctx: ContextRef, m: ModuleRef, carryTy, wordTy: TypeRef) =
     ret = br.insertValue(ret, carryOut, 0, "ret")
     br.ret(ret)
 
-proc addcarry*(br: BuilderRef, a, b, carryIn: ValueRef): tuple[carryOut, r: ValueRef] =
+proc addcarry_unsplit(br: BuilderRef, a, b, carryIn: ValueRef): ValueRef =
   ## (cOut, result) <- a+b+cIn
   let ty = a.getTypeOf()
   let tyC = carryIn.getTypeOf()
@@ -220,6 +246,11 @@ proc addcarry*(br: BuilderRef, a, b, carryIn: ValueRef): tuple[carryOut, r: Valu
   let fnTy = function_t(retTy, [ty, ty, tyC])
   let adc = br.call2(fnTy, fn, [a, b, carryIn], name = "adc")
   adc.setInstrCallConv(Fast)
+  return adc
+
+proc addcarry*(br: BuilderRef, a, b, carryIn: ValueRef): tuple[carryOut, r: ValueRef] =
+  ## (cOut, result) <- a+b+cIn
+  let adc = br.addcarry_unsplit(a, b, carryIn)
   let lo = br.extractValue(adc, 1, name = "adc.lo")
   let cOut = br.extractValue(adc, 0, name = "adc.carry")
   return (cOut, lo)
@@ -259,134 +290,210 @@ proc subborrow*(br: BuilderRef, a, b, borrowIn: ValueRef): tuple[borrowOut, r: V
   let bOut = br.extractValue(sbb, 0, name = "sbb.borrow")
   return (bOut, lo)
 
-proc mulExt*(bld: BuilderRef, a, b: ValueRef): tuple[hi, lo: ValueRef] =
-  ## Extended precision multiplication
-  ## (hi, lo) <- a*b
-  let ctx = bld.getContext()
+proc def_mullo_adc*(ctx: ContextRef, m: ModuleRef, carryTy, wordTy: TypeRef) =
+  ## Define fused multiplication + add with carry
+  ## On 64-bit
+  ##   (cOut, result) <- (a*b) mod 64 + c + carry
+
+  let retType = ctx.struct_t([carryTy, wordTy])
+  let inType = [wordTy, wordTy, wordTy, carryTy]
+
+  m.defSuperInstruction("mullo_adc", retType, inType):
+    let (a, b, c, carryIn) = llvmParams
+    let t = br.mul(a, b, "ab_lo")
+    br.ret(br.addcarry_unsplit(t, c, carryIn))
+
+proc mullo_adc*(br: BuilderRef, a, b, c, carryIn: ValueRef): tuple[carryOut, r: ValueRef] =
+  ## Fused multiplication + add with carry
+  ## On 64-bit
+  ##   (cOut, result) <- (a*b) mod 64 + c + carry
   let ty = a.getTypeOf()
-  let bits = ty.getIntTypeWidth()
+  let tyC = carryIn.getTypeOf()
+  let name = "mullo_adc".getInstrName(ty)
+
+  let fn = br.getCurrentModule().getFunction(cstring name)
+  doAssert not fn.pointer.isNil, "Function '" & name & "' does not exist in the module\n"
+
+  let retTy = br.getContext().struct_t([tyC, ty])
+  let fnTy = function_t(retTy, [ty, ty, ty, tyC])
+  let mullo_adc = br.call2(fnTy, fn, [a, b, c, carryIn], name = "mullo_adc")
+  mullo_adc.setInstrCallConv(Fast)
+  let lo = br.extractValue(mullo_adc, 1, name = "mullo_adc.lo")
+  let cOut = br.extractValue(mullo_adc, 0, name = "mullo_adc.carry")
+  return (cOut, lo)
+
+proc def_mulhi_adc*(ctx: ContextRef, m: ModuleRef, carryTy, wordTy: TypeRef) =
+  ## Define fused multiplication + add with carry
+  ## On 64-bit
+  ##   (cOut, result) <- (a*b) >> 64 + c + carry
+
+  let retType = ctx.struct_t([carryTy, wordTy])
+  let inType = [wordTy, wordTy, wordTy, carryTy]
+
+  let bits = wordTy.getIntTypeWidth()
   let dbl = bits shl 1
   let dblTy = ctx.int_t(dbl)
 
-  let a = bld.zext(a, dblTy, name = "mulx0_")
-  let b = bld.zext(b, dblTy, name = "mulx1_")
-  let r = bld.mulNUW(a, b, name = "mulx_")
+  m.defSuperInstruction("mulhi_adc", retType, inType):
+    let (a, b, c, carryIn) = llvmParams
+    let ax = br.zext(a, dblTy, name = "mulx0_")
+    let bx = br.zext(b, dblTy, name = "mulx1_")
+    let t = br.mulNUW(ax, bx, "ab_x")
+    let hi = br.hi(t, wordTy)
+    br.ret(br.addcarry_unsplit(hi, c, carryIn))
 
-  let lo = bld.trunc(r, ty, name = "mullo_")
-  let hi = bld.hi(r, ty, oversize = bits, prefix = "mulhi_")
-  return (hi, lo)
-
-proc smulExt*(bld: BuilderRef, a, b: ValueRef): tuple[hi, lo: ValueRef] =
-  ## Signed extended precision multiplication
-  ## (hi, lo) <- a*b
-  let ctx = bld.getContext()
+proc mulhi_adc*(br: BuilderRef, a, b, c, carryIn: ValueRef): tuple[carryOut, r: ValueRef] =
+  ## Fused multiplication (high word) + add with carry
+  ## On 64-bit
+  ##   (cOut, result) <- (a*b) >> 64 + c + carry
   let ty = a.getTypeOf()
-  let bits = ty.getIntTypeWidth()
-  let dbl = bits shl 1
-  let dblTy = ctx.int_t(dbl)
+  let tyC = carryIn.getTypeOf()
+  let name = "mulhi_adc".getInstrName(ty)
 
-  let a = bld.sext(a, dblTy, name = "smulx0_")
-  let b = bld.sext(b, dblTy, name = "smulx1_")
-  let r = bld.mulNSW(a, b, name = "smulx0_")
+  let fn = br.getCurrentModule().getFunction(cstring name)
+  doAssert not fn.pointer.isNil, "Function '" & name & "' does not exist in the module\n"
 
-  let lo = bld.trunc(r, ty, name = "smullo_")
-  let hi = bld.hi(r, ty, oversize = bits, prefix = "smulhi_")
-  return (hi, lo)
+  let retTy = br.getContext().struct_t([tyC, ty])
+  let fnTy = function_t(retTy, [ty, ty, ty, tyC])
+  let mulhi_adc = br.call2(fnTy, fn, [a, b, c, carryIn], name = "mulhi_adc")
+  mulhi_adc.setInstrCallConv(Fast)
+  let hi = br.extractValue(mulhi_adc, 1, name = "mulhi_adc.hi")
+  let cOut = br.extractValue(mulhi_adc, 0, name = "mulhi_adc.carry")
+  return (cOut, hi)
 
-proc muladd1*(bld: BuilderRef, a, b, c: ValueRef): tuple[hi, lo: ValueRef] =
-  ## Extended precision multiplication + addition
-  ## (hi, lo) <- a*b + c
-  ##
-  ## Note: 0xFFFFFFFF² -> (hi: 0xFFFFFFFE, lo: 0x00000001)
-  ##       so adding any c cannot overflow
-  let ctx = bld.getContext()
-  let ty = a.getTypeOf()
-  let bits = ty.getIntTypeWidth()
-  let dbl = bits shl 1
-  let dblTy = ctx.int_t(dbl)
+# Placeholders
+# ----------------------------------------------------------------------
+# Currently unused instructions that need to be converted
+# to defSuperInstruction
 
-  let a = bld.zext(a, dblTy, name = "fmax0_")
-  let b = bld.zext(b, dblTy, name = "fmax1_")
-  let ab = bld.mulNUW(a, b, name = "fmax01_")
+# proc mulExt*(bld: BuilderRef, a, b: ValueRef): tuple[hi, lo: ValueRef] =
+#   ## Extended precision multiplication
+#   ## (hi, lo) <- a*b
+#   let ctx = bld.getContext()
+#   let ty = a.getTypeOf()
+#   let bits = ty.getIntTypeWidth()
+#   let dbl = bits shl 1
+#   let dblTy = ctx.int_t(dbl)
 
-  let c = bld.zext(c, dblTy, name = "fmax2_")
-  let r = bld.addNUW(ab, c, name = "fmax_")
+#   let a = bld.zext(a, dblTy, name = "mulx0_")
+#   let b = bld.zext(b, dblTy, name = "mulx1_")
+#   let r = bld.mulNUW(a, b, name = "mulx_")
 
-  let lo = bld.trunc(r, ty, name = "fmalo_")
-  let hi = bld.hi(r, ty, oversize = bits, prefix = "fmahi_")
-  return (hi, lo)
+#   let lo = bld.trunc(r, ty, name = "mullo_")
+#   let hi = bld.hi(r, ty, oversize = bits, prefix = "mulhi_")
+#   return (hi, lo)
 
-proc muladd2*(bld: BuilderRef, a, b, c1, c2: ValueRef): tuple[hi, lo: ValueRef] =
-  ## Extended precision multiplication + addition + addition
-  ## (hi, lo) <- a*b + c1 + c2
-  ##
-  ## Note: 0xFFFFFFFF² -> (hi: 0xFFFFFFFE, lo: 0x00000001)
-  ##       so adding 0xFFFFFFFF leads to (hi: 0xFFFFFFFF, lo: 0x00000000)
-  ##       and we have enough space to add again 0xFFFFFFFF without overflowing
-  let ctx = bld.getContext()
-  let ty = a.getTypeOf()
-  let bits = ty.getIntTypeWidth()
-  let dbl = bits shl 1
-  let dblTy = ctx.int_t(dbl)
+# proc smulExt*(bld: BuilderRef, a, b: ValueRef): tuple[hi, lo: ValueRef] =
+#   ## Signed extended precision multiplication
+#   ## (hi, lo) <- a*b
+#   let ctx = bld.getContext()
+#   let ty = a.getTypeOf()
+#   let bits = ty.getIntTypeWidth()
+#   let dbl = bits shl 1
+#   let dblTy = ctx.int_t(dbl)
 
-  let a = bld.zext(a, dblTy, name = "fmaa0_")
-  let b = bld.zext(b, dblTy, name = "fmaa1_")
-  let ab = bld.mulNUW(a, b, name = "fmaa01_")
+#   let a = bld.sext(a, dblTy, name = "smulx0_")
+#   let b = bld.sext(b, dblTy, name = "smulx1_")
+#   let r = bld.mulNSW(a, b, name = "smulx0_")
 
-  let c1 = bld.zext(c1, dblTy, name = "fmaa2_")
-  let abc1 = bld.addNUW(ab, c1, name = "fmaa012_")
-  let c2 = bld.zext(c2, dblTy, name = "fmaa3_")
-  let r = bld.addNUW(abc1, c2, name = "fmaa_")
+#   let lo = bld.trunc(r, ty, name = "smullo_")
+#   let hi = bld.hi(r, ty, oversize = bits, prefix = "smulhi_")
+#   return (hi, lo)
 
-  let lo = bld.trunc(r, ty, name = "fmaalo_")
-  let hi = bld.hi(r, ty, oversize = bits, prefix = "fmaahi_")
-  return (hi, lo)
+# proc mulExtadd1*(bld: BuilderRef, a, b, c: ValueRef): tuple[hi, lo: ValueRef] =
+#   ## Extended precision multiplication + addition
+#   ## (hi, lo) <- a*b + c
+#   ##
+#   ## Note: 0xFFFFFFFF² -> (hi: 0xFFFFFFFE, lo: 0x00000001)
+#   ##       so adding any c cannot overflow
+#   let ctx = bld.getContext()
+#   let ty = a.getTypeOf()
+#   let bits = ty.getIntTypeWidth()
+#   let dbl = bits shl 1
+#   let dblTy = ctx.int_t(dbl)
 
-proc mulAcc*(bld: BuilderRef, tuv: var ValueRef, a, b: ValueRef) =
-  ## (t, u, v) <- (t, u, v) + a * b
-  let ctx = bld.getContext()
+#   let a = bld.zext(a, dblTy, name = "fmax0_")
+#   let b = bld.zext(b, dblTy, name = "fmax1_")
+#   let ab = bld.mulNUW(a, b, name = "fmax01_")
 
-  let ty = a.getTypeOf()
-  let bits = ty.getIntTypeWidth()
+#   let c = bld.zext(c, dblTy, name = "fmax2_")
+#   let r = bld.addNUW(ab, c, name = "fmax_")
 
-  let x3ty = tuv.getTypeOf()
-  let x3bits = x3ty.getIntTypeWidth()
+#   let lo = bld.trunc(r, ty, name = "fmalo_")
+#   let hi = bld.hi(r, ty, oversize = bits, prefix = "fmahi_")
+#   return (hi, lo)
 
-  doAssert bits * 3 == x3bits
+# proc mulExtadd2*(bld: BuilderRef, a, b, c1, c2: ValueRef): tuple[hi, lo: ValueRef] =
+#   ## Extended precision multiplication + addition + addition
+#   ## (hi, lo) <- a*b + c1 + c2
+#   ##
+#   ## Note: 0xFFFFFFFF² -> (hi: 0xFFFFFFFE, lo: 0x00000001)
+#   ##       so adding 0xFFFFFFFF leads to (hi: 0xFFFFFFFF, lo: 0x00000000)
+#   ##       and we have enough space to add again 0xFFFFFFFF without overflowing
+#   let ctx = bld.getContext()
+#   let ty = a.getTypeOf()
+#   let bits = ty.getIntTypeWidth()
+#   let dbl = bits shl 1
+#   let dblTy = ctx.int_t(dbl)
 
-  let dbl = bits shl 1
-  let dblTy = ctx.int_t(dbl)
+#   let a = bld.zext(a, dblTy, name = "fmaa0_")
+#   let b = bld.zext(b, dblTy, name = "fmaa1_")
+#   let ab = bld.mulNUW(a, b, name = "fmaa01_")
 
-  let a = bld.zext(a, dblTy, name = "mac0_")
-  let b = bld.zext(b, dblTy, name = "mac1_")
-  let ab = bld.mulNUW(a, b, name = "mac01_")
+#   let c1 = bld.zext(c1, dblTy, name = "fmaa2_")
+#   let abc1 = bld.addNUW(ab, c1, name = "fmaa012_")
+#   let c2 = bld.zext(c2, dblTy, name = "fmaa3_")
+#   let r = bld.addNUW(abc1, c2, name = "fmaa_")
 
-  let wide_ab = bld.zext(ab, x3ty, name = "mac01x_")
-  let r = bld.addNUW(tuv, wide_ab, "mac_")
+#   let lo = bld.trunc(r, ty, name = "fmaalo_")
+#   let hi = bld.hi(r, ty, oversize = bits, prefix = "fmaahi_")
+#   return (hi, lo)
 
-  tuv = r
+# proc mulExtAcc*(bld: BuilderRef, tuv: var ValueRef, a, b: ValueRef) =
+#   ## (t, u, v) <- (t, u, v) + a * b
+#   let ctx = bld.getContext()
 
-proc mulDoubleAcc*(bld: BuilderRef, tuv: var ValueRef, a, b: ValueRef) =
-  ## (t, u, v) <- (t, u, v) + 2 * a * b
-  let ctx = bld.getContext()
+#   let ty = a.getTypeOf()
+#   let bits = ty.getIntTypeWidth()
 
-  let ty = a.getTypeOf()
-  let bits = ty.getIntTypeWidth()
+#   let x3ty = tuv.getTypeOf()
+#   let x3bits = x3ty.getIntTypeWidth()
 
-  let x3ty = tuv.getTypeOf()
-  let x3bits = x3ty.getIntTypeWidth()
+#   doAssert bits * 3 == x3bits
 
-  doAssert bits * 3 == x3bits
+#   let dbl = bits shl 1
+#   let dblTy = ctx.int_t(dbl)
 
-  let dbl = bits shl 1
-  let dblTy = ctx.int_t(dbl)
+#   let a = bld.zext(a, dblTy, name = "mac0_")
+#   let b = bld.zext(b, dblTy, name = "mac1_")
+#   let ab = bld.mulNUW(a, b, name = "mac01_")
 
-  let a = bld.zext(a, dblTy, name = "macd0_")
-  let b = bld.zext(b, dblTy, name = "macd1_")
-  let ab = bld.mulNUW(a, b, name = "macd01_")
+#   let wide_ab = bld.zext(ab, x3ty, name = "mac01x_")
+#   let r = bld.addNUW(tuv, wide_ab, "mac_")
 
-  let wide_ab = bld.zext(ab, x3ty, name = "macd01x_")
-  let r1 = bld.addNUW(tuv, wide_ab, "macdpart_")
-  let r2 = bld.addNUW(r1, wide_ab, "macd_")
+#   tuv = r
 
-  tuv = r2
+# proc mulExtDoubleAcc*(bld: BuilderRef, tuv: var ValueRef, a, b: ValueRef) =
+#   ## (t, u, v) <- (t, u, v) + 2 * a * b
+#   let ctx = bld.getContext()
+
+#   let ty = a.getTypeOf()
+#   let bits = ty.getIntTypeWidth()
+
+#   let x3ty = tuv.getTypeOf()
+#   let x3bits = x3ty.getIntTypeWidth()
+
+#   doAssert bits * 3 == x3bits
+
+#   let dbl = bits shl 1
+#   let dblTy = ctx.int_t(dbl)
+
+#   let a = bld.zext(a, dblTy, name = "macd0_")
+#   let b = bld.zext(b, dblTy, name = "macd1_")
+#   let ab = bld.mulNUW(a, b, name = "macd01_")
+
+#   let wide_ab = bld.zext(ab, x3ty, name = "macd01x_")
+#   let r1 = bld.addNUW(tuv, wide_ab, "macdpart_")
+#   let r2 = bld.addNUW(r1, wide_ab, "macd_")
+
+#   tuv = r2
