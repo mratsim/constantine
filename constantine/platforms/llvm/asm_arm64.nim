@@ -8,11 +8,11 @@
 
 import
   std/[macros, strutils],
-  constantine/platforms/llvm/llvm
+  ./llvm
 
 # ############################################################
 #
-#                   x86 Inline ASM
+#                   ARM64 Inline ASM
 #
 # ############################################################
 
@@ -42,11 +42,11 @@ macro genInstr(body: untyped): untyped =
     let lhs = op[2][0][3][0]
 
     instrBody.add quote do:
-      let `ctx` = builder.getContext()
+      let `ctx` {.used.} = builder.getContext()
       # lhs: ValueRef or uint32 or uint64
-      let `numBits` = when `lhs` is ValueRef|ConstValueRef: `lhs`.getTypeOf().getIntTypeWidth()
+      let `numBits` = when `lhs` is ValueRef: `lhs`.getTypeOf().getIntTypeWidth()
                       else: 8*sizeof(`lhs`)
-      let `regTy` = when `lhs` is ValueRef|ConstValueRef: `lhs`.getTypeOf()
+      let `regTy` = when `lhs` is ValueRef: `lhs`.getTypeOf()
                     elif `lhs` is uint32: `ctx`.int32_t()
                     elif `lhs` is uint64: `ctx`.int64_t()
                     else: {.error "Unsupported input type " & $typeof(`lhs`).}
@@ -74,27 +74,25 @@ macro genInstr(body: untyped): untyped =
     else:
       error "Unsupported arity: " & $arity
 
-    # 3. Nothing, we can use the constraint string as is on x86
+    # 3. Nothing, we can use the constraint string as is on ARM64
 
     # 4. Register the inline ASM with LLVM
     let inlineASM = ident"inlineASM"
     let instrParam = op[2][0][1]
     let asmString = ident"asmString"
 
+    instrBody.add quote do:
+      let `asmString` = `instr` & static(" " & `instrParam`)
 
     instrBody.add quote do:
-      let `asmString` = if `numBits` == 64: static(`instr` & "q") & static(" " & `instrParam`)
-                        else: static(`instr` & "l") & static(" " & `instrParam`)
+      # Chapter 6 of https://docs.nvidia.com/cuda/pdf/NVVM_IR_Specification.pdf
+      # inteldialect is not supported (but the NVPTX dialect is akin to intel dialect)
 
-    instrBody.add quote do:
       let `inlineASM` = getInlineAsm(
         ty = `fnTy`,
         asmString = `asmString`,
         constraints = `constraintString`,
-        # All carry/overflow instructions have sideffect on carry flag and can't be reordered
-        # Relevant operations that affects flags are:
-        # - MUL, if the compiler decides not to use MULX
-        # - XOR, for zeroing a register
+        # All carry instructions have sideffect on carry flag and can't be reordered
         hasSideEffects = LlvmBool(1),
         isAlignStack = LlvmBool(0),
         dialect = InlineAsmDialectATT,
@@ -105,13 +103,10 @@ macro genInstr(body: untyped): untyped =
     for op in operands:
       # when op is ValueRef: op
       # else: constInt(uint64(op))
-      opArray.add newCall(
-        bindSym"ValueRef",
-        nnkWhenStmt.newTree(
-          nnkElifBranch.newTree(nnkInfix.newTree(ident"is", op, bindSym"AnyValueRef"), op),
+      opArray.add nnkWhenStmt.newTree(
+          nnkElifBranch.newTree(nnkInfix.newTree(ident"is", op, bindSym"ValueRef"), op),
           nnkElse.newTree(newCall(ident"constInt", regTy, newCall(ident"uint64", op)))
         )
-      )
     # builder.call2(ty, inlineASM, [lhs, rhs], name)
     instrBody.add newCall(
       ident"call2", ident"builder", fnTy,
@@ -133,7 +128,7 @@ macro genInstr(body: untyped): untyped =
           opDefs.add newIdentDefs(
             operands[i],
             nnkInfix.newTree(ident"or",
-              nnkInfix.newTree(ident"or", ident"AnyValueRef", ident"uint32"),
+              nnkInfix.newTree(ident"or", ident"ValueRef", ident"uint32"),
               ident"uint64")
           )
         else:
@@ -147,60 +142,22 @@ macro genInstr(body: untyped): untyped =
       procType = nnkProcDef,
       body = instrBody)
 
-# Inline x86 assembly
+# Inline ARM64 assembly
 # ------------------------------------------------------------
-#
-# We can generate add with carry via
-#   call { i8, i64 } @llvm.x86.addcarry.64(i8 %carryIn, i64 %a, i64 %b)
-#
-# We can generate multi-precision mul and mulx via
-#
-#    define {i64, i64} @mul(i64 %x, i64 %y) #0 {
-#
-#      %1 = zext i64 %x to i128
-#      %2 = zext i64 %y to i128
-#      %r = mul i128 %1, %2
-#      %3 = zext i32 64 to i128
-#      %4 = lshr i128 %r, %3
-#      %hi = trunc i128 %4 to i64
-#      %lo = trunc i128 %r to i64
-#
-#      %res_tmp = insertvalue {i64, i64} undef, i64 %hi, 0
-#      %res = insertvalue {i64, i64} %res_tmp, i64 %lo, 1
-#
-#      ret {i64, i64} %res
-#    }
-#
-#    attributes #0 = {"target-features"="+bmi2"}
-#
-#    mul:
-#            mov     rax, rdi
-#            mul     rsi
-#            mov     rcx, rax
-#            mov     rax, rdx
-#            mov     rdx, rcx
-#            ret
-#
-#    mul_bmi2:
-#        mov     rdx, rdi
-#        mulx    rax, rdx, rsi
-#        ret
-#
-# Note that mul(hi: var rdx, lo: var rax, a: reg/mem64, b: rax)
-#   - clobbers carry (and many other) flags
-#   - has fixed output to rdx:rax registers
-# while mulx(hi: var reg64, lo: var reg64, a: reg/mem64, b: rdx)
-#   - does not clobber flags
-#   - has flexible register outputs
-
-
 genInstr():
-  # We are only concerned about the ADCX/ADOX instructions
-  # which do not have intrinsics or cannot be generated through instruction combining
-  # unlike llvm.x86.addcarry.u64 that can generate adc
+  # r <- a+b
+  op arm64_add_co:       ("adds",       "$0, $1, $2;",     "=r,r,r",   [lhs, rhs])
+  op arm64_add_ci:       ("adc",        "$0, $1, $2;",     "=r,r,r",   [lhs, rhs])
+  op arm64_add_cio:      ("adcs",       "$0, $1, $2;",     "=r,r,r",   [lhs, rhs])
+  # r <- a-b
+  # Note that subs/sbcs that don't borrow will set the carry flag,
+  # it is inverted compared to LLVM, Nvidia or X86 semantics (6502 works similarly)
+  op arm64_sub_bo:       ("subs",       "$0, $1, $2;",     "=r,r,r",   [lhs, rhs])
+  op arm64_sub_bi:       ("sbc",        "$0, $1, $2;",     "=r,r,r",   [lhs, rhs])
+  op arm64_sub_bio:      ("sbcs",       "$0, $1, $2;",     "=r,r,r",   [lhs, rhs])
 
-  # (cf/of, r) <- a+b+(cf/of)
-  op adcx_rr: ("adcx", "%2, %0;", "=r,%0,r", [lhs, rhs])
-  op adcx_rm: ("adcx", "%2, %0;", "=r,0,m", [lhs, rhs])
-  op adox_rr: ("adox", "%2, %0;", "=r,%0,r", [lhs, rhs])
-  op adox_rm: ("adox", "%2, %0;", "=r,0,m", [lhs, rhs])
+  # Conditional mov / select
+  # csel, carry clear
+  op arm64_csel_cc:      ("csel",       "$0, $1, $2, cc;", "=r,r,r", [ifPos, ifNeg])
+
+  

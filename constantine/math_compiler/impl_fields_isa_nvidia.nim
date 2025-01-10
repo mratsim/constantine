@@ -59,15 +59,15 @@ proc finalSubMayOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Arra
   ## To be used when the final substraction can
   ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
   let N = fd.numWords
-  let scratch = asy.makeArray(fd.fieldTy)
+  let t = asy.makeArray(fd.fieldTy)
 
   # Contains 0x0001 (if overflowed limbs) or 0x0000
   let overflowedLimbs = asy.br.add_ci(0'u32, 0'u32)
 
   # Now substract the modulus, and test a < M with the last borrow
-  scratch[0] = asy.br.sub_bo(a[0], M[0])
+  t[0] = asy.br.sub_bo(a[0], M[0])
   for i in 1 ..< N:
-    scratch[i] = asy.br.sub_bio(a[i], M[i])
+    t[i] = asy.br.sub_bio(a[i], M[i])
 
   # 1. if `overflowedLimbs`, underflowedModulus >= 0
   # 2. if a >= M, underflowedModulus >= 0
@@ -76,7 +76,7 @@ proc finalSubMayOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Arra
   let underflowedModulus = asy.br.sub_bi(overflowedLimbs, 0'u32)
 
   for i in 0 ..< N:
-    r[i] = asy.br.slct(scratch[i], a[i], underflowedModulus)
+    r[i] = asy.br.slct(t[i], a[i], underflowedModulus)
 
 proc finalSubNoOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array) =
   ## If a >= Modulus: r <- a-M

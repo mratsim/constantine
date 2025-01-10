@@ -10,7 +10,7 @@ import
   constantine/platforms/llvm/llvm,
   ./ir,
   ./impl_fields_sat {.all.},
-  ./impl_fields_nvidia {.all.}
+  ./impl_fields_isa_nvidia {.all.}
 
 proc modadd*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) =
   case asy.backend

@@ -11,6 +11,9 @@ import
   ./ir,
   ./impl_fields_globals
 
+import # Specializations
+  ./impl_fields_isa_arm64
+
 # ############################################################
 #
 #             Field arithmetic with saturated limbs
@@ -79,18 +82,11 @@ import
 
 const SectionName = "ctt,fields"
 
-proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array, carry: ValueRef) =
+proc finalSubMayOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array, carry: ValueRef) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
-  ##
-  ## This is constant-time straightline code.
-  ## Due to warp divergence, the overhead of doing comparison with shortcutting might not be worth it on GPU.
-  ##
-  ## To be used when the final substraction can
-  ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
 
-  # We use word-level arithmetic instead of llvm_sub_overflow.u256 or llvm_sub_overflow.u384
-  # due to LLVM adding extra instructions (from 1, 2 to 33% or 66% more): https://github.com/mratsim/constantine/issues/357
+  # LLVM is hopelessly adding extra instructions (from 1, 2 to 33% or 66% more): https://github.com/mratsim/constantine/issues/357
 
   let t = asy.makeArray(fd.fieldTy)
 
@@ -115,7 +111,7 @@ proc finalSubMayOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Arr
 
   asy.store(r, t)
 
-proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array) =
+proc finalSubNoOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -124,6 +120,10 @@ proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Arra
   ##
   ## To be used when the modulus does not use the full bitwidth of the storing words
   ## (say using 255 bits for the modulus out of 256 available in words)
+
+  # We use word-level arithmetic instead of llvm_sub_overflow.u256 or llvm_sub_overflow.u384
+  # due to LLVM adding extra instructions (from 1, 2 to 33% or 66% more): https://github.com/mratsim/constantine/issues/357
+
   let t = asy.makeArray(fd.fieldTy)
 
   # Now substract the modulus, and test a < M
@@ -141,6 +141,10 @@ proc finalSubNoOverflow*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Arra
 proc modadd_sat(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) {.used.} =
   ## Generate an optimized modular addition kernel
   ## with parameters `a, b, modulus: Limbs -> Limbs`
+
+  if asy.backend in {bkArm64_MacOS} and fd.spareBits == 0:
+    asy.modadd_sat_fullbits_arm64(fd, r, a, b, M)
+    return
 
   let red = if fd.spareBits >= 1: "noo"
             else: "mayo"
@@ -178,9 +182,7 @@ proc modsub_sat(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) 
   ## Generate an optimized modular subtraction kernel
   ## with parameters `a, b, modulus: Limbs -> Limbs`
 
-  let red = if fd.spareBits >= 1: "noo"
-            else: "mayo"
-  let name = "_modadd_" & red & ".u" & $fd.w & "x" & $fd.numWords
+  let name = "_modsub.u" & $fd.w & "x" & $fd.numWords
   asy.llvmInternalFnDef(
           name, SectionName,
           asy.void_t, toTypes([r, a, b, M]),
@@ -237,12 +239,12 @@ proc mtymul_sat_CIOS_sparebit_mulhi(asy: Assembler_LLVM, fd: FieldDescriptor, r,
 
   asy.llvmInternalFnDef(
           name, SectionName,
-          asy.void_t, toTypes([r, a, b, M]),
+          asy.void_t, toTypes([r, a, b, M]) & fd.wordTy,
           {kHot}):
 
     tagParameter(1, "sret")
 
-    let (rr, aa, bb, MM) = llvmParams
+    let (rr, aa, bb, MM, m0ninv) = llvmParams
 
     # Pointers are opaque in LLVM now
     let r = asy.asArray(rr, fd.fieldTy)
@@ -252,7 +254,6 @@ proc mtymul_sat_CIOS_sparebit_mulhi(asy: Assembler_LLVM, fd: FieldDescriptor, r,
 
     let t = asy.makeArray(fd.fieldTy)
     let N = fd.numWords
-    let m0ninv = asy.getM0ninv(fd)
 
     doAssert N >= 2
     for i in 0 ..< N:
@@ -301,7 +302,8 @@ proc mtymul_sat_CIOS_sparebit_mulhi(asy: Assembler_LLVM, fd: FieldDescriptor, r,
     asy.store(r, t)
     asy.br.retVoid()
 
-  asy.callFn(name, [r, a, b, M])
+  let m0ninv = asy.getM0ninv(fd)
+  asy.callFn(name, [r, a, b, M, m0ninv])
 
 proc mtymul_sat_mulhi(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef, finalReduce = true) {.used.} =
   ## Generate an optimized modular multiplication kernel
