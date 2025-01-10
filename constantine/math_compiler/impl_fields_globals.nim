@@ -398,7 +398,7 @@ when isMainModule:
 
   # --------------------------------------------
   # See the assembly - note it might be different from what the JIT compiler did
-  initializeFullNativeTarget()
+  initializeFullX86Target()
 
   const triple = "x86_64-pc-linux-gnu"
 
@@ -406,7 +406,7 @@ when isMainModule:
     target = toTarget(triple),
     triple = triple,
     cpu = "",
-    features = "adx,bmi2", # TODO check the proper way to pass options
+    features = "+adx,+bmi2",
     level = CodeGenLevelAggressive,
     reloc = RelocDefault,
     codeModel = CodeModelDefault

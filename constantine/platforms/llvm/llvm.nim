@@ -87,26 +87,30 @@ proc initializeFullX86Target* {.inline.} =
   # With usual `initializeNativeTarget`
   # it's a separate call but it's mandatory so include it
   initializeX86AsmPrinter()
+  initializeX86AsmParser()
 
-proc initializeFullAarch64Target* {.inline.} =
-  initializeAarch64TargetInfo()
-  initializeAarch64Target()
-  initializeAarch64TargetMC()
+proc initializeFullAArch64Target* {.inline.} =
+  initializeAArch64TargetInfo()
+  initializeAArch64Target()
+  initializeAArch64TargetMC()
   # With usual `initializeNativeTarget`
   # it's a separate call but it's mandatory so include it
-  initializeAarch64AsmPrinter()
+  initializeAArch64AsmPrinter()
+  initializeAArch64AsmParser()
 
 proc initializeFullNVPTXTarget* {.inline.} =
   initializeNVPTXTargetInfo()
   initializeNVPTXTarget()
   initializeNVPTXTargetMC()
   initializeNVPTXAsmPrinter()
+  initializeNVPTXAsmParser()
 
 proc initializeFullAMDGPUTarget* {.inline.} =
   initializeAMDGPUTargetInfo()
   initializeAMDGPUTarget()
   initializeAMDGPUTargetMC()
   initializeAMDGPUAsmPrinter()
+  initializeAMDGPUAsmParser()
 
 # Execution Engine
 # ------------------------------------------------------------
@@ -195,6 +199,11 @@ proc createAttr*(ctx: ContextRef, name: openArray[char]): AttributeRef =
 proc toTypes*[N: static int](v: array[N, ValueRef]): array[N, TypeRef] =
   for i in 0 ..< v.len:
     result[i] = v[i].getTypeOf()
+
+proc `&`*[N: static int, T](a: array[N, T], b: T): array[N+1, T] =
+  for i in 0 ..< a.len:
+    result[i] = a[i]
+  result[^1] = b
 
 macro unpackParams*[N: static int](
         br: BuilderRef,

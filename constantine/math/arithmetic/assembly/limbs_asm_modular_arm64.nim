@@ -98,6 +98,8 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[
   else:
     # Addition can overflow u256, u384, ...
     let overflowedLimbs = b.reuseRegister()
+
+    # Contains 0x0001 (if overflowed limbs) or 0x0000
     ctx.adc overflowedLimbs, xzr, xzr
 
     # v = u - M
@@ -112,8 +114,8 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[
         ctx.ldr v[i+2], M[i+2]
 
     # 1. if `overflowedLimbs`, underflowedModulus >= 0
-    # 2. if a >= M, underflowedModulus >= 0
-    # if underflowedModulus >= 0: a-M else: a
+    # 2. if u >= M, underflowedModulus >= 0
+    # if underflowedModulus >= 0: u-M else: u
     ctx.sbcs xzr, overflowedLimbs, xzr
 
     # if carry clear u < M, so pick u
