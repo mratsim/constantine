@@ -373,13 +373,29 @@ func setOutputToFlag*(a: var Assembler_arm64, outputFlag: NimNode, carryOrBorrow
                   else: outputFlag
   let symStr = $nimSymbol
 
-  let desc = OperandDesc(
-    asmId: "",
-    nimSymbol: ident(symStr),
-    rm: carryOrBorrow,
-    constraint: asmOutputOverwrite)
-  desc.setConstraintDesc(nimSymbol)
-  a.operands.incl(desc)
+  if false:
+    # Unsupported before MacOS 15 (Apple Clang 16) and before Clang 17:
+    # https://github.com/mratsim/constantine/issues/516
+    # https://reviews.llvm.org/D149123
+    let desc = OperandDesc(
+      asmId: "",
+      nimSymbol: ident(symStr),
+      rm: carryOrBorrow,
+      constraint: asmOutputOverwrite)
+    desc.setConstraintDesc(nimSymbol)
+    a.operands.incl(desc)
+  else:
+    let cc = if carryOrBorrow == CarryFlag: ConditionCode.cs
+             else: ConditionCode.cc
+    let asmId = "[" & $nimSymbol & "]"
+    a.code &= "cset %" & asmId & ", " & $cc & '\n'
+    let desc = OperandDesc(
+      asmId: asmId,
+      nimSymbol: ident(symStr),
+      rm: Reg,
+      constraint: asmOutputOverwrite)
+    desc.setConstraintDesc(nimSymbol)
+    a.operands.incl(desc)
 
 func generate*(a: Assembler_arm64): NimNode =
   ## Generate the inline assembly code from
@@ -569,6 +585,15 @@ func codeFragment(a: var Assembler_arm64, instr: string, op0, op1: Operand, op2:
     a.operands.incl op0.desc
   if op1.desc.constraint != asmClobberedRegister:
     a.operands.incl op1.desc
+
+func codeFragment(a: var Assembler_arm64, instr: string, op: Operand, cc: ConditionCode) =
+  # Generate a code fragment
+  let off = a.getStrOffset(op)
+
+  a.code &= instr & " " & off & ", " & $cc & '\n'
+
+  if op.desc.constraint != asmClobberedRegister:
+    a.operands.incl op.desc
 
 func codeFragment(a: var Assembler_arm64, instr: string, op0, op1, op2: Operand, cc: ConditionCode) =
   # Generate a code fragment
@@ -812,6 +837,11 @@ func cmn*(a: var Assembler_arm64, lhs: Operand, rhs: Operand) =
   ## Compare-negative and set flags / condition code
   ## This uses ADDS and discards the result
   a.codeFragment("cmn", lhs, rhs)
+
+func cset*(a: var Assembler_arm64, dst: Operand, cc: ConditionCode) =
+  ## Store a condition code in a register
+  doAssert dst.isOutput(), $dst.repr
+  a.codeFragment("cset", dst, cc)
 
 func `and`*(a: var Assembler_arm64, dst: Operand, lhs: Operand, rhs: OperandReuse) =
   a.codeFragment("and", dst, lhs, rhs)
