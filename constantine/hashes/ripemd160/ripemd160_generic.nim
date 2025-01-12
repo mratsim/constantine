@@ -260,7 +260,6 @@ proc transform(s: var array[HashSize, uint32], chunk: openArray[byte]) =
   s[3] = s[4] + a1 + b2
   s[4] = t + b1 + c2
 
-#template toPtr(x: openArray[byte]): untyped = cast[pointer](x[0].addr)
 template `+!`(x: openArray[byte], offset: int|uint64): untyped = cast[pointer](cast[uint64](x[0].addr) + uint64(offset))
 
 proc write*(ctx: var Ripemd160Context, data: openArray[byte], length: uint64) =
@@ -307,32 +306,3 @@ proc reset*(ctx: var Ripemd160Context) =
   ctx.bytes = 0
   ctx.s.initialize()
   ctx.buf.setZero()
-
-when isMainModule:
-  import constantine/serialization/codecs
-  var ctx = initRipemdCtx()
-
-
-  template test(input: string, digest: string): untyped =
-    ctx.reset()
-    ctx.write(toOpenArrayByte(input, 0, input.len-1), input.len.uint64)
-    var dgst: array[DigestSize, byte]
-    ctx.finalize(dgst)
-    echo dgst.toHex()
-    doAssert dgst.toHex() == digest
-
-  const Empty = "0x9c1185a5c5e9fc54612808977ee8f548b2258d31"
-  test("", Empty)
-
-  const MessageDigest = "message digest"
-  const MDHash = "0x5d0689ef49d2fae572b881b123a85ffa21595f36"
-  test(MessageDigest, MDHash)
-
-  import std / strutils
-  let Digits = repeat("1234567890", 8)
-  const DigitsHash = "0x9b752e45573d4b39f4dbd3323cab82bf63326bfb"
-  test(Digits, DigitsHash)
-
-  let As = repeat("a", 1_000_000)
-  const AsHash = "0x52783243c1697bdbe16d37f97f68f08325dc1528"
-  test(As, AsHash)
