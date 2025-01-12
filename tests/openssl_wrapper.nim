@@ -46,6 +46,16 @@ when not defined(windows):
     discard SHA256(s, digest.addr)
     # discard EVP_Q_digest(nil, "SHA256", nil, s, digest, nil)
 
+  proc RIPEMD160[T: byte|char](
+        msg: openarray[T],
+        digest: ptr array[20, byte] = nil
+      ): ptr array[20, byte] {.noconv, dynlib: DLL_SSL_Name, importc.}
+
+  proc RIPEMD160_OpenSSL*[T: byte|char](
+        digest: var array[20, byte],
+        s: openArray[T]) =
+    discard RIPEMD160(s, digest.addr)
+
 type
   BIGNUM_Obj* = object
   EC_KEY_Obj* = object
