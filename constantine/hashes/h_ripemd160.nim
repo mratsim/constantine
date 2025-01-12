@@ -35,6 +35,8 @@ import
 type
   ripemd160* = Ripemd160Context # defined in generic file atm
 
+export Ripemd160Context
+
 # Internals
 # ----------------------------------------------------------------
 # defined in `ripemd160/ripemd160_generic.nim` at the moment
