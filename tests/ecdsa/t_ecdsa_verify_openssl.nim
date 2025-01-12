@@ -8,6 +8,8 @@ We generate test vectors following these cases:
 
 Further, generate signatures using Constantine, which we verify
 with OpenSSL.
+
+NOTE: This test requires OpenSSL version >= 3.3, for Keccak256 support.
 ]##
 
 import

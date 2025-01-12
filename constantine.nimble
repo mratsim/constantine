@@ -609,7 +609,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_ethereum_verkle_ipa_primitives.nim", false),
 
   # Signatures
-  ("tests/ecdsa/t_ecdsa_verify_openssl.nim", false),
+  # NOTE: Requires OpenSSL version >=v3.3 for to Keccak256 support
+  # ("tests/ecdsa/t_ecdsa_verify_openssl.nim", false),
 
   # Proof systems
   # ----------------------------------------------------------
