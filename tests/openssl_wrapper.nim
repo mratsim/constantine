@@ -102,6 +102,9 @@ proc EVP_DigestSignInit*(ctx: EVP_MD_CTX,
                        e: pointer,
                        pkey: EVP_PKEY): cint
 
+
+proc EVP_MD_fetch*(ctx: OSSL_LIB_CTX, algorithm: cstring, properties: cstring): pointer
+
 proc EVP_DigestSign*(ctx: EVP_MD_CTX,
                     sig: ptr byte,
                     siglen: ptr uint,
@@ -148,7 +151,12 @@ proc signMessageOpenSSL*(sig: var array[72, byte], msg: openArray[byte], key: EV
   let ctx = EVP_MD_CTX_new()
   var pctx: EVP_PKEY_CTX
 
-  if EVP_DigestSignInit(ctx, addr pctx, EVP_sha256(), nil, key) <= 0:
+  let md = EVP_MD_fetch(nil, "KECCAK-256", nil)
+  if md.isNil:
+    raise newException(Exception, "Failed to fetch KECCAK-256")
+
+
+  if EVP_DigestSignInit(ctx, addr pctx, md, nil, key) <= 0:
     raise newException(Exception, "Signing init failed")
 
   # Get required signature length

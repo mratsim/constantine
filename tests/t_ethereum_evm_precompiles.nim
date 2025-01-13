@@ -82,7 +82,9 @@ template runPrecompileTests(filename: string, funcname: untyped, outsize: int, n
         else:
           let status = funcname(r, inputbytes)
         if status != cttEVM_Success:
-          doAssert test.ExpectedError.len > 0, "[Test Failure]\n" &
+          # `ecRecover.json` has failing test vectors where no `ExpectedError` exists, but the
+          # `Expected` output is simply empty.
+          doAssert test.ExpectedError.len > 0 or test.Expected.len == 0, "[Test Failure]\n" &
             "  " & test.Name & "\n" &
             "  " & funcname.astToStr & "\n" &
             "  " & "Nim proc returned failure, but test expected to pass.\n" &
@@ -192,3 +194,5 @@ runPrecompileTests("eip-2537/map_fp2_to_G2_bls.json", eth_evm_bls12381_map_fp2_t
 runPrecompileTests("eip-2537/fail-map_fp2_to_G2_bls.json", eth_evm_bls12381_map_fp2_to_g2, 256)
 
 runPrecompileTests("eip-4844/pointEvaluation.json", eth_evm_kzg_point_evaluation, 64, true)
+
+runPrecompileTests("ecRecover.json", eth_evm_ecrecover, 32)
