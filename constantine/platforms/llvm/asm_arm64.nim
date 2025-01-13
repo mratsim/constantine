@@ -37,19 +37,26 @@ macro genInstr(body: untyped): untyped =
     # 1. Detect the size of registers
     let numBits = ident"numBits"
     let regTy = ident"regTy"
+    let voidTy = ident"voidTy"
     let fnTy = ident"fnTy"
     let ctx = ident"ctx"
-    let lhs = op[2][0][3][0]
+    if op[2][0][3].len >= 1:
+      let lhs = op[2][0][3][0]
 
-    instrBody.add quote do:
-      let `ctx` {.used.} = builder.getContext()
-      # lhs: ValueRef or uint32 or uint64
-      let `numBits` = when `lhs` is ValueRef: `lhs`.getTypeOf().getIntTypeWidth()
-                      else: 8*sizeof(`lhs`)
-      let `regTy` = when `lhs` is ValueRef: `lhs`.getTypeOf()
-                    elif `lhs` is uint32: `ctx`.int32_t()
-                    elif `lhs` is uint64: `ctx`.int64_t()
-                    else: {.error "Unsupported input type " & $typeof(`lhs`).}
+      instrBody.add quote do:
+        let `ctx` {.used.} = builder.getContext()
+        # lhs: ValueRef or uint32 or uint64
+        let `numBits` = when `lhs` is ValueRef: `lhs`.getTypeOf().getIntTypeWidth()
+                        else: 8*sizeof(`lhs`)
+        let `regTy` = when `lhs` is ValueRef: `lhs`.getTypeOf()
+                      elif `lhs` is uint32: `ctx`.int32_t()
+                      elif `lhs` is uint64: `ctx`.int64_t()
+                      else: {.error "Unsupported input type " & $typeof(`lhs`).}
+    else:
+        instrBody.add quote do:
+          let `ctx` {.used.} = builder.getContext()
+          let `numBits` = 64 # ARM64
+          let `regTy` = `ctx`.int64_t()
 
     # 2. Create the LLVM asm signature
     let operands = op[2][0][3]
@@ -58,7 +65,12 @@ macro genInstr(body: untyped): untyped =
     let constraintString = op[2][0][2]
     let instr = op[2][0][0]
 
-    if arity == 2:
+    if arity == 0:
+      # cset
+      doAssert constraintString.strVal.startsWith("=r")
+      instrBody.add quote do:
+        let `fnTy` = function_t(`regTy`, [])
+    elif arity == 2:
       if constraintString.strVal.startsWith('='):
         if constraintString.strVal.endsWith('r'):
           instrBody.add quote do:
@@ -66,6 +78,10 @@ macro genInstr(body: untyped): untyped =
         else:
           instrBody.add quote do:
             let `fnTy` = function_t(`regTy`, [`regTy`, pointer_t(`regTy`)])
+      elif constraintString.strVal.startsWith('r'):
+        # cmn, no output
+        instrBody.add quote do:
+          let `fnTy` = function_t(`regTy`, [`regTy`, `regTy`])
       else:
         # We only support out of place "=" instructions.
         # In-place with "+" requires alloca + load/stores in codegen
@@ -142,6 +158,8 @@ macro genInstr(body: untyped): untyped =
       procType = nnkProcDef,
       body = instrBody)
 
+  debugEcho result.toStrLit()
+
 # Inline ARM64 assembly
 # ------------------------------------------------------------
 genInstr():
@@ -157,7 +175,11 @@ genInstr():
   op arm64_sub_bio:      ("sbcs",       "$0, $1, $2;",     "=r,r,r",   [lhs, rhs])
 
   # Conditional mov / select
+  # cmn: Compare Negative,
+  # The CMN instruction adds the value of Operand2 to the value in Rn.
+  # This is the same as an ADDS instruction, except that the result is discarded.
+  op arm64_cmn:          ("cmn",        "$0, $1;",         "r,r",      [lhs, rhs])
   # csel, carry clear
-  op arm64_csel_cc:      ("csel",       "$0, $1, $2, cc;", "=r,r,r", [ifPos, ifNeg])
-
-  
+  op arm64_csel_cc:      ("csel",       "$0, $1, $2, cc;", "=r,r,r",   [ifPos, ifNeg])
+  # cset, carry set (store carry in register)
+  op arm64_cset_cs:      ("cset",       "$0, cs;", "=r", [])

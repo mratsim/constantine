@@ -236,6 +236,9 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
       ctx.str t[i], r[i]
 
   result.add ctx.generate()
+  debugEcho "======Transfo====="
+  debugEcho getImplTransformed(result).repr()
+  debugEcho "======"
 
 func mulMont_CIOS_sparebit_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, lazyReduce: static bool = false) =
   ## Constant-time Montgomery multiplication

@@ -219,6 +219,7 @@ proc definePrimitives*(asy: Assembler_LLVM, fd: FieldDescriptor) =
   asy.ctx.def_addcarry(asy.module, asy.ctx.int1_t(), fd.wordTy)
   asy.ctx.def_subborrow(asy.module, asy.ctx.int1_t(), fd.wordTy)
   asy.ctx.def_hi(asy.module, fd.wordTy, fd.word2xTy)
+  asy.ctx.def_mulhi(asy.module, fd.wordTy)
   asy.ctx.def_mullo_adc(asy.module, asy.ctx.int1_t(), fd.wordTy)
   asy.ctx.def_mulhi_adc(asy.module, asy.ctx.int1_t(), fd.wordTy)
 
@@ -290,108 +291,243 @@ proc definePrimitives*(asy: Assembler_LLVM, cd: CurveDescriptor) =
 
 # ############################################################
 #
+#              Local variables
+#
+# ############################################################
+#
+# A naive implementation of field multiplication
+# has stack usage is 5.75 than manual register allocation
+# on 6 limbs field multiplication.
+# Details (CodeGenLevelDefault):
+# -  64 bytes stack vs 368
+# -   4 stp         vs  23
+# -  10 ldp         vs  35
+# -   6 ldr         vs  61
+# -   6 str         vs  43
+# -   6 mov         vs  24
+# -  78 mul         vs  78
+# -  72 umulh       vs  72
+# -  17 adds        vs  17
+# - 103 adcs        vs 103
+# -  23 adc         vs  12
+# -   6 cmn         vs   6
+# -   0 cset        vs  11
+#
+# It is likely that the naive reload of inputs play a role
+# while if the initial load is kept around, the variable has more chance
+# to be promoted to register.
+#
+# Local variables allow explicit allocation on the stack
+# mirroring C / Clang to ensure same optimizations can be used.
+#
+# Furthermore, on local variable init and store
+# we preload the `load` to serve the same IR node
+# through the lifetime of the input.
+#
+
+type LocalVar* = object
+  ## Store a local variable
+  ## This simulate a memory location
+  builder*: BuilderRef
+  val: ValueRef
+  buf: ValueRef
+  ty: TypeRef
+  name: string
+
+proc localVar*(asy: Assembler_LLVM, ty: TypeRef, name: cstring = ""): LocalVar =
+  LocalVar(
+    builder: asy.br,
+    val: poison(ty),
+    buf: asy.br.alloca(ty, name),
+    ty: ty,
+  )
+
+proc `[]`*(v: LocalVar): ValueRef =
+  v.val
+
+proc `[]=`*(dst: var LocalVar, src: ValueRef) =
+  dst.builder.store(src, dst.buf)
+  dst.name &= "*" # upgrade version
+  dst.val = dst.builder.load2(dst.ty, dst.buf, cstring dst.name)
+
+# ############################################################
+#
+#                    Compiler barrier
+#
+# ############################################################
+
+proc compilerBarrier*(asy: Assembler_LLVM) =
+  let fnTy = function_t(asy.void_t, [])
+  let inlineASM = getInlineAsm(
+    fnTy,
+    asmString = "",
+    constraints = "~{memory}",
+    hasSideEffects = LlvmBool(1),
+    isAlignStack = LlvmBool(0),
+    dialect = InlineAsmDialectATT,
+    canThrow = LlvmBool(0))
+  discard asy.br.call2(fnTy, inlineASM, [])
+
+# ############################################################
+#
 #                    Aggregate Types
 #
 # ############################################################
 
-# For array access we need to use:
-#
-#   builder.extractValue(array, index, name)
-#   builder.insertValue(array, index, value, name)
-#
-# which is very verbose compared to array[index].
-# So we wrap in syntactic sugar to improve readability, maintainability and auditability
-
 type
   Array* = object
     builder*: BuilderRef
+    elems: seq[ValueRef] # Cache loads
+    elemsPtr: seq[ValueRef] # Cache stores
     buf*: ValueRef
     arrayTy*: TypeRef
     elemTy*: TypeRef
     int32_t: TypeRef
+    zero: ValueRef
+    name: string
 
 proc `=copy`*(m: var Array, x: Array) {.error: "Copying an Array is not allowed. " &
   "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
 
-proc `[]`*(a: Array, index: SomeInteger | ValueRef): ValueRef {.inline.}
-proc `[]=`*(a: Array, index: SomeInteger | ValueRef, val: ValueRef) {.inline.}
-
-proc asArray*(br: BuilderRef, arrayPtr: ValueRef, arrayTy: TypeRef): Array =
-  Array(
-    builder: br,
-    buf: arrayPtr,
-    arrayTy: arrayTy,
-    elemTy: arrayTy.getElementType(),
-    int32_t: arrayTy.getContext().int32_t()
-  )
-
-proc asArray*(asy: Assembler_LLVM, arrayPtr: ValueRef, arrayTy: TypeRef): Array =
-  asy.br.asArray(arrayPtr, arrayTy)
-
-proc makeArray*(asy: Assembler_LLVM, arrayTy: TypeRef): Array =
-  Array(
-    builder: asy.br,
-    buf: asy.br.alloca(arrayTy),
-    arrayTy: arrayTy,
-    elemTy: arrayTy.getElementType(),
-    int32_t: arrayTy.getContext().int32_t()
-  )
-
-proc makeArray*(asy: Assembler_LLVM, elemTy: TypeRef, len: uint32): Array =
-  let arrayTy = array_t(elemTy, len)
-  Array(
-    builder: asy.br,
-    buf: asy.br.alloca(arrayTy),
-    arrayTy: arrayTy,
-    elemTy: elemTy,
-    int32_t: arrayTy.getContext().int32_t()
-  )
-
-proc getElementPtr*(a: Array, indices: varargs[int]): ValueRef =
-  ## Helper to get an element pointer from a (nested) array.
-  var idxs = newSeq[ValueRef](indices.len)
-  for i, idx in indices:
-    idxs[i] = constInt(a.int32_t, idx)
-  result = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, idxs)
-
-proc getElementPtr*(a: Array, indices: varargs[ValueRef]): ValueRef =
+proc getElementPtr(a: Array, indices: openArray[ValueRef], name = ""): ValueRef =
   ## Helper to get an element pointer from a (nested) array using
   ## indices that are already `ValueRef`
   let idxs = @indices
-  result = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, idxs)
+  result = a.builder.getElementPtr2_InBounds(a.arrayTy, a.buf, idxs, cstring(name))
 
-template asInt(x: SomeInteger | ValueRef): untyped =
-  when typeof(x) is ValueRef: x
-  else: x.int
-
-proc getPtr*(a: Array, index: SomeInteger | ValueRef): ValueRef {.inline.}=
+proc getPtr(a: Array, index: SomeInteger): ValueRef {.inline.}=
   ## First dereference the array pointer with 0, then access the `index`
   ## but do not load the element!
-  when typeof(index) is SomeInteger:
-    result = a.getElementPtr(0, index.int)
-  else:
-    result = a.getElementPtr(constInt(a.int32_t, 0), index)
+  result = a.getElementPtr([a.zero, constInt(a.int32_t, index)])
 
-proc `[]`*(a: Array, index: SomeInteger | ValueRef): ValueRef {.inline.}=
+proc loadArrayElemsPtr(
+        br: BuilderRef,
+        arrayPtr: ValueRef,
+        arrayTy: TypeRef): seq[ValueRef] =
+  let N = arrayTy.getArrayLength()
+  result = newSeq[ValueRef](N)
+  let i32 = arrayTy.getContext().int32_t()
+  let Z = constInt(i32, 0)
+  for i in 0 ..< N:
+    let ii = constInt(i32, i)
+    result[i] = br.getElementPtr2_InBounds(arrayTy, arrayPtr, [Z, ii])
+
+proc loadArrayElems(
+        br: BuilderRef,
+        arrayPtr: ValueRef,
+        arrayTy: TypeRef,
+        name: string): tuple[`ptr`, elems: seq[ValueRef]] =
+  let N = arrayTy.getArrayLength()
+  result = (newSeq[ValueRef](N), newSeq[ValueRef](N))
+  let i32 = arrayTy.getContext().int32_t()
+  let Z = constInt(i32, 0)
+  let elemTy = arrayTy.getElementType()
+  for i in 0 ..< N:
+    let ii = constInt(i32, i)
+    let pi = br.getElementPtr2_InBounds(arrayTy, arrayPtr, [Z, ii])
+    result.`ptr`[i] = pi
+    result.elems[i] = br.load2(elemTy, pi, cstring(name & "[" & $i & "]"))
+
+proc reloadArrayElems(a: var Array) =
+  let N = a.elems.len
+  for i in 0 ..< N:
+    a.elems[i] = a.builder.load2(a.elemTy, a.elemsPtr[i], cstring(a.name & "[" & $i & "]_"))
+
+proc asArray*(br: BuilderRef, arrayPtr: ValueRef, arrayTy: TypeRef, name = "array"): Array =
+  let (ptrs, elems) = br.loadArrayElems(arrayPtr, arrayTy, name)
+  Array(
+    builder: br,
+    elems: elems,
+    elemsPtr: ptrs,
+    buf: arrayPtr,
+    arrayTy: arrayTy,
+    elemTy: arrayTy.getElementType(),
+    int32_t: arrayTy.getContext().int32_t(),
+    name: name
+  )
+
+proc asArray*(asy: Assembler_LLVM, arrayPtr: ValueRef, arrayTy: TypeRef, name = "array"): Array =
+  asy.br.asArray(arrayPtr, arrayTy, name)
+
+proc makeArray*(asy: Assembler_LLVM, arrayTy: TypeRef, name = "local_array"): Array =
+  let N = int arrayTy.getArrayLength()
+  let buf = asy.br.alloca(arrayTy, cstring(name))
+  let elemsPtr = asy.br.loadArrayElemsPtr(buf, arrayTy)
+  var elems = newSeq[ValueRef](N)
+  let elemTy = arrayTy.getElementType()
+  for i in 0 ..< N:
+    asy.br.store(poison(elemTy), elemsPtr[i])
+    elems[i] = asy.br.load2(elemTy, elemsPtr[i], cstring(name & "[" & $i & "](poison)"))
+
+  Array(
+    builder: asy.br,
+    elems: elems,
+    elemsptr: elemsPtr,
+    buf: buf,
+    arrayTy: arrayTy,
+    elemTy: elemTy,
+    int32_t: arrayTy.getContext().int32_t(),
+    name: name
+  )
+
+proc `[]`*(a: Array, index: SomeInteger): ValueRef {.inline.}=
+  ## Static offset access
+  return a.elems[index]
+
+proc `[]=`*(a: var Array, index: SomeInteger, val: ValueRef) {.inline.}=
+  # Save the new value and also invalidate/replace the old access
+  a.builder.store(val, a.elemsPtr[index])
+  a.elems[index] = a.builder.load2(a.elemTy, a.elemsPtr[index], cstring(a.name & "[" & $index & "]_"))
+
+proc makeArray*(asy: Assembler_LLVM, elemTy: TypeRef, len: uint32, name = ""): Array =
+  let arrayTy = array_t(elemTy, len)
+  asy.makeArray(arrayTy, name)
+
+proc getPtr(a: Array, index: ValueRef): ValueRef {.inline.}=
+  ## First dereference the array pointer with 0, then access the `index`
+  ## but do not load the element!
+  result = a.getElementPtr([a.zero, index])
+
+proc `[]`*(a: Array, index: ValueRef): ValueRef {.inline.}=
   # First dereference the array pointer with 0, then access the `index`
   let pelem = getPtr(a, index)
-  a.builder.load2(a.elemTy, pelem)
+  let name = cstring(a.name & "[" & getName(index) & "]_")
+  a.builder.load2(a.elemTy, pelem, name)
 
-proc `[]=`*(a: Array, index: SomeInteger | ValueRef, val: ValueRef) {.inline.}=
-  when typeof(index) is SomeInteger:
-    let pelem = a.getElementPtr(0, index.int)
-  else:
-    let pelem = a.getElementPtr(constInt(a.int32_t, 0), index)
+proc `[]=`*(a: Array, index: ValueRef, val: ValueRef) {.inline.}=
+  let name = a.name & "[" & getName(index) & "]=_"
+  let pelem = a.getElementPtr([constInt(a.int32_t, 0), index], name)
   a.builder.store(val, pelem)
 
-proc store*(asy: Assembler_LLVM, dst: Array, src: Array) {.inline.}=
+proc store*(asy: Assembler_LLVM, dst: var Array, src: Array) {.inline.}=
   let v = asy.br.load2(src.arrayTy, src.buf)
   asy.br.store(v, dst.buf)
+  dst.name &= '*' # upgrade version
+  dst.reloadArrayElems()
 
-proc store*(asy: Assembler_LLVM, dst: Array, src: ValueRef) {.inline.}=
+proc store*(asy: Assembler_LLVM, dst: var Array, src: ValueRef) {.inline.}=
   ## Heterogeneous store of i256 into 4xuint64
   doAssert asy.byteOrder == kLittleEndian
   asy.br.store(src, dst.buf)
+  dst.name &= '*' # upgrade version
+  dst.reloadArrayElems()
+
+# proc toLocalArray*(asy: Assembler_LLVM, src: ValueRef, arrayTy: TypeRef, name = ""): Array =
+#   ## Copy an array to a local value,
+#   ## hopefully helping the compiler put it in registers
+#   ## and avoiding many loads/stores
+#   ##
+#   ## Unfortunately LLVM makes callers
+#   ## pass large arrays by stack
+#   result = Array(
+#     builder: asy.br,
+#     buf: asy.br.alloca(arrayTy, name),
+#     arrayTy: arrayTy,
+#     elemTy: arrayTy.getElementType(),
+#     int32_t: arrayTy.getContext().int32_t(),
+#     name: name,
+#   )
+#   asy.store(result, asy.br.load2(arrayTy, src))
 
 # Representation of a finite field point with some utilities
 
@@ -402,7 +538,7 @@ template genField(name, desc, field: untyped): untyped =
     "You likely want to copy the LLVM value. Use `dst.store(src)` instead.".}
 
   proc `[]`*(a: name, index: SomeInteger | ValueRef): ValueRef = distinctBase(a)[index]
-  proc `[]=`*(a: name, index: SomeInteger | ValueRef, val: ValueRef) = distinctBase(a)[index] = val
+  proc `[]=`*(a: var name, index: SomeInteger | ValueRef, val: ValueRef) = distinctBase(a)[index] = val
 
   proc `as name`*(br: BuilderRef, a: ValueRef, fieldTy: TypeRef): name =
     result = name(br.asArray(a, fieldTy))
@@ -415,7 +551,7 @@ template genField(name, desc, field: untyped): untyped =
     ## Use field descriptor for size etc?
     result = name(asy.makeArray(d.field))
 
-  proc store*(dst: name, src: name) =
+  proc store*(dst: var name, src: name) =
     ## Stores the `dst` in `src`. Both must correspond to the same field of course.
     assert dst.arrayTy.getArrayLength() == src.arrayTy.getArrayLength()
     for i in 0 ..< dst.arrayTy.getArrayLength:

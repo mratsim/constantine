@@ -82,13 +82,13 @@ import # Specializations
 
 const SectionName = "ctt,fields"
 
-proc finalSubMayOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array, carry: ValueRef) =
+proc finalSubMayOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r: var Array, a, M: Array, carry: ValueRef) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
 
   # LLVM is hopelessly adding extra instructions (from 1, 2 to 33% or 66% more): https://github.com/mratsim/constantine/issues/357
 
-  let t = asy.makeArray(fd.fieldTy)
+  var t = asy.makeArray(fd.fieldTy, "t")
 
   # Contains 0x0001 (if overflowed limbs) or 0x0000
   let (_, overflowedLimbs) = asy.br.addcarry(fd.zero, fd.zero, carry)
@@ -111,7 +111,7 @@ proc finalSubMayOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Arra
 
   asy.store(r, t)
 
-proc finalSubNoOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array) =
+proc finalSubNoOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r: var Array, a, M: Array) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -124,7 +124,7 @@ proc finalSubNoOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array
   # We use word-level arithmetic instead of llvm_sub_overflow.u256 or llvm_sub_overflow.u384
   # due to LLVM adding extra instructions (from 1, 2 to 33% or 66% more): https://github.com/mratsim/constantine/issues/357
 
-  let t = asy.makeArray(fd.fieldTy)
+  var t = asy.makeArray(fd.fieldTy, "t")
 
   # Now substract the modulus, and test a < M
   # (underflow) with the last borrow
@@ -159,14 +159,14 @@ proc modadd_sat(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) 
     let (rr, aa, bb, MM) = llvmParams
 
     # Pointers are opaque in LLVM now
-    let r = asy.asArray(rr, fd.fieldTy)
-    let a = asy.asArray(aa, fd.fieldTy)
-    let b = asy.asArray(bb, fd.fieldTy)
-    let M = asy.asArray(MM, fd.fieldTy)
-    let apb = asy.makeArray(fd.fieldTy)
+    var r = asy.asArray(rr, fd.fieldTy, "r")
+    let a = asy.asArray(aa, fd.fieldTy, "a")
+    let b = asy.asArray(bb, fd.fieldTy, "b")
+    let M = asy.asArray(MM, fd.fieldTy, "M")
+    var apb = asy.makeArray(fd.fieldTy, "apb")
 
     var C = fd.zero_i1
-    for i in 1 ..< fd.numWords:
+    for i in 0 ..< fd.numWords:
       (C, apb[i]) = asy.br.addcarry(a[i], b[i], C)
 
     if fd.spareBits >= 1:
@@ -193,23 +193,23 @@ proc modsub_sat(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) 
     let (rr, aa, bb, MM) = llvmParams
 
     # Pointers are opaque in LLVM now
-    let r = asy.asArray(rr, fd.fieldTy)
-    let a = asy.asArray(aa, fd.fieldTy)
-    let b = asy.asArray(bb, fd.fieldTy)
-    let M = asy.asArray(MM, fd.fieldTy)
-    let apb = asy.makeArray(fd.fieldTy)
+    var r = asy.asArray(rr, fd.fieldTy, "r")
+    let a = asy.asArray(aa, fd.fieldTy, "a")
+    let b = asy.asArray(bb, fd.fieldTy, "b")
+    let M = asy.asArray(MM, fd.fieldTy, "M")
+    var amb = asy.makeArray(fd.fieldTy, "amb")
 
     var B = fd.zero_i1
     for i in 0 ..< fd.numWords:
-      (B, apb[i]) = asy.br.subborrow(a[i], b[i], B)
+      (B, amb[i]) = asy.br.subborrow(a[i], b[i], B)
 
     let (_, underflowMask) = asy.br.subborrow(fd.zero, fd.zero, B)
 
     # Now mask the adder, with 0 or the modulus limbs
-    let t = asy.makeArray(fd.fieldTy)
+    var t = asy.makeArray(fd.fieldTy)
     for i in 0 ..< fd.numWords:
       let maskedMi = asy.br.`and`(M[i], underflowMask)
-      t[i] = asy.br.add(apb[i], maskedMi)
+      t[i] = asy.br.add(amb[i], maskedMi)
 
     asy.store(r, t)
     asy.br.retVoid()
@@ -247,12 +247,18 @@ proc mtymul_sat_CIOS_sparebit_mulhi(asy: Assembler_LLVM, fd: FieldDescriptor, r,
     let (rr, aa, bb, MM, m0ninv) = llvmParams
 
     # Pointers are opaque in LLVM now
-    let r = asy.asArray(rr, fd.fieldTy)
-    let a = asy.asArray(aa, fd.fieldTy)
-    let b = asy.asArray(bb, fd.fieldTy)
-    let M = asy.asArray(MM, fd.fieldTy)
+    var r = asy.asArray(rr, fd.fieldTy, "r")
+    let a = asy.asArray(aa, fd.fieldTy, "a")
+    let b = asy.asArray(bb, fd.fieldTy, "b")
+    let M = asy.asArray(MM, fd.fieldTy, "M")
 
-    let t = asy.makeArray(fd.fieldTy)
+    # Explicitly allocate on the stack
+    # the local variable.
+    # Unfortunately despite optimization passes
+    # stack usage is 5.75 than manual register allocation otherwise
+    # so we help the compiler with register lifetimes
+    # and imitate C local variable declaration/allocation
+    var t = asy.makeArray(fd.fieldTy, "t")
     let N = fd.numWords
 
     doAssert N >= 2
@@ -261,22 +267,26 @@ proc mtymul_sat_CIOS_sparebit_mulhi(asy: Assembler_LLVM, fd: FieldDescriptor, r,
       # -------------------------------
       #   for j=0 to N-1
       # 		(A,t[j])  := t[j] + a[j]*b[i] + A
-      let bi = b[i]
       var A = fd.zero
       if i == 0:
         for j in 0 ..< N:
-          t[j] = asy.br.mul(a[j], bi)
+          t[j] = asy.br.mul(a[j], b[i], cstring("mul step: a[" & $j & "]*b[" & $i & "]_"))
+          asy.compiler_barrier()
       else:
         var C = fd.zero_i1
         for j in 0 ..< N:
-          (C, t[j]) = asy.br.mullo_adc(a[j], bi, t[j], C)
+          (C, t[j]) = asy.br.mullo_adc(a[j], b[i], t[j], C, name = "mul step: t[" & $j & "] += a[" & $j & "]*b[" & $i & "]_")
+          asy.compiler_barrier()
         (_, A) = asy.br.addcarry(fd.zero, fd.zero, C)
+        asy.compiler_barrier()
 
       block:
         var C = fd.zero_i1
         for j in 1 ..< N:
-          (C, t[j]) = asy.br.mulhi_adc(a[j-1], bi, t[j], C)
-        (_, A) = asy.br.mulhi_adc(a[N-1], bi, A, C)
+          (C, t[j]) = asy.br.mulhi_adc(a[j-1], b[i], t[j], C)
+          asy.compiler_barrier()
+        (_, A) = asy.br.mulhi_adc(a[N-1], b[i], A, C)
+        asy.compiler_barrier()
 
       # Reduction
       # -------------------------------
@@ -288,13 +298,17 @@ proc mtymul_sat_CIOS_sparebit_mulhi(asy: Assembler_LLVM, fd: FieldDescriptor, r,
       #   t[N-1] = C + A
       let m = asy.br.mul(t[0], m0ninv)
       var (C, _) = asy.br.mullo_adc(m, M[0], t[0], fd.zero_i1)
+      asy.compiler_barrier()
       for j in 1 ..< N:
         (C, t[j-1]) = asy.br.mullo_adc(m, M[j], t[j], C)
+        asy.compiler_barrier()
       (_, t[N-1]) = asy.br.addcarry(A, fd.zero, C)
+      asy.compiler_barrier()
 
       C = fd.zero_i1
       for j in 0 ..< N:
         (C, t[j]) = asy.br.mulhi_adc(m, M[j], t[j], C)
+        asy.compiler_barrier()
 
     if finalReduce:
       asy.finalSubNoOverflow(fd, t, t, M)
@@ -310,4 +324,9 @@ proc mtymul_sat_mulhi(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: Valu
   ## with parameters `a, b, modulus: Limbs -> Limbs`
 
   # TODO: spareBits == 0
+
+  # if asy.backend in {bkArm64_MacOS}:
+  #   asy.mtymul_sat_CIOS_sparebit_arm64(fd, r, a, b, M, finalReduce)
+  # else:
+  #   asy.mtymul_sat_CIOS_sparebit_mulhi(fd, r, a, b, M, finalReduce)
   asy.mtymul_sat_CIOS_sparebit_mulhi(fd, r, a, b, M, finalReduce)
