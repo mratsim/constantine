@@ -78,6 +78,10 @@ macro ccopy_gen[N: static int](a_PIR: var Limbs[N], b_PIR: Limbs[N], ctl: Secret
   # Codegen
   result.add ctx.generate()
 
+  debugEcho "======Transfo====="
+  debugEcho getImplTransformed(result).repr()
+  debugEcho "======"
+
 func ccopy_asm*(a: var Limbs, b: Limbs, ctl: SecretBool) =
   ## Constant-time conditional copy
   ## If ctl is true: b is copied into a

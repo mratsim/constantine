@@ -127,10 +127,8 @@ proc setZero*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.used.} =
           asy.void_t, toTypes([r]),
           {kHot}):
     tagParameter(1, "sret")
-    let M = asy.getModulusPtr(fd)
-
     let ri = llvmParams
-    let rA = asy.asField(fd, ri)
+    var rA = asy.asField(fd, ri)
     for i in 0 ..< fd.numWords:
       rA[i] = constInt(fd.wordTy, 0)
 
@@ -151,9 +149,8 @@ proc setOne*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.used.} =
           asy.void_t, toTypes([r]),
           {kHot}):
     tagParameter(1, "sret")
-    let M = asy.getModulusPtr(fd)
     let ri = llvmParams
-    let rF = asy.asField(fd, ri)
+    var rF = asy.asField(fd, ri)
 
     let mOne = asy.getMontyOnePtr(fd)
     let mF = asy.asField(fd, mOne)
@@ -228,7 +225,7 @@ proc ccopy*(asy: Assembler_LLVM, fd: FieldDescriptor, a, b, c: ValueRef) {.used.
     tagParameter(1, "sret")
     let (ai, bi, condition) = llvmParams
     # Assuming fd.numWords is the number of limbs in the field element
-    let aA = asy.asArray(ai, fd.fieldTy)
+    var aA = asy.asArray(ai, fd.fieldTy)
     let bA = asy.asArray(bi, fd.fieldTy)
 
     for i in 0 ..< fd.numWords:
@@ -416,7 +413,7 @@ proc nsqr*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef, count: int,
     let (ri, ai) = llvmParams
     let M = asy.getModulusPtr(fd)
 
-    let rA = asy.asArray(ri, fd.fieldTy)
+    var rA = asy.asArray(ri, fd.fieldTy)
     let aA = asy.asArray(ai, fd.fieldTy)
     for i in 0 ..< fd.numWords:
       rA[i] = aA[i]
@@ -444,7 +441,6 @@ proc isZero*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} 
           asy.void_t, toTypes([r, a]),
           {kHot}):
     tagParameter(1, "sret")
-    let M = asy.getModulusPtr(fd)
 
     let (ri, ai) = llvmParams
     let aA = asy.asArray(ai, fd.fieldTy)
@@ -508,7 +504,7 @@ proc neg*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} =
     let (ri, ai) = llvmParams
     let M = asy.getModulusPtr(fd)
     let aA = asy.asArray(ai, fd.fieldTy)
-    let rA = asy.asArray(ri, fd.fieldTy)
+    var rA = asy.asArray(ri, fd.fieldTy)
 
     # Subtraction M - a
     asy.modsub(fd, ri, M, ai, M)
@@ -547,7 +543,6 @@ proc cneg*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef) {.used.}
 
     tagParameter(1, "sret")
     let (ri, ai, ci) = llvmParams
-    let M = asy.getModulusPtr(fd)
 
     # first call the regular negation
     asy.neg(fd, ri, ai)
@@ -570,7 +565,7 @@ proc shiftRight*(asy: Assembler_LLVM, fd: FieldDescriptor, a, k: ValueRef) {.use
           {kHot}):
     tagParameter(1, "sret")
     let (ai, ki) = llvmParams
-    let aA = asy.asArray(ai, fd.fieldTy)
+    var aA = asy.asArray(ai, fd.fieldTy)
 
     let wordBitWidth = constInt(fd.wordTy, fd.w)
     let shiftLeft = asy.br.sub(wordBitWidth, ki)

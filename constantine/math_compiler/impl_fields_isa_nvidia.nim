@@ -49,7 +49,7 @@ import
 
 const SectionName = "ctt,fields"
 
-proc finalSubMayOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array) =
+proc finalSubMayOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r: var Array, a, M: Array) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -59,7 +59,7 @@ proc finalSubMayOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Arra
   ## To be used when the final substraction can
   ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
   let N = fd.numWords
-  let t = asy.makeArray(fd.fieldTy)
+  var t = asy.makeArray(fd.fieldTy)
 
   # Contains 0x0001 (if overflowed limbs) or 0x0000
   let overflowedLimbs = asy.br.add_ci(0'u32, 0'u32)
@@ -78,7 +78,7 @@ proc finalSubMayOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Arra
   for i in 0 ..< N:
     r[i] = asy.br.slct(t[i], a[i], underflowedModulus)
 
-proc finalSubNoOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array) =
+proc finalSubNoOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r: var Array, a, M: Array) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ##
@@ -88,18 +88,18 @@ proc finalSubNoOverflow(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, M: Array
   ## To be used when the modulus does not use the full bitwidth of the storing words
   ## (say using 255 bits for the modulus out of 256 available in words)
   let N = fd.numWords
-  let scratch = asy.makeArray(fd.fieldTy)
+  var t = asy.makeArray(fd.fieldTy)
 
   # Now substract the modulus, and test a < M with the last borrow
-  scratch[0] = asy.br.sub_bo(a[0], M[0])
+  t[0] = asy.br.sub_bo(a[0], M[0])
   for i in 1 ..< N:
-    scratch[i] = asy.br.sub_bio(a[i], M[i])
+    t[i] = asy.br.sub_bio(a[i], M[i])
 
   # If it underflows here, `a` was smaller than the modulus, which is what we want
   let underflowedModulus = asy.br.sub_bi(0'u32, 0'u32)
 
   for i in 0 ..< N:
-    r[i] = asy.br.slct(scratch[i], a[i], underflowedModulus)
+    r[i] = asy.br.slct(t[i], a[i], underflowedModulus)
 
 proc modadd_nvidia(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRef) {.used.} =
   ## Generate an optimized modular addition kernel
@@ -118,12 +118,12 @@ proc modadd_nvidia(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRe
     let (rr, aa, bb, MM) = llvmParams
 
     # Pointers are opaque in LLVM now
-    let r = asy.asArray(rr, fd.fieldTy)
+    var r = asy.asArray(rr, fd.fieldTy)
     let a = asy.asArray(aa, fd.fieldTy)
     let b = asy.asArray(bb, fd.fieldTy)
     let M = asy.asArray(MM, fd.fieldTy)
 
-    let t = asy.makeArray(fd.fieldTy)
+    var t = asy.makeArray(fd.fieldTy)
     let N = fd.numWords
 
     t[0] = asy.br.add_co(a[0], b[0])
@@ -155,12 +155,12 @@ proc modsub_nvidia(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRe
     let (rr, aa, bb, MM) = llvmParams
 
     # Pointers are opaque in LLVM now
-    let r = asy.asArray(rr, fd.fieldTy)
+    var r = asy.asArray(rr, fd.fieldTy)
     let a = asy.asArray(aa, fd.fieldTy)
     let b = asy.asArray(bb, fd.fieldTy)
     let M = asy.asArray(MM, fd.fieldTy)
 
-    let t = asy.makeArray(fd.fieldTy)
+    var t = asy.makeArray(fd.fieldTy)
     let N = fd.numWords
 
     t[0] = asy.br.sub_bo(a[0], b[0])
@@ -171,7 +171,7 @@ proc modsub_nvidia(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: ValueRe
 
     # If underflow
     # TODO: predicated mov instead?
-    let maskedM = asy.makeArray(fd.fieldTy)
+    var maskedM = asy.makeArray(fd.fieldTy)
     for i in 0 ..< N:
       maskedM[i] = asy.br.`and`(M[i], underflowMask)
 
@@ -208,12 +208,12 @@ proc mtymul_CIOS_sparebit(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, b, M: 
     let (rr, aa, bb, MM) = llvmParams
 
     # Pointers are opaque in LLVM now
-    let r = asy.asArray(rr, fd.fieldTy)
+    var r = asy.asArray(rr, fd.fieldTy)
     let a = asy.asArray(aa, fd.fieldTy)
     let b = asy.asArray(bb, fd.fieldTy)
     let M = asy.asArray(MM, fd.fieldTy)
 
-    let t = asy.makeArray(fd.fieldTy)
+    var t = asy.makeArray(fd.fieldTy)
     let N = fd.numWords
     let m0ninv = asy.getM0ninv(fd)
 

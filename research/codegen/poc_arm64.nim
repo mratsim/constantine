@@ -117,16 +117,20 @@ proc t_field_primitives() =
   let pbo = createPassBuilderOptions()
   pbo.setMergeFunctions()
   let err = asy.module.runPasses(
-    # "default<O2>,memcpyopt,sroa,mem2reg,function-attrs,inline,gvn,dse,aggressive-instcombine,adce",
-    "function(require<inliner-size-estimator>,require<memdep>,require<da>)" &
-    ",function(aa-eval)" &
+    # "default<Os>" &
+    # "default<O2>,memcpyopt,sroa,function-attrs,inline,gvn,dse,aggressive-instcombine,adce,mem2reg",
+    "function(require<domfrontier>,require<domtree>,require<postdomtree>)" &
+    ",mem2reg,sroa" &
+    ",memcpyopt,gvn" &
+    ",function(require<inliner-size-estimator>,require<memdep>,require<da>)" &
     ",always-inline,hotcoldsplit,inferattrs,instrprof,recompute-globalsaa" &
     ",cgscc(argpromotion,function-attrs)" &
     ",require<inline-advisor>,partial-inliner,called-value-propagation" &
     ",scc-oz-module-inliner,module-inline" & # Buggy optimization
     ",function(verify,loop-mssa(loop-reduce),mergeicmps,expand-memcmp,instsimplify)" &
     ",function(lower-constant-intrinsics,consthoist,partially-inline-libcalls,ee-instrument<post-inline>,scalarize-masked-mem-intrin,verify)" &
-    ",memcpyopt,sroa,dse,aggressive-instcombine,gvn,ipsccp,deadargelim,adce" &
+    ",dse,aggressive-instcombine,ipsccp,deadargelim,adce" &
+    ",function(aa-eval)" &
     "",
     machine,
     pbo

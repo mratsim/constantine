@@ -325,7 +325,7 @@ proc genFpNsqrRT*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
     let (r, a, count) = llvmParams
     let M = asy.getModulusPtr(fd)
 
-    let rA = asy.asArray(r, fd.fieldTy)
+    var rA = asy.asArray(r, fd.fieldTy)
     let aA = asy.asArray(a, fd.fieldTy)
     for i in 0 ..< fd.numWords:
       rA[i] = aA[i]

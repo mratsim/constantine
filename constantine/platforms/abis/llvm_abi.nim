@@ -675,8 +675,8 @@ proc setAlignment*(v: ValueRef, bytes: cuint) {.importc: "LLVMSetAlignment".}
 proc setSection*(global: ValueRef, section: cstring) {.importc: "LLVMSetSection".}
 
 proc getTypeOf*(v: ValueRef): TypeRef {.importc: "LLVMTypeOf".}
-proc getValueName2(v: ValueRef, rLen: var csize_t): cstring {.used, importc: "LLVMGetValueName2".}
-  ## Returns the name of a valeu if it exists.
+proc getValueName2*(v: ValueRef, rLen: var csize_t): cstring {.importc: "LLVMGetValueName2".}
+  ## Returns the name of a value if it exists.
   ## `rLen` stores the returned string length
   ##
   ## This is not free, it requires internal hash table access
@@ -903,7 +903,7 @@ proc getElementPtr2_Struct*(
   ## However, since there’s no guarantee of where an object will be allocated in the address space, such values have limited meaning.
 
 proc load2*(builder: BuilderRef, ty: TypeRef, `ptr`: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildLoad2".}
-proc store*(builder: BuilderRef, val, `ptr`: ValueRef): ValueRef {.discardable, importc: "LLVMBuildStore".}
+proc store*(builder: BuilderRef, val, `ptr`: ValueRef) {.importc: "LLVMBuildStore".}
 
 proc memset*(builder: BuilderRef, `ptr`, val, len: ValueRef, align: uint32) {.importc: "LLVMBuildMemset".}
 proc memcpy*(builder: BuilderRef, dst: ValueRef, dstAlign: uint32, src: ValueRef, srcAlign: uint32, size: ValueRef) {.importc: "LLVMBuildMemcpy".}
