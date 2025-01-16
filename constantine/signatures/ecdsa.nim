@@ -263,8 +263,8 @@ proc verifyImpl[Name: static Algebra; Sig](
 ): bool =
   ## Verify a given `signature` for a `message` using the given `publicKey`.
   # 1. Compute w = s⁻¹
-  var w = signature.s
-  w.inv() # w = s⁻¹
+  var w {.noinit.}: Fr[Name] = signature.s
+  w.inv_vartime(signature.s) # w = s⁻¹
 
   # 2. Compute u₁ = ew and u₂ = rw
   var
@@ -273,20 +273,24 @@ proc verifyImpl[Name: static Algebra; Sig](
   u1.prod(msgHash, w)
   u2.prod(signature.r, w)
 
-  # 3. Compute u₁G + u₂Q
+  # 3. Compute u₁G + u₂Q. TODO: https://github.com/mratsim/constantine/issues/507
   var
     point1 {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
     point2 {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
   # Generator of the curve
   const G = publicKey.F.Name.getGenerator($publicKey.G)
-  point1.scalarMul(u1, G)
-  point2.scalarMul(u2, publicKey)
+  point1.scalarMul_vartime(u1, G)
+  point2.scalarMul_vartime(u2, publicKey)
   var R {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
-  R.sum(point1, point2)
+  R.sum_vartime(point1, point2)
 
   # 4. Get x coordinate (in `Fp`) and convert to `Fr` (like in signing)
-  let x = R.getAffine().x
-  let r_computed = Fr[Name].fromBig(x.toBig())
+  var Raff {.noInit.}: affine(typeof(R))
+  var x {.noInit.}: Fp[Name]
+  Raff.affine(R)
+
+  var r_computed {.noInit.}: Fr[Name]
+  r_computed.fromBig(Raff.x.toBig())
 
   # 5. Verify r_computed equals provided r
   result = bool(r_computed == signature.r)
@@ -360,8 +364,8 @@ proc recoverPubkeyImpl_vartime*[Name: static Algebra; Sig](
 
     # 3. perform recovery calculation, `Q = -m·r⁻¹ * G + s·r⁻¹ * R`
     # Note: Calculate with `r⁻¹` included in each coefficient to avoid 3rd `scalarMul`.
-    var rInv = signature.r
-    rInv.inv() # `r⁻¹`
+    var rInv {.noInit.}: Fr[Name]
+    rInv.inv_vartime(signature.r) # `r⁻¹`
 
     var u1 {.noinit.}, u2 {.noinit.}: Fr[Name]
     u1.prod(msgHash, rInv)     # `u₁ = m·r⁻¹`
@@ -370,9 +374,9 @@ proc recoverPubkeyImpl_vartime*[Name: static Algebra; Sig](
 
     var Q {.noinit.}: ECJac # the potential public key
     var point1 {.noinit.}, point2 {.noinit.}: ECJac
-    point1.scalarMul(u1, G)    # `p₁ = u₁ * G`
-    point2.scalarMul(u2, R)    # `p₂ = u₂ * R`
-    Q.sum(point1, point2)      # `Q = p₁ + p₂`
+    point1.scalarMul_vartime(u1, G)    # `p₁ = u₁ * G`
+    point2.scalarMul_vartime(u2, R)    # `p₂ = u₂ * R`
+    Q.sum_vartime(point1, point2)      # `Q = p₁ + p₂`
 
     # 4. Verify signature with this point
     validSig = Q.getAffine().verifyImpl(signature, msgHash)

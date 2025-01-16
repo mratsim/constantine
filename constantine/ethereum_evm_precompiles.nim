@@ -1358,8 +1358,8 @@ func eth_evm_ecrecover*(r: var openArray[byte],
   var rSig {.noinit}, sSig {.noinit.}: BigInt[256]
   rSig.unmarshal(input.toOpenArray(64,  96-1), bigEndian)
   sSig.unmarshal(input.toOpenArray(96, 128-1), bigEndian)
-  signature.r = Fr[Secp256k1].fromBig(rSig)
-  signature.s = Fr[Secp256k1].fromBig(sSig)
+  signature.r.fromBig(rSig)
+  signature.s.fromBig(sSig)
 
   # 4. perform pubkey recovery
   var pubKey {.noinit.}: PublicKey
