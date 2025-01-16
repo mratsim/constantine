@@ -38,7 +38,7 @@ import
   constantine/math/arithmetic/finite_fields,
   constantine/math/elliptic/ec_shortweierstrass_affine,
   constantine/math/io/io_bigints,
-  constantine/eth_ecdsa_signatures
+  constantine/ethereum_ecdsa_signatures
 
 import std / [strutils, base64, math, importutils]
 
