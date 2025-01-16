@@ -111,8 +111,6 @@ func hashMessageBlocks_arm_sha*(
 
     # Round 48-59
     # ---------------------------------------
-    # start interleaving message schedule updates
-    # to maximize instruction level parallelism
     staticFor i, 12, 15:
       const i1 = (i+1) and 3
 
