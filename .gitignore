@@ -56,3 +56,8 @@ Cargo.lock
 perf.data
 perf.data.old
 *.bench.json
+
+# Code editors, VS Code and JetBrains
+# -----------------------------------------------------------------------------------------
+.vscode
+.idea

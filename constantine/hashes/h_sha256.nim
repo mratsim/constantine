@@ -16,7 +16,10 @@ import
 when UseASM_X86_32:
   import ./sha256/[
     sha256_x86_ssse3,
-    sha256_x86_shaext]
+    sha256_x86_sha]
+
+when UseASM_ARM_64:
+  import ./sha256/sha256_arm64_sha2
 
 # SHA256, a hash function from the SHA2 family
 # --------------------------------------------------------------------------------
@@ -53,11 +56,14 @@ func hashMessageBlocks(
        numBlocks: uint) =
   when UseASM_X86_32:
     if ({.noSideEffect.}: hasSha()):
-      hashMessageBlocks_shaext(s, message, numBlocks)
+      hashMessageBlocks_x86_sha(s, message, numBlocks)
     elif ({.noSideEffect.}: hasSSSE3()):
       hashMessageBlocks_ssse3(s, message, numBlocks)
     else:
       hashMessageBlocks_generic(s, message, numBlocks)
+  elif UseASM_ARM_64 and defined(macosx):
+    # All Apple Silicon Mac support SHA2 extension
+    hashMessageBlocks_arm_sha(s, message, numBlocks)
   else:
     hashMessageBlocks_generic(s, message, numBlocks)
 
