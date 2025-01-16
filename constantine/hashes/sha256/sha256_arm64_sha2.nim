@@ -44,7 +44,7 @@ import
 # It makes for easier code to read but while Apple CPUs can prefetch up to 8 instructions ahead
 # it's best to interleave independent instructions to maximize throughput with an out-of-order 9superscalar) processor.
 
-func hashMessageBlocks_x86_sha*(
+func hashMessageBlocks_arm_sha*(
        H: var Sha256_state,
        message: ptr UncheckedArray[byte],
        numBlocks: uint)=

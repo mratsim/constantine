@@ -63,7 +63,7 @@ func hashMessageBlocks(
       hashMessageBlocks_generic(s, message, numBlocks)
   elif UseASM_ARM_64 and defined(macosx):
     # All Apple Silicon Mac support SHA2 extension
-    hashMessageBlocks_x86_sha(s, message, numBlocks)
+    hashMessageBlocks_arm_sha(s, message, numBlocks)
   else:
     hashMessageBlocks_generic(s, message, numBlocks)
 
