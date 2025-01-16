@@ -78,7 +78,7 @@ func gasBls12MsmG2(length: int, baseCost: int): int =
   return length * baseCost * discount[min(length, discount.high)] div multiplier
 
 func gasBls12PairingCheck(length: int): int =
-  return 43000*length + 65000
+  return 32600*length + 37700
 
 # Constructors
 # -----------------------------------------------------------------------------------------------------
