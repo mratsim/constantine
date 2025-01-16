@@ -18,7 +18,9 @@ import
   std/tables,
   # Helpers
   ./bench_blueprint,
-  helpers/prng_unsafe
+  helpers/prng_unsafe,
+  # Standard library
+  std/[os, strutils]
 
 # For EIP-2537, we use the worst case vectors:
 #   https://eips.ethereum.org/assets/eip-2537/bench_vectors
@@ -43,26 +45,42 @@ template bench(op: string, gas: int, iters: int, body: untyped): untyped =
 # -----------------------------------------------------------------------------------------------------
 
 const gasSchedule = {
-  "SHA256":                 -1,
+  # Hashes
+  "KECCAK256":               -1,
+  "RIPEMD160":               -1,
+  "SHA256":                  -1,
+  # ECRecover
+  "ECRECOVER":             3000,
   # EIP-196 and 197, gas cost from EIP-1108
-  "BN254_G1ADD":           150,
-  "BN254_G1MUL":          6000,
-  "BN254_PAIRINGCHECK":     -1,
+  "BN254_G1ADD":            150,
+  "BN254_G1MUL":           6000,
+  "BN254_PAIRINGCHECK":      -1,
   # EIP 2537
-  "BLS12_G1ADD":           375,
-  "BLS12_G1MUL":         12000,
-  "BLS12_G1MSM":            -1,
-  "BLS12_G2ADD":           600,
-  "BLS12_G2MUL":         22500,
-  "BLS12_G2MSM":            -1,
-  "BLS12_PAIRINGCHECK":     -1,
-  "BLS12_MAP_FP_TO_G1":   5500,
-  "BLS12_MAP_FP2_TO_G2": 23800,
+  "BLS12_G1ADD":            375,
+  "BLS12_G1MUL":          12000,
+  "BLS12_G1MSM":             -1,
+  "BLS12_G2ADD":            600,
+  "BLS12_G2MUL":          22500,
+  "BLS12_G2MSM":             -1,
+  "BLS12_PAIRINGCHECK":      -1,
+  "BLS12_MAP_FP_TO_G1":    5500,
+  "BLS12_MAP_FP2_TO_G2":  23800,
+  # EIP 4844
+  "KZG_POINT_EVALUATION": 50000,
 }.toTable()
+
+func gasKeccak256(length: int): int =
+  # 30 gas + 6 gas per 32 byte word
+  # This does not take into account the gas for memory expansion
+  return 30 + 6 * ((length+31) div 32)
 
 func gasSha256(length: int): int =
   # 60 gas + 12 gas per 32 byte word
   return 60 + 12 * ((length+31) div 32)
+
+func gasRipeMD160(length: int): int =
+  # 600 gas + 120 gas per 32 byte word
+  return 600 + 120 * ((length+31) div 32)
 
 func gasBN254PairingCheck(length: int): int =
   return 34000*length + 45000
@@ -140,8 +158,17 @@ proc createPairingInputsBLS12381(length: int): seq[byte] =
     buf.marshal(Q.y.c1, bigEndian)
     result.add buf
 
-# SHA256
+# Hashes
 # -----------------------------------------------------------------------------------------------------
+
+proc benchKeccak256(words, iters: int) =
+  let length = words*32
+  var inputs = rng.random_byte_seq(length)
+  var output: array[32, byte]
+
+  let opName = &"Keccak256 - {length:>3} bytes"
+  bench(opName, gasKeccak256(length), iters):
+    keccak256.hash(output, inputs)
 
 proc benchSha256(words, iters: int) =
   let length = words*32
@@ -151,6 +178,28 @@ proc benchSha256(words, iters: int) =
   let opName = &"SHA256 - {length:>3} bytes"
   bench(opName, gasSha256(length), iters):
     discard output.eth_evm_sha256(inputs)
+
+proc benchRipeMD160(words, iters: int) =
+  let length = words*32
+  var inputs = rng.random_byte_seq(length)
+  var output = newSeq[byte](32)
+
+  let opName = &"RipeMD160 - {length:>3} bytes"
+  bench(opName, gasRipeMD160(length), iters):
+    discard output.eth_evm_ripemd160(inputs)
+
+# EcRecover
+# -----------------------------------------------------------------------------------------------------
+
+proc benchEcRecover(iters: int) =
+  let inputhex = "18c547e4f7b0f325ad1e56f57e26c745b09a3e503d86e00e5255ff7f715d3d1c000000000000000000000000000000000000000000000000000000000000001c73b1693892219d736caba55bdb67216e485557ea6b6af75f37096c9aa6a5a75feeb940b1d03b21e36b0e47e79769f095fe2ab855bd91e3a38756b7d75a9c4549"
+  var input = newSeq[byte](inputhex.len div 2)
+  input.paddedFromHex(inputhex, bigEndian)
+  var output = newSeq[byte](32)
+
+  let opName = "ECRECOVER"
+  bench(opName, gasSchedule[opName], iters):
+    discard output.eth_evm_ecrecover(input)
 
 # EIP-196 & EIP-197
 # -----------------------------------------------------------------------------------------------------
@@ -290,6 +339,32 @@ proc benchBls12MsmG2(msmCtx: seq[byte], size, iters: int) =
   bench(&"BLS12_G2MSM {size:>3}", gasBls12MsmG2(size, gasSchedule["BLS12_G2MUL"]), iters):
     discard output.eth_evm_bls12381_g2msm(inputs)
 
+# EIP-4844
+# -----------------------------------------------------------------------------------------------------
+
+const TrustedSetupMainnet =
+  currentSourcePath.rsplit(DirSep, 1)[0] /
+  ".." / "constantine" /
+  "commitments_setups" /
+  "trusted_setup_ethereum_kzg4844_reference.dat"
+
+proc benchKzgPointEvaluation(iters: int) =
+  let inputhex = "01e798154708fe7789429634053cbf9f99b619f9f084048927333fce637f549b564c0a11a0f704f4fc3e8acfe0f8245f0ad1347b378fbf96e206da11a5d3630624d25032e67a7e6a4910df5834b8fe70e6bcfeeac0352434196bdf4b2485d5a18f59a8d2a1a625a17f3fea0fe5eb8c896db3764f3185481bc22f91b4aaffcca25f26936857bc3a7c2539ea8ec3a952b7873033e038326e87ed3e1276fd140253fa08e9fc25fb2d9a98527fc22a2c9612fbeafdad446cbc7bcdbdcd780af2c16a"
+  var input = newSeq[byte](inputhex.len div 2)
+  input.paddedFromHex(inputhex, bigEndian)
+  var output = newSeq[byte](64)
+
+  var ctx: ptr EthereumKZGContext
+  let status = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  doAssert status == tsSuccess, "\n[Trusted Setup Error] " & $status
+
+  let opName = "KZG_POINT_EVALUATION"
+  bench(opName, gasSchedule[opName], iters):
+    discard ctx.eth_evm_kzg_point_evaluation(output, input)
+
+# Main
+# -----------------------------------------------------------------------------------------------------
+
 const Iters        =  1000
 const ItersPairing =    10
 const ItersMsm     =    10
@@ -297,6 +372,14 @@ proc main() =
   separator()
   for words in 1..8:
     benchSha256(words, Iters)
+  separator()
+  for words in 1..8:
+    benchKeccak256(words, Iters)
+  separator()
+  for words in 1..8:
+    benchRipeMD160(words, Iters)
+  separator()
+  benchEcRecover(Iters)
   separator()
   benchBn254G1Add(Iters)
   benchBn254G1Mul(Iters)
@@ -334,6 +417,7 @@ proc main() =
   msmG2Ctx.benchBls12MsmG2( 64, ItersMsm)
   msmG2Ctx.benchBls12MsmG2(128, ItersMsm)
   separator()
-
+  benchKzgPointEvaluation(ItersPairing)
+  separator()
 main()
 notes()
