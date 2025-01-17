@@ -9,9 +9,9 @@
 import constantine/platforms/abstractions
 
 when UseASM_X86_32:
-  import ./assembly/limbs_asm_bigint_x86
+  import constantine/math_asm/limbs_asm_bigint_x86
 when UseASM_ARM64:
-  import ./assembly/limbs_asm_bigint_arm64
+  import constantine/math_asm/limbs_asm_bigint_arm64
 
 # ############################################################
 #

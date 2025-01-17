@@ -7,13 +7,13 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../platforms/[abstractions, views],
-  ../math/arithmetic/bigints,
-  ../math/arithmetic/[limbs, limbs_extmul],
-  ../math/io/io_bigints
+  constantine/platforms/[abstractions, views],
+  constantine/math/arithmetic/bigints,
+  constantine/math/arithmetic/[limbs, limbs_extmul],
+  constantine/math/io/io_bigints
 
 when UseASM_X86_64:
-  import ../math/arithmetic/assembly/limbs_asm_modular_x86
+  import constantine/math_asm/limbs_asm_modular_x86
 
 # No exceptions allowed
 {.push raises: [].}

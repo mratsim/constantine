@@ -35,9 +35,9 @@ import
   ./bigints_crandall
 
 when UseASM_X86_64:
-  import ./assembly/limbs_asm_modular_x86
+  import constantine/math_asm/limbs_asm_modular_x86
 when UseASM_ARM64:
-  import ./assembly/limbs_asm_modular_arm64
+  import constantine/math_asm/limbs_asm_modular_arm64
 
 when nimvm:
   from constantine/named/deriv/precompute import montyResidue_precompute
