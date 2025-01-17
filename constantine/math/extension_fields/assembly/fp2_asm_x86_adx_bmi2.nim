@@ -11,7 +11,7 @@ import
   constantine/platforms/abstractions,
   constantine/named/algebras,
   constantine/math/arithmetic,
-  constantine/math/arithmetic/assembly/[
+  constantine/math_asm/[
     limbs_asm_mul_x86_adx_bmi2,
     limbs_asm_mul_mont_x86_adx_bmi2,
     limbs_asm_redc_mont_x86_adx_bmi2

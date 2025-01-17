@@ -8,7 +8,7 @@
 
 import
   std/[macros, strutils, sets, hashes, algorithm, sequtils, enumutils],
-  ../[config, bithacks]
+  constantine/platforms/[config, bithacks]
 
 # A compile-time inline assembler
 

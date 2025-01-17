@@ -12,8 +12,8 @@ import
 
 when UseASM_X86_32:
   import
-    ./assembly/limbs_asm_crandall_x86,
-    ./assembly/limbs_asm_crandall_x86_adx_bmi2
+    constantine/math_asm/limbs_asm_crandall_x86,
+    constantine/math_asm/limbs_asm_crandall_x86_adx_bmi2
 
 # No exceptions allowed
 {.push raises: [], checks: off.}

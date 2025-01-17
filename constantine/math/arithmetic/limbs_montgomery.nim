@@ -12,16 +12,16 @@ import
   ./limbs, ./limbs_extmul
 
 when UseASM_X86_32:
-  import ./assembly/limbs_asm_redc_mont_x86
+  import constantine/math_asm/limbs_asm_redc_mont_x86
 when UseASM_X86_64:
   import
-    ./assembly/limbs_asm_mul_mont_x86,
-    ./assembly/limbs_asm_mul_mont_x86_adx_bmi2,
-    ./assembly/limbs_asm_redc_mont_x86_adx_bmi2
+    constantine/math_asm/limbs_asm_mul_mont_x86,
+    constantine/math_asm/limbs_asm_mul_mont_x86_adx_bmi2,
+    constantine/math_asm/limbs_asm_redc_mont_x86_adx_bmi2
 when UseASM_ARM64:
   import
-    ./assembly/limbs_asm_mul_mont_arm64,
-    ./assembly/limbs_asm_redc_mont_arm64
+    constantine/math_asm/limbs_asm_mul_mont_arm64,
+    constantine/math_asm/limbs_asm_redc_mont_arm64
 
 # ############################################################
 #
