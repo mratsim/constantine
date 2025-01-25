@@ -31,6 +31,14 @@ jobs:
             cpu: amd64
             TEST_LANG: c
             BACKEND: ASM
+          - os: linux
+            cpu: arm64
+            TEST_LANG: c
+            BACKEND: NO_ASM
+          - os: linux
+            cpu: arm64
+            TEST_LANG: c
+            BACKEND: ASM
 
           - os: windows
             cpu: amd64
