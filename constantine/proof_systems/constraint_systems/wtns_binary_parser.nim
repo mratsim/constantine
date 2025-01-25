@@ -103,13 +103,8 @@ func witnesses*(wtns: WtnsBin): seq[Witness] =
 proc getWitnesses*[Name: static Algebra](witnesses: seq[Witness]): seq[Fr[Name]] =
   result = newSeq[Fr[Name]](witnesses.len)
   for i, w in witnesses:
-    when CM_WN or CMM_WN:
-      let isMont = false
-    elif CM_WM:
-      let isMont = true
-    else:
-      {.error: "One case must be active."}
-    result[i] = toFr[Name](w.data, isMont = isMont, isDoubleMont = false) ## Important: Witness does *not* store numbers in Montgomery rep
+    ## Important: Witness does *not* store numbers in Montgomery rep
+    result[i] = toFr[Name](w.data, isMont = false, isDoubleMont = false)
 
 proc toWtns*[Name: static Algebra](wtns: WtnsBin): Wtns[Name] =
   result = Wtns[Name](
