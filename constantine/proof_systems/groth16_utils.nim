@@ -82,6 +82,7 @@ proc randomFieldElement*[Name: static Algebra](_: typedesc[Fr[Name]]): Fr[Name] 
   var b: matchingOrderBigInt(Name)
 
   bind sysrand
-  while b.isZero().bool or (b > m).bool: ## XXX: or just truncate?
+  # sample until we find an element less than the modulo (truncating would give biased sampler)
+  while b.isZero().bool or (b > m).bool:
     assert b.limbs.sysrand()
   result.fromBig(b)
