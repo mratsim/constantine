@@ -22,6 +22,12 @@ proc toFp*[Name: static Algebra](x: seq[byte], isMont = true): Fp[Name] =
     result.fromBig(b)
 
 proc toFr*[Name: static Algebra](x: seq[byte], isMont = true, isDoubleMont = false): Fr[Name] =
+  ## Important note on `isDoubleMont`:
+  ## SnarkJS serializes the coefficients in the Zkey file as *doubly* Montgomery encoded values.
+  ## See here:
+  ## https://github.com/iden3/snarkjs/blob/master/src/zkey_new.js#L321-L335
+  ## and here:
+  ## https://github.com/iden3/snarkjs/blob/master/src/zkey_new.js#L91
   let b = matchingOrderBigInt(Name).unmarshal(x.toOpenArray(0, x.len - 1), littleEndian)
   if isMont:
     var bN: typeof(b)
