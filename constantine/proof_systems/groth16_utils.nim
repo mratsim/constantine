@@ -5,12 +5,6 @@ import ../math/[arithmetic, extension_fields],
        ../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul, ec_scalar_mul_vartime],
        ../csprngs/sysrand
 
-## Read zkey coefficients `C` as double montgomery rep `MM`, witness data `W` in normal rep `N`
-## This produces the correct 3 proof values
-const CMM_WN* {.booldefine.} = false
-
-## What about `CN_WM`?
-
 ## Helper constructors for Fp / Fr elements used in Groth16 binary file parsers.
 proc toFp*[Name: static Algebra](x: seq[byte], isMont = true): Fp[Name] =
   let b = matchingBigInt(Name).unmarshal(x.toOpenArray(0, x.len - 1), littleEndian)
