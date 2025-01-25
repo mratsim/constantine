@@ -22,57 +22,47 @@ jobs:
         # or ubuntu-24.04-arm
         # We might as well test on 22.04 for ARM
 
-        nim_version: ['version-2-2']
+        nim_version: [version-2-2]
         rust_toolchain: [stable] # [beta, nightly]
         go_toolchain: [stable]
         target:
           - os: linux
             cpu: i386
-            TEST_LANG: c
             BACKEND: NO_ASM
 
           # We only need to test 32-bit for targets like RISC-V that don't have ASM.
           # - os: linux
           #   cpu: i386
-          #   TEST_LANG: c
           #   BACKEND: ASM
 
           - os: linux
             cpu: amd64
-            TEST_LANG: c
             BACKEND: NO_ASM
           - os: linux
             cpu: amd64
-            TEST_LANG: c
             BACKEND: ASM
           - os: linux
             cpu: arm64
             builder: ubuntu-22.04-arm
-            TEST_LANG: c
             BACKEND: NO_ASM
           - os: linux
             cpu: arm64
             builder: ubuntu-22.04-arm
-            TEST_LANG: c
             BACKEND: ASM
 
           - os: windows
             cpu: amd64
-            TEST_LANG: c
             BACKEND: NO_ASM
           - os: windows
             cpu: amd64
-            TEST_LANG: c
             BACKEND: ASM
 
           # MacOS Github agents are now using ARM and we need Nim ARM nightlies: https://github.com/mratsim/constantine/issues/372
           # - os: macos
           #   cpu: amd64
-          #   TEST_LANG: c
           #   BACKEND: NO_ASM
           # - os: macos
           #   cpu: amd64
-          #   TEST_LANG: c
           #   BACKEND: ASM
         include:
           - target:
@@ -84,7 +74,7 @@ jobs:
           - target:
               os: windows
             builder: windows-latest
-    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.target.TEST_LANG }}-${{ matrix.target.BACKEND }} (${{ matrix.nim_version }})'
+    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.target.BACKEND }} (${{ matrix.nim_version }})'
     runs-on: ${{ matrix.builder }}
     steps:
       - name: Get branch name

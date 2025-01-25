@@ -764,12 +764,7 @@ proc clearParallelBuild() =
     rmFile(buildParallel)
 
 proc setupTestCommand(flags, path: string): string =
-  var lang = "c"
-  if existsEnv"TEST_LANG":
-    lang = getEnv"TEST_LANG"
-
-  return "nim " & lang &
-    " -r " &
+  return "nim c -r" &
     flags &
     releaseBuildOptions() &
     " --outdir:build/test_suite " &
