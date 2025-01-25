@@ -5,14 +5,6 @@ import ../math/[arithmetic, extension_fields],
        ../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul, ec_scalar_mul_vartime],
        ../csprngs/sysrand
 
-## Read zkey coefficients `C` as montgomery rep `M`, witness data `W` in normal rep `N`
-## This produces the correct zkey coefficients, but wrong `C` in `buildABC`.
-## Proof g^A, g^B are correct.
-const CM_WN* {.booldefine.} = false
-## Read zkey coefficients `C` as montgomery rep `M`, witness data `W` in montgomery rep `M`
-## This produces the correct............
-## No proof is correct.
-const CM_WM* {.booldefine.} = false
 ## Read zkey coefficients `C` as double montgomery rep `MM`, witness data `W` in normal rep `N`
 ## This produces the correct 3 proof values
 const CMM_WN* {.booldefine.} = false
