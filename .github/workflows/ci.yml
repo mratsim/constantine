@@ -8,7 +8,7 @@ permissions:
   contents: read # list commits, change to write to create a release
 
 jobs:
-  build:
+  test:
     strategy:
       fail-fast: false
       max-parallel: 20
@@ -17,7 +17,7 @@ jobs:
         # version-1-6 and version-2-0 have issues with templates in typedef operating on a generic for Fp12 tower in https://github.com/mratsim/constantine/pull/485
         # Hence we only test and officially sypport 2.2.0, though 99% of Constantine should work on older compilers
 
-        # For ARM support on Linux we need to set a specific builder
+        # For ARM support on Linux we need to set a specific host
         # either ubuntu-22.04-arm
         # or ubuntu-24.04-arm
         # We might as well test on 22.04 for ARM
@@ -25,57 +25,66 @@ jobs:
         nim_version: [version-2-2]
         rust_toolchain: [stable] # [beta, nightly]
         go_toolchain: [stable]
+
         target:
+          # We only need to test 32-bit for targets like RISC-V that don't have ASM.
           - os: linux
             cpu: i386
-            BACKEND: NO_ASM
-
-          # We only need to test 32-bit for targets like RISC-V that don't have ASM.
-          # - os: linux
-          #   cpu: i386
-          #   BACKEND: ASM
+            ctt_backend: NO_ASM
+            host: ubuntu-latest
 
           - os: linux
             cpu: amd64
-            BACKEND: NO_ASM
+            ctt_backend: NO_ASM
+            host: ubuntu-latest
           - os: linux
             cpu: amd64
-            BACKEND: ASM
+            ctt_backend: ASM
+            host: ubuntu-latest
+
+          # ASM code for ARM Linux is not available yet
           - os: linux
             cpu: arm64
-            builder: ubuntu-22.04-arm
-            BACKEND: NO_ASM
-          - os: linux
-            cpu: arm64
-            builder: ubuntu-22.04-arm
-            BACKEND: ASM
+            ctt_backend: NO_ASM
+            host: ubuntu-22.04-arm
 
           - os: windows
             cpu: amd64
-            BACKEND: NO_ASM
+            ctt_backend: NO_ASM
+            host: windows-latest
           - os: windows
             cpu: amd64
-            BACKEND: ASM
+            ctt_backend: ASM
+            host: windows-latest
 
-          # MacOS Github agents are now using ARM and we need Nim ARM nightlies: https://github.com/mratsim/constantine/issues/372
-          # - os: macos
-          #   cpu: amd64
-          #   BACKEND: NO_ASM
-          # - os: macos
-          #   cpu: amd64
-          #   BACKEND: ASM
+          - os: macos
+            cpu: arm64
+            ctt_backend: NO_ASM
+            host: macos-latest
+          - os: macos
+            cpu: arm64
+            ctt_backend: ASM
+            host: macos-latest
+
         include:
           - target:
               os: linux
-            builder: ubuntu-latest
-          # - target:
-          #     os: macos
-          #   builder: macos-latest
+            nim_channel: nightly
+          - target:
+              os: linux
+            nim_channel: nightly
+          - target:
+              os: macos
+            # MacOS Github agents are now using ARM and there are no ARM nightlies:
+            #   https://github.com/mratsim/constantine/issues/372
+            # So we build from source
+            nim_channel: source
           - target:
               os: windows
-            builder: windows-latest
-    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.target.BACKEND }} (${{ matrix.nim_version }})'
-    runs-on: ${{ matrix.builder }}
+            nim_channel: nightly
+
+    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.target.ctt_backend }} (${{ matrix.nim_version }})'
+    runs-on: ${{ matrix.target.host }}
     steps:
       - name: Get branch name
         shell: bash
@@ -149,31 +158,46 @@ jobs:
           echo '${{ github.workspace }}'"/external/mingw-${{ matrix.target.cpu }}/bin" >> $GITHUB_PATH
           echo '${{ github.workspace }}'"/external/dlls-${{ matrix.target.cpu }}" >> $GITHUB_PATH
 
-      - name: Restore Nim from cache
-        if: matrix.nim_version != 'devel'
+      - name: Get latest Nim commit hash & install dir
+        id: versions
+        shell: bash
+        run: |
+          getHash() {
+            git ls-remote "https://github.com/$1" "${2:-HEAD}" | cut -f 1
+          }
+          nimHash=$(getHash nim-lang/Nim '${{ matrix.branch }}')
+          installdir="nim-${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.nim_version }}-$nimHash"
+          echo "##[set-output name=installdir;]$(echo $installdir)"
+          echo "Nim installation directory: $installdir"
+
+      # Nightlies are already on Github
+      - name: Restore Nim from cache (except nightlies)
+        if: matrix.nim_channel != 'nightly'
         id: nim-compiler-cache
         uses: actions/cache@v4
         with:
-          path: '${{ github.workspace }}/nim-${{ matrix.nim_version }}-${{ matrix.target.cpu }}'
-          key: 'nim-${{ matrix.target.cpu }}-${{ matrix.nim_version }}'
+          path: '${{ github.workspace }}/${{ steps.versions.outputs.installdir }}'
+          key: '${{ steps.versions.outputs.installdir }}'
 
       - name: Setup Nim
         if: steps.nim-compiler-cache.outputs.cache-hit != 'true'
-        uses: alaviss/setup-nim@0.1.1
-        with:
-          path: 'nim-${{ matrix.nim_version }}-${{ matrix.target.cpu }}'
-          version: ${{ matrix.nim_version }}
-          architecture: ${{ matrix.target.cpu }}
-          add-to-path: false
-
-      - name: Path to cached Nim
         shell: bash
         run: |
-          echo '${{ github.workspace }}'"/nim-${{ matrix.nim_version }}-${{ matrix.target.cpu }}/bin" >> $GITHUB_PATH
+          bash constantine/.github/workflows/install_nim.sh \
+            --nim-channel ${{ matrix.nim_channel }} \
+            --nim-version ${{ matrix.nim_version }} \
+            --os ${{ matrix.target.os }} \
+            --arch ${{ matrix.target.cpu }} \
+            --install-dir ${{ steps.versions.outputs.installdir }}
+
+      - name: Path to Nim
+        shell: bash
+        run: |
+          echo '${{ github.workspace }}'/"${{ steps.versions.outputs.installdir }}"/bin >> $GITHUB_PATH
           echo '${{ github.workspace }}'"/.nimble/bin" >> $GITHUB_PATH
 
       - name: Install test dependencies (Linux amd64)
-        if: runner.os == 'Linux' && matrix.target.cpu == 'amd64'
+        if: runner.os == 'Linux' && matrix.target.cpu != 'i386'
         run: |
           sudo DEBIAN_FRONTEND='noninteractive' apt-get install \
             --no-install-recommends -yq \
@@ -211,29 +235,6 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install gmp
-      - name: Install Clang with Intel Assembly support (macOS)
-        if: runner.os == 'macOS'
-        # Apple Clang does not support Intel syntax due to missing
-        # commit: https://github.com/llvm/llvm-project/commit/ae98182cf7341181e4aa815c372a072dec82779f
-        # Revision: https://reviews.llvm.org/D113707
-        # Apple upstream: FB12137688
-
-        # Furthermore, Apple Clang can delete symbols when building a static library
-        # in particular the hasAdxImpl bool for CPU runtime detection.
-
-        # run: |
-        #   mkdir -p external/bin
-        #   cat << EOF > external/bin/clang
-        #   #!/bin/bash
-        #   exec $(brew --prefix llvm@15)/bin/clang "\$@"
-        #   EOF
-        #   cat << EOF > external/bin/clang++
-        #   #!/bin/bash
-        #   exec $(brew --prefix llvm@15)/bin/clang++ "\$@"
-        #   EOF
-        #   chmod 755 external/bin/{clang,clang++}
-        #   echo '${{ github.workspace }}/external/bin' >> $GITHUB_PATH
-        run: echo "$(brew --prefix llvm@15)/bin" >> $GITHUB_PATH
 
       - name: Setup MSYS2 (Windows)
         if: runner.os == 'Windows'
@@ -257,11 +258,12 @@ jobs:
         # gcc is an alias to Apple Clang on MacOS
         run: |
           nim -v
+          nimble -v
           gcc -v
           clang -v
           go version
           rustup --version
-          if [[ '${{ matrix.target.cpu }}' != 'i386' && '${{ runner.os }}' != 'Windows' ]]; then
+          if [[ '${{ matrix.target.cpu }}' != 'i386' && '${{ runner.os }}' == 'Linux' ]]; then
             llvm-config --version
           fi
           if [[ '${{ runner.os }}' == 'Linux' ]]; then
@@ -295,7 +297,7 @@ jobs:
           go mod download -modfile=go_test.mod
 
       - name: Run Constantine as C library tests (UNIX with Assembly)
-        if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
+        if: runner.os != 'Windows' && matrix.target.ctt_backend == 'ASM'
         shell: bash
         run: |
           cd constantine
@@ -303,7 +305,7 @@ jobs:
           nimble make_headers  --verbose
           nimble test_lib      --verbose
       - name: Run Constantine as C library tests (UNIX no Assembly)
-        if: runner.os != 'Windows' && matrix.target.BACKEND == 'NO_ASM'
+        if: runner.os != 'Windows' && matrix.target.ctt_backend == 'NO_ASM'
         shell: bash
         run: |
           cd constantine
@@ -313,7 +315,7 @@ jobs:
       - name: Run Constantine as C library tests (Windows with Assembly)
         # So "test_bindings" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
-        if: runner.os == 'Windows' && matrix.target.BACKEND == 'ASM'
+        if: runner.os == 'Windows' && matrix.target.ctt_backend == 'ASM'
         shell: msys2 {0}
         run: |
           cd constantine
@@ -323,7 +325,7 @@ jobs:
       - name: Run Constantine as C library tests (Windows no Assembly)
         # So "test_bindings" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
-        if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
+        if: runner.os == 'Windows' && matrix.target.ctt_backend == 'NO_ASM'
         shell: msys2 {0}
         run: |
           cd constantine
@@ -340,14 +342,14 @@ jobs:
           go test -modfile=../go_test.mod
 
       - name: Run Constantine as Rust library tests (with Assembly)
-        if: matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386'
+        if: matrix.target.ctt_backend == 'ASM' && matrix.target.cpu != 'i386'
         shell: bash
         # We need to deactivate the assembly (used by default for benches)
         run: |
           cd constantine
           cargo test -- --nocapture
       - name: Run Constantine as Rust library tests (NO Assembly)
-        if: matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu != 'i386'
+        if: matrix.target.ctt_backend == 'NO_ASM' && matrix.target.cpu != 'i386'
         shell: bash
         # We need to deactivate the assembly (used by default for benches)
         run: |
@@ -357,7 +359,7 @@ jobs:
       - name: Compile Constantine Zkalc benchmark (no assembly)
         # Skip 32-bit as that would need clang-multilib or -m32
         # Skip Windows as clang throws fatal error LNK1107
-        if: matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu != 'i386' && runner.os != 'Windows'
+        if: matrix.target.ctt_backend == 'NO_ASM' && matrix.target.cpu != 'i386' && runner.os != 'Windows'
         shell: bash
         run: |
           cd constantine
@@ -366,20 +368,20 @@ jobs:
       - name: Compile Constantine Zkalc benchmark (with assembly)
         # Skip 32-bit as that would need clang-multilib or -m32
         # Skip Windows as clang throws fatal error LNK1107
-        if: matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386' && runner.os != 'Windows'
+        if: matrix.target.ctt_backend == 'ASM' && matrix.target.cpu != 'i386' && runner.os != 'Windows'
         shell: bash
         run: |
           cd constantine
           nimble make_zkalc
 
       - name: Run Constantine in-depth tests (Unix - with GMP, with Assembly)
-        if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
+        if: runner.os != 'Windows' && matrix.target.ctt_backend == 'ASM'
         shell: bash
         run: |
           cd constantine
           nimble test_parallel --verbose
       - name: Run Constantine in-depth tests (Unix - with GMP, no Assembly)
-        if: runner.os != 'Windows' && matrix.target.BACKEND == 'NO_ASM'
+        if: runner.os != 'Windows' && matrix.target.ctt_backend == 'NO_ASM'
         shell: bash
         run: |
           cd constantine
@@ -390,7 +392,7 @@ jobs:
         # but nim-gmp cannot find GMP on Windows CI
         # Also need to workaround asynctools not being able to create pipes https://github.com/nim-lang/Nim/issues/23118
         # And LTO impossible constraint in the deneb_kzg test (but not MSM for some reason)
-        if: runner.os == 'Windows' && matrix.target.BACKEND == 'ASM'
+        if: runner.os == 'Windows' && matrix.target.ctt_backend == 'ASM'
         shell: msys2 {0}
         run: |
           cd constantine
@@ -403,7 +405,7 @@ jobs:
         # So "test_bindings" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
         # Also need to workaround asynctools not being able to create pipes https://github.com/nim-lang/Nim/issues/23118
-        if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
+        if: runner.os == 'Windows' && matrix.target.ctt_backend == 'NO_ASM'
         shell: msys2 {0}
         run: |
           cd constantine

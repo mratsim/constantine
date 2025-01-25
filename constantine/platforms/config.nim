@@ -30,7 +30,7 @@ const UseASM_ARM64* = CTT_ASM and ARM64 and GCC_Compatible
 when UseASM_X86_64:
   static: doAssert bool(sizeof(pointer)*8 == 64), "Only 32-bit and 64-bit platforms are supported"
 
-const UseAsmSyntaxIntel* {.booldefine.} = defined(lto) or defined(lto_incremental)
+const UseAsmSyntaxIntel* {.booldefine.} = UseASM_X86_32 and (defined(lto) or defined(lto_incremental))
   ## When using LTO with AT&T syntax
   ## - GCC will give spurious "Warning: missing operand; zero assumed" with AT&T syntax
   ## - Clang will wrongly combine memory offset and constant propagated address of constants
