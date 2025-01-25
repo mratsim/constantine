@@ -7,6 +7,7 @@ import ../math/[arithmetic, extension_fields],
        ../platforms/abstractions,
        ../named/[algebras, properties_fields, properties_curves],
        ../math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul, ec_scalar_mul_vartime],
+       ../math/pairings/pairings_generic,
        ../named/zoo_generators
 
 import ../math/polynomials/[fft_fields, fft_lut]
@@ -36,6 +37,14 @@ type
     A*: EC_ShortW_Aff[Fp[Name], G1]
     B*: EC_ShortW_Aff[Fp2[Name], G2]
     C*: EC_ShortW_Aff[Fp[Name], G1]
+
+  ## The verification key to verify a Groth16 proof.
+  VerifyingKey*[Name: static Algebra] = object
+    alpha1*: EC_ShortW_Aff[Fp[Name], G1]         ## g₁^α
+    beta2*: EC_ShortW_Aff[Fp2[Name], G2]         ## g₂^β
+    gamma2*: EC_ShortW_Aff[Fp2[Name], G2]        ## g₂^γ
+    delta2*: EC_ShortW_Aff[Fp2[Name], G2]        ## g₂^δ
+    gamma_abc*: seq[EC_ShortW_Aff[Fp[Name], G1]] ## == `zkey.ic` == `[g₁^{ \frac{β·A_i(τ) + α·B_i(τ) + C_0(τ)}{ γ }}]`
 
 proc init*[Name: static Algebra](G: typedesc[Groth16Prover[Name]], zkey: Zkey[Name], wtns: Wtns[Name], r1cs: R1CS): Groth16Prover[Name] =
   result = Groth16Prover[Name](
@@ -245,3 +254,42 @@ proc prove*[Name: static Algebra](ctx: Groth16Prover[Name]): Groth16Proof {.noin
 
   result = Groth16Proof(A: A_p.getAffine(), B: B2_p.getAffine(), C: C_p.getAffine())
 
+proc verify*[Name: static Algebra](
+    vk: VerifyingKey[Name],
+    proof: Groth16Proof[Name],
+    publicInputs: seq[Fr[Name]]
+): bool =
+  ## Verify a Groth16 proof using the provided verification key and public inputs
+  ##
+  ## This means checking the pairing equation:
+  ## `e(g₁^A, g₂^B) = e(g₁^α, g₂^β) · e(g₁^I, g₂^γ) · e(g₁^C, g₂^δ)`
+  ## where the left hand side is the pairing of two of the proof elements.
+  # 1. Check proof elements are valid curve points
+  let notOnCurve =
+    not isOnCurve(proof.A.x, proof.A.y, G1) or
+    not isOnCurve(proof.B.x, proof.B.y, G2) or
+    not isOnCurve(proof.C.x, proof.C.y, G1)
+  if bool(notOnCurve):
+    return false
+  elif publicInputs.len != vk.gamma_abc.len: # and inputs match
+    return false
+
+  # 2. Compute `sum_pub = Σ ([publicInputs[i]] * gamma_abc[i]) = g₁^I`
+  var sum_pub_jac {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
+  sum_pub_jac.multiScalarMul_vartime(publicInputs, vk.gamma_abc)
+  let sum_pub = sum_pub_jac.getAffine()
+
+  template pairing(x, y: untyped): untyped = # helper for cleaner code
+    var res {.noinit.}: Fp12[Name]
+    res.pairing(x, y)
+    res
+
+  # 3. Compute pairings
+  let lhs = pairing(proof.A, proof.B)
+
+  let rhs = pairing(vk.alpha1, vk.beta2) *
+            pairing(sum_pub, vk.gamma2) *
+            pairing(proof.C, vk.delta2)
+
+  # 4. Check pairing equality
+  result = bool(lhs == rhs)
