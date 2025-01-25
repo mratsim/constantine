@@ -1,11 +1,38 @@
-import std/[os, unittest, strutils],
-       constantine/proof_systems/manual_groth16,
+import std/[os, unittest, strutils, importutils],
+       constantine/proof_systems/groth16 {.all.}, # to call `calc*` procs
        constantine/named/algebras
+
+
+
 
 #[
 For information about the data files used in this test case, see
 `examples/groth16_prover.org`.
 ]#
+
+proc proveManual[Name: static Algebra](ctx: var Groth16Prover[Name],
+                                       r, s: Fr[Name]): tuple[A: EC_ShortW_Aff[Fp[Name], G1],
+                                                              B: EC_ShortW_Aff[Fp2[Name], G2],
+                                                              C: EC_ShortW_Aff[Fp[Name], G1]] {.noinit.} =
+  ## Helper function for a "manual" Groth16 proof so that we can overwrite
+  ## the `r` and `s` parameters to compare with a SnarkJS proof.
+  ##
+  ## Identical implementation to `groth16.prove`, but sets `r` and `s` to inputs.
+
+  # 1. Sample the random field elements `r` and `s` for the proof
+  privateAccess(ctx.type)
+  ctx.r = r
+  ctx.s = s
+  # 2. get the witness data needed for all proof elements
+  let wt = ctx.wtns.witnesses
+  # 3. compute the individual proof elements
+  let A_p  = ctx.calcAp(wt)
+  let B2_p = ctx.calcBp(wt)
+  let B1_p = ctx.calcB1(wt)
+  let C_p  = ctx.calcCp(A_p, B1_p, wt)
+
+  result = (A: A_p.getAffine(), B: B2_p.getAffine(), C: C_p.getAffine())
+
 
 suite "Groth16 prover":
   test "Proving 3-factorization example":
@@ -34,12 +61,6 @@ suite "Groth16 prover":
     let r = toFr[BN254_Snarks](rSJ)
     # and `s`
     let s = toFr[BN254_Snarks](sSJ)
-    # overwrite context's random values
-    ctx.r = r
-    ctx.s = s
-
-    echo "r = ", ctx.r.toHex()
-    echo "s = ", ctx.s.toHex()
 
     # expected values produced by SnarkJS with these `r`, `s` values
     # x/y coordinates of Fp point on G1 subgroup of EC, corresponding to `g^A_1`
@@ -77,7 +98,7 @@ suite "Groth16 prover":
     let cExp = toECG1(cx, cy)
 
     # call the proof and...
-    let (A_p, B2_p, C_p) = ctx.prove()
+    let (A_p, B2_p, C_p) = ctx.proveManual(r, s)
 
     echo aExp.toDecimal()
     echo bExp.toDecimal()
@@ -93,12 +114,6 @@ suite "Groth16 prover":
     echo "C_p#16 = ", C_p.toHex()
     echo "C_p#10 = ", C_p.toDecimal()
 
-    #check (A_p  == aExp.getJacobian).bool
-    #check (B2_p == bExp.getJacobian).bool
-    ### XXX: C currently fails!
-    #check (C_p  == cExp.getJacobian).bool
-
     check (A_p  == aExp).bool
     check (B2_p == bExp).bool
-    ## XXX: C currently fails!
     check (C_p  == cExp).bool
