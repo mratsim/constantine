@@ -24,13 +24,18 @@ export arithmetic, extension_fields, abstractions,
 
 type
   Groth16Prover*[Name: static Algebra] = object
-    ## XXX: In the future the below should be typed objects that are already unmarshalled!
     zkey*: Zkey[Name]
     wtns*: Wtns[Name]
     r1cs*: R1CS
     # secret random values `r`, `s` for the proof
     r: Fr[Name]
     s: Fr[Name]
+
+  ## A type to hold the final Groth16 proof, `π(g₁^A, g₁^C, g₂^B)`
+  Groth16Proof*[Name: static Algebra] = object
+    A*: EC_ShortW_Aff[Fp[Name], G1]
+    B*: EC_ShortW_Aff[Fp2[Name], G2]
+    C*: EC_ShortW_Aff[Fp[Name], G1]
 
 proc init*[Name: static Algebra](G: typedesc[Groth16Prover[Name]], zkey: Zkey[Name], wtns: Wtns[Name], r1cs: R1CS): Groth16Prover[Name] =
   result = Groth16Prover[Name](
@@ -221,9 +226,7 @@ proc calcCp[Name: static Algebra](ctx: Groth16Prover[Name],
   C_p = ctx.s * A_p + ctx.r * B1_p - (ctx.r * ctx.s) * delta1 + cw + resH
   result = C_p
 
-proc prove*[Name: static Algebra](ctx: Groth16Prover[Name]): tuple[A: EC_ShortW_Aff[Fp[Name], G1],
-                                                                   B: EC_ShortW_Aff[Fp2[Name], G2],
-                                                                   C: EC_ShortW_Aff[Fp[Name], G1]] {.noinit.} =
+proc prove*[Name: static Algebra](ctx: Groth16Prover[Name]): Groth16Proof {.noinit.} =
   ## Generate a proof given the Groth16 prover context data.
   ##
   ## This implies calculating the proof elements `π = (g₁^A, g₁^C, g₂^B)`
@@ -240,4 +243,5 @@ proc prove*[Name: static Algebra](ctx: Groth16Prover[Name]): tuple[A: EC_ShortW_
   let B1_p = ctx.calcB1(wt)
   let C_p  = ctx.calcCp(A_p, B1_p, wt)
 
-  result = (A: A_p.getAffine(), B: B2_p.getAffine(), C: C_p.getAffine())
+  result = Groth16Proof(A: A_p.getAffine(), B: B2_p.getAffine(), C: C_p.getAffine())
+
