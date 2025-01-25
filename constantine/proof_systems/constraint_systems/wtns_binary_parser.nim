@@ -12,7 +12,8 @@ import
   ../../serialization/[io_limbs, parsing],
   constantine/platforms/[fileio, abstractions],
   ../../named/algebras, # Fr
-  ../groth16_utils
+  ../groth16_utils,
+  ./parser_utils
 
 #[
 The following is a rough spec of the witness files. Details may vary for different
@@ -120,21 +121,6 @@ proc toWtns*[Name: static Algebra](wtns: WtnsBin): Wtns[Name] =
 proc initSection(kind: WtnsSectionKind, size: uint64): Section =
   result = Section(sectionType: kind, size: size)
 
-template wtnsSection(sectionSize, body: untyped): untyped =
-  let startOffset = f.getFilePosition()
-
-  body
-
-  return sectionSize.int == f.getFilePosition() - startOffset
-
-proc parseMagicHeader(f: File, mh: var array[4, char]): bool =
-  result = f.readInto(mh)
-
-proc parseSectionKind(f: File, v: var WtnsSectionKind): bool =
-  var val: uint32
-  result = f.parseInt(val, littleEndian)
-  v = WtnsSectionKind(val.int)
-
 proc parseWitnessHeader(f: File, h: var WitnessHeader): bool =
   ?f.parseInt(h.n8, littleEndian) # byte size of the prime number
   h.r.setLen(h.n8)
@@ -144,19 +130,19 @@ proc parseWitnessHeader(f: File, h: var WitnessHeader): bool =
 
 proc parseWitnesses(f: File, s: var seq[Witness], sectionSize: uint64, elemSize: uint32): bool =
   ## Parses the witnesses
-  let numElems = sectionSize div elemSize.uint64
-  var buf = newSeq[byte](elemSize)
-  s.setLen(numElems)
-  for i in 0 ..< numElems:
-    ?f.readInto(buf)
-    s[i] = Witness(data: buf) ## XXX: fix me
-  result = true
+  parseCheck(sectionSize): # returns boolean check
+    let numElems = sectionSize div elemSize.uint64
+    var buf = Witness(data: newSeq[byte](elemSize))
+    s.setLen(numElems)
+    for i in 0 ..< numElems:
+      ?f.readInto(buf.data)
+      s[i] = buf
 
 proc parseWitnesses(f: File, s: var Section, size: uint64, wtns: WtnsBin): bool =
   let h = wtns.sections.filterIt(it.sectionType == kHeader)[0].header ## XXX: fixme
   result = parseWitnesses(f, s.wtns, size, h.n8)
 
-proc parseSection(f: File, s: var Section, kind: WtnsSectionKind, size: uint64, wtns: var WtnsBin): bool =
+proc parseSection(f: File, s: var Section, kind: WtnsSectionKind, size: uint64, wtns: WtnsBin): bool =
   # NOTE: The `wtns` object is there to provide the header information to
   # the constraints section
   s = initSection(kind, size)
@@ -167,16 +153,6 @@ proc parseSection(f: File, s: var Section, kind: WtnsSectionKind, size: uint64, 
 
   result = true # would have returned otherwise due to `?`
 
-proc parseSection(f: File, wtns: var WtnsBin): Section =
-  var kind: WtnsSectionKind
-  var size: uint64
-  doAssert f.parseSectionKind(kind), "Failed to read section type in section "
-  doAssert f.parseInt(size, littleEndian), "Failed to read section size in section "
-
-  result = initSection(kHeader, size)
-
-  doAssert f.parseSection(result, kind, size, wtns), "Failed to parse section: " & $kind
-
 proc parseWtnsFile*(path: string): WtnsBin =
   var f = fileio.open(path, kRead)
 
@@ -184,8 +160,8 @@ proc parseWtnsFile*(path: string): WtnsBin =
   doAssert f.parseInt(result.version, littleEndian), "Failed to read version"
   doAssert f.parseInt(result.numberSections, littleEndian), "Failed to read number of sections"
 
-  for i in 0 ..< result.numberSections:
-    let s = parseSection(f, result)
-    result.sections.add s
+  result.sections = newSeq[Section](result.numberSections)
+  for sec in mitems(result.sections):
+    doAssert f.parseSection(sec, result, WtnsSectionKind), "Failed to parse section: " & $sec.sectionType
 
   fileio.close(f)

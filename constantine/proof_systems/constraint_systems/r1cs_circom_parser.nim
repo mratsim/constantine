@@ -18,7 +18,8 @@
 
 import
   ../../serialization/[io_limbs, parsing],
-  constantine/platforms/[fileio, abstractions]
+  constantine/platforms/[fileio, abstractions],
+  ./parser_utils
 
 # We use `sortedByIt` to sort the different sections in the file by their
 # `R1csSectionKind`
@@ -173,26 +174,11 @@ proc parseConstraint(f: File, constraint: var Constraint, fieldSize: int32): boo
   ?f.parseLinComb(constraint.C, fieldSize)
   return true
 
-template r1csSection(sectionSize, body: untyped): untyped =
-  let startOffset = f.getFilePosition()
-
-  body
-
-  return sectionSize.int == f.getFilePosition() - startOffset
-
 proc parseConstraints(f: File, constraints: var seq[Constraint], sectionSize: uint64, numConstraints, fieldSize: int32): bool =
-  r1csSection(sectionSize):
+  parseCheck(sectionSize): # returns boolean check
     constraints.setLen(numConstraints)
     for constraint in constraints.mitems():
       ?f.parseConstraint(constraint, fieldSize)
-
-proc parseMagicHeader(f: File, mh: var array[4, char]): bool =
-  result = f.readInto(mh)
-
-proc parseSectionKind(f: File, v: var R1csSectionKind): bool =
-  var val: uint32
-  result = f.parseInt(val, littleEndian)
-  v = R1csSectionKind(val.int)
 
 proc parseHeader(f: File, h: var Header): bool =
   ?f.parseInt(h.fieldSize, littleEndian) # byte size of the prime number
@@ -208,7 +194,7 @@ proc parseHeader(f: File, h: var Header): bool =
   result = true # would have returned before due to `?` otherwise
 
 proc parseWire2Label(f: File, v: var Wire2Label, sectionSize: uint64): bool =
-  r1csSection(sectionSize):
+  parseCheck(sectionSize): # returns boolean check
     let numWires = sectionSize div 8
     v.wireIds.setLen(numWires)
     for labelId in v.wireIds.mitems():
@@ -258,7 +244,7 @@ proc parseR1csFile*(path: string): R1csBin =
   for i in 0 ..< result.numberSections:
     var kind: R1csSectionKind
     var size: uint64 # section size
-    doAssert f.parseSectionKind(kind), "Failed to read section type in section " & $i
+    doAssert f.parseSectionKind[:R1csSectionKind](kind), "Failed to read section type in section " & $i
     doAssert f.parseInt(size, littleEndian), "Failed to read section size in section " & $i
     # compute position of next section
     pos[i] = (kind, size, f.getFilePosition())

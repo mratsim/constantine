@@ -14,7 +14,8 @@ import
   ../../named/algebras, # Fr, Fp
   ../../math/extension_fields, # Fp2
   ../../math/elliptic/[ec_shortweierstrass_affine], # EC types
-  ../groth16_utils # to unmarshal data
+  ../groth16_utils, # to unmarshal data
+  ./parser_utils
 
 from std / sequtils import filterIt
 from std / strutils import endsWith
@@ -270,21 +271,6 @@ proc toZkey*[Name: static Algebra](zkey: ZkeyBin): Zkey[Name] =
 proc initSection(kind: ZkeySectionKind, size: uint64): Section =
   result = Section(sectionType: kind, size: size)
 
-template zkeySection(sectionSize, body: untyped): untyped =
-  let startOffset = f.getFilePosition()
-
-  body
-
-  return sectionSize.int == f.getFilePosition() - startOffset
-
-proc parseMagicHeader(f: File, mh: var array[4, char]): bool =
-  result = f.readInto(mh)
-
-proc parseSectionKind(f: File, v: var ZkeySectionKind): bool =
-  var val: uint32
-  result = f.parseInt(val, littleEndian)
-  v = ZkeySectionKind(val.int)
-
 proc parseHeader(f: File, h: var Header): bool =
   ?f.parseInt(h.proverType, littleEndian) # byte size of the prime number
   doAssert h.proverType == 1, "Prover type must be `1` for Groth16, found: " & $h.proverType
@@ -318,15 +304,15 @@ proc parseGroth16Header(f: File, g16h: var Groth16Header_b): bool =
 
 proc parseDataSection(f: File, d: var DataSection, sectionSize: uint64, elemSize: uint32): bool =
   ## Parses a generic data section, each `elemSize` in size
-  let numElems = sectionSize div elemSize.uint64
-  var buf = newSeq[byte](elemSize)
-  d.points.setLen(numElems.int)
-  for i in 0 ..< numElems:
-    ?f.readInto(buf)
-    d.points[i] = buf ## XXX: fix me
-  result = true
+  parseCheck(sectionSize): # returns boolean check
+    let numElems = sectionSize div elemSize.uint64
+    var buf = newSeq[byte](elemSize)
+    d.points.setLen(numElems.int)
+    for i in 0 ..< numElems:
+      ?f.readInto(buf)
+      d.points[i] = buf
 
-proc parseDatasection(f: File, s: var Section, kind: ZkeySectionKind, size: uint64, zkey: var ZkeyBin): bool =
+proc parseDatasection(f: File, s: var Section, kind: ZkeySectionKind, size: uint64, zkey: ZkeyBin): bool =
   let g16h = zkey.sections.filterIt(it.sectionType == kGroth16Header)[0].g16h ## XXX: fixme
   case kind
   of kIC:            ?f.parseDataSection(s.ic, size, 2 * g16h.n8q)
@@ -347,13 +333,13 @@ proc parseCoefficient(f: File, s: var Coefficient_b, size: uint64): bool =
   ?f.readInto(s.value)
   result = true
 
-proc parseCoefficients(f: File, s: var Coefficients_b, zkey: ZkeyBin): bool =
-  ?f.parseInt(s.num, littleEndian)
-  let g16h = zkey.sections.filterIt(it.sectionType == kGroth16Header)[0].g16h ## XXX: fixme
-  s.cs = newSeq[Coefficient_b](s.num)
-  for i in 0 ..< s.num: # parse coefficients
-    ?f.parseCoefficient(s.cs[i], g16h.n8r)
-  result = true
+proc parseCoefficients(f: File, s: var Coefficients_b, sectionSize: uint64, zkey: ZkeyBin): bool =
+  parseCheck(sectionSize): # returns boolean check
+    ?f.parseInt(s.num, littleEndian)
+    let g16h = zkey.sections.filterIt(it.sectionType == kGroth16Header)[0].g16h ## XXX: fixme
+    s.cs = newSeq[Coefficient_b](s.num)
+    for i in 0 ..< s.num: # parse coefficients
+      ?f.parseCoefficient(s.cs[i], g16h.n8r)
 
 proc parseContributions(f: File, s: var Contributions): bool =
   ?f.readInto(s.hash)
@@ -361,7 +347,7 @@ proc parseContributions(f: File, s: var Contributions): bool =
   # XXX: parse individual contributions
   result = true
 
-proc parseSection(f: File, s: var Section, kind: ZkeySectionKind, size: uint64, zkey: var ZkeyBin): bool =
+proc parseSection(f: File, s: var Section, kind: ZkeySectionKind, size: uint64, zkey: ZkeyBin): bool =
   # NOTE: The `zkey` object is there to provide the header information to
   # the constraints section
   s = initSection(kind, size)
@@ -369,21 +355,11 @@ proc parseSection(f: File, s: var Section, kind: ZkeySectionKind, size: uint64, 
   of kHeader:        ?f.parseHeader(s.header)
   of kGroth16Header: ?f.parseGroth16Header(s.g16h)
   of kIC, kA .. kH:  ?f.parseDataSection(s, kind, size, zkey)
-  of kCoeffs:        ?f.parseCoefficients(s.coeffs, zkey)
+  of kCoeffs:        ?f.parseCoefficients(s.coeffs, size, zkey)
   of kContributions: ?f.parseContributions(s.contr)
   else: raiseAssert "Invalid"
 
   result = true # would have returned otherwise due to `?`
-
-proc parseSection(f: File, zkey: var ZkeyBin): Section =
-  var kind: ZkeySectionKind
-  var size: uint64
-  doAssert f.parseSectionKind(kind), "Failed to read section type in section "
-  doAssert f.parseInt(size, littleEndian), "Failed to read section size in section "
-
-  result = initSection(kHeader, size)
-
-  doAssert f.parseSection(result, kind, size, zkey), "Failed to parse section: " & $kind
 
 proc parseZkeyFile*(path: string): ZkeyBin =
   var f = fileio.open(path, kRead)
@@ -392,8 +368,8 @@ proc parseZkeyFile*(path: string): ZkeyBin =
   doAssert f.parseInt(result.version, littleEndian), "Failed to read version"
   doAssert f.parseInt(result.numberSections, littleEndian), "Failed to read number of sections"
 
-  for i in 0 ..< result.numberSections:
-    let s = parseSection(f, result)
-    result.sections.add s
+  result.sections = newSeq[Section](result.numberSections)
+  for sec in mitems(result.sections):
+    doAssert f.parseSection(sec, result, ZkeySectionKind), "Failed to parse section: " & $sec.sectionType
 
   fileio.close(f)
