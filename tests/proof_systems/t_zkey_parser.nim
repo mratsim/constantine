@@ -12,10 +12,10 @@ proc `%`(c: char): JsonNode = % ($c)
 proc `%`(c: SecretWord): JsonNode = % (c.uint64)
 
 const UpdateTestVectors = false
-const RawVec = "groth16_files/t_zkey_bin.json"
-const TypedVec = "groth16_files/t_zkey.json"
-
 const TestDir = currentSourcePath.rsplit(DirSep, 1)[0]
+const RawVec = TestDir / "groth16_files/t_zkey_bin.json"
+const TypedVec = TestDir / "groth16_files/t_zkey.json"
+
 suite "Zkey (.zkey) binary file parser":
 
 

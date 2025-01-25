@@ -3,7 +3,7 @@ import std/[os, unittest, strutils, importutils],
        constantine/named/algebras
 
 
-
+const TestDir = currentSourcePath.rsplit(DirSep, 1)[0]
 
 #[
 For information about the data files used in this test case, see
@@ -38,9 +38,9 @@ suite "Groth16 prover":
   test "Proving 3-factorization example":
     const T = BN254_Snarks
     # parse binary files
-    let wtns = parseWtnsFile("./groth16_files/witness.wtns").toWtns[:T]()
-    let zkey = parseZkeyFile("./groth16_files/three_fac_final.zkey").toZkey[:T]()
-    let r1cs = parseR1csFile("./groth16_files/three_fac.r1cs").toR1CS()
+    let wtns = parseWtnsFile(TestDir / "groth16_files/witness.wtns").toWtns[:T]()
+    let zkey = parseZkeyFile(TestDir / "groth16_files/three_fac_final.zkey").toZkey[:T]()
+    let r1cs = parseR1csFile(TestDir / "groth16_files/three_fac.r1cs").toR1CS()
     # construct mutable prover (to overwrite r, s)
     var ctx = Groth16Prover[T].init(zkey, wtns, r1cs)
     # definition of `r` and `s` values that produced expected proof
