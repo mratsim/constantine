@@ -16,7 +16,13 @@ jobs:
         # version-2-0 is crashing due to https://github.com/mratsim/constantine/issues/471
         # version-1-6 and version-2-0 have issues with templates in typedef operating on a generic for Fp12 tower in https://github.com/mratsim/constantine/pull/485
         # Hence we only test and officially sypport 2.2.0, though 99% of Constantine should work on older compilers
-        nim_version: ['2.2.x']
+
+        # For ARM support on Linux we need to set a specific builder
+        # either ubuntu-22.04-arm
+        # or ubuntu-24.04-arm
+        # We might as well test on 22.04 for ARM
+
+        nim_version: ['version-2-2']
         rust_toolchain: [stable] # [beta, nightly]
         go_toolchain: [stable]
         target:
@@ -41,10 +47,12 @@ jobs:
             BACKEND: ASM
           - os: linux
             cpu: arm64
+            builder: ubuntu-22.04-arm
             TEST_LANG: c
             BACKEND: NO_ASM
           - os: linux
             cpu: arm64
+            builder: ubuntu-22.04-arm
             TEST_LANG: c
             BACKEND: ASM
 
