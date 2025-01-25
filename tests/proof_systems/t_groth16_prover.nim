@@ -2,7 +2,6 @@ import std/[os, unittest, strutils, importutils],
        constantine/proof_systems/groth16 {.all.}, # to call `calc*` procs
        constantine/named/algebras
 
-
 const TestDir = currentSourcePath.rsplit(DirSep, 1)[0]
 
 #[
@@ -11,9 +10,7 @@ For information about the data files used in this test case, see
 ]#
 
 proc proveManual[Name: static Algebra](ctx: var Groth16Prover[Name],
-                                       r, s: Fr[Name]): tuple[A: EC_ShortW_Aff[Fp[Name], G1],
-                                                              B: EC_ShortW_Aff[Fp2[Name], G2],
-                                                              C: EC_ShortW_Aff[Fp[Name], G1]] {.noinit.} =
+                                       r, s: Fr[Name]): Groth16Proof[Name] {.noinit.} =
   ## Helper function for a "manual" Groth16 proof so that we can overwrite
   ## the `r` and `s` parameters to compare with a SnarkJS proof.
   ##
@@ -31,8 +28,7 @@ proc proveManual[Name: static Algebra](ctx: var Groth16Prover[Name],
   let B1_p = ctx.calcB1(wt)
   let C_p  = ctx.calcCp(A_p, B1_p, wt)
 
-  result = (A: A_p.getAffine(), B: B2_p.getAffine(), C: C_p.getAffine())
-
+  result = Groth16Proof[Name](A: A_p.getAffine(), B: B2_p.getAffine(), C: C_p.getAffine())
 
 suite "Groth16 prover":
   test "Proving 3-factorization example":
@@ -98,7 +94,8 @@ suite "Groth16 prover":
     let cExp = toECG1(cx, cy)
 
     # call the proof and...
-    let (A_p, B2_p, C_p) = ctx.proveManual(r, s)
+    let proof = ctx.proveManual(r, s) # = ctx.proveManual(r, s)
+    let (A_p, B2_p, C_p) = (proof.A, proof.B, proof.C)
 
     echo aExp.toDecimal()
     echo bExp.toDecimal()
