@@ -114,3 +114,20 @@ suite "Groth16 prover":
     check (A_p  == aExp).bool
     check (B2_p == bExp).bool
     check (C_p  == cExp).bool
+
+
+    ## Check verification passes
+    let wt = ctx.wtns.witnesses
+
+    let g16h = ctx.zkey.g16h
+    let nPub = g16h.nVars.int - ctx.zkey.C.len
+    var pubInputs = newSeq[Fr[T]](nPub)
+    for i in 0 ..< nPub:
+      pubInputs[i] = wt[i]
+
+    let vk = VerifyingKey[T](alpha1: g16h.alpha1,
+                             beta2: g16h.beta2,
+                             gamma2: g16h.gamma2,
+                             delta2: g16h.delta2,
+                             gamma_abc: zkey.ic)
+    check verify(vk, proof, pubInputs)
