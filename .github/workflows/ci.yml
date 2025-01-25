@@ -1,6 +1,12 @@
 name: Constantine CI
 on: [push, pull_request]
 
+# https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#permissions
+permissions:
+  actions: write
+  checks: write
+  contents: read # list commits, change to write to create a release
+
 jobs:
   build:
     strategy:
