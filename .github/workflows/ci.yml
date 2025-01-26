@@ -296,6 +296,24 @@ jobs:
           cd constantine
           go mod download -modfile=go_test.mod
 
+      - name: Run Constantine as C library tests (Linux with Assembly)
+        if: runner.os == 'Linux' && matrix.target.ctt_backend == 'ASM'
+        shell: bash
+        run: |
+          cd constantine
+          nimble make_lib      --verbose
+          nimble make_headers  --verbose
+          nimble test_lib      --verbose
+      - name: Run Constantine as C library tests (Linux no Assembly)
+        if: runner.os == 'Linux' && matrix.target.ctt_backend == 'NO_ASM'
+        shell: bash
+        run: |
+          cd constantine
+          CTT_ASM=0 nimble make_lib --verbose
+          nimble make_headers       --verbose
+          nimble test_lib           --verbose
+
+
       - name: Run Constantine as C library tests (MacOS with Assembly)
         # We manually do the tests due to Homebrew lib/headers not being in standard PATH
         if: runner.os == 'macOS' && matrix.target.ctt_backend == 'ASM'
@@ -339,22 +357,7 @@ jobs:
                 examples-c/ethereum_bls_signatures.c \
                 -lconstantine
 
-      - name: Run Constantine as C library tests (Linux with Assembly)
-        if: runner.os == 'Linux' && matrix.target.ctt_backend == 'ASM'
-        shell: bash
-        run: |
-          cd constantine
-          nimble make_lib      --verbose
-          nimble make_headers  --verbose
-          nimble test_lib      --verbose
-      - name: Run Constantine as C library tests (Linux no Assembly)
-        if: runner.os == 'Linux' && matrix.target.ctt_backend == 'NO_ASM'
-        shell: bash
-        run: |
-          cd constantine
-          CTT_ASM=0 nimble make_lib --verbose
-          nimble make_headers       --verbose
-          nimble test_lib           --verbose
+
       - name: Run Constantine as C library tests (Windows with Assembly)
         # So "test_lib" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
@@ -366,9 +369,9 @@ jobs:
           nimble make_headers --verbose
           nimble test_lib     --verbose
 
-      - name: Run Constantine as Go library tests
+      - name: Run Constantine as Go library tests (with Assembly)
         # This reuses the static library built with `nimble make_lib`
-        if: matrix.target.cpu != 'i386'
+        if: matrix.target.ctt_backend == 'ASM' && matrix.target.cpu != 'i386'
         shell: bash
         run: |
           cd constantine/constantine-go
@@ -381,13 +384,6 @@ jobs:
         run: |
           cd constantine
           cargo test -- --nocapture
-      - name: Run Constantine as Rust library tests (NO Assembly)
-        if: matrix.target.ctt_backend == 'NO_ASM' && matrix.target.cpu != 'i386'
-        shell: bash
-        # We need to deactivate the assembly (used by default for benches)
-        run: |
-          cd constantine
-          CTT_ASM=0 cargo test -- --nocapture
 
       - name: Compile Constantine Zkalc benchmark (no assembly)
         # Skip 32-bit as that would need clang-multilib or -m32
@@ -413,7 +409,7 @@ jobs:
         run: |
           cd constantine
           nimble test_parallel --verbose
-      - name: Run Constantine in-depth tests (Unix - with GMP, no Assembly)
+      - name: Run Constantine in-depth tests (Linux - with GMP, no Assembly)
         if: runner.os == 'Linux' && matrix.target.ctt_backend == 'NO_ASM'
         shell: bash
         run: |
