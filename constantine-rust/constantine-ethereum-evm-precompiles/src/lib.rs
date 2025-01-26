@@ -10,9 +10,29 @@ use constantine_sys::*;
 
 use ::core::mem::MaybeUninit;
 
+// Reexport
+pub use constantine_ethereum_kzg::EthKzgContext;
+
 // --------------------------------
 // ------- EVM precompiles --------
 // --------------------------------
+
+#[inline]
+pub fn evm_ripemd160(message: &[u8]) -> Result<[u8; 32], ctt_evm_status> {
+    let mut result: MaybeUninit<[u8; 32]> = MaybeUninit::uninit();
+    unsafe {
+        let status = ctt_eth_evm_ripemd160(
+            result.as_mut_ptr() as *mut byte,
+            32,
+            message.as_ptr() as *const byte,
+            message.len() as usize,
+        );
+        match status {
+            ctt_evm_status::cttEVM_Success => Ok(result.assume_init()),
+            _ => Err(status),
+        }
+    }
+}
 
 #[inline]
 pub fn evm_sha256(message: &[u8]) -> Result<[u8; 32], ctt_evm_status> {
@@ -255,6 +275,27 @@ pub fn evm_bls12381_map_fp2_to_g2(inputs: &[u8]) -> Result<[u8; 256], ctt_evm_st
             256,
             inputs.as_ptr() as *const byte,
             inputs.len() as usize,
+        );
+        match status {
+            ctt_evm_status::cttEVM_Success => Ok(result.assume_init()),
+            _ => Err(status),
+        }
+    }
+}
+
+/// KZG Point Evaluation for EIP-4844.
+/// The Ethereum KZG Context must be set with Ethereum Mainnet trusted setup
+/// It does not have to be set with a threadpool as this precompile is single-threaded
+#[inline]
+pub fn evm_kzg_point_evaluation<'tp>(ctx: &EthKzgContext<'tp>, message: &[u8]) -> Result<[u8; 64], ctt_evm_status> {
+    let mut result: MaybeUninit<[u8; 64]> = MaybeUninit::uninit();
+    unsafe {
+        let status = ctt_eth_evm_kzg_point_evaluation(
+            ctx.ctx,
+            result.as_mut_ptr() as *mut byte,
+            64,
+            message.as_ptr() as *const byte,
+            message.len() as usize,
         );
         match status {
             ctt_evm_status::cttEVM_Success => Ok(result.assume_init()),

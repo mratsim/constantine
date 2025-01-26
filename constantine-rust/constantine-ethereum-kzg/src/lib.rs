@@ -17,7 +17,7 @@ use std::{ffi::CString, path::Path};
 
 #[derive(Debug)]
 pub struct EthKzgContext<'tp> {
-    ctx: *const ctt_eth_kzg_context,
+    pub ctx: *const ctt_eth_kzg_context,
     threadpool: Option<&'tp Threadpool>,
 }
 

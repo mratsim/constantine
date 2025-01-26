@@ -59,15 +59,12 @@ Other tracks are stretch goals, contributions towards them are accepted.
 ### Ethereum Execution Track
 
 - Keccak
-  - with hardware acceleration
+  - with simultaneous Keccak acceleration for Merkle Trees
 - Hash functions precompiles:
-  - RIPEMD-160, Blake2
-- KZG point precompile
+  - Blake2
 - Verkle Tries
   - Finish IPA for Verkle Tries:
     - Full test suite coverage https://github.com/mratsim/constantine/issues/396
-    - Fix multiproofs
-    - Add IPA and multiproofs to benchmark to compare with other implementations
 
 - Fast MSM for fixed base like Trusted Setups and Ethreum Verkle Tries
   - Notes on MSMs with precomputation https://hackmd.io/WfIjm0icSmSoqy2cfqenhQ
@@ -90,7 +87,6 @@ Other tracks are stretch goals, contributions towards them are accepted.
 
 ### Optimization track
 
-- ARM assembly
 - Finish Nvidia GPU codegenerator up to MSM
 - Implement a backend for Solinas prime like P256
 - Implement an unsaturated finite fields backend for Risc-V, WASM, WebGPU, AMD GPU, Apple Metal, Vulkan, ...

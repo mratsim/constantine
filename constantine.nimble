@@ -1,5 +1,5 @@
 packageName   = "constantine"
-version       = "0.1.0"
+version       = "0.2.0"
 author        = "Mamy Ratsimbazafy"
 description   = "This library provides thoroughly tested and highly-optimized implementations of cryptography protocols."
 license       = "MIT or Apache License 2.0"
@@ -7,7 +7,11 @@ license       = "MIT or Apache License 2.0"
 # Dependencies
 # ----------------------------------------------------------------
 
-requires "nim >= 1.6.12"
+requires "nim >= 2.2.0"
+# Note, if you're not using Multiexponentiation in pairing group
+# which is likely as it's an experimental feature for Ethereum Secret Leader Election (at best early 2027),
+# the library is compatible with Nim 1.6.16 and 2.0.8
+# and still has proper guards to handle v1.6 and v2.x differences
 
 when (NimMajor, NimMinor) >= (2, 0): # Task-level dependencies
   taskRequires "make_zkalc", "jsony"
