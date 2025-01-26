@@ -89,6 +89,7 @@ func eth_evm_ripemd160*(r: var openArray[byte], inputs: openArray[byte]): CttEVM
   if r.len != 32:
     return cttEVM_InvalidOutputSize
 
+  r.toOpenArray(0, 11).setZero()
   # Need to only write to last 20 bytes. Hence fist `toOpenArray` & then cast & deref
   ripemd160.hash(cast[ptr array[20, byte]](toOpenArray(r, 12, 31)[0].addr)[], inputs)
   return cttEVM_Success

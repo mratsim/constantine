@@ -144,7 +144,8 @@ proc testRipemd160() =
   var expectedbytes = newSeq[byte](expected.len div 2)
   expectedbytes.fromHex(expected)
 
-  var r = newSeq[byte](expected.len div 2)
+  var r = newSeq[byte](expected.len div 2) # Canary value
+  r.fromHex"AAAABBBBCCCCDDDDEEEEFFFF0000111122223333444455556666777788889999"
 
   let status = eth_evm_ripemd160(r, inputbytes)
   if status != cttEVM_Success:
