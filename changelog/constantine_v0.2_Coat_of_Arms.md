@@ -16,6 +16,8 @@ You can review the scope here: https://github.com/mratsim/constantine/pull/483, 
 
 An independent benchmark showed that Constantine is as of January 2025 the fastest backend for EIP-4844 / KZG polynomial commitments: https://github.com/grandinetech/rust-kzg.
 
+The Nim minimum version has been updated to Nim v2.2.0. 99% of Constantine should still work with v1.6.16 and v2.0.8 except the Torus-basec cryptography part.
+
 Now let's review the main changes per-category
 
 ## Ethereum
