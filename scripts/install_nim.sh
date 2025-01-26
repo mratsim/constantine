@@ -47,6 +47,40 @@ _nightlies_url=https://github.com/nim-lang/nightlies/releases
 # UI
 # -------------------------
 
+print-help() {
+  cat <<EOF
+Usage: $0 [options]
+
+Download Nim with the options detailed below.
+This script is written for Github Action use.
+
+Options:
+    --nim-version <VERSION>
+        defaults to "stable".
+        VERSION can be
+            - a version number like '2.2.0'.
+            - a version number with wildcard like '2.x' or '2.2.x',
+              which will be replaced by the latest of the specified serie.
+            - a branch like 'devel' or 'version-2-2'
+    --nim-channel <stable|nightly|source>
+        defaults to "stable".
+        The channel specifies the download source of the Nim compiler
+        - "stable" downloads from Nim website, for Linux and Windows (x86 and x86-64) only
+        - "nightly" downloads from https://github.com/nim-lang/nightlies/releases
+          use a branch name like 'devel' or 'version-2-2'.
+          For Linux (x86, x86-64, arm64), MacOS (x86-64 only), Windows (x86, x86-64)
+        - "source" builds the compiler from source https://github.com/nim-lang/Nim
+    --install-dir <DIR>
+        defaults to "nim-install".
+    --os <OS>
+        defaults to host OS
+    --arch <CPU_ARCH>
+        defaults to host CPU architecture
+    -h, --help
+        prints this help
+EOF
+}
+
 info() {
   echo "$(date +"$DATE_FORMAT")" $'\e[1m\e[36m[INF]\e[0m' "$@"
 }
@@ -89,8 +123,10 @@ while ((0 < $#)); do
     --install-dir) cli_install_dir="$2"; shift 2;;
     --os)   cli_os="$2"; shift 2;;
     --arch) cli_arch="$2"; shift 2;;
+    -h|--help) print-help; exit 0;;
     *)
     err "Unknown option '$opt'"
+    print-help
     exit 1
     ;;
   esac
@@ -190,7 +226,7 @@ CPU_ARCH=$(get-cpu-arch "${cli_arch}")
 OS=$(get-os "${cli_os}")
 NIM_CHANNEL=$(get-channel "${OS}" "${cli_nim_channel}")
 NIM_VERSION=$(get-version "${cli_nim_version:-"stable"}") # Depends on channel to add the `v`
-NIM_INSTALL_DIR=${cli_install_dir:="$(pwd)/nim-binaries"}
+NIM_INSTALL_DIR=${cli_install_dir:="$(pwd)/nim-install"}
 REPO_GITHUB_TOKEN="" # Placeholder
 
 info "✔ CPU architecture: ${CPU_ARCH}"

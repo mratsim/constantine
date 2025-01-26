@@ -183,7 +183,7 @@ jobs:
         if: steps.nim-compiler-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          bash constantine/.github/workflows/install_nim.sh \
+          bash constantine/scripts/install_nim.sh \
             --nim-channel ${{ matrix.nim_channel }} \
             --nim-version ${{ matrix.nim_version }} \
             --os ${{ matrix.target.os }} \
@@ -422,19 +422,29 @@ jobs:
           cd constantine
           CTT_ASM=0 nimble test_parallel --verbose
 
-      # On Windows
-      #   So "test_bindings" uses C and can find GMP
-      #   but nim-gmp cannot find GMP on Windows CI
-      #   Also need to workaround asynctools not being able to create pipes https://github.com/nim-lang/Nim/issues/23118
-      #   And LTO impossible constraint in the deneb_kzg test (but not MSM for some reason)
-      #
       # On mac
       #   Homebrew install is not in default PATH
       #   this can be workaround with LD_LIBRARY_PATH for libraries
       #   but headers would need a
       #     --passC:-I$(brew --prefix)/include (-I/opt/homebrew/include on latest MacOS versions)
-      - name: Run Constantine in-depth tests (MacOS/Windows - no GMP, with Assembly)=
-        if: runner.os != 'Linux' && matrix.target.ctt_backend == 'ASM'
+      - name: Run Constantine in-depth tests (MacOS - no GMP, with Assembly)=
+        if: runner.os == 'macOS' && matrix.target.ctt_backend == 'ASM'
+        run: |
+          cd constantine
+          nimble test_parallel_no_gmp --verbose
+      - name: Run Constantine in-depth tests (MacOS - no GMP, no Assembly)
+        if: runner.os == 'macOS' && matrix.target.ctt_backend == 'NO_ASM'
+        run: |
+          cd constantine
+          CTT_ASM=0 nimble test_parallel_no_gmp --verbose
+
+      # On Windows
+      #   So "test_bindings" uses C and can find GMP
+      #   but nim-gmp cannot find GMP on Windows CI
+      #   Also need to workaround asynctools not being able to create pipes https://github.com/nim-lang/Nim/issues/23118
+      #   And LTO impossible constraint in the deneb_kzg test (but not MSM for some reason)
+      - name: Run Constantine in-depth tests (Windows - no GMP, with Assembly)=
+        if: runner.os == 'Windows' && matrix.target.ctt_backend == 'ASM'
         shell: msys2 {0}
         run: |
           cd constantine
@@ -443,8 +453,8 @@ jobs:
           else
             nimble test_parallel_no_gmp --verbose
           fi
-      - name: Run Constantine in-depth tests (MacOS/Windows - no GMP, no Assembly)
-        if: runner.os != 'Linux' && matrix.target.ctt_backend == 'NO_ASM'
+      - name: Run Constantine in-depth tests (Windows - no GMP, no Assembly)
+        if: runner.os == 'Windows' && matrix.target.ctt_backend == 'NO_ASM'
         shell: msys2 {0}
         run: |
           cd constantine
