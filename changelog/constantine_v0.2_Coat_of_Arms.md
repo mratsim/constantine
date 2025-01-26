@@ -40,13 +40,15 @@ On the Consensus side, sponsored work has been done on accelerating multi-expone
 
 Multilinear extensions of polynomials have been added. This is a prerequisite for sumchecks, the current state-of-the-art proving technique in research.
 
+A Groth16 prover has been submitted in a PR by @Vindaar and is under final review.
+
 ## Backend
 
 We added an ARM64 compile-time assembler and 90% of the main computing bottlenecks now have ARM64 acceleration.
 Performance: https://github.com/mratsim/constantine/pull/513
 
 Exploration in LLVM JIT compilation for GPU has been progressing with:
-- the Nvidia backend now having a prototype serial MSM
+- the Nvidia backend now having a prototype serial MSM thanks to @Vindaar
 - AMD GPUs being supported
 
 The threadpool had a task garbage collection fix on ARM64 (and other weak memory models ISA)
@@ -64,16 +66,25 @@ bin/constantine-bench-zkalc --curve=BLS12_381 --o=myoutputfile.json
 
 ## Future work
 
+Please refer to https://github.com/mratsim/constantine/blob/v0.2.0/PLANNING.md and the issue tracker https://github.com/mratsim/constantine/issues?q=is%3Aopen+is%3Aissue+label%3A%22enhancement+%3Ashipit%3A%22+
+
+Here are some of the work stream I want to prioritize
+
 - Work is currently being done to improve the LLVM backend codegen. It may provide multiple advantages:
   - pure assembly: remove GCC vs Clang compiler differences (may be as high as 20%).
   - we can ensure constant-time properties without the compiler rugpulling us.
   - vectorization can be just changing `i256` to `<i256 x 4>` and reusing the exact same LLVM IR.
 - GPU acceleration
-- Ethereum Data Availability sampling (Erasure coding + 2D KZG proofs)
+- Ethereum PeerDAS / Data Availability Sampling (Erasure coding + 2D KZG proofs)
 - Sumchecks Polynomial commitment scheme (PCS)
 - Small fields support like Baby Bear, Koala Bear, Goldilocks and Mersenne31
 - FRI, Deep FRI and STIR PCS.
 - Blake2 to finish EVM precompiles.
+- Poseidon2 hash function
+
+-- Mamy
+
+----------------------------
 
 ## Detailed changes (auto-generated)
 * Multilinear extensions of polynomials by @mratsim in https://github.com/mratsim/constantine/pull/423
