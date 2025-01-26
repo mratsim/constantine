@@ -322,41 +322,47 @@ jobs:
           cd constantine
           nimble make_lib      --verbose
           nimble make_headers  --verbose
-          clang -Iinclude -I$(brew --prefix)/include \
-                -Llib -L$(brew --prefix)/lib \
+          mkdir -p build/test_lib
+          clang -Iinclude -I"$(brew --prefix)/include" \
+                -Llib -L"$(brew --prefix)/lib" \
                 -o build/test_lib/t_libctt_bls12_381_staticlink.exe \
                 examples-c/t_libctt_bls12_381.c \
                 lib/libconstantine.a \
                 -lgmp
-          clang -Iinclude -I$(brew --prefix)/include \
-                -Llib -L$(brew --prefix)/lib \
+          ./build/test_lib/t_libctt_bls12_381_staticlink.exe
+          clang -Iinclude -I"$(brew --prefix)/include" \
+                -Llib -L"$(brew --prefix)/lib" \
                 -o build/test_lib/t_libctt_bls12_381_dynlink.exe \
                 examples-c/t_libctt_bls12_381.c \
                 -lconstantine \
                 -lgmp
-          clang -Iinclude -I$(brew --prefix)/include \
-                -Llib -L$(brew --prefix)/lib \
+          ./build/test_lib/t_libctt_bls12_381_dynlink.exe
+          clang -Iinclude -I"$(brew --prefix)/include" \
+                -Llib -L"$(brew --prefix)/lib" \
                 -o build/test_lib/t_libctt_banderwagon_staticlink.exe \
                 examples-c/t_libctt_banderwagon.c \
                 lib/libconstantine.a \
                 -lgmp
-          clang -Iinclude -I$(brew --prefix)/include \
-                -Llib -L$(brew --prefix)/lib \
+          ./build/test_lib/t_libctt_banderwagon_staticlink.exe
+          clang -Iinclude -I"$(brew --prefix)/include" \
+                -Llib -L"$(brew --prefix)/lib" \
                 -o build/test_lib/t_libctt_banderwagon_dynlink.exe \
                 examples-c/t_libctt_banderwagon.c \
                 -lconstantine \
                 -lgmp
-          clang -Iinclude -I$(brew --prefix)/include \
-                -Llib -L$(brew --prefix)/lib \
+          ./build/test_lib/t_libctt_banderwagon_dynlink.exe
+          clang -Iinclude -I"$(brew --prefix)/include" \
+                -Llib -L"$(brew --prefix)/lib" \
                 -o build/test_lib/ethereum_bls_signatures_staticlink.exe \
                 examples-c/ethereum_bls_signatures.c \
                 lib/libconstantine.a
-          clang -Iinclude -I$(brew --prefix)/include \
-                -Llib -L$(brew --prefix)/lib \
+          ./build/test_lib/ethereum_bls_signatures_staticlink.exe
+          clang -Iinclude -I"$(brew --prefix)/include" \
+                -Llib -L"$(brew --prefix)/lib" \
                 -o build/test_lib/ethereum_bls_signatures_dynlink.exe \
                 examples-c/ethereum_bls_signatures.c \
                 -lconstantine
-
+          ./build/test_lib/ethereum_bls_signatures_dynlink.exe
 
       - name: Run Constantine as C library tests (Windows with Assembly)
         # So "test_lib" uses C and can find GMP
