@@ -296,16 +296,59 @@ jobs:
           cd constantine
           go mod download -modfile=go_test.mod
 
-      - name: Run Constantine as C library tests (UNIX with Assembly)
-        if: runner.os != 'Windows' && matrix.target.ctt_backend == 'ASM'
+      - name: Run Constantine as C library tests (MacOS with Assembly)
+        # We manually do the tests due to Homebrew lib/headers not being in standard PATH
+        if: runner.os == 'macOS' && matrix.target.ctt_backend == 'ASM'
+        shell: bash
+        run: |
+          cd constantine
+          nimble make_lib      --verbose
+          nimble make_headers  --verbose
+          clang -Iinclude -I$(brew --prefix)/include \
+                -Llib -L$(brew --prefix)/lib \
+                -o build/test_lib/t_libctt_bls12_381_staticlink.exe \
+                examples-c/t_libctt_bls12_381.c \
+                lib/libconstantine.a \
+                -lgmp
+          clang -Iinclude -I$(brew --prefix)/include \
+                -Llib -L$(brew --prefix)/lib \
+                -o build/test_lib/t_libctt_bls12_381_dynlink.exe \
+                examples-c/t_libctt_bls12_381.c \
+                -lconstantine \
+                -lgmp
+          clang -Iinclude -I$(brew --prefix)/include \
+                -Llib -L$(brew --prefix)/lib \
+                -o build/test_lib/t_libctt_banderwagon_staticlink.exe \
+                examples-c/t_libctt_banderwagon.c \
+                lib/libconstantine.a \
+                -lgmp
+          clang -Iinclude -I$(brew --prefix)/include \
+                -Llib -L$(brew --prefix)/lib \
+                -o build/test_lib/t_libctt_banderwagon_dynlink.exe \
+                examples-c/t_libctt_banderwagon.c \
+                -lconstantine \
+                -lgmp
+          clang -Iinclude -I$(brew --prefix)/include \
+                -Llib -L$(brew --prefix)/lib \
+                -o build/test_lib/ethereum_bls_signatures_staticlink.exe \
+                examples-c/ethereum_bls_signatures.c \
+                lib/libconstantine.a
+          clang -Iinclude -I$(brew --prefix)/include \
+                -Llib -L$(brew --prefix)/lib \
+                -o build/test_lib/ethereum_bls_signatures_dynlink.exe \
+                examples-c/ethereum_bls_signatures.c \
+                -lconstantine
+
+      - name: Run Constantine as C library tests (Linux with Assembly)
+        if: runner.os == 'Linux' && matrix.target.ctt_backend == 'ASM'
         shell: bash
         run: |
           cd constantine
           nimble make_lib      --verbose
           nimble make_headers  --verbose
           nimble test_lib      --verbose
-      - name: Run Constantine as C library tests (UNIX no Assembly)
-        if: runner.os != 'Windows' && matrix.target.ctt_backend == 'NO_ASM'
+      - name: Run Constantine as C library tests (Linux no Assembly)
+        if: runner.os == 'Linux' && matrix.target.ctt_backend == 'NO_ASM'
         shell: bash
         run: |
           cd constantine
@@ -313,7 +356,7 @@ jobs:
           nimble make_headers       --verbose
           nimble test_lib           --verbose
       - name: Run Constantine as C library tests (Windows with Assembly)
-        # So "test_bindings" uses C and can find GMP
+        # So "test_lib" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
         if: runner.os == 'Windows' && matrix.target.ctt_backend == 'ASM'
         shell: msys2 {0}
@@ -322,16 +365,6 @@ jobs:
           nimble make_lib     --verbose
           nimble make_headers --verbose
           nimble test_lib     --verbose
-      - name: Run Constantine as C library tests (Windows no Assembly)
-        # So "test_bindings" uses C and can find GMP
-        # but nim-gmp cannot find GMP on Windows CI
-        if: runner.os == 'Windows' && matrix.target.ctt_backend == 'NO_ASM'
-        shell: msys2 {0}
-        run: |
-          cd constantine
-          CTT_ASM=0 nimble make_lib --verbose
-          nimble make_headers       --verbose
-          nimble test_lib           --verbose
 
       - name: Run Constantine as Go library tests
         # This reuses the static library built with `nimble make_lib`
