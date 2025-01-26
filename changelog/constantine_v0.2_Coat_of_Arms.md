@@ -66,6 +66,12 @@ nimble make_zkalc
 bin/constantine-bench-zkalc --curve=BLS12_381 --o=myoutputfile.json
 ```
 
+In CI, the Nim installation script has been completely rewritten to install from either of:
+- source
+- nightlies
+- website
+and can handle versioning for all 3 as well as the new Linux and MacOS ARM64 builds, and testing on Linux in 32-bit mode.
+
 ## Future work
 
 Please refer to https://github.com/mratsim/constantine/blob/v0.2.0/PLANNING.md and the issue tracker https://github.com/mratsim/constantine/issues?q=is%3Aopen+is%3Aissue+label%3A%22enhancement+%3Ashipit%3A%22+
