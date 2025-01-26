@@ -1,8 +1,8 @@
-# v0.1.0 "The Way of Shadows"
+# Constantine v0.1.0 "The Way of Shadows"
 
-Jul 6, 2024, Commit 1b4d969
+Jul 6, 2024, commit 1b4d969
 
-> This released is named after "The Way of Shadows" (2009), the first book of Brent Weeks masterpiece "The Night ANgel Trilogy".
+> This release is named after "The Way of Shadows" (2009), the first book of Brent Weeks masterpiece "The Night Angel Trilogy".
 
 I am very proud to release the very first version of Constantine, a high-performance modular cryptography stack for blockchains and proof systems.
 
