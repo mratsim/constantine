@@ -54,6 +54,7 @@ impl std::fmt::Display for ctt_evm_status {
             ctt_evm_status::cttEVM_IntLargerThanModulus => "cttEVM_IntLargerThanModulus",
             ctt_evm_status::cttEVM_PointNotOnCurve => "cttEVM_PointNotOnCurve",
             ctt_evm_status::cttEVM_PointNotInSubgroup => "cttEVM_PointNotInSubgroup",
+            ctt_evm_status::cttEVM_VerificationFailure => "cttEVM_VerificationFailure",
         };
         write!(f, "{}", s)
     }

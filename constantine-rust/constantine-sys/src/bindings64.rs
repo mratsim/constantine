@@ -4793,11 +4793,22 @@ pub enum ctt_evm_status {
     cttEVM_IntLargerThanModulus = 3,
     cttEVM_PointNotOnCurve = 4,
     cttEVM_PointNotInSubgroup = 5,
+    cttEVM_VerificationFailure = 6,
 }
 unsafe extern "C" {
     #[must_use]
     #[doc = "  SHA256\n\n  Inputs:\n  - r: array with 32 bytes of storage for the result\n  - r_len: length of `r`. Must be 32\n  - inputs: Message to hash\n  - inputs_len: length of the inputs array\n\n  Output:\n  - 32-byte digest\n  - status code:\n    cttEVM_Success\n    cttEVM_InvalidOutputSize"]
     pub fn ctt_eth_evm_sha256(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+unsafe extern "C" {
+    #[must_use]
+    #[doc = "  RipeMD160\n\n  Inputs:\n  - r: array with 32 bytes of storage for the result\n  - r_len: length of `r`. Must be 32\n  - inputs: Message to hash\n  - inputs_len: length of the inputs array\n\n  Output:\n  - 32-byte digest, first 12 bytes are 0\n  - status code:\n    cttEVM_Success\n    cttEVM_InvalidOutputSize"]
+    pub fn ctt_eth_evm_ripemd160(
         r: *mut byte,
         r_len: usize,
         inputs: *const byte,
@@ -4937,6 +4948,17 @@ unsafe extern "C" {
     #[must_use]
     #[doc = "  Map an Fp2 extension field element to G2\n\n  Name: BLS12_MAP_FP2_TO_G2\n\n  Input:\n  - An extension field element in (0, 0) ..< (p, p), p the prime field of BLS12-381\n  - The length MUST be a tuple of 48-byte (381-bit) number serialized in tuple of 64-byte big-endian numbers\n\n  Output\n  - Output buffer MUST be of length 128 bytes\n  - A G2 point R with coordinates (Rx, Ry)\n  - Status code:\n    cttEVM_Success\n    cttEVM_InvalidInputSize\n    cttEVM_InvalidOutputSize\n    cttEVM_IntLargerThanModulus\n\n  Spec https://eips.ethereum.org/EIPS/eip-2537"]
     pub fn ctt_eth_evm_bls12381_map_fp2_to_g2(
+        r: *mut byte,
+        r_len: usize,
+        inputs: *const byte,
+        inputs_len: usize,
+    ) -> ctt_evm_status;
+}
+unsafe extern "C" {
+    #[must_use]
+    #[doc = "  EIP-4844 Blobs KZG point evaluation\n\n  Name: POINT_EVALUATION\n\n  Verify `p(z) = y` given commitment that corresponds to the polynomial `p(x)` and a KZG proof.\n\n  Input:\n  - versioned_hash | z | y | commitment | proof |\n  - The length MUST be 192 bytes with the following breakdown:\n    - 32 bytes, SHA256 versioned hash of the commitment VERSIONED_HASH_VERSION_KZG + sha256(commitment)[1:]\n      currently VERSIONED_HASH_VERSION_KZG is hardcoded at 0x01.\n    - 32 bytes, z a polynomial opening challenge\n    - 32 bytes, y the evaluation of the polynomial `p` at the challenge\n    - 48 bytes, C a commitment to the polynomial `p`\n    - 48 bytes, a succinct proof that allows verifying p(z) = y withut the full polynomial\n\n  Output\n  - Output buffer MUST be of length 64 bytes\n  - On success, returns:\n      - 32 bytes, the number of field elements per EIP-4844 blobs, encoded in big-endian\n      - 32 bytes, the 255-bit BLS12-381 scalar field modulus (i.e. curve order r), encoded in big endian\n  - Status code:\n    cttEVM_Success\n    cttEVM_InvalidInputSize\n    cttEVM_VerificationFailure\n\n  Spec https://eips.ethereum.org/EIPS/eip-4844"]
+    pub fn ctt_eth_evm_kzg_point_evaluation(
+        ctx: *const ctt_eth_kzg_context,
         r: *mut byte,
         r_len: usize,
         inputs: *const byte,

@@ -10,6 +10,7 @@ repository = "https://github.com/mratsim/constantine"
 [dependencies]
 constantine-sys = { path = "../constantine-sys" }
 constantine-core = { path = "../constantine-core" }
+constantine-ethereum-kzg = { path = "../constantine-ethereum-kzg" }
 
 [dev-dependencies]
 serde = { version = "1.0", default-features = false, features = ["derive"] }

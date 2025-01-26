@@ -10,6 +10,7 @@
 #define __CTT_H_ETHEREUM_EVM_PRECOMPILES__
 
 #include "constantine/core/datatypes.h"
+#include "constantine/protocols/ethereum_eip4844_kzg.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,6 +23,7 @@ typedef enum __attribute__((__packed__)) {
     cttEVM_IntLargerThanModulus,
     cttEVM_PointNotOnCurve,
     cttEVM_PointNotInSubgroup,
+    cttEVM_VerificationFailure,
 } ctt_evm_status;
 
 static const char* ctt_evm_status_to_string(ctt_evm_status status) {
@@ -32,6 +34,7 @@ static const char* ctt_evm_status_to_string(ctt_evm_status status) {
       "cttEVM_IntLargerThanModulus",
       "cttEVM_PointNotOnCurve",
       "cttEVM_PointNotInSubgroup",
+      "cttEVM_VerificationFailure",
   };
   size_t length = sizeof statuses / sizeof *statuses;
   if (0 <= status && status < length) {
@@ -56,6 +59,26 @@ static const char* ctt_evm_status_to_string(ctt_evm_status status) {
  *    cttEVM_InvalidOutputSize
  */
 ctt_evm_status ctt_eth_evm_sha256(
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
+    ) __attribute__((warn_unused_result));
+
+/**
+ *  RipeMD160
+ *
+ *  Inputs:
+ *  - r: array with 32 bytes of storage for the result
+ *  - r_len: length of `r`. Must be 32
+ *  - inputs: Message to hash
+ *  - inputs_len: length of the inputs array
+ *
+ *  Output:
+ *  - 32-byte digest, first 12 bytes are 0
+ *  - status code:
+ *    cttEVM_Success
+ *    cttEVM_InvalidOutputSize
+ */
+ctt_evm_status ctt_eth_evm_ripemd160(
     byte* r, size_t r_len,
     const byte* inputs, size_t inputs_len
     ) __attribute__((warn_unused_result));
@@ -474,6 +497,40 @@ ctt_evm_status ctt_eth_evm_bls12381_map_fp2_to_g2(
     const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));
 
+/**
+  *  EIP-4844 Blobs KZG point evaluation
+  *
+  *  Name: POINT_EVALUATION
+  *
+  *  Verify `p(z) = y` given commitment that corresponds to the polynomial `p(x)` and a KZG proof.
+  *
+  *  Input:
+  *  - versioned_hash | z | y | commitment | proof |
+  *  - The length MUST be 192 bytes with the following breakdown:
+  *    - 32 bytes, SHA256 versioned hash of the commitment VERSIONED_HASH_VERSION_KZG + sha256(commitment)[1:]
+  *      currently VERSIONED_HASH_VERSION_KZG is hardcoded at 0x01.
+  *    - 32 bytes, z a polynomial opening challenge
+  *    - 32 bytes, y the evaluation of the polynomial `p` at the challenge
+  *    - 48 bytes, C a commitment to the polynomial `p`
+  *    - 48 bytes, a succinct proof that allows verifying p(z) = y withut the full polynomial
+  *
+  *  Output
+  *  - Output buffer MUST be of length 64 bytes
+  *  - On success, returns:
+  *      - 32 bytes, the number of field elements per EIP-4844 blobs, encoded in big-endian
+  *      - 32 bytes, the 255-bit BLS12-381 scalar field modulus (i.e. curve order r), encoded in big endian
+  *  - Status code:
+  *    cttEVM_Success
+  *    cttEVM_InvalidInputSize
+  *    cttEVM_VerificationFailure
+  *
+  *  Spec https://eips.ethereum.org/EIPS/eip-4844
+  */
+ctt_evm_status ctt_eth_evm_kzg_point_evaluation(
+    const ctt_eth_kzg_context* ctx,
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
+) __attribute__((warn_unused_result));
 
 #ifdef __cplusplus
 }
