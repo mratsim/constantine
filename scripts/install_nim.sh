@@ -303,13 +303,13 @@ function download-release() {
     case "${OS}" in
         Linux)
             url="https://nim-lang.org/download/nim-${NIM_VERSION}-linux_${CPU_ARCH}.tar.xz"
-            download "${url}" nim.zip
-            unzip -q nim.zip
+            download "${url}" nim.tar.xz
+            tar xJf nim.tar.xz
             ;;
         Windows)
             url="https://nim-lang.org/download/nim-${NIM_VERSION}_${CPU_ARCH}.zip"
-            download "${url}" nim.tar.xz
-            tar xJf nim.tar.xz
+            download "${url}" nim.zip
+            /c/Windows/System32/tar.exe -xf nim.zip
             ;;
         *)
             err "Invalid OS, prebuilt binaries are not available for '${OS}'"
