@@ -333,7 +333,7 @@ proc fromTorus2_vartime*[F](r: var QuadraticExt[F], a: T2Aff[F]) =
 
   # Special case identity element
   if bool a.isNeutral():
-    r.setNeutral()
+    r.setZero()
     return
 
   var num {.noInit.}, den {.noInit.}: typeof(r)

@@ -173,7 +173,7 @@ proc mulT2_aff(C: static Algebra, iters: int) =
   b_taff.fromGT_vartime(b)
 
   bench("T₂prj(𝔽p6) <- T₂aff(𝔽p6) * T₂aff(𝔽p6)", Quad[Fp6[C]], iters):
-    r_tprj.affineProd(a_taff, b_taff)
+    r_tprj.affineProd_vartime(a_taff, b_taff)
 
 proc mulT2_mix(C: static Algebra, iters: int) =
   let a = rng.random_gt(Quad[Fp6[C]])
@@ -185,7 +185,7 @@ proc mulT2_mix(C: static Algebra, iters: int) =
   b_taff.fromGT_vartime(b)
 
   bench("T₂prj(𝔽p6) <- T₂prj(𝔽p6) * T₂aff(𝔽p6)", T2Prj[Fp6[C]], iters):
-    r_tprj.mixedProd(a_tprj, b_taff)
+    r_tprj.mixedProd_vartime(a_tprj, b_taff)
 
 proc mulT2_prj(C: static Algebra, iters: int) =
   let a = rng.random_gt(Quad[Fp6[C]])
@@ -206,7 +206,7 @@ proc sqrT2_aff(C: static Algebra, iters: int) =
   a_taff.fromGT_vartime(a)
 
   bench("T₂prj(𝔽p6) <- T₂aff(𝔽p6)²", T2Aff[Fp6[C]], iters):
-    r_tprj.affineSquare(a_taff)
+    r_tprj.affineSquare_vartime(a_taff)
 
 proc sqrT2_prj(C: static Algebra, iters: int) =
   let a = rng.random_gt(Quad[Fp6[C]])
