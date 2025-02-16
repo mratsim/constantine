@@ -14,14 +14,22 @@ fn main() {
     println!("Building Constantine library ...");
 
     let mut cmd = Command::new("nimble");
-    let status = cmd
+    let status = match cmd
         .env("CC", "clang")
         .arg("make_lib_rust")
         .current_dir(root_dir)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .status()
-        .expect("failed to execute process");
+        .status() {
+            Ok(status) => status,
+            Err(error) => {
+                if error.kind() == std::io::ErrorKind::NotFound {
+                    panic!("nimble not found, please install Nim: {error}");
+                } else {
+                    panic!("nimble execution failed: {error}");
+                }
+            }
+        };
     if !status.success() {
         panic!("failed to build with {cmd:?}: {status}");
     }
