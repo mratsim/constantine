@@ -486,7 +486,7 @@ type
     ## Indicates if device supports sparse hip arrays
     hostRegisterReadOnlySupported*: cint
     ## Device supports using the hipHostRegisterReadOnly flag
-    ## with hipHostRegistger
+    ## with hipHostRegister
     timelineSemaphoreInteropSupported*: cint
     ## Indicates external timeline semaphore support
     memoryPoolsSupported*: cint

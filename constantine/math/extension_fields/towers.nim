@@ -1813,7 +1813,7 @@ func mul2x_sparse_by_x00*(r: var CubicExt2x, a: CubicExt, sparseB: auto) =
   r.c2.prod2x(a.c2, b)
 
 func mul_sparse_by_0y0*(r: var CubicExt, a: CubicExt, sparseB: auto) =
-  ## Sparse multiplication of a cubic extenion element
+  ## Sparse multiplication of a cubic extension element
   ## with coordinates (a₀, a₁, a₂) by (0, b₁, 0)
 
   # v0 = a0 b0 = 0
@@ -1845,7 +1845,7 @@ func mul_sparse_by_0y0*(r: var CubicExt, a: CubicExt, sparseB: auto) =
   r.c2.prod(a.c1, b)
 
 func mul2x_sparse_by_0y0*(r: var CubicExt2x, a: CubicExt, sparseB: auto) =
-  ## Sparse multiplication of a cubic extenion element
+  ## Sparse multiplication of a cubic extension element
   ## with coordinates (a₀, a₁, a₂) by (0, b₁, 0)
 
   when typeof(sparseB) is typeof(a):
