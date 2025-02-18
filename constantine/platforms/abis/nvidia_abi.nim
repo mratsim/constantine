@@ -1824,7 +1824,7 @@ proc cudaEventDestroy*(event: cudaEvent_t): cudaError_t {.cdecl,
 
 
 
-template check*(status: CUresult) =
+template check*(status: CUresult, quitOnFailure = true) =
   ## Check the status code of a CUDA operation
   ## Exit program with error if failure
 
@@ -1832,18 +1832,21 @@ template check*(status: CUresult) =
   if code != CUDA_SUCCESS:
     writeStackTrace()
     stderr.write(astToStr(status) & " " & $instantiationInfo() & " exited with error: " & $code & '\n')
-    quit 1
+    if quitOnFailure:
+      quit 1
 
-template check*(a: sink nvrtcResult) =
+template check*(a: sink nvrtcResult, quitOnFailure = true) =
   let code = a
   if code != NVRTC_SUCCESS:
     writeStackTrace()
     stderr.write(astToStr(status) & " " & $instantiationInfo() & " exited with error: " & $code & '\n')
-    quit 1
+    if quitOnFailure:
+      quit 1
 
-template check*(a: sink cudaError_t) =
+template check*(a: sink cudaError_t, quitOnFailure = true) =
   let code = a
   if code != cudaSuccess:
     writeStackTrace()
     stderr.write(astToStr(status) & " " & $instantiationInfo() & " exited with error: " & $code & '\n')
-    quit 1
+    if quitOnFailure:
+      quit 1
