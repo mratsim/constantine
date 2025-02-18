@@ -7,7 +7,8 @@ import
   constantine/math/arithmetic,
   constantine/platforms/abstractions {.all.},
   constantine/platforms/abis/nvidia_abi,
-  constantine/math_compiler/experimental/runtime_compile
+  constantine/math_compiler/experimental/runtime_compile,
+  constantine/serialization/io_limbs
 
 type T = Fp[BN254_Snarks]
 const WordSize = 32
@@ -220,8 +221,32 @@ proc main =
   # for regular `BigInt` arguments
   nvrtc.execute("bigintTest", (hOut), (a, b))
 
-  # Output:
-  echo "hOut = ", hOut
+  ## Compare with expected
+  let exp = a + b
+  # Get expected as array of 8 uint32
+  let expU32: array[8, uint32] = cast[ptr array[8, uint32]](exp.mres.limbs[0].addr)[]
+
+  # both arrays must match
+  doAssert hOut == expU32
+
+  # now compare as field elements
+  # Things to note:
+  # - the `modadd` `hOut` data is in Montgomery representation
+  # - we need to convert `array[8, uint32]` into `array[32, byte]`
+  #   to unmarshal into a `BigInt[254]`
+  # - need to undo Montgomery representation on the `BigInt[254]` before
+  #   constructing the finite field element
+  var res: Fp[BN254_Snarks]
+  var resBI: matchingBigInt(BN254_Snarks)
+  var hOutBytes: array[32, byte]
+  hOutBytes.marshal(hOut, 32, littleEndian) # convert to 32 bytes
+  resBI.unmarshal(hOutBytes, littleEndian)  # convert bytes to BigInt[254]
+  type T = Fp[BN254_Snarks]
+  # undo Montgomery representation
+  resBI.fromMont(resBI, T.getModulus(), T.getNegInvModWord(), T.getSpareBits())
+  res.fromBig(resBI)                        # convert `BigInt[254]` to finite field element
+
+  doAssert bool(res == exp)
 
 when isMainModule:
   main()
