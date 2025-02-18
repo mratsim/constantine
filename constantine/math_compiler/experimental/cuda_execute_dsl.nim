@@ -22,30 +22,41 @@ proc getTypes(n: NimNode): seq[NimNode] =
     else:
       error("Arguments to `execCuda` must be given as a bracket, tuple or typed expression. Instead: " & $n.treerepr)
 
-proc requiresCopy(n: NimNode): bool =
+proc requiresCopy(n: NimNode, passStructByPointer: bool): bool =
   ## Returns `true` if the given type is not a trivial data type, which implies
   ## it will require copying its value manually.
   ##
   ## WARNING: For the moment we determine if something needs to be copied especially
   ## based on whether it is an object or ref type. That means *DO NOT* nest ref
   ## types in your objects. They *WILL NOT* be deep copied!
+  ##
+  ## If `passStructByPointer` is `true` we do *not* copy trivial struct types, e.g. a big int
+  ## or finite field element. If it is false, we always copy for those. The distinction
+  ## is needed, because for the CUDA target via LLVM, the array type definitions cause
+  ## `cudaErrorIllegalAddress` if we directly pass the host pointer of the struct.
   case n.typeKind
   of ntyBool, ntyChar, ntyInt .. ntyUint64: # range includes all floats
     result = false
   of ntyObject:
-    result = false # regular objects can just be copied!
+    if passStructByPointer:
+      result = false # regular objects can just be copied!
+    else:
+      result = true # struct passing by pointer forbidden
     ## NOTE: strictly speaking this is not the case of course! If the object
     ## contains refs, it won't hold!
   of ntyGenericInst:
-    let impl = n.getTypeImpl()
-    result = impl.kind == nnkRefTy # if a ref, needs to be copied
+    if passStructByPointer:
+      let impl = n.getTypeImpl()
+      result = impl.kind == nnkRefTy # if a ref, needs to be copied
+    else:
+      result = true # for now assume it needs to be copied
   else:
     result = true
 
-proc allowsCopy(n: NimNode): bool =
+proc allowsCopy(n: NimNode, passStructByPointer: bool): bool =
   ## Returns `true` if the given type is allowed to be copied. That means it is
   ## either `requiresCopy` or a `var` symbol.
-  result = n.requiresCopy or n.symKind == nskVar
+  result = n.requiresCopy(passStructByPointer) or n.symKind == nskVar
 
 proc getIdent(n: NimNode): NimNode =
   ## Generate a `GPU` suffixed ident
@@ -55,20 +66,21 @@ proc getIdent(n: NimNode): NimNode =
   of nnkIdent, nnkSym: result = ident(n.strVal & "GPU")
   else: result = ident("`" & n.repr & "`GPU")
 
-proc determineDevicePtrs(r, i: NimNode, iTypes: seq[NimNode]): seq[(NimNode, NimNode)] =
+proc determineDevicePtrs(r, i: NimNode, iTypes: seq[NimNode],
+                         passStructByPointer: bool): seq[(NimNode, NimNode)] =
   ## Returns the device pointer ident and its associated original symbol.
   for el in r:
-    if not el.allowsCopy:
+    if not el.allowsCopy(passStructByPointer):
       error("The argument for `res`: " & $el.repr & " of type: " & $el.getTypeImpl().treerepr &
         " does not allow copying. Copying to the address of all result variables is required.")
     result.add (getIdent(el), el)
   for idx in 0 ..< i.len:
     let input = i[idx]
     let t = iTypes[idx]
-    if t.requiresCopy():
+    if t.requiresCopy(passStructByPointer):
       result.add (getIdent(input), input)
 
-proc assembleParams(r, i: NimNode, iTypes: seq[NimNode]): seq[NimNode] =
+proc assembleParams(r, i: NimNode, iTypes: seq[NimNode], passStructByPointer: bool): seq[NimNode] =
   ## Returns all parameters. Depending on whether they require copies or
   ## are `res` parameters, either the input parameter or the `GPU` parameter.
   for el in r: # for `res` we always copy!
@@ -76,7 +88,7 @@ proc assembleParams(r, i: NimNode, iTypes: seq[NimNode]): seq[NimNode] =
   for idx in 0 ..< i.len:
     let input = i[idx]
     let t = iTypes[idx]
-    if t.requiresCopy():
+    if t.requiresCopy(passStructByPointer):
       result.add getIdent(input)
     else:
       result.add input
@@ -109,9 +121,9 @@ proc maybeAddress(n: NimNode): NimNode =
   of ntySequence: result = address( nnkBracketExpr.newTree(n, newLit 0) )
   else: result = address(n)
 
-proc genParams(pId, r, i: NimNode, iTypes: seq[NimNode]): NimNode =
+proc genParams(pId, r, i: NimNode, iTypes: seq[NimNode], passStructByPointer: bool): NimNode =
   ## Generates the parameter `params` variable
-  let ps = assembleParams(r, i, iTypes)
+  let ps = assembleParams(r, i, iTypes, passStructByPointer)
   result = nnkBracket.newTree()
   for p in ps:
     result.add pointer(maybeAddress p)
@@ -171,7 +183,8 @@ proc endianCheck(): NimNode =
       "Most CPUs (x86-64, ARM) are little-endian, as are Nvidia GPUs, which allows naive copying of parameters.\n" &
       "Your architecture '" & $hostCPU & "' is big-endian and GPU offloading is unsupported on it."
 
-proc execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs: NimNode): NimNode =
+proc execCudaImpl*(jitFn, numBlocks, threadsPerBlock, res, inputs: NimNode,
+                   passStructByPointer: static bool): NimNode =
   # Maybe wrap individually given arguments in a `[]` bracket, e.g.
   # `execCuda(res = foo, inputs = bar)`
   let res = maybeWrap res
@@ -185,7 +198,7 @@ proc execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs: NimNode): NimN
   let iTypes = getTypes(inputs)
 
   # determine all required `CUdeviceptr`
-  let devPtrs = determineDevicePtrs(res, inputs, iTypes)
+  let devPtrs = determineDevicePtrs(res, inputs, iTypes, passStructByPointer)
 
   # generate device pointers, allocate memory and copy data
   for x in devPtrs:
@@ -202,7 +215,7 @@ proc execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs: NimNode): NimN
     result.add(
       check nnkCall.newTree(
         ident"cuMemAlloc",
-        address x[0],
+        x[0],
         csize_t getSizeOf(x[1])
       )
     )
@@ -222,7 +235,7 @@ proc execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs: NimNode): NimN
 
   # assemble the parameters
   let pId = ident"params"
-  let params = genParams(pId, res, vars, iTypes)
+  let params = genParams(pId, res, vars, iTypes, passStructByPointer)
   result.add params
 
   # launch the kernel
@@ -237,8 +250,8 @@ proc execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs: NimNode): NimN
 
     check cudaEventRecord(start, nil)
     check cuLaunchKernel(
-            `jitFn`,
-            `numBlocks`, 1, 1, # grid(x, y, z)
+            CUfunction(`jitFn`),     # dummy conversion on NVRTC, required on LLVM
+            `numBlocks`, 1, 1,       # grid(x, y, z)
             `threadsPerBlock`, 1, 1, # block(x, y, z)
             sharedMemBytes = 0,
             CUstream(nil),
@@ -255,7 +268,7 @@ proc execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs: NimNode): NimN
 
 
   # copy back results
-  let devPtrsRes = determineDevicePtrs(res, nnkBracket.newTree(), @[])
+  let devPtrsRes = determineDevicePtrs(res, nnkBracket.newTree(), @[], passStructByPointer)
   for x in devPtrsRes:
     result.add(
       check nnkCall.newTree(
@@ -277,8 +290,6 @@ proc execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs: NimNode): NimN
   result = quote do:
     block:
       `result`
-
-  echo result.repr
 
 macro execCuda*(jitFn: CUfunction,
                 res: typed,
@@ -311,16 +322,16 @@ macro execCuda*(jitFn: CUfunction,
   ## as an input.
   ##
   ## NOTE: This function is mainly intended for convenient execution of a single kernel
-  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, inputs)
+  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, inputs, passStructByPointer = true)
 
 macro execCuda*(jitFn: CUfunction,
                 numBlocks, threadsPerBlock: int,
                 res: typed,
                 inputs: typed): untyped =
   ## Overload which takes a target number of threads and blocks
-  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs)
+  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs, passStructByPointer = true)
 
 macro execCuda*(jitFn: CUfunction,
                 res: typed): untyped =
   ## Overload of the above for empty `inputs`
-  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, nnkBracket.newTree())
+  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, nnkBracket.newTree(), passStructByPointer = true)
