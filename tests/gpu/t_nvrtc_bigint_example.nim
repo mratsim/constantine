@@ -1,5 +1,4 @@
 import std / strformat
-import nimcuda/cuda12_5/[nvrtc, check, cuda, cuda_runtime_api, driver_types]
 
 import
   # Internal
@@ -7,6 +6,7 @@ import
   constantine/math/io/[io_bigints, io_fields],
   constantine/math/arithmetic,
   constantine/platforms/abstractions {.all.},
+  constantine/platforms/abis/nvidia_abi,
   constantine/math_compiler/experimental/runtime_compile
 
 type T = Fp[BN254_Snarks]

@@ -1,8 +1,9 @@
 ## XXX: for now dependent on nimcuda for ease of development
 
 import
-  std / [strformat, strutils],
-  nimcuda/cuda12_5/[nvrtc, check, cuda, cuda_runtime_api, driver_types]
+  std / [strformat, strutils]
+
+import constantine/platforms/abis/nvidia_abi
 
 import ./nim_ast_to_cuda_ast
 import ./cuda_execute_dsl
@@ -11,14 +12,6 @@ export nim_ast_to_cuda_ast
 
 ## Set to true, if you want some extra output (driver & runtime version for example)
 const DebugCuda {.booldefine.} = true
-## Path to your CUDA installation. Currently a `strdefine`, will likely change in the future
-const CudaPath {.strdefine.} = "/usr/local/cuda-12.6/targets/x86_64-linux/"
-
-## NOTE: We need to define the paths to our CUDA installation at compile time,
-## because we need to use the `{.header: ...}` pragma for the CUDA wrapper.
-## We might move to a 'supply your own `nim.cfg` defining them' approach in the future.
-{.passC: "-I" & CudaPath & "/include".}
-{.passL: "-L" & CudaPath & "/lib -lcuda".}
 
 ## Dummy data for the typed nature of the `cuda` macro. These define commonly used
 ## CUDA specific names so that they produce valid Nim code in the context of a typed macro.
@@ -68,16 +61,16 @@ type
     context*: CUcontext
 
 proc `=destroy`(nvrtc: NVRTC) =
-  if nvrtc.module != nil:
+  if nvrtc.module.pointer != nil:
     check cuModuleUnload nvrtc.module
-  if nvrtc.context != nil:
+  if nvrtc.context.pointer != nil:
     check cuCtxDestroy nvrtc.context
 
 proc initNvrtc*(cuda: string, name = "sample.cu"): NVRTC =
   ## Initializes an NVRTC object for the given program `cuda`
   when DebugCuda:
     var x: cint
-    cuDriverGetVersion(x.addr)
+    check cuDriverGetVersion(x.addr)
     echo "Driver version: ", x
 
     var rtVer: cint
@@ -93,8 +86,8 @@ proc initNvrtc*(cuda: string, name = "sample.cu"): NVRTC =
     device: CUdevice
 
   check cuInit(0)
-  check cuDeviceGet(addr device, 0)
-  check cuCtxCreate(addr context, 0, device)
+  check cuDeviceGet(device, 0)
+  check cuCtxCreate(context, 0, device)
 
   # Create an instance of nvrtcProgram based on the passed code
   var prog: nvrtcProgram
@@ -181,7 +174,7 @@ proc link*(nvrtc: var NVRTC) =
   if res != CUDA_SUCCESS:
     var error_str: cstring
     #discard cuGetErrorString(res, addr error_str)
-    cuGetErrorString(status, cast[cstringArray](addr error_str));
+    check cuGetErrorString(status, cast[cstringArray](addr error_str))
     echo "Link add PTX failed: ", error_str
     echo "Error log: ", errorLog
     quit(1)
@@ -193,7 +186,7 @@ proc link*(nvrtc: var NVRTC) =
                       0, nil, nil)
   if res != CUDA_SUCCESS:
     var error_str: cstring
-    cuGetErrorString(status, cast[cstringArray](addr error_str));
+    check cuGetErrorString(status, cast[cstringArray](addr error_str));
     echo "Link add device runtime failed: ", error_str
     echo "Error log: ", errorLog
     quit(1)
@@ -205,7 +198,7 @@ proc link*(nvrtc: var NVRTC) =
   nvrtc.cubinSize = cubinSize
   if res != CUDA_SUCCESS:
     var error_str: cstring
-    cuGetErrorString(status, cast[cstringArray](addr error_str));
+    check cuGetErrorString(status, cast[cstringArray](addr error_str));
     echo "Link complete failed: ", error_str
     echo "Error log: ", errorLog
     quit(1)
@@ -229,15 +222,15 @@ template execute*(nvrtc: var NVRTC, fn: string, res, inputs: typed) =
 
   ## NOTE: if you wish to use the `link` approach, pass `nvrtc.cubin` instead of `PTX`
   #let status = cuModuleLoadData(addr nvrtc.module, nvrtc.cubin)
-  let status = cuModuleLoadData(addr nvrtc.module, cstring nvrtc.ptx)
+  let status = cuModuleLoadData(nvrtc.module, cstring nvrtc.ptx)
   if status != CUDA_SUCCESS:
     var error_str: cstring #const char* error_str;
-    cuGetErrorString(status, cast[cstringArray](addr error_str));
+    check cuGetErrorString(status, cast[cstringArray](addr error_str));
     echo "Module load failed: ", error_str
     echo "JIT Error log: ", error_log
     echo "JIT Info log: ", info_log
     quit(1)
-  check cuModuleGetFunction(addr nvrtc.kernel, nvrtc.module, fn)
+  check cuModuleGetFunction(nvrtc.kernel, nvrtc.module, fn)
 
   # now execute the kernel
   execCuda(nvrtc.kernel, nvrtc.numBlocks, nvrtc.threadsPerBlock, res, inputs)

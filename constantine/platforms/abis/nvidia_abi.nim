@@ -24,6 +24,17 @@ const libPath = "/opt/cuda/lib64/" # For now, only support Linux
 static: echo "[Constantine] Will search Cuda runtime in $LD_LIBRARY_PATH and " & libPath & "libcuda.so"
 const libCuda = "(libcuda.so|" & libPath & "libcuda.so)"
 
+## TODO: copy over `nimcuda` `libpaths.nim`?
+## Path to your CUDA installation. Currently a `strdefine`, will likely change in the future
+#const CudaPath {.strdefine.} = "/usr/local/cuda-12.6/targets/x86_64-linux/"
+const CudaPath {.strdefine.} = "/usr/local/cuda-11.6/targets/x86_64-linux/"
+
+## NOTE: We need to define the paths to our CUDA installation at compile time,
+## because we need to use the `{.header: ...}` pragma for the CUDA wrapper.
+## We might move to a 'supply your own `nim.cfg` defining them' approach in the future.
+{.passC: "-I" & CudaPath & "/include".}
+{.passL: "-L" & CudaPath & "/lib -lcuda".}
+
 # Cuda offers 2 APIs:
 # - cuda.h               the driver API
 # - cuda_runtime.h       the runtime API
@@ -483,7 +494,331 @@ type
   CUstream* = distinct pointer
   CUdeviceptr* = distinct pointer
 
-{.push noconv, importc, dynlib: libCuda.}
+  CUlinkState_st = object
+  CUlinkState* = ptr CUlinkState_st
+
+######################################################################
+################################ cuda.h ##############################
+######################################################################
+
+type                          ##
+    ##  Max number of registers that a thread may use.\n
+    ##  Option type: unsigned int\n
+    ##  Applies to: compiler only
+    ##
+  CUjit_option* {.size: sizeof(cint).} = enum
+    CU_JIT_MAX_REGISTERS = 0, ##
+                           ##  IN: Specifies minimum number of threads per block to target compilation
+                           ##  for\n
+                           ##  OUT: Returns the number of threads the compiler actually targeted.
+                           ##  This restricts the resource utilization of the compiler (e.g. max
+                           ##  registers) such that a block with the given number of threads should be
+                           ##  able to launch based on register limitations. Note, this option does not
+                           ##  currently take into account any other resource limitations, such as
+                           ##  shared memory utilization.\n
+                           ##  Cannot be combined with ::CU_JIT_TARGET.\n
+                           ##  Option type: unsigned int\n
+                           ##  Applies to: compiler only
+                           ##
+    CU_JIT_THREADS_PER_BLOCK = 1, ##
+                               ##  Overwrites the option value with the total wall clock time, in
+                               ##  milliseconds, spent in the compiler and linker\n
+                               ##  Option type: float\n
+                               ##  Applies to: compiler and linker
+                               ##
+    CU_JIT_WALL_TIME = 2, ##
+                       ##  Pointer to a buffer in which to print any log messages
+                       ##  that are informational in nature (the buffer size is specified via
+                       ##  option ::CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES)\n
+                       ##  Option type: char *\n
+                       ##  Applies to: compiler and linker
+                       ##
+    CU_JIT_INFO_LOG_BUFFER = 3, ##
+                             ##  IN: Log buffer size in bytes.  Log messages will be capped at this size
+                             ##  (including null terminator)\n
+                             ##  OUT: Amount of log buffer filled with messages\n
+                             ##  Option type: unsigned int\n
+                             ##  Applies to: compiler and linker
+                             ##
+    CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES = 4, ##
+                                        ##  Pointer to a buffer in which to print any log messages that
+                                        ##  reflect errors (the buffer size is specified via option
+                                        ##  ::CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES)\n
+                                        ##  Option type: char *\n
+                                        ##  Applies to: compiler and linker
+                                        ##
+    CU_JIT_ERROR_LOG_BUFFER = 5, ##
+                              ##  IN: Log buffer size in bytes.  Log messages will be capped at this size
+                              ##  (including null terminator)\n
+                              ##  OUT: Amount of log buffer filled with messages\n
+                              ##  Option type: unsigned int\n
+                              ##  Applies to: compiler and linker
+                              ##
+    CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES = 6, ##
+                                         ##  Level of optimizations to apply to generated code (0 - 4), with 4
+                                         ##  being the default and highest level of optimizations.\n
+                                         ##  Option type: unsigned int\n
+                                         ##  Applies to: compiler only
+                                         ##
+    CU_JIT_OPTIMIZATION_LEVEL = 7, ##
+                                ##  No option value required. Determines the target based on the current
+                                ##  attached context (default)\n
+                                ##  Option type: No option value needed\n
+                                ##  Applies to: compiler and linker
+                                ##
+    CU_JIT_TARGET_FROM_CUCONTEXT = 8, ##
+                                   ##  Target is chosen based on supplied ::CUjit_target.  Cannot be
+                                   ##  combined with ::CU_JIT_THREADS_PER_BLOCK.\n
+                                   ##  Option type: unsigned int for enumerated type ::CUjit_target\n
+                                   ##  Applies to: compiler and linker
+                                   ##
+    CU_JIT_OPTION_TARGET = 9, ##
+                    ##  Specifies choice of fallback strategy if matching cubin is not found.
+                    ##  Choice is based on supplied ::CUjit_fallback.  This option cannot be
+                    ##  used with cuLink* APIs as the linker requires exact matches.\n
+                    ##  Option type: unsigned int for enumerated type ::CUjit_fallback\n
+                    ##  Applies to: compiler only
+                    ##
+    CU_JIT_FALLBACK_STRATEGY = 10, ##
+                                ##  Specifies whether to create debug information in output (-g)
+                                ##  (0: false, default)\n
+                                ##  Option type: int\n
+                                ##  Applies to: compiler and linker
+                                ##
+    CU_JIT_GENERATE_DEBUG_INFO = 11, ##
+                                  ##  Generate verbose log messages (0: false, default)\n
+                                  ##  Option type: int\n
+                                  ##  Applies to: compiler and linker
+                                  ##
+    CU_JIT_LOG_VERBOSE = 12, ##
+                          ##  Generate line number information (-lineinfo) (0: false, default)\n
+                          ##  Option type: int\n
+                          ##  Applies to: compiler only
+                          ##
+    CU_JIT_GENERATE_LINE_INFO = 13, ##
+                                 ##  Specifies whether to enable caching explicitly (-dlcm) \n
+                                 ##  Choice is based on supplied ::CUjit_cacheMode_enum.\n
+                                 ##  Option type: unsigned int for enumerated type ::CUjit_cacheMode_enum\n
+                                 ##  Applies to: compiler only
+                                 ##
+    CU_JIT_OPTION_CACHE_MODE = 14, ##
+                         ##  \deprecated
+                         ##  This jit option is deprecated and should not be used.
+                         ##
+    CU_JIT_NEW_SM3X_OPT = 15, ##
+                           ##  This jit option is used for internal purpose only.
+                           ##
+    CU_JIT_FAST_COMPILE = 16, ##
+                           ##  Array of device symbol names that will be relocated to the corresponding
+                           ##  host addresses stored in ::CU_JIT_GLOBAL_SYMBOL_ADDRESSES.\n
+                           ##  Must contain ::CU_JIT_GLOBAL_SYMBOL_COUNT entries.\n
+                           ##  When loading a device module, driver will relocate all encountered
+                           ##  unresolved symbols to the host addresses.\n
+                           ##  It is only allowed to register symbols that correspond to unresolved
+                           ##  global variables.\n
+                           ##  It is illegal to register the same device symbol at multiple addresses.\n
+                           ##  Option type: const char **\n
+                           ##  Applies to: dynamic linker only
+                           ##
+    CU_JIT_GLOBAL_SYMBOL_NAMES = 17, ##
+                                  ##  Array of host addresses that will be used to relocate corresponding
+                                  ##  device symbols stored in ::CU_JIT_GLOBAL_SYMBOL_NAMES.\n
+                                  ##  Must contain ::CU_JIT_GLOBAL_SYMBOL_COUNT entries.\n
+                                  ##  Option type: void **\n
+                                  ##  Applies to: dynamic linker only
+                                  ##
+    CU_JIT_GLOBAL_SYMBOL_ADDRESSES = 18, ##
+                                      ##  Number of entries in ::CU_JIT_GLOBAL_SYMBOL_NAMES and
+                                      ##  ::CU_JIT_GLOBAL_SYMBOL_ADDRESSES arrays.\n
+                                      ##  Option type: unsigned int\n
+                                      ##  Applies to: dynamic linker only
+                                      ##
+    CU_JIT_GLOBAL_SYMBOL_COUNT = 19, ##
+                                  ##  \deprecated
+                                  ##  Enable link-time optimization (-dlto) for device code (Disabled by default).\n
+                                  ##  This option is not supported on 32-bit platforms.\n
+                                  ##  Option type: int\n
+                                  ##  Applies to: compiler and linker
+                                  ##
+                                  ##  Only valid with LTO-IR compiled with toolkits prior to CUDA 12.0
+                                  ##
+    CU_JIT_LTO = 20, ##
+                  ##  \deprecated
+                  ##  Control single-precision denormals (-ftz) support (0: false, default).
+                  ##  1 : flushes denormal values to zero
+                  ##  0 : preserves denormal values
+                  ##  Option type: int\n
+                  ##  Applies to: link-time optimization specified with CU_JIT_LTO
+                  ##
+                  ##  Only valid with LTO-IR compiled with toolkits prior to CUDA 12.0
+                  ##
+    CU_JIT_FTZ = 21, ##
+                  ##  \deprecated
+                  ##  Control single-precision floating-point division and reciprocals
+                  ##  (-prec-div) support (1: true, default).
+                  ##  1 : Enables the IEEE round-to-nearest mode
+                  ##  0 : Enables the fast approximation mode
+                  ##  Option type: int\n
+                  ##  Applies to: link-time optimization specified with CU_JIT_LTO
+                  ##
+                  ##  Only valid with LTO-IR compiled with toolkits prior to CUDA 12.0
+                  ##
+    CU_JIT_PREC_DIV = 22, ##
+                       ##  \deprecated
+                       ##  Control single-precision floating-point square root
+                       ##  (-prec-sqrt) support (1: true, default).
+                       ##  1 : Enables the IEEE round-to-nearest mode
+                       ##  0 : Enables the fast approximation mode
+                       ##  Option type: int\n
+                       ##  Applies to: link-time optimization specified with CU_JIT_LTO
+                       ##
+                       ##  Only valid with LTO-IR compiled with toolkits prior to CUDA 12.0
+                       ##
+    CU_JIT_PREC_SQRT = 23, ##
+                        ##  \deprecated
+                        ##  Enable/Disable the contraction of floating-point multiplies
+                        ##  and adds/subtracts into floating-point multiply-add (-fma)
+                        ##  operations (1: Enable, default; 0: Disable).
+                        ##  Option type: int\n
+                        ##  Applies to: link-time optimization specified with CU_JIT_LTO
+                        ##
+                        ##  Only valid with LTO-IR compiled with toolkits prior to CUDA 12.0
+                        ##
+    CU_JIT_FMA = 24, ##
+                  ##  \deprecated
+                  ##  Array of kernel names that should be preserved at link time while others
+                  ##  can be removed.\n
+                  ##  Must contain ::CU_JIT_REFERENCED_KERNEL_COUNT entries.\n
+                  ##  Note that kernel names can be mangled by the compiler in which case the
+                  ##  mangled name needs to be specified.\n
+                  ##  Wildcard "*" can be used to represent zero or more characters instead of
+                  ##  specifying the full or mangled name.\n
+                  ##  It is important to note that the wildcard "*" is also added implicitly.
+                  ##  For example, specifying "foo" will match "foobaz", "barfoo", "barfoobaz" and
+                  ##  thus preserve all kernels with those names. This can be avoided by providing
+                  ##  a more specific name like "barfoobaz".\n
+                  ##  Option type: const char **\n
+                  ##  Applies to: dynamic linker only
+                  ##
+                  ##  Only valid with LTO-IR compiled with toolkits prior to CUDA 12.0
+                  ##
+    CU_JIT_REFERENCED_KERNEL_NAMES = 25, ##
+                                      ##  \deprecated
+                                      ##  Number of entries in ::CU_JIT_REFERENCED_KERNEL_NAMES array.\n
+                                      ##  Option type: unsigned int\n
+                                      ##  Applies to: dynamic linker only
+                                      ##
+                                      ##  Only valid with LTO-IR compiled with toolkits prior to CUDA 12.0
+                                      ##
+    CU_JIT_REFERENCED_KERNEL_COUNT = 26, ##
+                                      ##  \deprecated
+                                      ##  Array of variable names (__device__ and/or __constant__) that should be
+                                      ##  preserved at link time while others can be removed.\n
+                                      ##  Must contain ::CU_JIT_REFERENCED_VARIABLE_COUNT entries.\n
+                                      ##  Note that variable names can be mangled by the compiler in which case the
+                                      ##  mangled name needs to be specified.\n
+                                      ##  Wildcard "*" can be used to represent zero or more characters instead of
+                                      ##  specifying the full or mangled name.\n
+                                      ##  It is important to note that the wildcard "*" is also added implicitly.
+                                      ##  For example, specifying "foo" will match "foobaz", "barfoo", "barfoobaz" and
+                                      ##  thus preserve all variables with those names. This can be avoided by providing
+                                      ##  a more specific name like "barfoobaz".\n
+                                      ##  Option type: const char **\n
+                                      ##  Applies to: link-time optimization specified with CU_JIT_LTO
+                                      ##
+                                      ##  Only valid with LTO-IR compiled with toolkits prior to CUDA 12.0
+                                      ##
+    CU_JIT_REFERENCED_VARIABLE_NAMES = 27, ##
+                                        ##  \deprecated
+                                        ##  Number of entries in ::CU_JIT_REFERENCED_VARIABLE_NAMES array.\n
+                                        ##  Option type: unsigned int\n
+                                        ##  Applies to: link-time optimization specified with CU_JIT_LTO
+                                        ##
+                                        ##  Only valid with LTO-IR compiled with toolkits prior to CUDA 12.0
+                                        ##
+    CU_JIT_REFERENCED_VARIABLE_COUNT = 28, ##
+                                        ##  \deprecated
+                                        ##  This option serves as a hint to enable the JIT compiler/linker
+                                        ##  to remove constant (__constant__) and device (__device__) variables
+                                        ##  unreferenced in device code (Disabled by default).\n
+                                        ##  Note that host references to constant and device variables using APIs like
+                                        ##  ::cuModuleGetGlobal() with this option specified may resultNotKeyWord in undefined behavior unless
+                                        ##  the variables are explicitly specified using ::CU_JIT_REFERENCED_VARIABLE_NAMES.\n
+                                        ##  Option type: int\n
+                                        ##  Applies to: link-time optimization specified with CU_JIT_LTO
+                                        ##
+                                        ##  Only valid with LTO-IR compiled with toolkits prior to CUDA 12.0
+                                        ##
+    CU_JIT_OPTIMIZE_UNUSED_DEVICE_VARIABLES = 29, ##
+                                               ##  Generate position independent code (0: false)\n
+                                               ##  Option type: int\n
+                                               ##  Applies to: compiler only
+                                               ##
+    CU_JIT_POSITION_INDEPENDENT_CODE = 30, ##
+                                        ##  This option hints to the JIT compiler the minimum number of CTAs from the
+                                        ##  kernel’s grid to be mapped to a SM. This option is ignored when used together
+                                        ##  with ::CU_JIT_MAX_REGISTERS or ::CU_JIT_THREADS_PER_BLOCK.
+                                        ##  Optimizations based on this option need ::CU_JIT_MAX_THREADS_PER_BLOCK to
+                                        ##  be specified as well. For kernels already using PTX directive .minnctapersm,
+                                        ##  this option will be ignored by default. Use ::CU_JIT_OVERRIDE_DIRECTIVE_VALUES
+                                        ##  to let this option take precedence over the PTX directive.
+                                        ##  Option type: unsigned int\n
+                                        ##  Applies to: compiler only
+                                        ##
+    CU_JIT_MIN_CTA_PER_SM = 31, ##
+                             ##  Maximum number threads in a thread block, computed as the product of
+                             ##  the maximum extent specifed for each dimension of the block. This limit
+                             ##  is guaranteed not to be exeeded in any invocation of the kernel. Exceeding
+                             ##  the the maximum number of threads results in runtime error or kernel launch
+                             ##  failure. For kernels already using PTX directive .maxntid, this option will
+                             ##  be ignored by default. Use ::CU_JIT_OVERRIDE_DIRECTIVE_VALUES to let this
+                             ##  option take precedence over the PTX directive.
+                             ##  Option type: int\n
+                             ##  Applies to: compiler only
+                             ##
+    CU_JIT_MAX_THREADS_PER_BLOCK = 32, ##
+                                    ##  This option lets the values specified using ::CU_JIT_MAX_REGISTERS,
+                                    ##  ::CU_JIT_THREADS_PER_BLOCK, ::CU_JIT_MAX_THREADS_PER_BLOCK and
+                                    ##  ::CU_JIT_MIN_CTA_PER_SM take precedence over any PTX directives.
+                                    ##  (0: Disable, default; 1: Enable)
+                                    ##  Option type: int\n
+                                    ##  Applies to: compiler only
+                                    ##
+    CU_JIT_OVERRIDE_DIRECTIVE_VALUES = 33, CU_JIT_NUM_OPTIONS
+
+type                          ##
+    ##  Compiled device-class-specific device code\n
+    ##  Applicable options: none
+    ##
+  CUjitInputType* {.size: sizeof(cint).} = enum
+    CU_JIT_INPUT_CUBIN = 0,     ##
+                         ##  PTX source code\n
+                         ##  Applicable options: PTX compiler options
+                         ##
+    CU_JIT_INPUT_PTX = 1, ##
+                       ##  Bundle of multiple cubins and/or PTX of some device code\n
+                       ##  Applicable options: PTX compiler options, ::CU_JIT_FALLBACK_STRATEGY
+                       ##
+    CU_JIT_INPUT_FATBINARY = 2, ##
+                             ##  Host object with embedded device code\n
+                             ##  Applicable options: PTX compiler options, ::CU_JIT_FALLBACK_STRATEGY
+                             ##
+    CU_JIT_INPUT_OBJECT = 3, ##
+                          ##  Archive of host objects with embedded device code\n
+                          ##  Applicable options: PTX compiler options, ::CU_JIT_FALLBACK_STRATEGY
+                          ##
+    CU_JIT_INPUT_LIBRARY = 4, ##
+                           ##  \deprecated
+                           ##  High-level intermediate code for link-time optimization\n
+                           ##  Applicable options: NVVM compiler options, PTX compiler options
+                           ##
+                           ##  Only valid with LTO-IR compiled with toolkits prior to CUDA 12.0
+                           ##
+    CU_JIT_INPUT_NVVM = 5, CU_JIT_NUM_INPUT_TYPES = 6
+
+
+
+{.push noconv, importc, dynlib: libCuda, header: "cuda.h".}
 
 proc cuInit*(flags: uint32): CUresult
 
@@ -495,12 +830,14 @@ proc cuDeviceGetAttribute*(r: var int32, attrib: CUdevice_attribute, dev: CUdevi
 proc cuCtxCreate*(pctx: var CUcontext, flags: uint32, dev: CUdevice): CUresult
 proc cuCtxDestroy*(ctx: CUcontext): CUresult
 proc cuCtxSynchronize*(ctx: CUcontext): CUresult
+proc cuCtxSynchronize*(): CUresult
 
-proc cuModuleLoadData(module: var CUmodule, sourceCode: ptr char): CUresult {.used.}
 proc cuModuleUnload*(module: CUmodule): CUresult
 proc cuModuleGetFunction(kernel: var CUfunction, module: CUmodule, fnName: ptr char): CUresult {.used.}
+proc cuModuleLoadData*(module: var CUmodule; image: pointer): CUresult
+proc cuModuleGetFunction*(hfunc: var CUfunction; hmod: CUmodule; name: cstring): CUresult
 
-proc cuLaunchKernel(
+proc cuLaunchKernel*(
        kernel: CUfunction,
        gridDimX, gridDimY, gridDimZ: uint32,
        blockDimX, blockDimY, blockDimZ: uint32,
@@ -516,4 +853,997 @@ proc cuMemFree*(devptr: CUdeviceptr): CUresult
 proc cuMemcpyHtoD*(dst: CUdeviceptr, src: pointer, size: csize_t): CUresult
 proc cuMemcpyDtoH*(dst: pointer, src: CUdeviceptr, size: csize_t): CUresult
 
-{.pop.} # {.push noconv, importc, dynlib: "libcuda.so".}
+proc cuDriverGetVersion*(driverVersion: ptr cint): CUresult
+
+proc cuLinkCreate*(numOptions: cuint; options: ptr CUjit_option;
+                   optionValues: ptr pointer; stateOut: ptr CUlinkState): CUresult
+proc cuLinkAddData*(state: CUlinkState; `type`: CUjitInputType; data: pointer;
+                   size: csize_t; name: cstring; numOptions: cuint;
+                   options: ptr CUjit_option; optionValues: ptr pointer): CUresult
+proc cuLinkComplete*(state: CUlinkState; cubinOut: ptr pointer; sizeOut: ptr csize_t): CUresult
+
+
+proc cuGetErrorString*(error: CUresult; pStr: cstringArray): CUresult
+
+proc cuLinkAddFile*(state: CUlinkState; `type`: CUjitInputType; path: cstring;
+                    numOptions: cuint; options: ptr CUjit_option;
+                    optionValues: ptr pointer): CUresult
+
+
+
+
+{.pop.} # {.push noconv, importc, dynlib: "libcuda.so", header: "cuda.h"..}
+
+
+######################################################################
+################################ nvrtc.h #############################
+######################################################################
+
+
+when defined(windows):
+  const
+    libNvrtc = "nvrtc64.dll"
+elif defined(macosx):
+  const
+    libNvrtc = "libnvrtc.dylib"
+else:
+  const
+    libNvrtc = "libnvrtc.so"
+
+
+type
+  nvrtcProgramObj {.noDecl, incompleteStruct.} = object
+  nvrtcProgram* = ptr nvrtcProgramObj
+
+  nvrtcResult* {.size: sizeof(cint).} = enum
+    NVRTC_SUCCESS = 0, NVRTC_ERROR_OUT_OF_MEMORY = 1,
+    NVRTC_ERROR_PROGRAM_CREATION_FAILURE = 2, NVRTC_ERROR_INVALID_INPUT = 3,
+    NVRTC_ERROR_INVALID_PROGRAM = 4, NVRTC_ERROR_INVALID_OPTION = 5,
+    NVRTC_ERROR_COMPILATION = 6, NVRTC_ERROR_BUILTIN_OPERATION_FAILURE = 7,
+    NVRTC_ERROR_NO_NAME_EXPRESSIONS_AFTER_COMPILATION = 8,
+    NVRTC_ERROR_NO_LOWERED_NAMES_BEFORE_COMPILATION = 9,
+    NVRTC_ERROR_NAME_EXPRESSION_NOT_VALID = 10, NVRTC_ERROR_INTERNAL_ERROR = 11,
+    NVRTC_ERROR_TIME_FILE_WRITE_FAILED = 12
+
+proc nvrtcCreateProgram*(prog: ptr nvrtcProgram; src: cstring; name: cstring;
+                        numHeaders: cint; headers: cstringArray;
+                        includeNames: cstringArray): nvrtcResult {.discardable, cdecl,
+    importc: "nvrtcCreateProgram", dynlib: libNvrtc.}
+
+proc nvrtcDestroyProgram*(prog: ptr nvrtcProgram): nvrtcResult {.discardable, cdecl,
+    importc: "nvrtcDestroyProgram", dynlib: libNvrtc.}
+
+proc nvrtcCompileProgram*(prog: nvrtcProgram; numOptions: cint; options: cstringArray): nvrtcResult {.discardable,
+    cdecl, importc: "nvrtcCompileProgram", dynlib: libNvrtc.}
+
+proc nvrtcGetPTXSize*(prog: nvrtcProgram; ptxSizeRet: ptr csize_t): nvrtcResult {.discardable,
+    cdecl, importc: "nvrtcGetPTXSize", dynlib: libNvrtc.}
+
+proc nvrtcGetPTX*(prog: nvrtcProgram; ptx: cstring): nvrtcResult {.discardable, cdecl,
+    importc: "nvrtcGetPTX", dynlib: libNvrtc.}
+
+proc nvrtcGetProgramLogSize*(prog: nvrtcProgram; logSizeRet: ptr csize_t): nvrtcResult {.discardable,
+    cdecl, importc: "nvrtcGetProgramLogSize", dynlib: libNvrtc.}
+
+proc nvrtcGetProgramLog*(prog: nvrtcProgram; log: cstring): nvrtcResult {.discardable, cdecl,
+    importc: "nvrtcGetProgramLog", dynlib: libNvrtc.}
+
+
+######################################################################
+################################ libcudart #############################
+######################################################################
+
+when defined(windows):
+  const
+    libCudaRT = "cudart.dll"
+elif defined(macosx):
+  const
+    libCudaRT = "libcudart.dylib"
+else:
+  const
+    libCudaRT = "libcudart.so"
+
+type
+  cudaError* = enum ##
+                 ##  The API call returned with no errors. In the case of query calls, this
+                 ##  also means that the operation being queried is complete (see
+                 ##  ::cudaEventQuery() and ::cudaStreamQuery()).
+                 ##
+    cudaSuccess = 0, ##
+                  ##  This indicates that one or more of the parameters passed to the API call
+                  ##  is not within an acceptable range of values.
+                  ##
+    cudaErrorInvalidValue = 1, ##
+                            ##  The API call failed because it was unable to allocate enough memory or
+                            ##  other resources to perform the requested operation.
+                            ##
+    cudaErrorMemoryAllocation = 2, ##
+                                ##  The API call failed because the CUDA driver and runtime could not be
+                                ##  initialized.
+                                ##
+    cudaErrorInitializationError = 3, ##
+                                   ##  This indicates that a CUDA Runtime API call cannot be executed because
+                                   ##  it is being called during process shut down, at a point in time after
+                                   ##  CUDA driver has been unloaded.
+                                   ##
+    cudaErrorCudartUnloading = 4, ##
+                               ##  This indicates profiler is not initialized for this run. This can
+                               ##  happen when the application is running with external profiling tools
+                               ##  like visual profiler.
+                               ##
+    cudaErrorProfilerDisabled = 5, ##
+                                ##  \deprecated
+                                ##  This error return is deprecated as of CUDA 5.0. It is no longer an error
+                                ##  to attempt to enable/disable the profiling via ::cudaProfilerStart or
+                                ##  ::cudaProfilerStop without initialization.
+                                ##
+    cudaErrorProfilerNotInitialized = 6, ##
+                                      ##  \deprecated
+                                      ##  This error return is deprecated as of CUDA 5.0. It is no longer an error
+                                      ##  to call cudaProfilerStart() when profiling is already enabled.
+                                      ##
+    cudaErrorProfilerAlreadyStarted = 7, ##
+                                      ##  \deprecated
+                                      ##  This error return is deprecated as of CUDA 5.0. It is no longer an error
+                                      ##  to call cudaProfilerStop() when profiling is already disabled.
+                                      ##
+    cudaErrorProfilerAlreadyStopped = 8, ##
+                                      ##  This indicates that a kernel launch is requesting resources that can
+                                      ##  never be satisfied by the current device. Requesting more shared memory
+                                      ##  per block than the device supports will trigger this error, as will
+                                      ##  requesting too many threads or blocks. See ::cudaDeviceProp for more
+                                      ##  device limitations.
+                                      ##
+    cudaErrorInvalidConfiguration = 9, ##
+                                    ##  This indicates that one or more of the pitch-related parameters passed
+                                    ##  to the API call is not within the acceptable range for pitch.
+                                    ##
+    cudaErrorInvalidPitchValue = 12, ##
+                                  ##  This indicates that the symbol name/identifier passed to the API call
+                                  ##  is not a valid name or identifier.
+                                  ##
+    cudaErrorInvalidSymbol = 13, ##
+                              ##  This indicates that at least one host pointer passed to the API call is
+                              ##  not a valid host pointer.
+                              ##  \deprecated
+                              ##  This error return is deprecated as of CUDA 10.1.
+                              ##
+    cudaErrorInvalidHostPointer = 16, ##
+                                   ##  This indicates that at least one device pointer passed to the API call is
+                                   ##  not a valid device pointer.
+                                   ##  \deprecated
+                                   ##  This error return is deprecated as of CUDA 10.1.
+                                   ##
+    cudaErrorInvalidDevicePointer = 17, ##
+                                     ##  This indicates that the texture passed to the API call is not a valid
+                                     ##  texture.
+                                     ##
+    cudaErrorInvalidTexture = 18, ##
+                               ##  This indicates that the texture binding is not valid. This occurs if you
+                               ##  call ::cudaGetTextureAlignmentOffset() with an unbound texture.
+                               ##
+    cudaErrorInvalidTextureBinding = 19, ##
+                                      ##  This indicates that the channel descriptor passed to the API call is not
+                                      ##  valid. This occurs if the format is not one of the formats specified by
+                                      ##  ::cudaChannelFormatKind, or if one of the dimensions is invalid.
+                                      ##
+    cudaErrorInvalidChannelDescriptor = 20, ##
+                                         ##  This indicates that the direction of the copyMem passed to the API call is
+                                         ##  not one of the types specified by ::cudaMemcpyKind.
+                                         ##
+    cudaErrorInvalidMemcpyDirection = 21, ##
+                                       ##  This indicated that the user has taken the address of a constant variable,
+                                       ##  which was forbidden up until the CUDA 3.1 release.
+                                       ##  \deprecated
+                                       ##  This error return is deprecated as of CUDA 3.1. Variables in constant
+                                       ##  memory may now have their address taken by the runtime via
+                                       ##  ::cudaGetSymbolAddress().
+                                       ##
+    cudaErrorAddressOfConstant = 22, ##
+                                  ##  This indicated that a texture fetch was not able to be performed.
+                                  ##  This was previously used for device emulation of texture operations.
+                                  ##  \deprecated
+                                  ##  This error return is deprecated as of CUDA 3.1. Device emulation mode was
+                                  ##  removed with the CUDA 3.1 release.
+                                  ##
+    cudaErrorTextureFetchFailed = 23, ##
+                                   ##  This indicated that a texture was not bound for access.
+                                   ##  This was previously used for device emulation of texture operations.
+                                   ##  \deprecated
+                                   ##  This error return is deprecated as of CUDA 3.1. Device emulation mode was
+                                   ##  removed with the CUDA 3.1 release.
+                                   ##
+    cudaErrorTextureNotBound = 24, ##
+                                ##  This indicated that a synchronization operation had failed.
+                                ##  This was previously used for some device emulation functions.
+                                ##  \deprecated
+                                ##  This error return is deprecated as of CUDA 3.1. Device emulation mode was
+                                ##  removed with the CUDA 3.1 release.
+                                ##
+    cudaErrorSynchronizationError = 25, ##
+                                     ##  This indicates that a non-float texture was being accessed with linear
+                                     ##  filtering. This is not supported by CUDA.
+                                     ##
+    cudaErrorInvalidFilterSetting = 26, ##
+                                     ##  This indicates that an attempt was made to read a non-float texture as a
+                                     ##  normalized float. This is not supported by CUDA.
+                                     ##
+    cudaErrorInvalidNormSetting = 27, ##
+                                   ##  Mixing of device and device emulation code was not allowed.
+                                   ##  \deprecated
+                                   ##  This error return is deprecated as of CUDA 3.1. Device emulation mode was
+                                   ##  removed with the CUDA 3.1 release.
+                                   ##
+    cudaErrorMixedDeviceExecution = 28, ##
+                                     ##  This indicates that the API call is not yet implemented. Production
+                                     ##  releases of CUDA will never return this error.
+                                     ##  \deprecated
+                                     ##  This error return is deprecated as of CUDA 4.1.
+                                     ##
+    cudaErrorNotYetImplemented = 31, ##
+                                  ##  This indicated that an emulated device pointer exceeded the 32-bit address
+                                  ##  range.
+                                  ##  \deprecated
+                                  ##  This error return is deprecated as of CUDA 3.1. Device emulation mode was
+                                  ##  removed with the CUDA 3.1 release.
+                                  ##
+    cudaErrorMemoryValueTooLarge = 32, ##
+                                    ##  This indicates that the CUDA driver that the application has loaded is a
+                                    ##  stub library. Applications that run with the stub rather than a real
+                                    ##  driver loaded will resultNotKeyWord in CUDA API returning this error.
+                                    ##
+    cudaErrorStubLibrary = 34, ##
+                            ##  This indicates that the installed NVIDIA CUDA driver is older than the
+                            ##  CUDA runtime library. This is not a supported configuration. Users should
+                            ##  install an updated NVIDIA display driver to allow the application to run.
+                            ##
+    cudaErrorInsufficientDriver = 35, ##
+                                   ##  This indicates that the API call requires a newer CUDA driver than the one
+                                   ##  currently installed. Users should install an updated NVIDIA CUDA driver
+                                   ##  to allow the API call to succeed.
+                                   ##
+    cudaErrorCallRequiresNewerDriver = 36, ##
+                                        ##  This indicates that the surface passed to the API call is not a valid
+                                        ##  surface.
+                                        ##
+    cudaErrorInvalidSurface = 37, ##
+                               ##  This indicates that multiple global or constant variables (across separate
+                               ##  CUDA source files in the application) share the same string name.
+                               ##
+    cudaErrorDuplicateVariableName = 43, ##
+                                      ##  This indicates that multiple textures (across separate CUDA source
+                                      ##  files in the application) share the same string name.
+                                      ##
+    cudaErrorDuplicateTextureName = 44, ##
+                                     ##  This indicates that multiple surfaces (across separate CUDA source
+                                     ##  files in the application) share the same string name.
+                                     ##
+    cudaErrorDuplicateSurfaceName = 45, ##
+                                     ##  This indicates that all CUDA devices are busy or unavailable at the current
+                                     ##  time. Devices are often busy/unavailable due to use of
+                                     ##  ::cudaComputeModeProhibited, ::cudaComputeModeExclusiveProcess, or when long
+                                     ##  running CUDA kernels have filled up the GPU and are blocking new work
+                                     ##  from starting. They can also be unavailable due to memory constraints
+                                     ##  on a device that already has active CUDA work being performed.
+                                     ##
+    cudaErrorDevicesUnavailable = 46, ##
+                                   ##  This indicates that the current context is not compatible with this
+                                   ##  the CUDA Runtime. This can only occur if you are using CUDA
+                                   ##  Runtime/Driver interoperability and have created an existing Driver
+                                   ##  context using the driver API. The Driver context may be incompatible
+                                   ##  either because the Driver context was created using an older version
+                                   ##  of the API, because the Runtime API call expects a primary driver
+                                   ##  context and the Driver context is not primary, or because the Driver
+                                   ##  context has been destroyed. Please see \ref CUDART_DRIVER "Interactions
+                                   ##  with the CUDA Driver API" for more information.
+                                   ##
+    cudaErrorIncompatibleDriverContext = 49, ##
+                                          ##  The device function being invoked (usually via ::cudaLaunchKernel()) was not
+                                          ##  previously configured via the ::cudaConfigureCall() function.
+                                          ##
+    cudaErrorMissingConfiguration = 52, ##
+                                     ##  This indicated that a previous kernel launch failed. This was previously
+                                     ##  used for device emulation of kernel launches.
+                                     ##  \deprecated
+                                     ##  This error return is deprecated as of CUDA 3.1. Device emulation mode was
+                                     ##  removed with the CUDA 3.1 release.
+                                     ##
+    cudaErrorPriorLaunchFailure = 53, ##
+                                   ##  This error indicates that a device runtime grid launch did not occur
+                                   ##  because the depth of the child grid would exceed the maximum supported
+                                   ##  number of nested grid launches.
+                                   ##
+    cudaErrorLaunchMaxDepthExceeded = 65, ##
+                                       ##  This error indicates that a grid launch did not occur because the kernel
+                                       ##  uses file-scoped textures which are unsupported by the device runtime.
+                                       ##  Kernels launched via the device runtime only support textures created with
+                                       ##  the Texture Object API's.
+                                       ##
+    cudaErrorLaunchFileScopedTex = 66, ##
+                                    ##  This error indicates that a grid launch did not occur because the kernel
+                                    ##  uses file-scoped surfaces which are unsupported by the device runtime.
+                                    ##  Kernels launched via the device runtime only support surfaces created with
+                                    ##  the Surface Object API's.
+                                    ##
+    cudaErrorLaunchFileScopedSurf = 67, ##
+                                     ##  This error indicates that a call to ::cudaDeviceSynchronize made from
+                                     ##  the device runtime failed because the call was made at grid depth greater
+                                     ##  than than either the default (2 levels of grids) or user specified device
+                                     ##  limit ::cudaLimitDevRuntimeSyncDepth. To be able to synchronize on
+                                     ##  launched grids at a greater depth successfully, the maximum nested
+                                     ##  depth at which ::cudaDeviceSynchronize will be called must be specified
+                                     ##  with the ::cudaLimitDevRuntimeSyncDepth limit to the ::cudaDeviceSetLimit
+                                     ##  api before the host-side launch of a kernel using the device runtime.
+                                     ##  Keep in mind that additional levels of sync depth require the runtime
+                                     ##  to reserve large amounts of device memory that cannot be used for
+                                     ##  user allocations. Note that ::cudaDeviceSynchronize made from device
+                                     ##  runtime is only supported on devices of compute capability < 9.0.
+                                     ##
+    cudaErrorSyncDepthExceeded = 68, ##
+                                  ##  This error indicates that a device runtime grid launch failed because
+                                  ##  the launch would exceed the limit ::cudaLimitDevRuntimePendingLaunchCount.
+                                  ##  For this launch to proceed successfully, ::cudaDeviceSetLimit must be
+                                  ##  called to set the ::cudaLimitDevRuntimePendingLaunchCount to be higher
+                                  ##  than the upper bound of outstanding launches that can be issued to the
+                                  ##  device runtime. Keep in mind that raising the limit of pending device
+                                  ##  runtime launches will require the runtime to reserve device memory that
+                                  ##  cannot be used for user allocations.
+                                  ##
+    cudaErrorLaunchPendingCountExceeded = 69, ##
+                                           ##  The requested device function does not exist or is not compiled for the
+                                           ##  proper device architecture.
+                                           ##
+    cudaErrorInvalidDeviceFunction = 98, ##
+                                      ##  This indicates that no CUDA-capable devices were detected by the installed
+                                      ##  CUDA driver.
+                                      ##
+    cudaErrorNoDevice = 100, ##
+                          ##  This indicates that the device ordinal supplied by the user does not
+                          ##  correspond to a valid CUDA device or that the action requested is
+                          ##  invalid for the specified device.
+                          ##
+    cudaErrorInvalidDevice = 101, ##
+                               ##  This indicates that the device doesn't have a valid Grid License.
+                               ##
+    cudaErrorDeviceNotLicensed = 102, ##
+                                   ##  By default, the CUDA runtime may perform a minimal set of self-tests,
+                                   ##  as well as CUDA driver tests, to establish the validity of both.
+                                   ##  Introduced in CUDA 11.2, this error return indicates that at least one
+                                   ##  of these tests has failed and the validity of either the runtime
+                                   ##  or the driver could not be established.
+                                   ##
+    cudaErrorSoftwareValidityNotEstablished = 103, ##
+                                                ##  This indicates an internal startup failure in the CUDA runtime.
+                                                ##
+    cudaErrorStartupFailure = 127, ##
+                                ##  This indicates that the device kernel image is invalid.
+                                ##
+    cudaErrorInvalidKernelImage = 200, ##
+                                    ##  This most frequently indicates that there is no context bound to the
+                                    ##  current thread. This can also be returned if the context passed to an
+                                    ##  API call is not a valid handle (such as a context that has had
+                                    ##  ::cuCtxDestroy() invoked on it). This can also be returned if a user
+                                    ##  mixes different API versions (i.e. 3010 context with 3020 API calls).
+                                    ##  See ::cuCtxGetApiVersion() for more details.
+                                    ##
+    cudaErrorDeviceUninitialized = 201, ##
+                                     ##  This indicates that the buffer object could not be mapped.
+                                     ##
+    cudaErrorMapBufferObjectFailed = 205, ##
+                                       ##  This indicates that the buffer object could not be unmapped.
+                                       ##
+    cudaErrorUnmapBufferObjectFailed = 206, ##
+                                         ##  This indicates that the specified array is currently mapped and thus
+                                         ##  cannot be destroyed.
+                                         ##
+    cudaErrorArrayIsMapped = 207, ##
+                               ##  This indicates that the resource is already mapped.
+                               ##
+    cudaErrorAlreadyMapped = 208, ##
+                               ##  This indicates that there is no kernel image available that is suitable
+                               ##  for the device. This can occur when a user specifies code generation
+                               ##  options for a particular CUDA source file that do not include the
+                               ##  corresponding device configuration.
+                               ##
+    cudaErrorNoKernelImageForDevice = 209, ##
+                                        ##  This indicates that a resource has already been acquired.
+                                        ##
+    cudaErrorAlreadyAcquired = 210, ##
+                                 ##  This indicates that a resource is not mapped.
+                                 ##
+    cudaErrorNotMapped = 211, ##
+                           ##  This indicates that a mapped resource is not available for access as an
+                           ##  array.
+                           ##
+    cudaErrorNotMappedAsArray = 212, ##
+                                  ##  This indicates that a mapped resource is not available for access as a
+                                  ##  pointer.
+                                  ##
+    cudaErrorNotMappedAsPointer = 213, ##
+                                    ##  This indicates that an uncorrectable ECC error was detected during
+                                    ##  execution.
+                                    ##
+    cudaErrorECCUncorrectable = 214, ##
+                                  ##  This indicates that the ::cudaLimit passed to the API call is not
+                                  ##  supported by the active device.
+                                  ##
+    cudaErrorUnsupportedLimit = 215, ##
+                                  ##  This indicates that a call tried to access an exclusive-thread device that
+                                  ##  is already in use by a different thread.
+                                  ##
+    cudaErrorDeviceAlreadyInUse = 216, ##
+                                    ##  This error indicates that P2P access is not supported across the given
+                                    ##  devices.
+                                    ##
+    cudaErrorPeerAccessUnsupported = 217, ##
+                                       ##  A PTX compilation failed. The runtime may fall back to compiling PTX if
+                                       ##  an application does not contain a suitable binary for the current device.
+                                       ##
+    cudaErrorInvalidPtx = 218, ##
+                            ##  This indicates an error with the OpenGL or DirectX context.
+                            ##
+    cudaErrorInvalidGraphicsContext = 219, ##
+                                        ##  This indicates that an uncorrectable NVLink error was detected during the
+                                        ##  execution.
+                                        ##
+    cudaErrorNvlinkUncorrectable = 220, ##
+                                     ##  This indicates that the PTX JIT compiler library was not found. The JIT Compiler
+                                     ##  library is used for PTX compilation. The runtime may fall back to compiling PTX
+                                     ##  if an application does not contain a suitable binary for the current device.
+                                     ##
+    cudaErrorJitCompilerNotFound = 221, ##
+                                     ##  This indicates that the provided PTX was compiled with an unsupported toolchain.
+                                     ##  The most common reason for this, is the PTX was generated by a compiler newer
+                                     ##  than what is supported by the CUDA driver and PTX JIT compiler.
+                                     ##
+    cudaErrorUnsupportedPtxVersion = 222, ##
+                                       ##  This indicates that the JIT compilation was disabled. The JIT compilation compiles
+                                       ##  PTX. The runtime may fall back to compiling PTX if an application does not contain
+                                       ##  a suitable binary for the current device.
+                                       ##
+    cudaErrorJitCompilationDisabled = 223, ##
+                                        ##  This indicates that the provided execution affinity is not supported by the device.
+                                        ##
+    cudaErrorUnsupportedExecAffinity = 224, ##
+                                         ##  This indicates that the code to be compiled by the PTX JIT contains
+                                         ##  unsupported call to cudaDeviceSynchronize.
+                                         ##
+    cudaErrorUnsupportedDevSideSync = 225, ##
+                                        ##  This indicates that the device kernel source is invalid.
+                                        ##
+    cudaErrorInvalidSource = 300, ##
+                               ##  This indicates that the file specified was not found.
+                               ##
+    cudaErrorFileNotFound = 301, ##
+                              ##  This indicates that a link to a shared object failed to resolve.
+                              ##
+    cudaErrorSharedObjectSymbolNotFound = 302, ##
+                                            ##  This indicates that initialization of a shared object failed.
+                                            ##
+    cudaErrorSharedObjectInitFailed = 303, ##
+                                        ##  This error indicates that an OS call failed.
+                                        ##
+    cudaErrorOperatingSystem = 304, ##
+                                 ##  This indicates that a resource handle passed to the API call was not
+                                 ##  valid. Resource handles are opaque types like ::cudaStream_t and
+                                 ##  ::cudaEvent_t.
+                                 ##
+    cudaErrorInvalidResourceHandle = 400, ##
+                                       ##  This indicates that a resource required by the API call is not in a
+                                       ##  valid state to perform the requested operation.
+                                       ##
+    cudaErrorIllegalState = 401, ##
+                              ##  This indicates an attempt was made to introspect an object in a way that
+                              ##  would discard semantically important information. This is either due to
+                              ##  the object using funtionality newer than the API version used to
+                              ##  introspect it or omission of optional return arguments.
+                              ##
+    cudaErrorLossyQuery = 402, ##
+                            ##  This indicates that a named symbol was not found. Examples of symbols
+                            ##  are global/constant variable names, driver function names, texture names,
+                            ##  and surface names.
+                            ##
+    cudaErrorSymbolNotFound = 500, ##
+                                ##  This indicates that asynchronous operations issued previously have not
+                                ##  completed yet. This resultNotKeyWord is not actually an error, but must be indicated
+                                ##  differently than ::cudaSuccess (which indicates completion). Calls that
+                                ##  may return this value include ::cudaEventQuery() and ::cudaStreamQuery().
+                                ##
+    cudaErrorNotReady = 600, ##
+                          ##  The device encountered a load or store instruction on an invalid memory address.
+                          ##  This leaves the process in an inconsistent state and any further CUDA work
+                          ##  will return the same error. To continue using CUDA, the process must be terminated
+                          ##  and relaunched.
+                          ##
+    cudaErrorIllegalAddress = 700, ##
+                                ##  This indicates that a launch did not occur because it did not have
+                                ##  appropriate resources. Although this error is similar to
+                                ##  ::cudaErrorInvalidConfiguration, this error usually indicates that the
+                                ##  user has attempted to pass too many arguments to the device kernel, or the
+                                ##  kernel launch specifies too many threads for the kernel's register count.
+                                ##
+    cudaErrorLaunchOutOfResources = 701, ##
+                                      ##  This indicates that the device kernel took too long to execute. This can
+                                      ##  only occur if timeouts are enabled - see the device property
+                                      ##  \ref
+                                      ## ::cudaDeviceProp::kernelExecTimeoutEnabled "kernelExecTimeoutEnabled"
+                                      ##  for more information.
+                                      ##  This leaves the process in an inconsistent state and any further CUDA work
+                                      ##  will return the same error. To continue using CUDA, the process must be terminated
+                                      ##  and relaunched.
+                                      ##
+    cudaErrorLaunchTimeout = 702, ##
+                               ##  This error indicates a kernel launch that uses an incompatible texturing
+                               ##  mode.
+                               ##
+    cudaErrorLaunchIncompatibleTexturing = 703, ##
+                                             ##  This error indicates that a call to ::cudaDeviceEnablePeerAccess() is
+                                             ##  trying to re-enable peer addressing on from a context which has already
+                                             ##  had peer addressing enabled.
+                                             ##
+    cudaErrorPeerAccessAlreadyEnabled = 704, ##
+                                          ##  This error indicates that ::cudaDeviceDisablePeerAccess() is trying to
+                                          ##  disable peer addressing which has not been enabled yet via
+                                          ##  ::cudaDeviceEnablePeerAccess().
+                                          ##
+    cudaErrorPeerAccessNotEnabled = 705, ##
+                                      ##  This indicates that the user has called ::cudaSetValidDevices(),
+                                      ##  ::cudaSetDeviceFlags(), ::cudaD3D9SetDirect3DDevice(),
+                                      ##  ::cudaD3D10SetDirect3DDevice, ::cudaD3D11SetDirect3DDevice(), or
+                                      ##  ::cudaVDPAUSetVDPAUDevice() after initializing the CUDA runtime by
+                                      ##  calling non-device management operations (allocating memory and
+                                      ##  launching kernels are examples of non-device management operations).
+                                      ##  This error can also be returned if using runtime/driver
+                                      ##  interoperability and there is an existing ::CUcontext active on the
+                                      ##  host thread.
+                                      ##
+    cudaErrorSetOnActiveProcess = 708, ##
+                                    ##  This error indicates that the context current to the calling thread
+                                    ##  has been destroyed using ::cuCtxDestroy, or is a primary context which
+                                    ##  has not yet been initialized.
+                                    ##
+    cudaErrorContextIsDestroyed = 709, ##
+                                    ##  An assert triggered in device code during kernel execution. The device
+                                    ##  cannot be used again. All existing allocations are invalid. To continue
+                                    ##  using CUDA, the process must be terminated and relaunched.
+                                    ##
+    cudaErrorAssert = 710, ##
+                        ##  This error indicates that the hardware resources required to enable
+                        ##  peer access have been exhausted for one or more of the devices
+                        ##  passed to ::cudaEnablePeerAccess().
+                        ##
+    cudaErrorTooManyPeers = 711, ##
+                              ##  This error indicates that the memory range passed to ::cudaHostRegister()
+                              ##  has already been registered.
+                              ##
+    cudaErrorHostMemoryAlreadyRegistered = 712, ##
+                                             ##  This error indicates that the pointer passed to ::cudaHostUnregister()
+                                             ##  does not correspond to any currently registered memory region.
+                                             ##
+    cudaErrorHostMemoryNotRegistered = 713, ##
+                                         ##  Device encountered an error in the call stack during kernel execution,
+                                         ##  possibly due to stack corruption or exceeding the stack size limit.
+                                         ##  This leaves the process in an inconsistent state and any further CUDA work
+                                         ##  will return the same error. To continue using CUDA, the process must be terminated
+                                         ##  and relaunched.
+                                         ##
+    cudaErrorHardwareStackError = 714, ##
+                                    ##  The device encountered an illegal instruction during kernel execution
+                                    ##  This leaves the process in an inconsistent state and any further CUDA work
+                                    ##  will return the same error. To continue using CUDA, the process must be terminated
+                                    ##  and relaunched.
+                                    ##
+    cudaErrorIllegalInstruction = 715, ##
+                                    ##  The device encountered a load or store instruction
+                                    ##  on a memory address which is not aligned.
+                                    ##  This leaves the process in an inconsistent state and any further CUDA work
+                                    ##  will return the same error. To continue using CUDA, the process must be terminated
+                                    ##  and relaunched.
+                                    ##
+    cudaErrorMisalignedAddress = 716, ##
+                                   ##  While executing a kernel, the device encountered an instruction
+                                   ##  which can only operate on memory locations in certain address spaces
+                                   ##  (global, shared, or local), but was supplied a memory address not
+                                   ##  belonging to an allowed address space.
+                                   ##  This leaves the process in an inconsistent state and any further CUDA work
+                                   ##  will return the same error. To continue using CUDA, the process must be terminated
+                                   ##  and relaunched.
+                                   ##
+    cudaErrorInvalidAddressSpace = 717, ##
+                                     ##  The device encountered an invalid program counter.
+                                     ##  This leaves the process in an inconsistent state and any further CUDA work
+                                     ##  will return the same error. To continue using CUDA, the process must be terminated
+                                     ##  and relaunched.
+                                     ##
+    cudaErrorInvalidPc = 718, ##
+                           ##  An exception occurred on the device while executing a kernel. Common
+                           ##  causes include dereferencing an invalid device pointer and accessing
+                           ##  out of bounds shared memory. Less common cases can be system specific - more
+                           ##  information about these cases can be found in the system specific user guide.
+                           ##  This leaves the process in an inconsistent state and any further CUDA work
+                           ##  will return the same error. To continue using CUDA, the process must be terminated
+                           ##  and relaunched.
+                           ##
+    cudaErrorLaunchFailure = 719, ##
+                               ##  This error indicates that the number of blocks launched per grid for a kernel that was
+                               ##  launched via either ::cudaLaunchCooperativeKernel or ::cudaLaunchCooperativeKernelMultiDevice
+                               ##  exceeds the maximum number of blocks as allowed by ::cudaOccupancyMaxActiveBlocksPerMultiprocessor
+                               ##  or
+                               ## ::cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags times the number of multiprocessors
+                               ##  as specified by the device attribute ::cudaDevAttrMultiProcessorCount.
+                               ##
+    cudaErrorCooperativeLaunchTooLarge = 720, ##
+                                           ##  This error indicates the attempted operation is not permitted.
+                                           ##
+    cudaErrorNotPermitted = 800, ##
+                              ##  This error indicates the attempted operation is not supported
+                              ##  on the current system or device.
+                              ##
+    cudaErrorNotSupported = 801, ##
+                              ##  This error indicates that the system is not yet ready to start any CUDA
+                              ##  work.  To continue using CUDA, verify the system configuration is in a
+                              ##  valid state and all required driver daemons are actively running.
+                              ##  More information about this error can be found in the system specific
+                              ##  user guide.
+                              ##
+    cudaErrorSystemNotReady = 802, ##
+                                ##  This error indicates that there is a mismatch between the versions of
+                                ##  the display driver and the CUDA driver. Refer to the compatibility documentation
+                                ##  for supported versions.
+                                ##
+    cudaErrorSystemDriverMismatch = 803, ##
+                                      ##  This error indicates that the system was upgraded to run with forward compatibility
+                                      ##  but the visible hardware detected by CUDA does not support this configuration.
+                                      ##  Refer to the compatibility documentation for the supported hardware matrix or ensure
+                                      ##  that only supported hardware is visible during initialization via the CUDA_VISIBLE_DEVICES
+                                      ##  environment variable.
+                                      ##
+    cudaErrorCompatNotSupportedOnDevice = 804, ##
+                                            ##  This error indicates that the MPS client failed to connect to the MPS control daemon or the MPS server.
+                                            ##
+    cudaErrorMpsConnectionFailed = 805, ##
+                                     ##  This error indicates that the remote procedural call between the MPS server and the MPS client failed.
+                                     ##
+    cudaErrorMpsRpcFailure = 806, ##
+                               ##  This error indicates that the MPS server is not ready to accept new MPS client requests.
+                               ##  This error can be returned when the MPS server is in the process of recovering from a fatal failure.
+                               ##
+    cudaErrorMpsServerNotReady = 807, ##
+                                   ##  This error indicates that the hardware resources required to create MPS client have been exhausted.
+                                   ##
+    cudaErrorMpsMaxClientsReached = 808, ##
+                                      ##  This error indicates the the hardware resources required to device connections have been exhausted.
+                                      ##
+    cudaErrorMpsMaxConnectionsReached = 809, ##
+                                          ##  This error indicates that the MPS client has been terminated by the server. To continue using CUDA, the process must be terminated and relaunched.
+                                          ##
+    cudaErrorMpsClientTerminated = 810, ##
+                                     ##  This error indicates, that the program is using CUDA Dynamic Parallelism, but the current configuration, like MPS, does not support it.
+                                     ##
+    cudaErrorCdpNotSupported = 811, ##
+                                 ##  This error indicates, that the program contains an unsupported interaction between different versions of CUDA Dynamic Parallelism.
+                                 ##
+    cudaErrorCdpVersionMismatch = 812, ##
+                                    ##  The operation is not permitted when the stream is capturing.
+                                    ##
+    cudaErrorStreamCaptureUnsupported = 900, ##
+                                          ##  The current capture sequence on the stream has been invalidated due to
+                                          ##  a previous error.
+                                          ##
+    cudaErrorStreamCaptureInvalidated = 901, ##
+                                          ##  The operation would have resulted in a merge of two independent capture
+                                          ##  sequences.
+                                          ##
+    cudaErrorStreamCaptureMerge = 902, ##
+                                    ##  The capture was not initiated in this stream.
+                                    ##
+    cudaErrorStreamCaptureUnmatched = 903, ##
+                                        ##  The capture sequence contains a fork that was not joined to the primary
+                                        ##  stream.
+                                        ##
+    cudaErrorStreamCaptureUnjoined = 904, ##
+                                       ##  A dependency would have been created which crosses the capture sequence
+                                       ##  boundary. Only implicit in-stream ordering dependencies are allowed to
+                                       ##  cross the boundary.
+                                       ##
+    cudaErrorStreamCaptureIsolation = 905, ##
+                                        ##  The operation would have resulted in a disallowed implicit dependency on
+                                        ##  a current capture sequence from cudaStreamLegacy.
+                                        ##
+    cudaErrorStreamCaptureImplicit = 906, ##
+                                       ##  The operation is not permitted on an event which was last recorded in a
+                                       ##  capturing stream.
+                                       ##
+    cudaErrorCapturedEvent = 907, ##
+                               ##  A stream capture sequence not initiated with the ::cudaStreamCaptureModeRelaxed
+                               ##  argument to ::cudaStreamBeginCapture was passed to ::cudaStreamEndCapture in a
+                               ##  different thread.
+                               ##
+    cudaErrorStreamCaptureWrongThread = 908, ##
+                                          ##  This indicates that the wait operation has timed out.
+                                          ##
+    cudaErrorTimeout = 909, ##
+                         ##  This error indicates that the graph update was not performed because it included
+                         ##  changes which violated constraints specific to instantiated graph update.
+                         ##
+    cudaErrorGraphExecUpdateFailure = 910, ##
+                                        ##  This indicates that an async error has occurred in a device outside of CUDA.
+                                        ##  If CUDA was waiting for an external device's signal before consuming shared data,
+                                        ##  the external device signaled an error indicating that the data is not valid for
+                                        ##  consumption. This leaves the process in an inconsistent state and any further CUDA
+                                        ##  work will return the same error. To continue using CUDA, the process must be
+                                        ##  terminated and relaunched.
+                                        ##
+    cudaErrorExternalDevice = 911, ##
+                                ##  This indicates that a kernel launch error has occurred due to cluster
+                                ##  misconfiguration.
+                                ##
+    cudaErrorInvalidClusterSize = 912, ##
+                                    ##  This indicates that an unknown internal error has occurred.
+                                    ##
+    cudaErrorUnknown = 999, ##
+                         ##  Any unhandled CUDA driver error is added to this value and returned via
+                         ##  the runtime. Production releases of CUDA should not return such errors.
+                         ##  \deprecated
+                         ##  This error return is deprecated as of CUDA 4.1.
+                         ##
+    cudaErrorApiFailureBase = 10000
+
+  cudaError_t* = cudaError
+
+  CUstream_st = object
+  cudaStream_t* = ptr CUstream_st
+
+  CUevent_st = object
+  cudaEvent_t* = ptr CUevent_st
+
+
+  CUuuid_st* {.bycopy.} = object
+    ## < CUDA definition of UUID
+    bytes*: array[16, char]
+
+  CUuuid* = CUuuid_st
+  cudaUUID_t* = CUuuid_st
+
+  cudaDeviceProp* {.bycopy.} = object
+    name*: array[256, char]
+    ## < ASCII string identifying device
+    uuid*: cudaUUID_t
+    ## < 16-byte unique identifier
+    luid*: array[8, char]
+    ## < 8-byte locally unique identifier. Value is undefined on TCC and non-Windows platforms
+    luidDeviceNodeMask*: cuint
+    ## < LUID device node mask. Value is undefined on TCC and non-Windows platforms
+    totalGlobalMem*: csize_t
+    ## < Global memory available on device in bytes
+    sharedMemPerBlock*: csize_t
+    ## < Shared memory available per block in bytes
+    regsPerBlock*: cint
+    ## < 32-bit registers available per block
+    warpSize*: cint
+    ## < Warp size in threads
+    memPitch*: csize_t
+    ## < Maximum pitch in bytes allowed by memory copies
+    maxThreadsPerBlock*: cint
+    ## < Maximum number of threads per block
+    maxThreadsDim*: array[3, cint]
+    ## < Maximum size of each dimension of a block
+    maxGridSize*: array[3, cint]
+    ## < Maximum size of each dimension of a grid
+    clockRate*: cint
+    ## < Deprecated, Clock frequency in kilohertz
+    totalConstMem*: csize_t
+    ## < Constant memory available on device in bytes
+    major*: cint
+    ## < Major compute capability
+    minor*: cint
+    ## < Minor compute capability
+    textureAlignment*: csize_t
+    ## < Alignment requirement for textures
+    texturePitchAlignment*: csize_t
+    ## < Pitch alignment requirement for texture references bound to pitched memory
+    deviceOverlap*: cint
+    ## < Device can concurrently copy memory and execute a kernel. Deprecated. Use instead asyncEngineCount.
+    multiProcessorCount*: cint
+    ## < Number of multiprocessors on device
+    kernelExecTimeoutEnabled*: cint
+    ## < Deprecated, Specified whether there is a run time limit on kernels
+    integrated*: cint
+    ## < Device is integrated as opposed to discrete
+    canMapHostMemory*: cint
+    ## < Device can map host memory with cudaHostAlloc/cudaHostGetDevicePointer
+    computeMode*: cint
+    ## < Deprecated, Compute mode (See ::cudaComputeMode)
+    maxTexture1D*: cint
+    ## < Maximum 1D texture size
+    maxTexture1DMipmap*: cint
+    ## < Maximum 1D mipmapped texture size
+    maxTexture1DLinear*: cint
+    ## < Deprecated, do not use. Use cudaDeviceGetTexture1DLinearMaxWidth() or cuDeviceGetTexture1DLinearMaxWidth() instead.
+    maxTexture2D*: array[2, cint]
+    ## < Maximum 2D texture dimensions
+    maxTexture2DMipmap*: array[2, cint]
+    ## < Maximum 2D mipmapped texture dimensions
+    maxTexture2DLinear*: array[3, cint]
+    ## < Maximum dimensions (width, height, pitch) for 2D textures bound to pitched memory
+    maxTexture2DGather*: array[2, cint]
+    ## < Maximum 2D texture dimensions if texture gather operations have to be performed
+    maxTexture3D*: array[3, cint]
+    ## < Maximum 3D texture dimensions
+    maxTexture3DAlt*: array[3, cint]
+    ## < Maximum alternate 3D texture dimensions
+    maxTextureCubemap*: cint
+    ## < Maximum Cubemap texture dimensions
+    maxTexture1DLayered*: array[2, cint]
+    ## < Maximum 1D layered texture dimensions
+    maxTexture2DLayered*: array[3, cint]
+    ## < Maximum 2D layered texture dimensions
+    maxTextureCubemapLayered*: array[2, cint]
+    ## < Maximum Cubemap layered texture dimensions
+    maxSurface1D*: cint
+    ## < Maximum 1D surface size
+    maxSurface2D*: array[2, cint]
+    ## < Maximum 2D surface dimensions
+    maxSurface3D*: array[3, cint]
+    ## < Maximum 3D surface dimensions
+    maxSurface1DLayered*: array[2, cint]
+    ## < Maximum 1D layered surface dimensions
+    maxSurface2DLayered*: array[3, cint]
+    ## < Maximum 2D layered surface dimensions
+    maxSurfaceCubemap*: cint
+    ## < Maximum Cubemap surface dimensions
+    maxSurfaceCubemapLayered*: array[2, cint]
+    ## < Maximum Cubemap layered surface dimensions
+    surfaceAlignment*: csize_t
+    ## < Alignment requirements for surfaces
+    concurrentKernels*: cint
+    ## < Device can possibly execute multiple kernels concurrently
+    ECCEnabled*: cint
+    ## < Device has ECC support enabled
+    pciBusID*: cint
+    ## < PCI bus ID of the device
+    pciDeviceID*: cint
+    ## < PCI device ID of the device
+    pciDomainID*: cint
+    ## < PCI domain ID of the device
+    tccDriver*: cint
+    ## < 1 if device is a Tesla device using TCC driver, 0 otherwise
+    asyncEngineCount*: cint
+    ## < Number of asynchronous engines
+    unifiedAddressing*: cint
+    ## < Device shares a unified address space with the host
+    memoryClockRate*: cint
+    ## < Deprecated, Peak memory clock frequency in kilohertz
+    memoryBusWidth*: cint
+    ## < Global memory bus width in bits
+    l2CacheSize*: cint
+    ## < Size of L2 cache in bytes
+    persistingL2CacheMaxSize*: cint
+    ## < Device's maximum l2 persisting lines capacity setting in bytes
+    maxThreadsPerMultiProcessor*: cint
+    ## < Maximum resident threads per multiprocessor
+    streamPrioritiesSupported*: cint
+    ## < Device supports stream priorities
+    globalL1CacheSupported*: cint
+    ## < Device supports caching globals in L1
+    localL1CacheSupported*: cint
+    ## < Device supports caching locals in L1
+    sharedMemPerMultiprocessor*: csize_t
+    ## < Shared memory available per multiprocessor in bytes
+    regsPerMultiprocessor*: cint
+    ## < 32-bit registers available per multiprocessor
+    managedMemory*: cint
+    ## < Device supports allocating managed memory on this system
+    isMultiGpuBoard*: cint
+    ## < Device is on a multi-GPU board
+    multiGpuBoardGroupID*: cint
+    ## < Unique identifier for a group of devices on the same multi-GPU board
+    hostNativeAtomicSupported*: cint
+    ## < Link between the device and the host supports native atomic operations
+    singleToDoublePrecisionPerfRatio*: cint
+    ## < Deprecated, Ratio of single precision performance (in floating-point operations per second) to double precision performance
+    pageableMemoryAccess*: cint
+    ## < Device supports coherently accessing pageable memory without calling cudaHostRegister on it
+    concurrentManagedAccess*: cint
+    ## < Device can coherently access managed memory concurrently with the CPU
+    computePreemptionSupported*: cint
+    ## < Device supports Compute Preemption
+    canUseHostPointerForRegisteredMem*: cint
+    ## < Device can access host registered memory at the same virtual address as the CPU
+    cooperativeLaunch*: cint
+    ## < Device supports launching cooperative kernels via ::cudaLaunchCooperativeKernel
+    cooperativeMultiDeviceLaunch*: cint
+    ## < Deprecated, cudaLaunchCooperativeKernelMultiDevice is deprecated.
+    sharedMemPerBlockOptin*: csize_t
+    ## < Per device maximum shared memory per block usable by special opt in
+    pageableMemoryAccessUsesHostPageTables*: cint
+    ## < Device accesses pageable memory via the host's page tables
+    directManagedMemAccessFromHost*: cint
+    ## < Host can directly access managed memory on the device without migration.
+    maxBlocksPerMultiProcessor*: cint
+    ## < Maximum number of resident blocks per multiprocessor
+    accessPolicyMaxWindowSize*: cint
+    ## < The maximum value of ::cudaAccessPolicyWindow::num_bytes.
+    reservedSharedMemPerBlock*: csize_t
+    ## < Shared memory reserved by CUDA driver per block in bytes
+    hostRegisterSupported*: cint
+    ## < Device supports host memory registration via ::cudaHostRegister.
+    sparseCudaArraySupported*: cint
+    ## < 1 if the device supports sparse CUDA arrays and sparse CUDA mipmapped arrays, 0 otherwise
+    hostRegisterReadOnlySupported*: cint
+    ## < Device supports using the ::cudaHostRegister flag cudaHostRegisterReadOnly to register memory that must be mapped as read-only to the GPU
+    timelineSemaphoreInteropSupported*: cint
+    ## < External timeline semaphore interop is supported on the device
+    memoryPoolsSupported*: cint
+    ## < 1 if the device supports using the cudaMallocAsync and cudaMemPool family of APIs, 0 otherwise
+    gpuDirectRDMASupported*: cint
+    ## < 1 if the device supports GPUDirect RDMA APIs, 0 otherwise
+    gpuDirectRDMAFlushWritesOptions*: cuint
+    ## < Bitmask to be interpreted according to the ::cudaFlushGPUDirectRDMAWritesOptions enum
+    gpuDirectRDMAWritesOrdering*: cint
+    ## < See the ::cudaGPUDirectRDMAWritesOrdering enum for numerical values
+    memoryPoolSupportedHandleTypes*: cuint
+    ## < Bitmask of handle types supported with mempool-based IPC
+    deferredMappingCudaArraySupported*: cint
+    ## < 1 if the device supports deferred mapping CUDA arrays and CUDA mipmapped arrays
+    ipcEventSupported*: cint
+    ## < Device supports IPC Events.
+    clusterLaunch*: cint
+    ## < Indicates device supports cluster launch
+    unifiedFunctionPointers*: cint
+    ## < Indicates device supports unified pointers
+    reserved2*: array[2, cint]
+    reserved1*: array[1, cint]
+    ## < Reserved for future use
+    reserved*: array[60, cint]
+    ## < Reserved for future use
+
+
+proc cudaRuntimeGetVersion*(runtimeVersion: ptr cint): cudaError_t {.cdecl,
+    importc: "cudaRuntimeGetVersion", dynlib: libCudaRT.}
+
+proc cudaGetDeviceProperties*(prop: ptr cudaDeviceProp; device: cint): cudaError_t {.
+    cdecl, importc: "cudaGetDeviceProperties", dynlib: libCudaRT.}
+
+proc cudaEventCreate*(event: ptr cudaEvent_t): cudaError_t {.cdecl,
+    importc: "cudaEventCreate", dynlib: libCudaRT.}
+
+proc cudaEventRecord*(event: cudaEvent_t; stream: cudaStream_t): cudaError_t {.
+    cdecl, importc: "cudaEventRecord", dynlib: libCudaRT.}
+
+proc cudaDeviceSynchronize*(): cudaError_t {.cdecl,
+    importc: "cudaDeviceSynchronize", dynlib: libCudaRT.}
+
+proc cudaEventElapsedTime*(ms: ptr cfloat; start: cudaEvent_t; `end`: cudaEvent_t): cudaError_t {.
+    cdecl, importc: "cudaEventElapsedTime", dynlib: libCudaRT.}
+
+proc cudaEventDestroy*(event: cudaEvent_t): cudaError_t {.cdecl,
+      importc: "cudaEventDestroy", dynlib: libCudaRT.}
+
+
+
+
+
+template check*(status: CUresult) =
+  ## Check the status code of a CUDA operation
+  ## Exit program with error if failure
+
+  let code = status # ensure that the input expression is evaluated once only
+  if code != CUDA_SUCCESS:
+    writeStackTrace()
+    stderr.write(astToStr(status) & " " & $instantiationInfo() & " exited with error: " & $code & '\n')
+    quit 1
+
+template check*(a: sink nvrtcResult) =
+  let code = a
+  if code != NVRTC_SUCCESS:
+    writeStackTrace()
+    stderr.write(astToStr(status) & " " & $instantiationInfo() & " exited with error: " & $code & '\n')
+    quit 1
+
+template check*(a: sink cudaError_t) =
+  let code = a
+  if code != cudaSuccess:
+    writeStackTrace()
+    stderr.write(astToStr(status) & " " & $instantiationInfo() & " exited with error: " & $code & '\n')
+    quit 1
