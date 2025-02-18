@@ -39,10 +39,7 @@ when UseASM_X86_64:
 when UseASM_ARM64:
   import ./assembly/limbs_asm_modular_arm64
 
-when nimvm:
-  from constantine/named/deriv/precompute import montyResidue_precompute
-else:
-  discard
+from constantine/named/deriv/precompute import montyResidue_precompute
 
 export Fp, Fr, FF
 
