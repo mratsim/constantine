@@ -20,20 +20,9 @@ import ./c_abi
 #
 # ############################################################
 
-const libPath = "/opt/cuda/lib64/" # For now, only support Linux
-static: echo "[Constantine] Will search Cuda runtime in $LD_LIBRARY_PATH and " & libPath & "libcuda.so"
-const libCuda = "(libcuda.so|" & libPath & "libcuda.so)"
-
-## TODO: copy over `nimcuda` `libpaths.nim`?
-## Path to your CUDA installation. Currently a `strdefine`, will likely change in the future
-#const CudaPath {.strdefine.} = "/usr/local/cuda-12.6/targets/x86_64-linux/"
-const CudaPath {.strdefine.} = "/usr/local/cuda-11.6/targets/x86_64-linux/"
-
-## NOTE: We need to define the paths to our CUDA installation at compile time,
-## because we need to use the `{.header: ...}` pragma for the CUDA wrapper.
-## We might move to a 'supply your own `nim.cfg` defining them' approach in the future.
-{.passC: "-I" & CudaPath & "/include".}
-{.passL: "-L" & CudaPath & "/lib -lcuda".}
+import ./libpaths
+tellCompilerToUseCuda()
+const libCuda = "(libcuda.so|libcuda.so)"
 
 # Cuda offers 2 APIs:
 # - cuda.h               the driver API
@@ -1822,6 +1811,9 @@ proc cudaEventDestroy*(event: cudaEvent_t): cudaError_t {.cdecl,
 
 
 
+######################################################################
+################################ Utilities ###########################
+######################################################################
 
 
 template check*(status: CUresult, quitOnFailure = true) =
