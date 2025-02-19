@@ -15,6 +15,7 @@
 #include "constantine/core/threadpool.h"
 
 // Hash functions
+#include "constantine/hashes/keccak256.h"
 #include "constantine/hashes/sha256.h"
 
 // Cryptographically Secure Random Number Generators
