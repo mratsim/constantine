@@ -667,7 +667,7 @@ proc gpuTypeToString(t: GpuType, ident: string = "", allowArrayToPtr = false): s
   if ident.len > 0 and t.kind != gtArray: # still need to add ident
     result.add " " & ident
 
-proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0): string =
+proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0, skipSemicolon = false): string =
   let indentStr = "  ".repeat(indent)
 
   #echo "At: ", ast.repr
@@ -785,7 +785,7 @@ proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0): string =
     result = "struct " & ast.tName & "{\n"
     for el in ast.tFields:
       result.add "  " & gpuTypeToString(el.typ, el.name) & ";\n"
-    result.add "};"
+    result.add "}"
 
   of gpuObjConstr:
     result = "{"
