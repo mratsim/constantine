@@ -109,6 +109,7 @@ type
       aValues: seq[string]
       aLitType: GpuType # type of first element
     of gpuBlock:
+      blockLabel: string # optional name of the block. If any given, will open a `{ }` scope in CUDA
       statements: seq[GpuAst]
     of gpuReturn:
       rValue: GpuAst
@@ -334,10 +335,25 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
 
   #echo node.treerepr
   case node.kind
-  of nnkStmtList, nnkBlockStmt:
+  of nnkEmpty: result = GpuAst(kind: gpuVoid) # nothing to do
+  of nnkStmtList:
     result = GpuAst(kind: gpuBlock)
     for el in node:
       result.statements.add ctx.toGpuAst(el)
+  of nnkBlockStmt:
+    # BlockStmt
+    #   Sym "unrolledIter_i0"  <- ignore the block label for now!
+    #   Call
+    #     Sym "printf"
+    #     StrLit "i = %u\n"
+    #     IntLit 0
+    let blockLabel = if node[0].kind in {nnkSym, nnkIdent}: node[0].strVal
+                     elif node[0].kind == nnkEmpty: ""
+                     else: raiseAssert "Unexpected node in block label field: " & $node.treerepr
+    result = GpuAst(kind: gpuBlock,
+                    blockLabel: blockLabel)
+    for i in 1 ..< node.len: # index 0 is the block label
+      result.statements.add ctx.toGpuAst(node[i])
   of nnkStmtListExpr: # for statements that return a value.
     ## XXX: For CUDA just a block?
     result = GpuAst(kind: gpuBlock)
@@ -677,12 +693,16 @@ proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0): string =
 
   of gpuBlock:
     result = ""
+    if ast.blockLabel.len > 0:
+      result.add "\n" & indentStr & "{ // " & ast.blockLabel & "\n"
     for i, el in ast.statements:
       result.add ctx.genCuda(el, indent)
-      if el.kind != gpuBlock: # nested block ⇒ ; already added
+      if el.kind != gpuBlock and not skipSemicolon: # nested block ⇒ ; already added
         result.add ";"
       if i < ast.statements.high:
         result.add "\n"
+    if ast.blockLabel.len > 0:
+      result.add "\n" & indentStr & "} // " & ast.blockLabel & "\n"
 
   of gpuVar:
     result = indentStr & gpuTypeToString(ast.vType, ast.vName)
