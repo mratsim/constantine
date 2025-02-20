@@ -186,6 +186,7 @@ proc toGpuTypeKind(t: NimTypeKind): GpuTypeKind =
     # , ntyEmpty, ntyAlias, ntyNil, ntyExpr, ntyStmt, ntyTypeDesc, ntyGenericInvocation, ntyGenericBody, ntyGenericInst, ntyGenericParam, ntyDistinct, ntyEnum, ntyOrdinal, ntyArray, ntyObject, ntyTuple, ntySet, ntyRange, ntyPtr, ntyRef, ntyVar, ntySequence, ntyProc,
   #of ntyPointer, ntyUncheckedArray, ntyOpenArray, ntyString, ntyCString
   # , ntyForward, ntyInt, ntyInt8,
+  of ntyBool: gtBool
   of ntyInt16: gtInt16
   of ntyInt32: gtInt32
   of ntyInt64: gtInt64
@@ -251,7 +252,7 @@ proc nimToGpuType(n: NimNode): GpuType =
   else:
     if n.kind == nnkEmpty: return initGpuType(gtVoid)
     case n.typeKind
-    of ntyInt .. ntyUint64: # includes all float types
+    of ntyBool, ntyInt .. ntyUint64: # includes all float types
       result = initGpuType(toGpuTypeKind n.typeKind)
     of ntyPtr:
       result = initGpuPtrType(getInnerPointerType(n))
@@ -629,6 +630,7 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
 
 proc gpuTypeToString(t: GpuTypeKind): string =
   case t
+  of gtBool: "bool"
   of gtUint8: "unsigned char"
   of gtUint16: "unsigned short"
   of gtUint32: "unsigned int"
