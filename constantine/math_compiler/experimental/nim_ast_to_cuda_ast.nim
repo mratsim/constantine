@@ -91,6 +91,7 @@ type
       bOp: string
       bLeft, bRight: GpuAst
     of gpuVar:
+      vIsVolatile: bool
       vName: string
       vType: GpuType
       vInit: GpuAst
@@ -400,7 +401,26 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     for declaration in node:
       # Each declaration gets converted to a gpuVar
       var varNode = GpuAst(kind: gpuVar)
-      varNode.vName = declaration[0].strVal
+      case declaration[0].kind
+      of nnkIdent, nnkSym:
+        # IdentDefs               # declaration
+        #   Sym "res"             # declaration[0]
+        #   Sym "uint32"
+        #   Empty
+        varNode.vName = declaration[0].strVal
+      of nnkPragmaExpr:
+        # IdentDefs               # declaration
+        #   PragmaExpr            # declaration[0]
+        #     Sym "res"           # declaration[0][0]
+        #     Pragma              # declaration[0][1]
+        #       Ident "volatile"
+        #   Sym "uint32"
+        #   Empty
+        varNode.vName = declaration[0][0].strVal
+        doAssert declaration[0][1].kind == nnkPragma
+        doAssert declaration[0][1][0].kind == nnkIdent
+        varNode.vIsVolatile = declaration[0][1][0].strVal == "volatile"
+      else: raiseAssert "Unexpected node kind for variable: " & $declaration.treeRepr
       varNode.vType = nimToGpuType(declaration)
       ## XXX: handle initialization for array types. Need a memcpy!
       ## In principle should be straightforward. Turn e.g.
@@ -707,7 +727,8 @@ proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0, skipSemicolon = false): s
       result.add "\n" & indentStr & "} // " & ast.blockLabel & "\n"
 
   of gpuVar:
-    result = indentStr & gpuTypeToString(ast.vType, ast.vName)
+    let volatileStr = if ast.vIsVolatile: "volatile " else: ""
+    result = indentStr & volatileStr & gpuTypeToString(ast.vType, ast.vName)
     if ast.vInit != nil:
       result &= " = " & ctx.genCuda(ast.vInit)
 
