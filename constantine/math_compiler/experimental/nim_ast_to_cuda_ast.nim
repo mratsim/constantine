@@ -693,7 +693,8 @@ proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0): string =
     result = indentStr & ctx.genCuda(ast.aLeft) & " = " & ctx.genCuda(ast.aRight)
 
   of gpuIf:
-    result = indentStr & "if (" & ctx.genCuda(ast.ifCond) & ") {\n"
+    # skip semicolon in the condition. Otherwise can lead to problematic code
+    result = indentStr & "if (" & ctx.genCuda(ast.ifCond, skipSemicolon = true) & ") {\n"
     result &= ctx.genCuda(ast.ifThen, indent + 1) & "\n"
     result &= indentStr & "}"
     if ast.ifElse.isSome:
