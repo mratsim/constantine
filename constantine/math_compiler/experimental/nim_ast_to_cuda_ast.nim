@@ -34,10 +34,11 @@ type
     gpuDeref        # Dereferences an expression
     gpuCast         # Cast expression
     gpuComment      # Just a comment
+    gpuConstexpr    # A `constexpr`, i.e. compile time constant (Nim `const`)
 
   GpuTypeKind = enum
     gtVoid,
-    gtUint8, gtUint16, gtInt16, gtUint32, gtInt32, gtUint64, gtInt64, gtFloat32, gtFloat64, gtSize_t, # atomics
+    gtBool, gtUint8, gtUint16, gtInt16, gtUint32, gtInt32, gtUint64, gtInt64, gtFloat32, gtFloat64, gtSize_t, # atomics
     gtArray,     # Static array `array[N, dtype]` -> `dtype[N]`
     gtString,
     gtObject,    # Struct types
@@ -100,6 +101,10 @@ type
     of gpuLit:
       lValue: string
       lType: GpuType
+    of gpuConstexpr:
+      cIdent: GpuAst # the identifier
+      cValue: GpuAst # not just a string to support different types easily
+      cType: GpuType
     of gpuArrayLit:
       aValues: seq[string]
       aLitType: GpuType # type of first element
@@ -237,6 +242,11 @@ proc nimToGpuType(n: NimNode): GpuType =
       result = nimToGpuType(n[n.len - 2])
     else: # take from last element
       result = nimToGpuType(n[n.len - 1].getTypeInst())
+  of nnkConstDef:
+    if n[1].kind != nnkEmpty: # has an explicit type
+      result = nimToGpuType(n[1])
+    else:
+      result = nimToGpuType(n[2]) # derive from the RHS literal
   else:
     if n.kind == nnkEmpty: return initGpuType(gtVoid)
     case n.typeKind
@@ -582,6 +592,20 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
   of nnkDerefExpr:
     result = GpuAst(kind: gpuDeref, dOf: ctx.toGpuAst(node[0]))
 
+  of nnkConstDef:
+    echo node.treerepr
+    raiseAssert "`const` is currently not supported, because `constexpr` in CUDA causes " &
+      "compilation issues."
+    result = GpuAst(kind: gpuConstexpr,
+                    cIdent: ctx.toGpuAst(node[0]),
+                    cValue: ctx.toGpuAst(node[2]),
+                    cType: nimToGpuType(node))
+  of nnkConstSection:
+    result = GpuAst(kind: gpuBlock)
+    for el in node: # walk each type def
+      doAssert el.kind == nnkConstDef
+      result.statements.add ctx.toGpuAst(el)
+
   else:
     echo "Unhandled node kind in toGpuAst: ", node.kind
     raiseAssert "Unhandled node kind in toGpuAst: " & $node.treerepr
@@ -762,6 +786,9 @@ proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0): string =
 
   of gpuDeref:
     result = "(*" & ctx.genCuda(ast.dOf) & ")"
+
+  of gpuConstexpr:
+    result = "__device__ constexpr " & gpuTypeToString(ast.cType) & " " & ctx.genCuda(ast.cIdent) & " = " & ctx.genCuda(ast.cValue)
 
   else:
     echo "Unhandled node kind in genCuda: ", ast.kind
