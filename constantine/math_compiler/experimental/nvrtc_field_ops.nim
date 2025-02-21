@@ -27,6 +27,9 @@ template defBigInt*(N: typed): untyped {.dirty.} =
       limbs: array[N, uint32]
   template `[]`(x: BigInt, idx: int): untyped = x.limbs[idx]
   template `[]=`(x: BigInt, idx: int, val: uint32): untyped = x.limbs[idx] = val
+  template `[]`(x: ptr BigInt, idx: int): untyped = x[].limbs[idx]
+  template `[]=`(x: ptr BigInt, idx: int, val: uint32): untyped = x[].limbs[idx] = val
+
   template len(x: BigInt): int = N # static: BigInt().limbs.len
 
 template defPtxHelpers*(): untyped {.dirty.} =
@@ -170,10 +173,43 @@ template defPtxHelpers*(): untyped {.dirty.} =
 """
     return res
 
-template defCoreFieldOps*(): untyped {.dirty.} =
+template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   # Need to get the limbs & spare bits data in a static context
-  template getFieldModulus(T: typed): untyped = static: T.getModulus().limbs
-  template getM0ninv(T: typed): untyped = static: T.getModulus().negInvModWord().uint32
+  template getFieldModulus(): untyped = static: T.getModulus.limbs
+  template getMontyOneLimbs(): untyped = static: T.getMontyOne.limbs
+  template getPrimePlus1div2(): untyped = static: T.getPrimePlus1div2().limbs
+
+  proc getMontyOneBigInt(): BigInt {.device.} =
+    ## Returns the `MonyOne` element as a correct BigInt for the input type.
+    ## This currently involves a `memcpy`, because we can't cast in the Nim VM.
+    ## In the future we could consider to add a specific constant with the right
+    ## type that we just read.
+    let montyOne = getMontyOneLimbs() # Get the Montgomery form of 1 from static context
+    var res = BigInt()
+    memcpy(res[0].addr, montyOne[0].addr, sizeof(res))
+    return res
+
+  proc getFieldModulusBigInt(): BigInt {.device.} =
+    ## Returns the field modulus as a correct BigInt for the input type.
+    ## This currently involves a `memcpy`, because we can't cast in the Nim VM.
+    ## In the future we could consider to add a specific constant with the right
+    ## type that we just read.
+    let modulus = getFieldModulus()
+    var res = BigInt()
+    memcpy(res[0].addr, modulus[0].addr, sizeof(res))
+    return res
+
+  proc getPrimePlus1div2BigInt(): BigInt {.device.} =
+    ## Returns the field modulus plus 1 divided by 2 as a correct BigInt for the input type.
+    ## This currently involves a `memcpy`, because we can't cast in the Nim VM.
+    ## In the future we could consider to add a specific constant with the right
+    ## type that we just read.
+    let modulus = getPrimePlus1div2()
+    var res = BigInt()
+    memcpy(res[0].addr, modulus[0].addr, sizeof(res))
+    return res
+
+  template getM0ninv(): untyped = static: T.getModulus().negInvModWord().uint32
   template spareBits(): untyped = static: (BigInt().limbs.len * WordSize - T.bits())
 
   proc finalSubMayOverflow(a, M: BigInt): BigInt {.device.} =
@@ -200,11 +236,12 @@ template defCoreFieldOps*(): untyped {.dirty.} =
     # 2. if a >= M, underflowedModulus >= 0
     # if underflowedModulus >= 0: a-M else: a
     # TODO: predicated mov instead?
+    ## TODO: Fix this. `slct` needs a negative value for the else branch
     let underflowedModulus = sub_bi(overflowedLimbs, 0'u32)
 
     var r: BigInt = BigInt()
     for i in 0 ..< N:
-      r[i] = slct(scratch[i], a[i], underflowedModulus)
+      r[i] = slct(scratch[i], a[i], underflowedModulus.int32)
     return r
 
   proc finalSubNoOverflow(a, M: BigInt): BigInt {.device.} =
@@ -225,25 +262,22 @@ template defCoreFieldOps*(): untyped {.dirty.} =
       scratch[i] = sub_bio(a[i], M[i])
 
     # If it underflows here, `a` was smaller than the modulus, which is what we want
+    ## TODO: Fix this. `slct` needs a negative value for the else branch
     let underflowedModulus = sub_bi(0'u32, 0'u32)
 
     var r: BigInt = BigInt()
     for i in 0 ..< N:
-      r[i] = slct(scratch[i], a[i], underflowedModulus)
+      r[i] = slct(scratch[i], a[i], underflowedModulus.int32)
     return r
 
   proc modadd(a, b, M: BigInt): BigInt {.device.} =
     ## Generate an optimized modular addition kernel
     ## with parameters `a, b, modulus: Limbs -> Limbs`
     # try to add two bigints
-    let N = a.len
-    #var res: BigInt[N]
-    var res: BigInt = BigInt()
-
-    var t: BigInt = BigInt() # temporary
+    var t = BigInt() # temporary
 
     t[0] = add_co(a[0], b[0])
-    for i in 1 ..< N:
+    staticFor i, 1, N:
       t[i] = add_cio(a[i], b[i])
 
     # can use `when` of course!
@@ -258,26 +292,24 @@ template defCoreFieldOps*(): untyped {.dirty.} =
     ## Generate an optimized modular substraction kernel
     ## with parameters `a, b, modulus: Limbs -> Limbs`
     # Pointers are opaque in LLVM now
-    var t: BigInt = BigInt()
-    let N = a.len
+    var t = BigInt()
 
     t[0] = sub_bo(a[0], b[0])
-    for i in 1 ..< N:
+    staticFor i, 1, a.len:
       t[i] = sub_bio(a[i], b[i])
 
-    let underflowMask = sub_bi(0, 0)
+    let underflowMask = sub_bi(0'u32, 0'u32)
 
     # If underflow
     # TODO: predicated mov instead?
     var maskedM: BigInt = BigInt()
-    for i in 0 ..< N:
+    staticFor i, 0, N:
       maskedM[i] = M[i] and underflowMask
 
-    block:
-      t[0] = add_co(t[0], maskedM[0])
-    for i in 1 ..< N-1:
+    t[0] = add_co(t[0], maskedM[0])
+    staticFor i, 1, a.len-1:
       t[i] = add_cio(t[i], maskedM[i])
-    if N > 1:
+    when N > 1:
       t[N-1] = add_ci(t[N-1], maskedM[N-1])
 
     return t
@@ -286,8 +318,7 @@ template defCoreFieldOps*(): untyped {.dirty.} =
     ## Generate an optimized modular multiplication kernel
     ## with parameters `a, b, modulus: Limbs -> Limbs`
     var t: BigInt = BigInt()
-    let N = a.len
-    let m0ninv = getM0ninv(T)
+    let m0ninv = getM0ninv()
 
     # Algorithm
     # -----------------------------------------
@@ -321,7 +352,7 @@ template defCoreFieldOps*(): untyped {.dirty.} =
     #
     # Hence we can use the dual carry chain approach
     # one chain after the other instead of interleaved like on x86.
-    staticFor i, 0, a.len:
+    staticFor i, 0, N:
       # Multiplication
       # -------------------------------
       #   for j=0 to N-1
@@ -352,15 +383,15 @@ template defCoreFieldOps*(): untyped {.dirty.} =
       var A = 0'u32
 
       if i == 0:
-        staticFor j, 0, a.len:
+        staticFor j, 0, N:
           t[j] = mul_lo(a[j], bi)
       else:
         t[0] = mulloadd_co(a[0], bi, t[0])
-        staticFor j, 1, a.len:
+        staticFor j, 1, N:
           t[j] = mulloadd_cio(a[j], bi, t[j])
         A = add_ci(0'u32, 0'u32)          # assumes N > 1
       t[1] = mulhiadd_co(a[0], bi, t[1])  # assumes N > 1
-      staticFor j, 2, a.len:
+      staticFor j, 2, N:
         t[j] = mulhiadd_cio(a[j-1], bi, t[j])
       A = mulhiadd_ci(a[N-1], bi, A)
       # Reduction
@@ -389,12 +420,12 @@ template defCoreFieldOps*(): untyped {.dirty.} =
 
       let m = mul_lo(t[0], m0ninv)
       let _ = mulloadd_co(m, M[0], t[0])
-      staticFor j, 1, a.len:
+      staticFor j, 1, N:
         t[j-1] = mulloadd_cio(m, M[j], t[j])
       t[N-1] = add_ci(A, 0)
       # assumes N > 1
       t[0] = mulhiadd_co(m, M[0], t[0])
-      staticFor j, 1, a.len-1:
+      staticFor j, 1, N-1:
         t[j] = mulhiadd_cio(m, M[j], t[j])
       t[N-1] = mulhiadd_ci(m, M[N-1], t[N-1])
 
