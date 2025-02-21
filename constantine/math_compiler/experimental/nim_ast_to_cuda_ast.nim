@@ -311,6 +311,11 @@ proc assignOp(op: string, isBoolean: bool): string =
   of "and": result = if isBoolean: "&&" else: "&" # bitwise OR
   of "or":  result = if isBoolean: "||" else: "|" # bitwise OR
   of "xor": result = "^"
+  else: result = op
+
+proc assignPrefixOp(op: string): string =
+  ## Returns the correct CUDA operation given the Nim operator.
+  case op
   of "not": result = "!"
   else: result = op
 
@@ -570,8 +575,8 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
 
   of nnkPrefix:
     result = GpuAst(kind: gpuPrefix,
-                    pOp: node[0].strVal,
                     pVal: ctx.toGpuAst(node[1]))
+    result.pOp = assignPrefixOp(node[0].strVal)
 
   of nnkTypeSection:
     result = GpuAst(kind: gpuBlock)
