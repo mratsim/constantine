@@ -218,10 +218,7 @@ proc toGpuTypeKind(t: NimNode): GpuTypeKind =
 
 proc nimToGpuType(n: NimNode): GpuType
 proc getInnerPointerType(n: NimNode): GpuType =
-
-  ## XXX: instead of returning `GpuTypeKind` return a `GpuType` by calling back into `nimToGpuType`!
-
-  doAssert n.typeKind in {ntyPtr, ntyPointer, ntyUncheckedArray} or n.kind == nnkPtrTy, "But was: " & $n.treerepr & " of typeKind " & $n.typeKind
+  doAssert n.typeKind in {ntyPtr, ntyPointer, ntyUncheckedArray, ntyVar} or n.kind == nnkPtrTy, "But was: " & $n.treerepr & " of typeKind " & $n.typeKind
   if n.typeKind in {ntyPointer, ntyUncheckedArray}:
     let typ = n.getTypeInst()
     doAssert typ.kind == nnkBracketExpr, "No, was: " & $typ.treerepr
@@ -233,6 +230,10 @@ proc getInnerPointerType(n: NimNode): GpuType =
   elif n.kind == nnkAddr:
     let typ = n.getTypeInst()
     result = getInnerPointerType(typ)
+  elif n.kind == nnkVarTy:
+    # VarTy
+    #   Sym "BigInt"
+    result = nimToGpuType(n[0])
   else:
     raiseAssert "Found what: " & $n.treerepr
 
@@ -255,7 +256,7 @@ proc nimToGpuType(n: NimNode): GpuType =
     case n.typeKind
     of ntyBool, ntyInt .. ntyUint64: # includes all float types
       result = initGpuType(toGpuTypeKind n.typeKind)
-    of ntyPtr:
+    of ntyPtr, ntyVar:
       result = initGpuPtrType(getInnerPointerType(n))
     of ntyUncheckedArray:
       ## Note: this is just the internal type of the array. It is only a pointer due to
@@ -564,11 +565,6 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
                     pOp: node[0].strVal,
                     pVal: ctx.toGpuAst(node[1]))
 
-  of nnkHiddenDeref:
-    # just ignore the deref
-    ## XXX: add real deref! (Q: always?)
-    result = ctx.toGpuAst(node[0])
-
   of nnkTypeSection:
     result = GpuAst(kind: gpuBlock)
     for el in node: # walk each type def
@@ -623,10 +619,31 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     # also map type conversion, e.g. `let i: int = 5; i.uint32` to a cast
     result = GpuAst(kind: gpuCast, cTo: nimToGpuType(node[0]), cExpr: ctx.toGpuAst(node[1]))
 
-  of nnkAddr:
+  of nnkAddr, nnkHiddenAddr:
+    # `HiddenAddr` appears for accesses to `var` passed arguments
     result = GpuAst(kind: gpuAddr, aOf: ctx.toGpuAst(node[0]))
 
-  of nnkDerefExpr:
+  of nnkHiddenDeref:
+    case node.typeKind
+    of ntyUncheckedArray:
+      # `getTypeInst(node)` would yield:
+      # BracketExpr
+      #   Sym "UncheckedArray"
+      #   Sym "uint32"
+      # i.e. it is a `ptr UncheckedArray[T]`
+      # In this case we just ignore the deref, because on the CUDA
+      # side it is just a plain pointer array we index into using
+      # `foo[i]`.
+      result = ctx.toGpuAst(node[0])
+    else:
+      # Otherwise we treat it like a regular deref
+      # HiddenDeref
+      #   Sym "x"
+      # With e.g. `getTypeInst(node) = Sym "BigInt"`
+      # and `node.typeKind = ntyObject`
+      # due to a `var` parameter
+      result = GpuAst(kind: gpuDeref, dOf: ctx.toGpuAst(node[0]))
+  of nnkDerefExpr: #, nnkHiddenDeref:
     result = GpuAst(kind: gpuDeref, dOf: ctx.toGpuAst(node[0]))
 
   of nnkConstDef:
