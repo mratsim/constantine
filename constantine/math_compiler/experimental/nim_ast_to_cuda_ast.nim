@@ -395,6 +395,7 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
           of "forceinline": result.pAttributes.incl attForceInline
 
     result.pBody = ctx.toGpuAst(node.body)
+      .ensureBlock() # single line procs should be a block to generate `;`
 
   of nnkLetSection, nnkVarSection:
     # For a section with multiple declarations, create a block
