@@ -433,3 +433,195 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
       t = finalSubNoOverflow(t, M)
 
     return t
+  ##  More general field operations
+
+  proc setZero(a: var BigInt) {.device.} =
+    ## Sets all limbs of the field element to zero in place
+    let N = a.len
+
+    # Zero all limbs
+    for i in 0 ..< N:
+      a[i] = 0'u32
+
+  proc setOne(a: var BigInt) {.device.} =
+    ## Sets the field element to one in Montgomery form
+    ## For a field element to be valid in Montgomery form,
+    ## we need x · R mod M with R = 2^(WordBitWidth * numWords)
+    let N = a.len
+    let montyOne = getMontyOneBigInt() # Get the Montgomery form of 1 from static context
+
+    # Copy the Montgomery form of 1
+    for i in 0 ..< N:
+      a[i] = montyOne[i] # .uint32
+
+  proc add(r: var BigInt, a, b: BigInt) {.device.} =
+    ## Addition of two finite field elements stored in `a` and `b`.
+    ## The result is stored in `r`.
+    let M = getFieldModulusBigInt()
+    r = modadd(a, b, M)
+
+  proc sub(r: var BigInt, a, b: BigInt) {.device.} =
+    ## Subtraction of two finite field elements stored in `a` and `b`.
+    ## The result is stored in `r`.
+    let M = getFieldModulusBigInt()
+    r = modsub(a, b, M)
+
+  proc mul(r: var BigInt, a, b: BigInt) {.device.} =
+    ## Multiplication of two finite field elements stored in `a` and `b`.
+    ## The result is stored in `r`.
+    let M = getFieldModulusBigInt()
+    r = mtymul_CIOS_sparebit(a, b, M, true)
+
+  proc ccopy(a: var BigInt, b: BigInt, condition: bool) {.device.} =
+    ## Conditional copy in CUDA
+    ## If condition is true: b is copied into a
+    ## If condition is false: a is left unmodified
+    ##
+    ## Note: This is constant-time
+    let N = a.len
+
+    # Use selp instruction for constant-time selection:
+    # if condition then b else a
+    ## XXX: add support for `IfExpr`! Requires though.
+    var cond: int32
+    if condition:
+      cond = 1'i32
+    else:
+      cond = -1'i32 # `slct` checks for `>= 0` as the true branch!
+    for i in 0 ..< N:
+      a[i] = slct(b[i], a[i], cond)
+
+  proc csetZero(r: var BigInt, condition: bool) {.device.} =
+    ## Conditionally set `r` to zero in CUDA
+    ##
+    ## Note: This is constant-time
+    var t = BigInt()
+    t.setZero()
+    r.ccopy(t, condition)
+
+  proc csetOne(r: var BigInt, condition: bool) {.device.} =
+    ## Conditionally set `r` to one in CUDA
+    ##
+    ## Note: This is constant-time
+    let mOne = getMontyOneBigInt()
+    r.ccopy(mOne, condition)
+
+  proc cadd(r: var BigInt, a: BigInt, condition: bool) {.device.} =
+    ## Conditionally add `a` to `r` in place in CUDA.
+    ##
+    ## Note: This is constant-time
+    var t = BigInt()
+    t.add(r, a)
+    r.ccopy(t, condition)
+
+  proc csub(r: var BigInt, a: BigInt, condition: bool) {.device.} =
+    ## Conditionally subtract `a` from `r` in place in CUDA.
+    ##
+    ## Note: This is constant-time
+    var t = BigInt()
+    t.sub(r, a)
+    r.ccopy(t, condition)
+
+  proc doubleElement(r: var BigInt, a: BigInt) {.device.} =
+    ## Double `a` and store it in `r` in CUDA.
+    ##
+    ## Note: This is constant-time
+    r.add(a, a)
+
+  proc nsqr(r: var BigInt, a: BigInt, count: int) {.device.} =
+    ## Performs `nsqr`, that is multiple squarings of `a` and stores it in `r`
+    ## in CUDA.
+    ##
+    ## Note: This is constant-time
+    ##
+    ## TODO: Add a `skipFinalSub` argument?
+    let M = getFieldModulusBigInt()
+    r = a # copy over a
+    for i in 0 ..< count-1:
+      r = mtymul_CIOS_sparebit(r, r, M, finalReduce = false)
+    # last one with reducing
+    r = mtymul_CIOS_sparebit(r, r, M, finalReduce = true)
+
+  proc isZero(r: var bool, a: BigInt) {.device.} =
+    ## Checks if `a` is zero in CUDA. Result is written to `r`.
+    ##
+    ## Note: This is constant-time
+    #r = true
+    #staticFor i, 0, a.len:
+    #  r = r and a[i] == 0'u32
+    var isZero = a[0]
+    staticFor i, 0, a.len:
+      isZero = isZero or a[i]
+    r = isZero == 0'u32
+
+  proc isOdd(r: var bool, a: BigInt) {.device.} =
+    ## Checks if the Montgomery value of `a` is odd in CUDA. Result is written to `r`.
+    ##
+    ## IMPORTANT: The canonical value may or may not be odd if the Montgomery
+    ## representation is odd (and vice versa!).
+    ##
+    ## Note: This is constant-time
+    # check if least significant byte has first bit set
+    r = (a[0] and 1'u32).bool
+
+  proc neg(r: var BigInt, a: BigInt) {.device.} =
+    ## Computes the negation of `a` and stores it in `r` in CUDA.
+    ##
+    ## Note: This is constant-time
+    let M = getFieldModulusBigInt()
+    # Check if input is zero
+    var isZ: bool = false
+    isZ.isZero(a)
+    # Subtraction `M - a`
+    var t = BigInt()
+    ## XXX: Is it safe to use `modsub` here?
+    t.sub(M, a)
+    # If input zero, we want `r = 0` instead of `r = M`!
+    t.csetZero(isZ)
+    r = t
+
+  proc cneg(r: var BigInt, a: BigInt, condition: bool) {.device.} =
+    ## Conditionally negate `a` and store it in `r` if `condition` is true, otherwise
+    ## copy over `a` into `r` in CUDA.
+    ##
+    ## Note: This is constant-time
+    r.neg(a)
+    r.ccopy(a, not condition)
+
+  proc shiftRight(r: var BigInt, k: uint32) {.device.} =
+    ## Shift `r` right by `k` bits in-nplace in CUDA.
+    ##
+    ## k MUST be less than the base word size (2^31)
+    ##
+    ## Note: This is constant-time
+    let wordBitWidth = sizeof(uint32) * 8
+    let shiftLeft = wordBitWidth.uint32 - k
+
+    # process all but the last word
+    staticFor i, 0, r.len - 1:
+      let current = r[i]
+      let next = r[i + 1]
+
+      let rightPart = current shr k
+      let leftPart = next shl shiftLeft
+      r[i] = rightPart or leftPart
+
+    # handle the last word
+    let lastIdx = r.len - 1
+    r[lastIdx] = r[lastIdx] shr k
+
+  proc div2(r: var BigInt) {.device.} =
+    ## Divide `r` by 2 in-place in CUDA.
+    ##
+    ## Note: This is constant-time
+    # check if the input is odd
+    var isO: bool = false
+    isO.isOdd(r)
+
+    # perform the division using a right shift
+    r.shiftRight(1)
+
+    # if it was odd, add `M+1/2` to go 'half-way around'
+    let pp1d2 = getPrimePlus1div2BigInt()
+    r.cadd(pp1d2, isO)
+
