@@ -564,10 +564,6 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
                     pOp: node[0].strVal,
                     pVal: ctx.toGpuAst(node[1]))
 
-  of nnkHiddenStdConv:
-    doAssert node[0].kind == nnkEmpty
-    result = ctx.toGpuAst(node[1])
-
   of nnkHiddenDeref:
     # just ignore the deref
     ## XXX: add real deref! (Q: always?)
@@ -620,7 +616,11 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
   of nnkCommentStmt:
     result = GpuAst(kind: gpuComment, comment: node.strVal)
 
-  of nnkCast:
+  of nnkHiddenStdConv:
+    doAssert node[0].kind == nnkEmpty
+    result = ctx.toGpuAst(node[1])
+  of nnkCast, nnkConv:
+    # also map type conversion, e.g. `let i: int = 5; i.uint32` to a cast
     result = GpuAst(kind: gpuCast, cTo: nimToGpuType(node[0]), cExpr: ctx.toGpuAst(node[1]))
 
   of nnkAddr:
