@@ -37,7 +37,7 @@ proc requiresCopy(n: NimNode, passStructByPointer: bool): bool =
   case n.typeKind
   of ntyBool, ntyChar, ntyInt .. ntyUint64: # range includes all floats
     result = false
-  of ntyObject:
+  of ntyObject, ntyArray:
     if passStructByPointer:
       result = false # regular objects can just be copied!
     else:
