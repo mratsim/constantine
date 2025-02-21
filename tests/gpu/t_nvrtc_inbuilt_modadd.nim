@@ -23,7 +23,7 @@ const BigIntExample* = cuda:
 
   #proc bigintTest(output: ptr UncheckedArray[uint32], aIn, bIn: ptr BigInt) {.global.} =
   proc modaddTest(output: ptr UncheckedArray[uint32], a, b: BigInt) {.global.} =
-    let M64 = getFieldModulus(T) # need a let variable, otherwise modulus does not have an address
+    let M64 = getFieldModulus() # need a let variable, otherwise modulus does not have an address
     # Cast the 64bit limbs of field modulus to 32bit limbs to copy
     var data = cast[ptr UncheckedArray[uint32]](addr M64[0])
     ## NOTE: you cannot do `BigInt(limbs: data)`. Leads to invalid C/CUDA code. We might turn calls
@@ -41,7 +41,7 @@ const BigIntExample* = cuda:
       output[i] = res[i]
 
   proc modsubTest(output: ptr UncheckedArray[uint32], a, b: BigInt) {.global.} =
-    let M64 = getFieldModulus(T) # need a let variable, otherwise modulus does not have an address
+    let M64 = getFieldModulus() # need a let variable, otherwise modulus does not have an address
     var M = BigInt()
     ## TODO: avoid this memcopy
     memcpy(addr M[0], addr M64[0], sizeof(M64))
@@ -52,7 +52,7 @@ const BigIntExample* = cuda:
       output[i] = res[i]
 
   proc mtymulTest(output: ptr UncheckedArray[uint32], a, b: BigInt) {.global.} =
-    let M64 = getFieldModulus(T) # need a let variable, otherwise modulus does not have an address
+    let M64 = getFieldModulus() # need a let variable, otherwise modulus does not have an address
     var M = BigInt()
     ## TODO: avoid this memcopy
     memcpy(addr M[0], addr M64[0], sizeof(M64))
