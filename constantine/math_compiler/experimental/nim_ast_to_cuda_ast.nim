@@ -527,7 +527,7 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     result.iName = node.repr # for sym choices
 
   # literal types
-  of nnkIntLit:
+  of nnkIntLit, nnkInt32Lit:
     result = GpuAst(kind: gpuLit)
     result.lValue = $node.intVal
     result.lType = initGpuType(gtInt32)
