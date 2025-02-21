@@ -300,7 +300,7 @@ proc nimToGpuType(n: NimNode): GpuType =
 
     else: raiseAssert "Type : " & $n.typeKind & " not supported yet: " & $n.treerepr
 
-proc assignOp(op: string): string =
+proc assignOp(op: string, isBoolean: bool): string =
   ## Returns the correct CUDA operation given the Nim operator.
   ## This is to replace things like `shl`, `div` or `mod`
   case op
@@ -308,6 +308,10 @@ proc assignOp(op: string): string =
   of "mod": result = "%"
   of "shl": result = "<<"
   of "shr": result = ">>"
+  of "and": result = if isBoolean: "&&" else: "&" # bitwise OR
+  of "or":  result = if isBoolean: "||" else: "|" # bitwise OR
+  of "xor": result = "^"
+  of "not": result = "!"
   else: result = op
 
 proc parseTypeFields(node: NimNode): seq[GpuTypeField] =
@@ -501,7 +505,10 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
 
   of nnkInfix:
     result = GpuAst(kind: gpuBinOp)
-    result.bOp = assignOp(node[0].repr) # repr so that open sym choice gets correct name
+    # if left/right is boolean we need logical AND/OR, otherwise
+    # bitwise
+    let isBoolean = node[1].typeKind == ntyBool
+    result.bOp = assignOp(node[0].repr, isBoolean) # repr so that open sym choice gets correct name
     result.bLeft = ctx.toGpuAst(node[1])
     result.bRight = ctx.toGpuAst(node[2])
 
