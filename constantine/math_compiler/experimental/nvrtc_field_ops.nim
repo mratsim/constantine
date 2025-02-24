@@ -352,82 +352,99 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     #
     # Hence we can use the dual carry chain approach
     # one chain after the other instead of interleaved like on x86.
-    staticFor i, 0, N:
-      # Multiplication
-      # -------------------------------
-      #   for j=0 to N-1
-      # 		(A,t[j])  := t[j] + a[j]*b[i] + A
-      #
-      # for 4 limbs, implicit column-wise carries
-      #
-      # t[0]     = t[0] + (a[0]*b[i]).lo
-      # t[1]     = t[1] + (a[1]*b[i]).lo + (a[0]*b[i]).hi
-      # t[2]     = t[2] + (a[2]*b[i]).lo + (a[1]*b[i]).hi
-      # t[3]     = t[3] + (a[3]*b[i]).lo + (a[2]*b[i]).hi
-      # overflow =                         (a[3]*b[i]).hi
-      #
-      # or
-      #
-      # t[0]     = t[0] + (a[0]*b[i]).lo
-      # t[1]     = t[1] + (a[0]*b[i]).hi + (a[1]*b[i]).lo
-      # t[2]     = t[2] + (a[2]*b[i]).lo + (a[1]*b[i]).hi
-      # t[3]     = t[3] + (a[2]*b[i]).hi + (a[3]*b[i]).lo
-      # overflow =    carry              + (a[3]*b[i]).hi
-      #
-      # Depending if we chain lo/hi or even/odd
-      # The even/odd carry chain is more likely to be optimized via μops-fusion
-      # as it's common to compute the full product. That said:
-      # - it's annoying if the number of limbs is odd with edge conditions.
-      # - GPUs are RISC architectures and unlikely to have clever instruction rescheduling logic
-      let bi = b[i]
-      var A = 0'u32
 
-      if i == 0:
-        staticFor j, 0, N:
-          t[j] = mul_lo(a[j], bi)
-      else:
-        t[0] = mulloadd_co(a[0], bi, t[0])
+    when N > 1:
+      staticFor i, 0, N:
+        # Multiplication
+        # -------------------------------
+        #   for j=0 to N-1
+        # 		(A,t[j])  := t[j] + a[j]*b[i] + A
+        #
+        # for 4 limbs, implicit column-wise carries
+        #
+        # t[0]     = t[0] + (a[0]*b[i]).lo
+        # t[1]     = t[1] + (a[1]*b[i]).lo + (a[0]*b[i]).hi
+        # t[2]     = t[2] + (a[2]*b[i]).lo + (a[1]*b[i]).hi
+        # t[3]     = t[3] + (a[3]*b[i]).lo + (a[2]*b[i]).hi
+        # overflow =                         (a[3]*b[i]).hi
+        #
+        # or
+        #
+        # t[0]     = t[0] + (a[0]*b[i]).lo
+        # t[1]     = t[1] + (a[0]*b[i]).hi + (a[1]*b[i]).lo
+        # t[2]     = t[2] + (a[2]*b[i]).lo + (a[1]*b[i]).hi
+        # t[3]     = t[3] + (a[2]*b[i]).hi + (a[3]*b[i]).lo
+        # overflow =    carry              + (a[3]*b[i]).hi
+        #
+        # Depending if we chain lo/hi or even/odd
+        # The even/odd carry chain is more likely to be optimized via μops-fusion
+        # as it's common to compute the full product. That said:
+        # - it's annoying if the number of limbs is odd with edge conditions.
+        # - GPUs are RISC architectures and unlikely to have clever instruction rescheduling logic
+        let bi = b[i]
+        var A = 0'u32
+
+        if i == 0:
+          staticFor j, 0, N:
+            t[j] = mul_lo(a[j], bi)
+        else:
+          t[0] = mulloadd_co(a[0], bi, t[0])
+          staticFor j, 1, N:
+            t[j] = mulloadd_cio(a[j], bi, t[j])
+          A = add_ci(0'u32, 0'u32)          # assumes N > 1
+        t[1] = mulhiadd_co(a[0], bi, t[1])  # assumes N > 1
+        staticFor j, 2, N:
+          t[j] = mulhiadd_cio(a[j-1], bi, t[j])
+        A = mulhiadd_ci(a[N-1], bi, A)
+        # Reduction
+        # -------------------------------
+        #   m := t[0]*m0ninv mod W
+        #
+        # 	C,_ := t[0] + m*M[0]
+        # 	for j=1 to N-1
+        # 		(C,t[j-1]) := t[j] + m*M[j] + C
+        #   t[N-1] = C + A
+        #
+        # for 4 limbs, implicit column-wise carries
+        #    _  = t[0] + (m*M[0]).lo
+        #  t[0] = t[1] + (m*M[1]).lo + (m*M[0]).hi
+        #  t[1] = t[2] + (m*M[2]).lo + (m*M[1]).hi
+        #  t[2] = t[3] + (m*M[3]).lo + (m*M[2]).hi
+        #  t[3] = A + carry          + (m*M[3]).hi
+        #
+        # or
+        #
+        #    _  = t[0] + (m*M[0]).lo
+        #  t[0] = t[1] + (m*M[0]).hi + (m*M[1]).lo
+        #  t[1] = t[2] + (m*M[2]).lo + (m*M[1]).hi
+        #  t[2] = t[3] + (m*M[2]).hi + (m*M[3]).lo
+        #  t[3] = A + carry          + (m*M[3]).hi
+
+        let m = mul_lo(t[0], m0ninv)
+        let _ = mulloadd_co(m, M[0], t[0])
         staticFor j, 1, N:
-          t[j] = mulloadd_cio(a[j], bi, t[j])
-        A = add_ci(0'u32, 0'u32)          # assumes N > 1
-      t[1] = mulhiadd_co(a[0], bi, t[1])  # assumes N > 1
-      staticFor j, 2, N:
-        t[j] = mulhiadd_cio(a[j-1], bi, t[j])
-      A = mulhiadd_ci(a[N-1], bi, A)
-      # Reduction
-      # -------------------------------
-      #   m := t[0]*m0ninv mod W
-      #
-      # 	C,_ := t[0] + m*M[0]
-      # 	for j=1 to N-1
-      # 		(C,t[j-1]) := t[j] + m*M[j] + C
-      #   t[N-1] = C + A
-      #
-      # for 4 limbs, implicit column-wise carries
-      #    _  = t[0] + (m*M[0]).lo
-      #  t[0] = t[1] + (m*M[1]).lo + (m*M[0]).hi
-      #  t[1] = t[2] + (m*M[2]).lo + (m*M[1]).hi
-      #  t[2] = t[3] + (m*M[3]).lo + (m*M[2]).hi
-      #  t[3] = A + carry          + (m*M[3]).hi
-      #
-      # or
-      #
-      #    _  = t[0] + (m*M[0]).lo
-      #  t[0] = t[1] + (m*M[0]).hi + (m*M[1]).lo
-      #  t[1] = t[2] + (m*M[2]).lo + (m*M[1]).hi
-      #  t[2] = t[3] + (m*M[2]).hi + (m*M[3]).lo
-      #  t[3] = A + carry          + (m*M[3]).hi
+          t[j-1] = mulloadd_cio(m, M[j], t[j])
+        t[N-1] = add_ci(A, 0)
+        # assumes N > 1
+        t[0] = mulhiadd_co(m, M[0], t[0])
+        staticFor j, 1, N-1:
+          t[j] = mulhiadd_cio(m, M[j], t[j])
+        t[N-1] = mulhiadd_ci(m, M[N-1], t[N-1])
+    else: # single limb, e.g. BabyBear (N=1)
+      # 1. Compute t = a * b (low and high, emulates lagged code in N limb branch)
+      # 2. Compute m = t * m0ninv mod 2^32
+      # 3. Compute t = (t + m*M) >> 32
 
-      let m = mul_lo(t[0], m0ninv)
-      let _ = mulloadd_co(m, M[0], t[0])
-      staticFor j, 1, N:
-        t[j-1] = mulloadd_cio(m, M[j], t[j])
-      t[N-1] = add_ci(A, 0)
-      # assumes N > 1
-      t[0] = mulhiadd_co(m, M[0], t[0])
-      staticFor j, 1, N-1:
-        t[j] = mulhiadd_cio(m, M[j], t[j])
-      t[N-1] = mulhiadd_ci(m, M[N-1], t[N-1])
+      # Step 1: t = a * b
+      let t0 = mul_lo(a[0], b[0]) # lower 32 bit
+      let t1 = mul_hi(a[0], b[0]) # upper 32 bit
+
+      # Step 2: m = t * m0ninv mod 2^32
+      let m = mul_lo(t0, m0ninv)
+
+      # Step 3: t = (t + m*M) >> 32
+      let _ = mulloadd_co(m, M[0], t0) # Low word discarded, but calc for possible carry
+      t[0] = mulhiadd_ci(m, M[0], t1)
 
     if finalReduce:
       t = finalSubNoOverflow(t, M)
