@@ -712,7 +712,7 @@ proc gpuTypeToString(t: GpuTypeKind): string =
     raiseAssert "Invalid type : " & $t
 
 
-proc gpuTypeToString(t: GpuType, ident: string = "", allowArrayToPtr = false): string
+proc gpuTypeToString(t: GpuType, ident: string = "", allowArrayToPtr = false, allowEmptyIdent = false): string
 proc getInnerArrayType(t: GpuType): string =
   ## Returns the name of the inner most type for a nested array.
   case t.kind
@@ -732,17 +732,34 @@ proc getInnerArrayLengths(t: GpuType): string =
   else:
     result = ""
 
-proc gpuTypeToString(t: GpuType, ident: string = "", allowArrayToPtr = false): string =
+proc gpuTypeToString(t: GpuType, ident: string = "", allowArrayToPtr = false,
+                     allowEmptyIdent = false,
+                    ): string =
   ## Given an optional identifier required for array types
   ##
   ## XXX: we don't support this at the moment, it occured to me as something that
   ## could be useful sometimes...
   ## If `allowArrayToPtr` we allow casting a statically sized array to a pointer
+  var skipIdent = false
   case t.kind
-  of gtPtr: result = gpuTypeToString(t.to) & gpuTypeToString(t.kind)
-  of gtObject: result = t.name
+  of gtPtr:
+    if t.to.kind == gtArray: # ptr to array type
+      # need to pass `*` for the pointer into the identifier, i.e.
+      # `state: var array[4, BigInt]`
+      # must become
+      # `BigInt (*state)[4]`
+      # so as our ident we pass `theIdent = (*<ident>)` and generate the type for the internal
+      # array type, which yields e.g. `BigInt <theIdent>[4]`.
+      let ptrStar = gpuTypeToString(t.kind)
+      result = gpuTypeToString(t.to, "(" & ptrStar & ident & ")")
+      skipIdent = true
+    else:
+      let typ = gpuTypeToString(t.to, allowEmptyIdent = allowEmptyIdent)
+      let ptrStar = gpuTypeToString(t.kind)
+      result = typ & ptrStar
   of gtArray:
-    if ident.len == 0: # and not allowArrayToPtr:
+    # empty idents happen in e.g. function return types or casts
+    if ident.len == 0 and not allowEmptyIdent: # and not allowArrayToPtr:
       error("Invalid call, got an array type but don't have an identifier: " & $t)
     case t.aTyp.kind
     of gtArray: # nested array
@@ -751,11 +768,28 @@ proc gpuTypeToString(t: GpuType, ident: string = "", allowArrayToPtr = false): s
       result = typ & " " & ident & lengths
     else:
       # NOTE: Nested arrays don't have an inner identifier!
-      result = gpuTypeToString(t.aTyp) & " " & ident & "[" & $t.aLen & "]"
-  else: result = gpuTypeToString(t.kind)
+      result = gpuTypeToString(t.aTyp, allowEmptyIdent = allowEmptyIdent) & " " & ident & "[" & $t.aLen & "]"
+    skipIdent = true
+  of gtObject: result = t.name
+  else:        result = gpuTypeToString(t.kind)
 
-  if ident.len > 0 and t.kind != gtArray: # still need to add ident
+  if ident.len > 0 and not skipIdent: # still need to add ident
     result.add " " & ident
+
+proc genFunctionType(typ: GpuType, fn: string, fnArgs: string): string =
+  ## Returns the correct function with its return type
+  if typ.kind == gtPtr and typ.to.kind == gtArray:
+    # crazy stuff. Syntax to return a pointer to a statically sized array:
+    # `Foo (*fnName(fnArgs))[ArrayLen]`
+    # where the return type is actually:
+    # `Foo (*)[ArrayLen]` (which already is hideous)
+    let arrayTyp = typ.to.aTyp
+    let innerTyp = gpuTypeToString(arrayTyp, allowEmptyIdent = true)
+    let innerLen = $typ.to.aLen
+    result = &"{innerTyp} (*{fn}({fnArgs}))[{innerLen}]"
+  else:
+    # normal stuff
+    result = &"{gpuTypeToString(typ, allowEmptyIdent = true)} {fn}({fnArgs})"
 
 proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0, skipSemicolon = false): string =
   let indentStr = "  ".repeat(indent)
@@ -769,16 +803,17 @@ proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0, skipSemicolon = false): s
       for att in ast.pAttributes:
         $att
 
-    # extern "C" is needed to avoid name mangling
-    result = indentStr & " extern \"C\" " & attrs.join(" ") & " " &
-             gpuTypeToString(ast.pRetType) & " " &
-             ast.pName & "("
-
     # Parameters
     var params: seq[string]
     for (name, typ) in ast.pParams:
-      params.add gpuTypeToString(typ, name)
-    result &= params.join(", ") & ") {\n"
+      echo "CALLING WITH NAME: ", name
+      params.add gpuTypeToString(typ, name, allowEmptyIdent = false)
+    let fnArgs = params.join(", ")
+    let fnSig = genFunctionType(ast.pRetType, ast.pName, fnArgs)
+
+    # extern "C" is needed to avoid name mangling
+    result = indentStr & " extern \"C\" " & attrs.join(" ") & " " &
+             fnSig & "{\n"
 
     result &= ctx.genCuda(ast.pBody, indent + 1)
     result &= "\n" & indentStr & "}"
@@ -893,7 +928,7 @@ proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0, skipSemicolon = false): s
     result = indentStr & "/* " & ast.comment & " */"
 
   of gpuCast:
-    result = "(" & gpuTypeToString(ast.cTo) & ")" & ctx.genCuda(ast.cExpr)
+    result = "(" & gpuTypeToString(ast.cTo, allowEmptyIdent = true) & ")" & ctx.genCuda(ast.cExpr)
 
   of gpuAddr:
     result = "(&" & ctx.genCuda(ast.aOf) & ")"
