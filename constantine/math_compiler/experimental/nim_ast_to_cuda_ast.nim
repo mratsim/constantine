@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import std / [macros, strutils, sequtils, options, sugar, tables]
+import std / [macros, strutils, sequtils, options, sugar, tables, strformat]
 
 type
   GpuNodeKind = enum
@@ -163,6 +163,8 @@ proc `$`(x: GpuType): string =
   else:
     result = $x[]
 
+proc nimToGpuType(n: NimNode): GpuType
+
 proc initGpuType(kind: GpuTypeKind): GpuType =
   ## If `kind` is `gtPtr` `to` must be the type we point to
   if kind in [gtObject, gtPtr, gtArray]: raiseAssert "Objects/Pointers/Arrays must be constructed using `initGpuPtr/Object/ArrayType` "
@@ -176,10 +178,9 @@ proc initGpuObjectType(name: string, flds: seq[GpuTypeField]): GpuType =
   ## If `kind` is `gtPtr` `to` must be the type we point to
   result = GpuType(kind: gtObject, name: name, oFields: flds)
 
-proc initGpuArrayType(aTyp: GpuTypeKind, len: int): GpuType =
-  ## If `kind` is `gtPtr` `to` must be the type we point to
-  ## XXX: support arrays to structs!
-  result = GpuType(kind: gtArray, aTyp: initGpuType(aTyp), aLen: len)
+proc initGpuArrayType(aTyp: NimNode, len: int): GpuType =
+  ## Construct an statically sized array type
+  result = GpuType(kind: gtArray, aTyp: nimToGpuType(aTyp), aLen: len)
 
 proc toGpuTypeKind(t: NimTypeKind): GpuTypeKind =
   case t
@@ -204,19 +205,21 @@ proc toGpuTypeKind(t: NimTypeKind): GpuTypeKind =
   else:
     raiseAssert "Not supported yet: " & $t
 
-proc toGpuTypeKind(t: NimNode): GpuTypeKind =
+proc unpackGenericInst(t: NimNode): NimNode =
   let tKind = t.typeKind
   if tKind == ntyGenericInst:
     let impl = getTypeImpl(t)
     case impl.kind
     of nnkDistinctTy: # just skip the distinct
-      result = toGpuTypeKind(impl[0].typeKind)
+      result = impl[0]
     else:
       raiseAssert "Unsupport type so far: " & $t.treerepr & " of impl: " & $impl.treerepr
   else:
-    result = toGpuTypeKind(tKind)
+    result = t
 
-proc nimToGpuType(n: NimNode): GpuType
+proc toGpuTypeKind(t: NimNode): GpuTypeKind =
+  result = t.unpackGenericInst().typeKind.toGpuTypeKind()
+
 proc getInnerPointerType(n: NimNode): GpuType =
   doAssert n.typeKind in {ntyPtr, ntyPointer, ntyUncheckedArray, ntyVar} or n.kind == nnkPtrTy, "But was: " & $n.treerepr & " of typeKind " & $n.typeKind
   if n.typeKind in {ntyPointer, ntyUncheckedArray}:
@@ -237,9 +240,31 @@ proc getInnerPointerType(n: NimNode): GpuType =
   else:
     raiseAssert "Found what: " & $n.treerepr
 
+proc determineArrayLength(n: NimNode): int =
+  case n[1].kind
+  of nnkSym:
+    # likely a constant, try to get its value
+    result = n[1].getImpl.intVal
+  of nnkIdent:
+    let msg = """Found array with length given by identifier: $#!
+You might want to create a typed template taking a typed parameter for this
+constant to force the Nim compiler to bind the symbol.
+""" % n[1].strVal
+    raiseAssert msg
+  else:
+    case n[1].kind
+    of nnkIntLit: result = n[1].intVal
+    else:
+      #doAssert n[1].kind == nnkIntLit, "No is: " & $n.treerepr
+      doAssert n[1].kind == nnkInfix, "No is: " & $n.treerepr
+      doAssert n[1][1].kind == nnkIntLit, "No is: " & $n.treerepr
+      doAssert n[1][1].intVal == 0, "No is: " & $n.treerepr
+      result = n[1][2].intVal + 1
+
 proc parseTypeFields(node: NimNode): seq[GpuTypeField]
 proc nimToGpuType(n: NimNode): GpuType =
   ## Maps a Nim type to a type on the GPU
+  echo n.treerepr
   case n.kind
   of nnkIdentDefs: # extract type for let / var based on explicit or implicit type
     if n[n.len - 2].kind != nnkEmpty: # explicit type
@@ -272,19 +297,12 @@ proc nimToGpuType(n: NimNode): GpuType =
       #   Sym "array"
       #   Ident "N"
       #   Sym "uint32"
-      doAssert n.len == 3
+      if n.kind == nnkSym:
+        return nimToGpuType(getTypeImpl(n))
+      doAssert n.len == 3, "Length was not 3, but: " & $n.len & " for node: " & n.treerepr
       doAssert n[0].strVal == "array"
-      let len = if n[1].kind in {nnkSym, nnkIdent}: -1
-                else:
-                  case n[1].kind
-                  of nnkIntLit: n[1].intVal
-                  else:
-                    #doAssert n[1].kind == nnkIntLit, "No is: " & $n.treerepr
-                    doAssert n[1].kind == nnkInfix, "No is: " & $n.treerepr
-                    doAssert n[1][1].kind == nnkIntLit, "No is: " & $n.treerepr
-                    doAssert n[1][1].intVal == 0, "No is: " & $n.treerepr
-                    n[1][2].intVal + 1
-      result = initGpuArrayType(toGpuTypeKind n[2], len)
+      let len = determineArrayLength(n)
+      result = initGpuArrayType(n[2], len)
     #of ntyCompositeTypeClass:
     #  echo n.getTypeImpl.treerepr
     #  error("o")
@@ -292,12 +310,7 @@ proc nimToGpuType(n: NimNode): GpuType =
       result = initGpuType(gtVoid)
       error("Generics are not supported in the CUDA DSL so far.")
     of ntyGenericInst:
-      case n.kind
-      of nnkUIntLit:
-        result = initGpuType(toGpuTypeKind ntyUint64)
-      else:
-        raiseAssert "Unsupported generic inst: " & $n.treerepr & " of typekind " & $n.typeKind
-
+      result = n.unpackGenericInst().nimToGpuType()
     else: raiseAssert "Type : " & $n.typeKind & " not supported yet: " & $n.treerepr
 
 proc assignOp(op: string, isBoolean: bool): string =
@@ -698,6 +711,27 @@ proc gpuTypeToString(t: GpuTypeKind): string =
   else:
     raiseAssert "Invalid type : " & $t
 
+
+proc gpuTypeToString(t: GpuType, ident: string = "", allowArrayToPtr = false): string
+proc getInnerArrayType(t: GpuType): string =
+  ## Returns the name of the inner most type for a nested array.
+  case t.kind
+  of gtArray:
+    result = getInnerArrayType(t.aTyp)
+  else:
+    result = gpuTypeToString(t)
+
+proc getInnerArrayLengths(t: GpuType): string =
+  ## Returns the lengths of the inner array types for a nested array.
+  case t.kind
+  of gtArray:
+    let inner = getInnerArrayLengths(t.aTyp)
+    result = &"[{$t.aLen}]"
+    if inner.len > 0:
+      result.add &"{inner}"
+  else:
+    result = ""
+
 proc gpuTypeToString(t: GpuType, ident: string = "", allowArrayToPtr = false): string =
   ## Given an optional identifier required for array types
   ##
@@ -710,7 +744,13 @@ proc gpuTypeToString(t: GpuType, ident: string = "", allowArrayToPtr = false): s
   of gtArray:
     if ident.len == 0: # and not allowArrayToPtr:
       error("Invalid call, got an array type but don't have an identifier: " & $t)
+    case t.aTyp.kind
+    of gtArray: # nested array
+      let typ = getInnerArrayType(t)        # get inner most type
+      let lengths = getInnerArrayLengths(t) # get lengths as `[X][Y][Z]...`
+      result = typ & " " & ident & lengths
     else:
+      # NOTE: Nested arrays don't have an inner identifier!
       result = gpuTypeToString(t.aTyp) & " " & ident & "[" & $t.aLen & "]"
   else: result = gpuTypeToString(t.kind)
 
