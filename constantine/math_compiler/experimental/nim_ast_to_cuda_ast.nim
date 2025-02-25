@@ -95,8 +95,10 @@ type
       vName: string
       vType: GpuType
       vInit: GpuAst
+      vRequiresMemcpy: bool
     of gpuAssign:
       aLeft, aRight: GpuAst
+      aRequiresMemcpy: bool
     of gpuIdent:
       iName: string
     of gpuLit:
@@ -354,6 +356,10 @@ proc ensureBlock(ast: GpuAst): GpuAst =
   if ast.kind == gpuBlock: ast
   else: GpuAst(kind: gpuBlock, statements: @[ast])
 
+proc requiresMemcpy(n: NimNode): bool =
+  ## At the moment we only emit a `memcpy` statement for array types
+  result = n.typeKind == ntyArray and n.kind != nnkBracket # need to emit a memcpy
+
 proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
   ## XXX: things still left to do:
   ## - support `result` variable? Currently not supported. Maybe we will won't
@@ -461,12 +467,14 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
       ## Or something along those lines.
       if declaration.len > 2 and declaration[2].kind != nnkEmpty:  # Has initialization
         varNode.vInit = ctx.toGpuAst(declaration[2])
+        varNode.vRequiresMemcpy = requiresMemcpy(declaration[2])
       result.statements.add(varNode)
 
   of nnkAsgn:
     result = GpuAst(kind: gpuAssign)
     result.aLeft = ctx.toGpuAst(node[0])
     result.aRight = ctx.toGpuAst(node[1])
+    result.aRequiresMemcpy = requiresMemcpy(node[1])
 
   of nnkIfStmt:
     result = GpuAst(kind: gpuIf)
@@ -791,6 +799,19 @@ proc genFunctionType(typ: GpuType, fn: string, fnArgs: string): string =
     # normal stuff
     result = &"{gpuTypeToString(typ, allowEmptyIdent = true)} {fn}({fnArgs})"
 
+proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0, skipSemicolon = false): string
+
+proc address(a: string): string = "&" & a
+proc address(ctx: GpuContext, a: GpuAst): string = address(ctx.genCuda(a))
+
+proc size(a: string): string = "sizeof(" & a & ")"
+proc size(ctx: GpuContext, a: GpuAst): string = size(ctx.genCuda(a))
+proc size(ctx: GpuContext, a: GpuType): string = size(gpuTypeToString(a, allowEmptyIdent = true))
+
+proc genMemcpy(lhs, rhs, size: string): string =
+  result = &"memcpy({lhs}, {rhs}, {size})"
+
+
 proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0, skipSemicolon = false): string =
   let indentStr = "  ".repeat(indent)
 
@@ -834,11 +855,20 @@ proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0, skipSemicolon = false): s
   of gpuVar:
     let volatileStr = if ast.vIsVolatile: "volatile " else: ""
     result = indentStr & volatileStr & gpuTypeToString(ast.vType, ast.vName)
-    if ast.vInit != nil:
+    # If there is an initialization, the type might require a memcpy
+    if ast.vInit != nil and not ast.vRequiresMemcpy:
       result &= " = " & ctx.genCuda(ast.vInit)
+    elif ast.vInit != nil:
+      result.add ";\n"
+      result.add indentStr & genMemcpy(address(ast.vName), ctx.address(ast.vInit),
+                                       size(ast.vName))
 
   of gpuAssign:
-    result = indentStr & ctx.genCuda(ast.aLeft) & " = " & ctx.genCuda(ast.aRight)
+    if ast.aRequiresMemcpy:
+      result = indentStr & genMemcpy(ctx.address(ast.aLeft), ctx.address(ast.aRight),
+                                     ctx.size(ast.aLeft))
+    else:
+      result = indentStr & ctx.genCuda(ast.aLeft) & " = " & ctx.genCuda(ast.aRight)
 
   of gpuIf:
     # skip semicolon in the condition. Otherwise can lead to problematic code
