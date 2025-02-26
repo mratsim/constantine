@@ -30,15 +30,11 @@ template defBigInt*(N: typed): untyped {.dirty.} =
   template `[]`(x: ptr BigInt, idx: int): untyped = x[].limbs[idx]
   template `[]=`(x: ptr BigInt, idx: int, val: uint32): untyped = x[].limbs[idx] = val
 
-  template len(x: BigInt): int = N # static: BigInt().limbs.len
+  template len(x: BigInt): int = N
 
 template defPtxHelpers*(): untyped {.dirty.} =
   ## Note: the below would just be generated from a macro of course, similar to
   ## `constantine/platforms/llvm/asm_nvidia.nim`.
-  #template asm_comment(msg: static string): untyped =
-  #  static:
-  #    const msg = "// " & msg
-  #    asm(msg)
 
   ## IMPORTANT NOTE: For the below procs that define inline PTX statements:
   ## It is very important (in the current implementation) that each of the
@@ -178,26 +174,17 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   template getFieldModulus(): untyped = static: T.getModulus.limbs
   template getMontyOneLimbs(): untyped = static: T.getMontyOne.limbs
   template getPrimePlus1div2(): untyped = static: T.getPrimePlus1div2().limbs
+  template getM0ninv(): untyped = static: T.getModulus().negInvModWord().uint32
+  template spareBits(): untyped = static: (BigInt().limbs.len * WordSize - T.bits())
 
-  proc getMontyOneBigInt(): BigInt {.device.} =
-    ## Returns the `MonyOne` element as a correct BigInt for the input type.
-    ## This currently involves a `memcpy`, because we can't cast in the Nim VM.
-    ## In the future we could consider to add a specific constant with the right
-    ## type that we just read.
-    let montyOne = getMontyOneLimbs() # Get the Montgomery form of 1 from static context
-    var res = BigInt()
-    memcpy(res[0].addr, montyOne[0].addr, sizeof(res))
-    return res
+  ## TODO: avoid the explicit array size here
+  proc toBigInt(limbs: array[1, uint32]): BigInt {.nimonly.} =
+    result.limbs = limbs
 
-  proc getFieldModulusBigInt(): BigInt {.device.} =
-    ## Returns the field modulus as a correct BigInt for the input type.
-    ## This currently involves a `memcpy`, because we can't cast in the Nim VM.
-    ## In the future we could consider to add a specific constant with the right
-    ## type that we just read.
-    let modulus = getFieldModulus()
-    var res = BigInt()
-    memcpy(res[0].addr, modulus[0].addr, sizeof(res))
-    return res
+  const M = toBigInt(getModulusUint32())
+  const MontyOne = toBigInt(getMontyOneUint32(T))
+  const PP1D2 = toBigInt(getPrimePlus1div2Uint32(T))
+  const M0NInv = getM0ninv()
 
   proc getPrimePlus1div2BigInt(): BigInt {.device.} =
     ## Returns the field modulus plus 1 divided by 2 as a correct BigInt for the input type.
@@ -209,9 +196,6 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     memcpy(res[0].addr, modulus[0].addr, sizeof(res))
     return res
 
-  template getM0ninv(): untyped = static: T.getModulus().negInvModWord().uint32
-  template spareBits(): untyped = static: (BigInt().limbs.len * WordSize - T.bits())
-
   proc finalSubMayOverflow(a, M: BigInt): BigInt {.device.} =
     ## If a >= Modulus: r <- a-M
     ## else:            r <- a
@@ -221,7 +205,6 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     ##
     ## To be used when the final substraction can
     ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
-    let N = a.len
     var scratch: BigInt = BigInt()
 
     # Contains 0x0001 (if overflowed limbs) or 0x0000
@@ -229,7 +212,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
 
     # Now substract the modulus, and test a < M with the last borrow
     scratch[0] = sub_bo(a[0], M[0])
-    for i in 1 ..< N:
+    staticFor i, 1, N:
       scratch[i] = sub_bio(a[i], M[i])
 
     # 1. if `overflowedLimbs`, underflowedModulus >= 0
@@ -240,7 +223,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     let underflowedModulus = sub_bi(overflowedLimbs, 0'u32)
 
     var r: BigInt = BigInt()
-    for i in 0 ..< N:
+    staticFor i, 0, N:
       r[i] = slct(scratch[i], a[i], underflowedModulus.int32)
     return r
 
@@ -253,12 +236,11 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     ##
     ## To be used when the modulus does not use the full bitwidth of the storing words
     ## (say using 255 bits for the modulus out of 256 available in words)
-    let N = a.len
     var scratch: BigInt = BigInt()
 
     # Now substract the modulus, and test a < M with the last borrow
     scratch[0] = sub_bo(a[0], M[0])
-    for i in 1 ..< N:
+    staticFor i, 1, N:
       scratch[i] = sub_bio(a[i], M[i])
 
     # If it underflows here, `a` was smaller than the modulus, which is what we want
@@ -266,7 +248,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     let underflowedModulus = sub_bi(0'u32, 0'u32)
 
     var r: BigInt = BigInt()
-    for i in 0 ..< N:
+    staticFor i, 0, N:
       r[i] = slct(scratch[i], a[i], underflowedModulus.int32)
     return r
 
@@ -291,7 +273,6 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   proc modsub(a, b, M: BigInt): BigInt {.device.} =
     ## Generate an optimized modular substraction kernel
     ## with parameters `a, b, modulus: Limbs -> Limbs`
-    # Pointers are opaque in LLVM now
     var t = BigInt()
 
     t[0] = sub_bo(a[0], b[0])
@@ -318,7 +299,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     ## Generate an optimized modular multiplication kernel
     ## with parameters `a, b, modulus: Limbs -> Limbs`
     var t: BigInt = BigInt()
-    let m0ninv = getM0ninv()
+    template m0ninv: untyped = M0NInv
 
     # Algorithm
     # -----------------------------------------
@@ -454,8 +435,6 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
 
   proc setZero(a: var BigInt) {.device.} =
     ## Sets all limbs of the field element to zero in place
-    let N = a.len
-
     # Zero all limbs
     for i in 0 ..< N:
       a[i] = 0'u32
@@ -464,9 +443,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     ## Sets the field element to one in Montgomery form
     ## For a field element to be valid in Montgomery form,
     ## we need x · R mod M with R = 2^(WordBitWidth * numWords)
-    let N = a.len
-    let montyOne = getMontyOneBigInt() # Get the Montgomery form of 1 from static context
-
+    template montyOne: untyped = MontyOne # Get the Montgomery form of 1 from static context
     # Copy the Montgomery form of 1
     for i in 0 ..< N:
       a[i] = montyOne[i] # .uint32
@@ -474,19 +451,16 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   proc add(r: var BigInt, a, b: BigInt) {.device.} =
     ## Addition of two finite field elements stored in `a` and `b`.
     ## The result is stored in `r`.
-    let M = getFieldModulusBigInt()
     r = modadd(a, b, M)
 
   proc sub(r: var BigInt, a, b: BigInt) {.device.} =
     ## Subtraction of two finite field elements stored in `a` and `b`.
     ## The result is stored in `r`.
-    let M = getFieldModulusBigInt()
     r = modsub(a, b, M)
 
   proc mul(r: var BigInt, a, b: BigInt) {.device.} =
     ## Multiplication of two finite field elements stored in `a` and `b`.
     ## The result is stored in `r`.
-    let M = getFieldModulusBigInt()
     r = mtymul_CIOS_sparebit(a, b, M, true)
 
   proc ccopy(a: var BigInt, b: BigInt, condition: bool) {.device.} =
@@ -495,8 +469,6 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     ## If condition is false: a is left unmodified
     ##
     ## Note: This is constant-time
-    let N = a.len
-
     # Use selp instruction for constant-time selection:
     # if condition then b else a
     ## XXX: add support for `IfExpr`! Requires though.
@@ -520,7 +492,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     ## Conditionally set `r` to one in CUDA
     ##
     ## Note: This is constant-time
-    let mOne = getMontyOneBigInt()
+    template mOne: untyped = MontyOne
     r.ccopy(mOne, condition)
 
   proc cadd(r: var BigInt, a: BigInt, condition: bool) {.device.} =
@@ -552,7 +524,6 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     ## Note: This is constant-time
     ##
     ## TODO: Add a `skipFinalSub` argument?
-    let M = getFieldModulusBigInt()
     r = a # copy over a
     for i in 0 ..< count-1:
       r = mtymul_CIOS_sparebit(r, r, M, finalReduce = false)
@@ -585,7 +556,6 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     ## Computes the negation of `a` and stores it in `r` in CUDA.
     ##
     ## Note: This is constant-time
-    let M = getFieldModulusBigInt()
     # Check if input is zero
     var isZ: bool = false
     isZ.isZero(a)
@@ -639,6 +609,5 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r.shiftRight(1)
 
     # if it was odd, add `M+1/2` to go 'half-way around'
-    let pp1d2 = getPrimePlus1div2BigInt()
-    r.cadd(pp1d2, isO)
+    r.cadd(PP1D2, isO)
 
