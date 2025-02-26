@@ -159,6 +159,8 @@ type
     ## only defined once they are called after all.
     templates: Table[string, TemplateInfo]  # Maps template names to their info
 
+template nimonly*(): untyped {.pragma.}
+
 proc `$`(x: GpuType): string =
   if x == nil:
     result = "GpuType(nil)"
@@ -421,6 +423,9 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
           of "device": result.pAttributes.incl attDevice
           of "global": result.pAttributes.incl attGlobal
           of "forceinline": result.pAttributes.incl attForceInline
+          of "nimonly":
+            # used to fully ignore functions!
+            return GpuAst(kind: gpuVoid)
 
     result.pBody = ctx.toGpuAst(node.body)
       .ensureBlock() # single line procs should be a block to generate `;`
