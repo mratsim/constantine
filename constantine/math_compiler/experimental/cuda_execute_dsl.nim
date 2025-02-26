@@ -72,7 +72,8 @@ proc determineDevicePtrs(r, i: NimNode, iTypes: seq[NimNode],
   for el in r:
     if not el.allowsCopy(passStructByPointer):
       error("The argument for `res`: " & $el.repr & " of type: " & $el.getTypeImpl().treerepr &
-        " does not allow copying. Copying to the address of all result variables is required.")
+        " does not allow copying. Copying to the address of all result variables is required." &
+        " It is a `" & $el.symKind & "` variable, but needs to be a `var`.")
     result.add (getIdent(el), el)
   for idx in 0 ..< i.len:
     let input = i[idx]
