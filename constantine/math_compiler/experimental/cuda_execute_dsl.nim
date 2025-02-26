@@ -323,16 +323,16 @@ macro execCuda*(jitFn: CUfunction,
   ## as an input.
   ##
   ## NOTE: This function is mainly intended for convenient execution of a single kernel
-  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, inputs, passStructByPointer = true)
+  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, inputs, passStructByPointer = false)
 
 macro execCuda*(jitFn: CUfunction,
                 numBlocks, threadsPerBlock: int,
                 res: typed,
                 inputs: typed): untyped =
   ## Overload which takes a target number of threads and blocks
-  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs, passStructByPointer = true)
+  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs, passStructByPointer = false)
 
 macro execCuda*(jitFn: CUfunction,
                 res: typed): untyped =
   ## Overload of the above for empty `inputs`
-  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, nnkBracket.newTree(), passStructByPointer = true)
+  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, nnkBracket.newTree(), passStructByPointer = false)
