@@ -20,6 +20,13 @@ macro asm_comment*(msg: typed): untyped =
   msgLit.strVal = "\"// " & msg.strVal & "\""
   result = nnkAsmStmt.newTree(newEmptyNode(), msgLit)
 
+template bigintToUint32Limbs*(b: typed): untyped =
+  let limbs = b.limbs
+  var res = default(array[b.limbs.len, uint32])
+  for i in 0 ..< limbs.len:
+    res[i] = limbs[i].uint32
+  res
+
 template defBigInt*(N: typed): untyped {.dirty.} =
   # Utility for add with carry operations
   type
@@ -171,9 +178,6 @@ template defPtxHelpers*(): untyped {.dirty.} =
 
 template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   # Need to get the limbs & spare bits data in a static context
-  template getFieldModulus(): untyped = static: T.getModulus.limbs
-  template getMontyOneLimbs(): untyped = static: T.getMontyOne.limbs
-  template getPrimePlus1div2(): untyped = static: T.getPrimePlus1div2().limbs
   template getM0ninv(): untyped = static: T.getModulus().negInvModWord().uint32
   template spareBits(): untyped = static: (BigInt().limbs.len * WordSize - T.bits())
 
@@ -181,20 +185,10 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   proc toBigInt(limbs: array[1, uint32]): BigInt {.nimonly.} =
     result.limbs = limbs
 
-  const M = toBigInt(getModulusUint32())
-  const MontyOne = toBigInt(getMontyOneUint32(T))
-  const PP1D2 = toBigInt(getPrimePlus1div2Uint32(T))
+  const M = toBigInt(bigintToUint32Limbs(T.getModulus))
+  const MontyOne = toBigInt(bigintToUint32Limbs(T.getMontyOne))
+  const PP1D2 = toBigInt(bigintToUint32Limbs(T.getPrimePlus1div2))
   const M0NInv = getM0ninv()
-
-  proc getPrimePlus1div2BigInt(): BigInt {.device.} =
-    ## Returns the field modulus plus 1 divided by 2 as a correct BigInt for the input type.
-    ## This currently involves a `memcpy`, because we can't cast in the Nim VM.
-    ## In the future we could consider to add a specific constant with the right
-    ## type that we just read.
-    let modulus = getPrimePlus1div2()
-    var res = BigInt()
-    memcpy(res[0].addr, modulus[0].addr, sizeof(res))
-    return res
 
   proc finalSubMayOverflow(a, M: BigInt): BigInt {.device.} =
     ## If a >= Modulus: r <- a-M
