@@ -305,16 +305,23 @@ proc nimToGpuType(n: NimNode): GpuType =
       result = initGpuObjectType(typName, flds)
     of ntyArray:
       # For a generic, static array type, e.g.:
-      # BracketExpr
-      #   Sym "array"
-      #   Ident "N"
-      #   Sym "uint32"
       if n.kind == nnkSym:
         return nimToGpuType(getTypeImpl(n))
-      doAssert n.len == 3, "Length was not 3, but: " & $n.len & " for node: " & n.treerepr
-      doAssert n[0].strVal == "array"
-      let len = determineArrayLength(n)
-      result = initGpuArrayType(n[2], len)
+      if n.len == 3:
+        # BracketExpr
+        #   Sym "array"
+        #   Ident "N"
+        #   Sym "uint32"
+        doAssert n.len == 3, "Length was not 3, but: " & $n.len & " for node: " & n.treerepr
+        doAssert n[0].strVal == "array"
+        let len = determineArrayLength(n)
+        result = initGpuArrayType(n[2], len)
+      else:
+        # just an array literal
+        # Bracket
+        #   UIntLit 2013265921
+        let len = n.len
+        result = initGpuArrayType(n[0], len)
     #of ntyCompositeTypeClass:
     #  echo n.getTypeImpl.treerepr
     #  error("o")
