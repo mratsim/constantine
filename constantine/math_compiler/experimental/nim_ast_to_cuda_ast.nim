@@ -981,7 +981,10 @@ proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0, skipSemicolon = false): s
     result = "(*" & ctx.genCuda(ast.dOf) & ")"
 
   of gpuConstexpr:
-    result = "__device__ constexpr " & gpuTypeToString(ast.cType) & " " & ctx.genCuda(ast.cIdent) & " = " & ctx.genCuda(ast.cValue)
+    if ast.cType.kind == gtArray:
+      result = indentStr & "__constant__ " & gpuTypeToString(ast.cType, ctx.genCuda(ast.cIdent)) & " = " & ctx.genCuda(ast.cValue)
+    else:
+      result = indentStr & "__constant__ " & gpuTypeToString(ast.cType, allowEmptyIdent = true) & " " & ctx.genCuda(ast.cIdent) & " = " & ctx.genCuda(ast.cValue)
 
   else:
     echo "Unhandled node kind in genCuda: ", ast.kind
