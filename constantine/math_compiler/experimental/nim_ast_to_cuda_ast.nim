@@ -265,6 +265,13 @@ constant to force the Nim compiler to bind the symbol.
       doAssert n[1][1].intVal == 0, "No is: " & $n.treerepr
       result = n[1][2].intVal + 1
 
+proc getTypeName(n: NimNode): string =
+  ## Returns the name of the type
+  case n.kind
+  of nnkIdent, nnkSym: result = n.strVal
+  of nnkObjConstr:  result = n.getTypeInst.strVal
+  else: raiseAssert "Unexpected node in `getTypeName`: " & $n.treerepr
+
 proc parseTypeFields(node: NimNode): seq[GpuTypeField]
 proc nimToGpuType(n: NimNode): GpuType =
   ## Maps a Nim type to a type on the GPU
@@ -294,7 +301,8 @@ proc nimToGpuType(n: NimNode): GpuType =
     of ntyObject:
       let impl = n.getTypeImpl
       let flds = impl.parseTypeFields()
-      result = initGpuObjectType(n.strVal, flds)
+      let typName = getTypeName(n) # might be an object construction
+      result = initGpuObjectType(typName, flds)
     of ntyArray:
       # For a generic, static array type, e.g.:
       # BracketExpr
@@ -613,7 +621,8 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     result = GpuAst(kind: gpuTypeDef, tName: node[0].strVal)
     result.tFields = parseTypeFields(node[2])
   of nnkObjConstr:
-    result = GpuAst(kind: gpuObjConstr, ocName: node[0].strVal)
+    let typName = getTypeName(node)
+    result = GpuAst(kind: gpuObjConstr, ocName: typName)
     # get all fields of the type
     let flds = node[0].getTypeImpl.parseTypeFields() # sym
     # find all fields that have been defined by the user
