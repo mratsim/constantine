@@ -157,6 +157,7 @@ type
     ## the specific version
     ## However, also need to keep every *generic procedure*. In their bodies the types are
     ## only defined once they are called after all.
+    skipSemicolon: bool # whether we *currently* add semicolons at the end of a block or not
     templates: Table[string, TemplateInfo]  # Maps template names to their info
 
 template nimonly*(): untyped {.pragma.}
@@ -823,23 +824,26 @@ proc genFunctionType(typ: GpuType, fn: string, fnArgs: string): string =
     # normal stuff
     result = &"{gpuTypeToString(typ, allowEmptyIdent = true)} {fn}({fnArgs})"
 
-proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0, skipSemicolon = false): string
+proc genCuda(ctx: var GpuContext, ast: GpuAst, indent = 0): string
 
 proc address(a: string): string = "&" & a
-proc address(ctx: GpuContext, a: GpuAst): string = address(ctx.genCuda(a))
+proc address(ctx: var GpuContext, a: GpuAst): string = address(ctx.genCuda(a))
 
 proc size(a: string): string = "sizeof(" & a & ")"
-proc size(ctx: GpuContext, a: GpuAst): string = size(ctx.genCuda(a))
-proc size(ctx: GpuContext, a: GpuType): string = size(gpuTypeToString(a, allowEmptyIdent = true))
+proc size(ctx: var GpuContext, a: GpuAst): string = size(ctx.genCuda(a))
+proc size(ctx: var GpuContext, a: GpuType): string = size(gpuTypeToString(a, allowEmptyIdent = true))
 
 proc genMemcpy(lhs, rhs, size: string): string =
   result = &"memcpy({lhs}, {rhs}, {size})"
 
+template withoutSemicolon(ctx: var GpuContext, body: untyped): untyped =
+  ctx.skipSemicolon = true
+  body
+  ctx.skipSemicolon = false
 
-proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0, skipSemicolon = false): string =
+proc genCuda(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
   let indentStr = "  ".repeat(indent)
-
-  #echo "At: ", ast.repr
+  #echo "At: ", ast.repr, " SKIP SEMICOLON: ", ctx.skipSemicolon
 
   case ast.kind
   of gpuVoid: return # nothing to emit
@@ -851,13 +855,12 @@ proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0, skipSemicolon = false): s
     # Parameters
     var params: seq[string]
     for (name, typ) in ast.pParams:
-      echo "CALLING WITH NAME: ", name
       params.add gpuTypeToString(typ, name, allowEmptyIdent = false)
     let fnArgs = params.join(", ")
     let fnSig = genFunctionType(ast.pRetType, ast.pName, fnArgs)
 
     # extern "C" is needed to avoid name mangling
-    result = indentStr & " extern \"C\" " & attrs.join(" ") & " " &
+    result = indentStr & "extern \"C\" " & attrs.join(" ") & " " &
              fnSig & "{\n"
 
     result &= ctx.genCuda(ast.pBody, indent + 1)
@@ -869,7 +872,7 @@ proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0, skipSemicolon = false): s
       result.add "\n" & indentStr & "{ // " & ast.blockLabel & "\n"
     for i, el in ast.statements:
       result.add ctx.genCuda(el, indent)
-      if el.kind != gpuBlock and not skipSemicolon: # nested block ⇒ ; already added
+      if el.kind != gpuBlock and not ctx.skipSemicolon: # nested block ⇒ ; already added
         result.add ";"
       if i < ast.statements.high:
         result.add "\n"
@@ -896,7 +899,8 @@ proc genCuda(ctx: GpuContext, ast: GpuAst, indent = 0, skipSemicolon = false): s
 
   of gpuIf:
     # skip semicolon in the condition. Otherwise can lead to problematic code
-    result = indentStr & "if (" & ctx.genCuda(ast.ifCond, skipSemicolon = true) & ") {\n"
+    ctx.withoutSemicolon: # skip semicolon for if bodies
+      result = indentStr & "if (" & ctx.genCuda(ast.ifCond) & ") {\n"
     result &= ctx.genCuda(ast.ifThen, indent + 1) & "\n"
     result &= indentStr & "}"
     if ast.ifElse.isSome:
