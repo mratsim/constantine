@@ -408,8 +408,11 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     for el in node:
       if el.kind != nnkEmpty:
         result.statements.add ctx.toGpuAst(el)
+  of nnkDiscardStmt:
+    # just process the child node if any
+    result = ctx.toGpuAst(node[0])
 
-  of nnkProcDef:
+  of nnkProcDef, nnkFuncDef:
     result = GpuAst(kind: gpuProc)
     result.pName = node.name.strVal
     doAssert node[3].kind == nnkFormalParams
@@ -534,7 +537,7 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
 
     result = GpuAst(kind: gpuVoid)
 
-  of nnkCall:
+  of nnkCall, nnkCommand:
     # Check if this is a template call
     let name = node[0].repr # cannot use `strVal`, might be a symchoice
     let args = node[1..^1].mapIt(ctx.toGpuAst(it))
