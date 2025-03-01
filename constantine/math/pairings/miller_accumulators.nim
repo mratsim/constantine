@@ -69,6 +69,7 @@ type MillerAccumulator*[FF1, FF2; FpK: ExtensionField] = object
   accOnce: bool
 
 func init*(ctx: var MillerAccumulator) =
+  ctx.accum.setOne()
   ctx.len = 0
   ctx.accOnce = false
 
