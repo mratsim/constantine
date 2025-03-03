@@ -825,6 +825,7 @@ proc cuModuleUnload*(module: CUmodule): CUresult
 proc cuModuleGetFunction(kernel: var CUfunction, module: CUmodule, fnName: ptr char): CUresult {.used.}
 proc cuModuleLoadData*(module: var CUmodule; image: pointer): CUresult
 proc cuModuleGetFunction*(hfunc: var CUfunction; hmod: CUmodule; name: cstring): CUresult
+proc cuModuleGetGlobal*(dptr: var CUdeviceptr, bytes: ptr csize_t, hmod: CUmodule, name: cstring): CUresult
 
 proc cuLaunchKernel*(
        kernel: CUfunction,
@@ -1787,6 +1788,16 @@ type
     reserved*: array[60, cint]
     ## < Reserved for future use
 
+  ##
+  ##  CUDA memory copy types
+  ##
+  cudaMemcpyKind* = enum
+    cudaMemcpyHostToHost = 0, ## < Host   -> Host
+    cudaMemcpyHostToDevice = 1, ## < Host   -> Device
+    cudaMemcpyDeviceToHost = 2, ## < Device -> Host
+    cudaMemcpyDeviceToDevice = 3, ## < Device -> Device
+    cudaMemcpyDefault = 4     ## < Direction of the transfer is inferred from the pointer values. Requires unified virtual addressing
+
 
 proc cudaRuntimeGetVersion*(runtimeVersion: ptr cint): cudaError_t {.cdecl,
     importc: "cudaRuntimeGetVersion", dynlib: libCudaRT.}
@@ -1800,6 +1811,9 @@ proc cudaEventCreate*(event: ptr cudaEvent_t): cudaError_t {.cdecl,
 proc cudaEventRecord*(event: cudaEvent_t; stream: cudaStream_t): cudaError_t {.
     cdecl, importc: "cudaEventRecord", dynlib: libCudaRT.}
 
+proc cudaEventSynchronize*(event: cudaEvent_t): cudaError_t {.cdecl,
+    importc: "cudaEventSynchronize", dynlib: libCudaRT.}
+
 proc cudaDeviceSynchronize*(): cudaError_t {.cdecl,
     importc: "cudaDeviceSynchronize", dynlib: libCudaRT.}
 
@@ -1808,6 +1822,16 @@ proc cudaEventElapsedTime*(ms: ptr cfloat; start: cudaEvent_t; `end`: cudaEvent_
 
 proc cudaEventDestroy*(event: cudaEvent_t): cudaError_t {.cdecl,
       importc: "cudaEventDestroy", dynlib: libCudaRT.}
+
+proc cudaMemcpyToSymbol*(symbol: pointer,
+                         src: pointer,
+                         count, offset: csize_t,
+                         kind: cudaMemcpyKind = cudaMemcpyHostToDevice): cudaError_t {.
+    cdecl, importc: "cudaMemcpyToSymbol", dynlib: libCudaRT.}
+
+proc cudaGetSymbolAddress*(devPtr: ptr CUdeviceptr,
+                           symbol: pointer): cudaError_t {.cdecl,
+    importc: "cudaGetSymbolAddress", dynlib: libCudaRT.}
 
 
 
