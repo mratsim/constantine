@@ -24,6 +24,13 @@ const DebugCuda {.booldefine.} = true
 template global*() {.pragma.}
 template device*() {.pragma.}
 template forceinline*() {.pragma.}
+
+# If attached to a `var` it will be treated as a
+# `__constant__`! Only useful if you want to define a
+# constant without initializing it (and then use
+# `cudaMemcpyToSymbol` / `copyToSymbol` to initialize it
+# before executing the kernel)
+template constant*() {.pragma.}
 type
   Dim* = cint ## dummy to have access to math
   NvBlockIdx* = object
