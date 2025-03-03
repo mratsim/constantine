@@ -239,6 +239,44 @@ proc link*(nvrtc: var NVRTC) =
   # Assign the cubin
   nvrtc.cubin = cubn
 
+proc copyToSymbol*[T](nvrtc: NVRTC, symbol: string, data: T, offset = 0) =
+  ## Copies `data` to the symbol in the current CUDA kernel.
+  ## There is absolutely type safety involved here. We only check that the amount of
+  ## data you wish to copy to the global matches the size of the global storage.
+  ## This function does help you with automatically copying `seq[T]` for example.
+  ##
+  ## `offset` is an optional offset of the number of bytes at the target we want
+  ## to copy to. Useful to copy only individual elements of a constant array for example.
+  ##
+  ## Say you define in a kernel:
+  ##
+  ## ```nim
+  ## let foo = cuda:
+  ##   var data {.constant.}: array[1024, uint32]
+  ## # ...
+  ## # later in host code after getting the kernel from the `nvrtc` object:
+  ## let data = calcSomeArray1024() # runtime calculation
+  ## copyToSymbols("data", # name of the variable in CUDA code
+  ##               data)
+  ## ```
+  var devPtr: CUdeviceptr
+  var size: csize_t
+  check cuModuleGetGlobal(devPtr, size.addr, nvrtc.module, symbol.cstring)
+  var totSize: int
+  var srcPtr: pointer
+  when T is seq: # copy len * sizeof(element)
+    doAssert data.len > 0, "Input data is empty!"
+    let elSize = sizeof(data[0])
+    totSize = data.len * sizeof(elSize)
+    srcPtr = data[0].addr
+
+  else:
+    # For now just copy by `sizeof`!
+    totSize = sizeof(data)
+    srcPtr = data.addr
+  doAssert totSize.csize_t == size, "Input data size does not match size of global to copy to: " & $totSize & " vs. " & $size
+  check cuMemcpyHtoD(devPtr, srcPtr, csize_t(totSize))
+
 template execute*(nvrtc: var NVRTC, fn: string, res, inputs: typed, sharedMemSize: typed) =
   ## Load the generated PTX, get the target kernel `fn` and execute it with the `res` and `inputs`
 
