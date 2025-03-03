@@ -143,12 +143,14 @@ proc getPtx*(nvrtc: var NVRTC) =
   var ptx = newString(int ptxSize)
   check nvrtcGetPTX(nvrtc.prog, ptx)
 
-  when DebugCuda:
-    echo "PTX size: ", ptxSize
-    echo "-------------------- PTX --------------------\n", nvrtc.ptx
-
   check nvrtcDestroyProgram(addr nvrtc.prog) # Destroy the program.
   nvrtc.ptx = ptx
+
+  when DebugCuda:
+    echo "PTX size: ", ptxSize
+    #echo "-------------------- PTX --------------------\n", nvrtc.ptx
+    writeFile("/tmp/kernel.ptx", nvrtc.ptx)
+
 proc load*(nvrtc: var NVRTC) =
   # After getting the PTX...
   var error_log = newString(8192)
