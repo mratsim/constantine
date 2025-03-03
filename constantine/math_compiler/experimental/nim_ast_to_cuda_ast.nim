@@ -66,6 +66,12 @@ type
     attGlobal = "__global__"
     attForceInline = "__forceinline__"
 
+  GpuVarAttribute = enum
+    atvExtern = "extern"
+    atvShared = "__shared__"
+    atvVolatile = "volatile"
+    atvConstant = "__constant__" # use `{.constant.}` pragma, e.g. `var foo {.constant.}`
+
   GpuAst = ref object
     case kind: GpuNodeKind
     of gpuVoid: discard
@@ -74,7 +80,7 @@ type
       pRetType: GpuType
       pParams: seq[tuple[name: string, typ: GpuType]]
       pBody: GpuAst
-      pAttributes: set[GpuAttribute]
+      pAttributes: set[GpuAttribute] # order not important, hence set
     of gpuCall:
       cName: string
       cArgs: seq[GpuAst]
@@ -96,11 +102,11 @@ type
       bOp: string
       bLeft, bRight: GpuAst
     of gpuVar:
-      vIsVolatile: bool
       vName: string
       vType: GpuType
       vInit: GpuAst
       vRequiresMemcpy: bool
+      vAttributes: seq[GpuVarAttribute] # order is important, hence seq
     of gpuAssign:
       aLeft, aRight: GpuAst
       aRequiresMemcpy: bool
@@ -388,6 +394,49 @@ proc requiresMemcpy(n: NimNode): bool =
   ## At the moment we only emit a `memcpy` statement for array types
   result = n.typeKind == ntyArray and n.kind != nnkBracket # need to emit a memcpy
 
+proc collectProcAttributes(n: NimNode): set[GpuAttribute] =
+  doAssert n.kind == nnkPragma
+  for pragma in n:
+    doAssert pragma.kind in [nnkIdent, nnkSym], "Unexpected node kind: " & $pragma.treerepr
+    case pragma.strVal
+    of "device": result.incl attDevice
+    of "global": result.incl attGlobal
+    of "forceinline": result.incl attForceInline
+    of "nimonly":
+      # used to fully ignore functions!
+      return
+    else:
+      raiseAssert "Unexpected pragma for procs: " & $pragma.treerepr
+
+proc collectAttributes(n: NimNode): seq[GpuVarAttribute] =
+  ## Collects all pragmas associated with the given variable.
+  ## Takes the `nnkPragma` node of the `nnkIdentDefs` associated with it.
+  # Example AST with multiple pragmas
+  # IdentDefs
+  #   PragmaExpr
+  #     Sym "sharedMem"
+  #     Pragma
+  #       Sym "cuExtern"
+  #       Sym "shared"
+  #   BracketExpr
+  #     Sym "array"
+  #     IntLit 0
+  #     Sym "BigInt"
+  #   Empty
+  doAssert n.kind == nnkPragma
+  for pragma in n:
+    doAssert pragma.kind in [nnkIdent, nnkSym], "Unexpected node kind: " & $pragma.treerepr
+    # NOTE: We don't use `parseEnum`, because on the Nim side some of the attributes
+    # do not match the CUDA string we need to emit, which is what the string value of
+    # the `GpuVarAttribute` enum stores
+    case pragma.strVal
+    of "cuExtern", "extern": result.add atvExtern
+    of "shared": result.add atvShared
+    of "volatile": result.add atvVolatile
+    of "constant": result.add atvConstant
+    else:
+      raiseAssert "Unexpected pragma: " & $pragma.treerepr
+
 proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
   ## XXX: things still left to do:
   ## - support `result` variable? Currently not supported. Maybe we will won't
@@ -446,15 +495,10 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
 
     # Process pragmas
     if node.pragma.kind != nnkEmpty:
-      for pragma in node.pragma:
-        if pragma.kind in {nnkIdent, nnkSym}:
-          case pragma.strVal
-          of "device": result.pAttributes.incl attDevice
-          of "global": result.pAttributes.incl attGlobal
-          of "forceinline": result.pAttributes.incl attForceInline
-          of "nimonly":
-            # used to fully ignore functions!
-            return GpuAst(kind: gpuVoid)
+      doAssert node.pragma.len > 0, "Pragma kind non empty, but no pragma?"
+      result.pAttributes = collectProcAttributes(node.pragma)
+      if result.pAttributes.len == 0: # means `nimonly` was applied
+        return GpuAst(kind: gpuVoid)
 
     result.pBody = ctx.toGpuAst(node.body)
       .ensureBlock() # single line procs should be a block to generate `;`
@@ -482,8 +526,7 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
         #   Empty
         varNode.vName = declaration[0][0].strVal
         doAssert declaration[0][1].kind == nnkPragma
-        doAssert declaration[0][1][0].kind == nnkIdent
-        varNode.vIsVolatile = declaration[0][1][0].strVal == "volatile"
+        varNode.vAttributes = collectAttributes(declaration[0][1])
       else: raiseAssert "Unexpected node kind for variable: " & $declaration.treeRepr
       varNode.vType = nimToGpuType(declaration)
       ## XXX: handle initialization for array types. Need a memcpy!
@@ -899,8 +942,7 @@ proc genCuda(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
       result.add "\n" & indentStr & "} // " & ast.blockLabel & "\n"
 
   of gpuVar:
-    let volatileStr = if ast.vIsVolatile: "volatile " else: ""
-    result = indentStr & volatileStr & gpuTypeToString(ast.vType, ast.vName)
+    result = indentStr & ast.vAttributes.join(" ") & " " & gpuTypeToString(ast.vType, ast.vName)
     # If there is an initialization, the type might require a memcpy
     if ast.vInit != nil and not ast.vRequiresMemcpy:
       result &= " = " & ctx.genCuda(ast.vInit)
