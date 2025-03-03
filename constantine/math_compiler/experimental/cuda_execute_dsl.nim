@@ -193,7 +193,7 @@ proc endianCheck(): NimNode =
       "Most CPUs (x86-64, ARM) are little-endian, as are Nvidia GPUs, which allows naive copying of parameters.\n" &
       "Your architecture '" & $hostCPU & "' is big-endian and GPU offloading is unsupported on it."
 
-proc execCudaImpl*(jitFn, numBlocks, threadsPerBlock, res, inputs: NimNode,
+proc execCudaImpl*(jitFn, numBlocks, threadsPerBlock, res, inputs, sharedMemSize: NimNode,
                    passStructByPointer: static bool): NimNode =
   # Maybe wrap individually given arguments in a `[]` bracket, e.g.
   # `execCuda(res = foo, inputs = bar)`
@@ -263,11 +263,12 @@ proc execCudaImpl*(jitFn, numBlocks, threadsPerBlock, res, inputs: NimNode,
             CUfunction(`jitFn`),     # dummy conversion on NVRTC, required on LLVM
             `numBlocks`, 1, 1,       # grid(x, y, z)
             `threadsPerBlock`, 1, 1, # block(x, y, z)
-            sharedMemBytes = 0,
+            sharedMemBytes = `sharedMemSize`.uint32,
             CUstream(nil),
             pAr, nil)
-    check cudaEventRecord(stop, nil)
     check cudaDeviceSynchronize()
+    check cudaEventRecord(stop, nil)
+    check cudaEventSynchronize(stop)
 
     var elapsedTime: float32
     check cudaEventElapsedTime(addr elapsedTime, start, stop)
@@ -332,16 +333,24 @@ macro execCuda*(jitFn: CUfunction,
   ## as an input.
   ##
   ## NOTE: This function is mainly intended for convenient execution of a single kernel
-  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, inputs, passStructByPointer = false)
+  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, inputs, newLit 0, passStructByPointer = false)
 
 macro execCuda*(jitFn: CUfunction,
                 numBlocks, threadsPerBlock: int,
                 res: typed,
                 inputs: typed): untyped =
   ## Overload which takes a target number of threads and blocks
-  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs, passStructByPointer = false)
+  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs, newLit 0, passStructByPointer = false)
+
+macro execCuda*(jitFn: CUfunction,
+                numBlocks, threadsPerBlock: int,
+                res: typed,
+                inputs: typed,
+                sharedMemSize: typed): untyped =
+  ## Overload which takes a target number of threads and blocks and a shared memory size
+  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs, sharedMemSize, passStructByPointer = false)
 
 macro execCuda*(jitFn: CUfunction,
                 res: typed): untyped =
   ## Overload of the above for empty `inputs`
-  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, nnkBracket.newTree(), passStructByPointer = false)
+  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, nnkBracket.newTree(), newLit 0, passStructByPointer = false)
