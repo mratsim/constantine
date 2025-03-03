@@ -16,6 +16,8 @@ proc getTypes(n: NimNode): seq[NimNode] =
   of nnkBracket, nnkTupleConstr, nnkPar:
     for el in n:
       result.add getTypes(el)
+  of nnkCall:
+    result.add getType(n)
   else:
     case n.typeKind
     of ntyPtr: result.add getTypeInst(n)
