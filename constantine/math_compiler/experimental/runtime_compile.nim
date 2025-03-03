@@ -51,6 +51,8 @@ let threadIdx* = NvThreadIdx()
 proc printf*(fmt: string) {.varargs.} = discard
 proc memcpy*(dst, src: pointer, size: int) = discard
 
+proc syncthreads*() {.cudaName: "__syncthreads".} = discard
+
 type
   NVRTC* = object
     numBlocks* = 32 # number of blocks to launch
