@@ -172,6 +172,8 @@ type
     templates: Table[string, TemplateInfo]  # Maps template names to their info
 
 template nimonly*(): untyped {.pragma.}
+template cudaName*(s: string): untyped {.pragma.}
+
 
 proc `$`(x: GpuType): string =
   if x == nil:
@@ -394,6 +396,36 @@ proc requiresMemcpy(n: NimNode): bool =
   ## At the moment we only emit a `memcpy` statement for array types
   result = n.typeKind == ntyArray and n.kind != nnkBracket # need to emit a memcpy
 
+proc getFnName(n: NimNode): string =
+  ## Returns the name for the function. Either the symbol name _or_
+  ## the `{.cudaName.}` pragma argument.
+  # check if the implementation has a pragma
+  if n.kind == nnkSym:
+    # Check if `cudaName` pragma used:
+    # ProcDef
+    #   Sym "syncthreads"
+    #   Empty
+    #   Empty
+    #   FormalParams
+    #     Empty
+    #   Pragma
+    #     ExprColonExpr
+    #       Sym "cudaName"           <- if this exists
+    #       StrLit "__syncthreads"   <- use this name
+    #   Empty
+    #   DiscardStmt
+    #     Empty
+    let impl = n.getImpl
+    if impl.kind in [nnkProcDef, nnkFuncDef]:
+      let pragma = impl.pragma
+      if pragma.kind != nnkEmpty and pragma[0].kind == nnkExprColonExpr:
+        if pragma[0][0].kind in [nnkIdent, nnkSym] and pragma[0][0].strVal == "cudaName":
+          return pragma[0][1].strVal # return early to avoid lots of branches
+  # else we use the str representation (repr for open / closed sym choice nodes)
+  result = n.repr
+
+
+
 proc collectProcAttributes(n: NimNode): set[GpuAttribute] =
   doAssert n.kind == nnkPragma
   for pragma in n:
@@ -597,7 +629,7 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
 
   of nnkCall, nnkCommand:
     # Check if this is a template call
-    let name = node[0].repr # cannot use `strVal`, might be a symchoice
+    let name = getFnName(node[0]) # cannot use `strVal`, might be a symchoice
     let args = node[1..^1].mapIt(ctx.toGpuAst(it))
     # Producing a template call something like this (but problematic due to overloads etc)
     # we could then perform manual replacement of the template in the CUDA generation pass.
