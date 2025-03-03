@@ -229,7 +229,7 @@ proc toGpuTypeKind(t: NimTypeKind): GpuTypeKind =
 proc unpackGenericInst(t: NimNode): NimNode =
   let tKind = t.typeKind
   if tKind == ntyGenericInst:
-    let impl = getTypeImpl(t)
+    let impl = t.getTypeImpl()
     case impl.kind
     of nnkDistinctTy: # just skip the distinct
       result = impl[0]
@@ -292,7 +292,6 @@ proc getTypeName(n: NimNode): string =
 proc parseTypeFields(node: NimNode): seq[GpuTypeField]
 proc nimToGpuType(n: NimNode): GpuType =
   ## Maps a Nim type to a type on the GPU
-  echo n.treerepr
   case n.kind
   of nnkIdentDefs: # extract type for let / var based on explicit or implicit type
     if n[n.len - 2].kind != nnkEmpty: # explicit type
