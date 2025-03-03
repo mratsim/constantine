@@ -22,9 +22,19 @@ macro asm_comment*(msg: typed): untyped =
 
 template bigintToUint32Limbs*(b: typed): untyped =
   let limbs = b.limbs
-  var res = default(array[b.limbs.len, uint32])
-  for i in 0 ..< limbs.len:
-    res[i] = limbs[i].uint32
+  when CTT_32:
+    var res = default(array[b.limbs.len, uint32])
+    for i in 0 ..< limbs.len:
+      res[i] = limbs[i].uint32
+  else:
+    {.error: "Logic to convert 64 bit limbs to 32 bit limbs at compile time still unfinished.".}
+    # need twice as many limbs to go from 64bit to 32bit
+    ## XXX: Use number of bits required to check if the
+    ## last limbs needs to be dropped
+    var res = default(array[b.limbs.len * 2, uint32])
+    for i in 0 ..< b.limbs.len:
+      res[i*2]     = limbs[i].uint32
+      res[i*2 + 1] = (limbs[i] shr 32).uint32
   res
 
 template defBigInt*(N: typed): untyped {.dirty.} =
