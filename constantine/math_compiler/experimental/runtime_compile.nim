@@ -45,6 +45,11 @@ type
     x*: Dim
     y*: Dim
     z*: Dim
+  NvGridDim = object
+    x*: Dim
+    y*: Dim
+    z*: Dim
+
 
 ## These are dummy elements to make CUDA block / thread index / dim
 ## access possible in the *typed* `cuda` macro. It cannot be `const`,
@@ -52,13 +57,30 @@ type
 ## can work with it from the typed macro.
 let blockIdx* = NvBlockIdx()
 let blockDim* = NvBlockDim()
+let gridDim* = NvGridDim()
 let threadIdx* = NvThreadIdx()
 
 ## Similar for procs. They don't need any implementation, as they won't ever be actually called.
 proc printf*(fmt: string) {.varargs.} = discard
 proc memcpy*(dst, src: pointer, size: int) = discard
 
+## `cuExtern` is mapped to `extern`, but has a different name, because Nim has its
+## own `extern` pragma (due to requiring an argument it cannot be reused):
+## https://nim-lang.org/docs/manual.html#foreign-function-interface-extern-pragma
+template cuExtern*(): untyped {.pragma.}
+template shared*(): untyped {.pragma.}
+## You would typically use `cuExtern` and `shared` together:
+## `var x {.cuExtern, shared.}: array[N, Foo]`
+## for example to declare a constant array that is filled by the
+## host before kernel execution.
+
+## While you can use `malloc` on device with small sizes, it is usually not
+## recommended to do so.
+proc malloc*(size: csize_t): pointer  = discard
+proc free*(p: pointer) = discard
 proc syncthreads*() {.cudaName: "__syncthreads".} = discard
+
+
 
 type
   NVRTC* = object
