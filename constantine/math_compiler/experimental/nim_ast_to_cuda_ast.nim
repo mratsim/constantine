@@ -674,7 +674,7 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     result = GpuAst(kind: gpuLit)
     result.lValue = $node.intVal
     result.lType = initGpuType(gtUInt32)
-  of nnkFloat64Lit:
+  of nnkFloat64Lit, nnkFloatLit:
     result = GpuAst(kind: gpuLit)
     result.lValue = $node.floatVal & "f"
     result.lType = initGpuType(gtFloat64)
