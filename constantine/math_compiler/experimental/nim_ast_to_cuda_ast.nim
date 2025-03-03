@@ -895,7 +895,10 @@ proc gpuTypeToString(t: GpuType, ident: string = "", allowArrayToPtr = false,
       result = typ & " " & ident & lengths
     else:
       # NOTE: Nested arrays don't have an inner identifier!
-      result = gpuTypeToString(t.aTyp, allowEmptyIdent = allowEmptyIdent) & " " & ident & "[" & $t.aLen & "]"
+      if t.aLen == 0: ## XXX: for the moment for 0 length arrays we generate flexible arrays instead
+        result = gpuTypeToString(t.aTyp, allowEmptyIdent = allowEmptyIdent) & " " & ident & "[]"
+      else:
+        result = gpuTypeToString(t.aTyp, allowEmptyIdent = allowEmptyIdent) & " " & ident & "[" & $t.aLen & "]"
     skipIdent = true
   of gtObject: result = t.name
   else:        result = gpuTypeToString(t.kind)
