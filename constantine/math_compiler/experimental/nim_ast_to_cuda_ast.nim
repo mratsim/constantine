@@ -16,6 +16,7 @@ type
     gpuTemplateCall # Call to a Nim template
     gpuIf           # If statement
     gpuFor          # For loop
+    gpuWhile        # While loop
     gpuBinOp        # Binary operation
     gpuVar          # Variable declaration
     gpuAssign       # Assignment
@@ -87,6 +88,9 @@ type
       fVar: string
       fStart, fEnd: GpuAst
       fBody: GpuAst
+    of gpuWhile:
+      wCond: GpuAst
+      wBody: GpuAst
     of gpuBinOp:
       bOp: string
       bLeft, bRight: GpuAst
@@ -515,6 +519,10 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     result.fStart = ctx.toGpuAst(node[1][1])
     result.fEnd = ctx.toGpuAst(node[1][2])
     result.fBody = ensureBlock ctx.toGpuAst(node[2])
+  of nnkWhileStmt:
+    result = GpuAst(kind: gpuWhile)
+    result.wCond = ctx.toGpuAst(node[0]) # the condition
+    result.wBody = ensureBlock ctx.toGpuAst(node[1])
 
   of nnkTemplateDef:
     ## NOTE: Currently we process templates, but we expect them to be already
@@ -914,6 +922,11 @@ proc genCuda(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
              ast.fVar & " < " & ctx.genCuda(ast.fEnd) & "; " &
              ast.fVar & "++) {\n"
     result &= ctx.genCuda(ast.fBody, indent + 1) & "\n"
+    result &= indentStr & "}"
+  of gpuWhile:
+    ctx.withoutSemicolon:
+      result = indentStr & "while (" & ctx.genCuda(ast.wCond) & "){\n"
+    result &= ctx.genCuda(ast.wBody, indent + 1) & "\n"
     result &= indentStr & "}"
 
   of gpuDot:
