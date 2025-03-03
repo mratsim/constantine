@@ -8,6 +8,7 @@
 
 import constantine/platforms/abis/nvidia_abi
 import std/macros
+from std / strutils import normalize
 
 proc getTypes(n: NimNode): seq[NimNode] =
   case n.kind
@@ -52,6 +53,12 @@ proc requiresCopy(n: NimNode, passStructByPointer: bool): bool =
       result = impl.kind == nnkRefTy # if a ref, needs to be copied
     else:
       result = true # for now assume it needs to be copied
+  of ntyDistinct:
+    let impl = n.getTypeInst()
+    if impl.kind in [nnkIdent, nnkSym] and impl.strVal.normalize == "cudeviceptr":
+      result = false
+    else:
+      result = true
   else:
     result = true
 
