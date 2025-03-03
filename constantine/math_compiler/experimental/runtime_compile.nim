@@ -65,6 +65,7 @@ type
     kernel*: CUfunction
     module*: CUmodule
     context*: CUcontext
+    moduleLoaded*: bool
 
 proc `=destroy`(nvrtc: NVRTC) =
   if nvrtc.module.pointer != nil:
@@ -148,6 +149,23 @@ proc getPtx*(nvrtc: var NVRTC) =
 
   check nvrtcDestroyProgram(addr nvrtc.prog) # Destroy the program.
   nvrtc.ptx = ptx
+proc load*(nvrtc: var NVRTC) =
+  # After getting the PTX...
+  var error_log = newString(8192)
+  var info_log = newString(8192)
+
+  ## NOTE: if you wish to use the `link` approach, pass `nvrtc.cubin` instead of `PTX`
+  #let status = cuModuleLoadData(addr nvrtc.module, nvrtc.cubin)
+  let status = cuModuleLoadData(nvrtc.module, cstring nvrtc.ptx)
+  if status != CUDA_SUCCESS:
+    var error_str: cstring #const char* error_str;
+    check cuGetErrorString(status, cast[cstringArray](addr error_str));
+    echo "Module load failed: ", error_str
+    echo "JIT Error log: ", error_log
+    echo "JIT Info log: ", info_log
+    quit(1)
+
+  nvrtc.moduleLoaded = true
 
 proc link*(nvrtc: var NVRTC) =
   ## OPTIONAL STEP. Alternative to passing the PTX to `cuModuleLoadData`.
@@ -219,27 +237,19 @@ proc link*(nvrtc: var NVRTC) =
   # Assign the cubin
   nvrtc.cubin = cubn
 
-template execute*(nvrtc: var NVRTC, fn: string, res, inputs: typed) =
+template execute*(nvrtc: var NVRTC, fn: string, res, inputs: typed, sharedMemSize: typed) =
   ## Load the generated PTX, get the target kernel `fn` and execute it with the `res` and `inputs`
 
-  # After getting the PTX...
-  var error_log = newString(8192)
-  var info_log = newString(8192)
+  if not nvrtc.moduleLoaded:
+    nvrtc.load()
 
-  ## NOTE: if you wish to use the `link` approach, pass `nvrtc.cubin` instead of `PTX`
-  #let status = cuModuleLoadData(addr nvrtc.module, nvrtc.cubin)
-  let status = cuModuleLoadData(nvrtc.module, cstring nvrtc.ptx)
-  if status != CUDA_SUCCESS:
-    var error_str: cstring #const char* error_str;
-    check cuGetErrorString(status, cast[cstringArray](addr error_str));
-    echo "Module load failed: ", error_str
-    echo "JIT Error log: ", error_log
-    echo "JIT Info log: ", info_log
-    quit(1)
   check cuModuleGetFunction(nvrtc.kernel, nvrtc.module, fn)
 
   # now execute the kernel
-  execCuda(nvrtc.kernel, nvrtc.numBlocks, nvrtc.threadsPerBlock, res, inputs)
+  execCuda(nvrtc.kernel, nvrtc.numBlocks, nvrtc.threadsPerBlock, res, inputs, sharedMemSize)
 
   # synchronize so that e.g. `printf` statements will be printed before we (possibly) quit
   check cuCtxSynchronize() #
+
+template execute*(nvrtc: var NVRTC, fn: string, res, inputs: typed) =
+  nvrtc.execute(fn, res, inputs, 0)
