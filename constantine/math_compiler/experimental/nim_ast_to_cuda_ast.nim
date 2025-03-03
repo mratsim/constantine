@@ -43,7 +43,8 @@ type
     gtArray,     # Static array `array[N, dtype]` -> `dtype[N]`
     gtString,
     gtObject,    # Struct types
-    gtPtr        # Pointer type, carries inner type
+    gtPtr,       # Pointer type, carries inner type
+    gtVoidPtr    # Opaque void pointer
 
   GpuTypeField = object
     name: string
@@ -183,6 +184,9 @@ proc initGpuPtrType(to: GpuType): GpuType =
   ## If `kind` is `gtPtr` `to` must be the type we point to
   result = GpuType(kind: gtPtr, to: to)
 
+proc initGpuVoidPtr(): GpuType =
+  result = GpuType(kind: gtVoidPtr)
+
 proc initGpuObjectType(name: string, flds: seq[GpuTypeField]): GpuType =
   ## If `kind` is `gtPtr` `to` must be the type we point to
   result = GpuType(kind: gtObject, name: name, oFields: flds)
@@ -299,6 +303,8 @@ proc nimToGpuType(n: NimNode): GpuType =
       result = initGpuType(toGpuTypeKind n.typeKind)
     of ntyPtr, ntyVar:
       result = initGpuPtrType(getInnerPointerType(n))
+    of ntyPointer:
+      result = initGpuVoidPtr()
     of ntyUncheckedArray:
       ## Note: this is just the internal type of the array. It is only a pointer due to
       ## `ptr UncheckedArray[T]`. We simply remove the `UncheckedArray` part.
@@ -610,6 +616,10 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     result = GpuAst(kind: gpuLit)
     result.lValue = node.strVal.escape("", "")
     result.lType = initGpuType(gtString)
+  of nnkNilLit:
+    result = GpuAst(kind: gpuLit)
+    result.lValue = "NULL"
+    result.lType = initGpuVoidPtr()
 
   of nnkPar:
     if node.len == 1: # just take body
@@ -747,6 +757,7 @@ proc gpuTypeToString(t: GpuTypeKind): string =
   of gtVoid: "void"
   of gtSize_t: "size_t"
   of gtPtr: "*"
+  of gtVoidPtr: "void*"
   of gtObject: "struct"
   of gtString: "const char*"
   else:
