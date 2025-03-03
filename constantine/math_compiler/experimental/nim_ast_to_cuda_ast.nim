@@ -799,9 +799,6 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     result = GpuAst(kind: gpuDeref, dOf: ctx.toGpuAst(node[0]))
 
   of nnkConstDef:
-    echo node.treerepr
-    raiseAssert "`const` is currently not supported, because `constexpr` in CUDA causes " &
-      "compilation issues."
     result = GpuAst(kind: gpuConstexpr,
                     cIdent: ctx.toGpuAst(node[0]),
                     cValue: ctx.toGpuAst(node[2]),
