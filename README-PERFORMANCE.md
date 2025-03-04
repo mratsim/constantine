@@ -1,6 +1,6 @@
 # Performance
 
-High-performance is a sought out property.
+High-performance is a sought after property.
 Note that security and side-channel resistance takes priority over performance.
 
 New applications of elliptic curve cryptography like zero-knowledge proofs or
@@ -27,7 +27,7 @@ To measure the performance of Constantine
 ```bash
 git clone https://github.com/mratsim/constantine
 
-# Default compiler. We recommand enforcing CC=clang for best performance.
+# Default compiler. We recommend enforcing CC=clang for best performance.
 nimble bench_fp
 
 # Arithmetic
@@ -112,7 +112,7 @@ and provides the following paradigms:
 - Dataflow parallelism / Stream parallelism / Graph Parallelism / Pipeline parallelism
 - Structured Parallelism
 
-The threadpool parallel-for loops use lazy loop splitting and are fully adaptative to the workload being scheduled, the threads in-flight load and the hardware speed unlike most (all?) runtime, see:
+The threadpool parallel-for loops use lazy loop splitting and are fully adaptive to the workload being scheduled, the threads in-flight load and the hardware speed unlike most (all?) runtime, see:
 - OpenMP woes depending on hardware and workload: https://github.com/zy97140/omp-benchmark-for-pytorch
 - Raytracing ideal runtime, adapt to pixel compute load: ![load distribution](./media/parallel_load_distribution.png)\
   Most (all?) production runtime use scheduling A (split on number of threads like GCC OpenMP) or B (eager splitting, unable to adapt to actual work like LLVM/Intel OpenMP or Intel TBB) while Constantine uses C.
