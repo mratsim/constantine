@@ -66,7 +66,7 @@ Other tracks are stretch goals, contributions towards them are accepted.
   - Finish IPA for Verkle Tries:
     - Full test suite coverage https://github.com/mratsim/constantine/issues/396
 
-- Fast MSM for fixed base like Trusted Setups and Ethreum Verkle Tries
+- Fast MSM for fixed base like Trusted Setups and Ethereum Verkle Tries
   - Notes on MSMs with precomputation https://hackmd.io/WfIjm0icSmSoqy2cfqenhQ
   - Verkle Trees - Another iteration of VKTs MSMs https://hackmd.io/@jsign/vkt-another-iteration-of-vkt-msms
 
@@ -99,7 +99,7 @@ Other tracks are stretch goals, contributions towards them are accepted.
 - LLVM IR:
   - use internal or private linkage type
   - look into calling conventions like "fast" or "Tail fast"
-  - check if returning a value from function is propely optimized
+  - check if returning a value from function is properly optimized
     compared to in-place result
   - use readnone (pure) and readmem attribute for functions
   - look into passing parameter as arrays instead of pointers?
@@ -139,7 +139,7 @@ Create a "Constantine book" to introduce Constantine concepts and walkthrough av
       Example: Lasso or LogUp+GKR
 
     - Multilinear Polynomial Commitment Schemes
-      For efficiency when commiting to small values (for example coming from bit manipulation in hash functions)
+      For efficiency when committing to small values (for example coming from bit manipulation in hash functions)
       Example: KZG+Gemini/Zeromorph, Dory, Hyrax, Binius, ...
 
 - STARKS:
