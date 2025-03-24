@@ -215,7 +215,9 @@ func `<`(a, b: BigInt): bool =
 func shiftRight*(a: var BigInt, k: int) =
   ## Shift right by k.
   ##
-  ## k MUST be less than the base word size (2^32 or 2^64)
+  ## Precondition:
+  ## - On 32-bit platforms, k MUST be 0 < k < 32
+  ## - On 64-bit platforms, k MUST be 0 < k < 64
 
   for i in 0 ..< a.limbs.len-1:
     a.limbs[i] = (a.limbs[i] shr k) or (a.limbs[i+1] shl (WordBitWidth - k))

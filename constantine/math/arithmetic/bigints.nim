@@ -323,7 +323,10 @@ func square*[rBits, aBits](r: var BigInt[rBits], a: BigInt[aBits]) =
 func shiftRight*(a: var BigInt, k: int) =
   ## Shift right by k.
   ##
-  ## k MUST be less than the base word size (2^31 or 2^63)
+  ## Precondition:
+  ## - On 32-bit platforms, k MUST be 0 < k < 32
+  ## - On 64-bit platforms, k MUST be 0 < k < 64
+  debug: doAssert 0 < k and k < WordBitwidth
   a.limbs.shiftRight(k)
 
 func bit*[bits: static int](a: BigInt[bits], index: int): Ct[uint8] =
