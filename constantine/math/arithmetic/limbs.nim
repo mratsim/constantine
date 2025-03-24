@@ -168,7 +168,9 @@ func isOne*(a: Limbs): SecretBool =
 func shiftRight*(a: var Limbs, k: int) =
   ## Shift right by k.
   ##
-  ## k MUST be less than the base word size (2^32 or 2^64)
+  ## Precondition:
+  ## - On 32-bit platforms, k MUST be 0 < k < 32
+  ## - On 64-bit platforms, k MUST be 0 < k < 64
   # We don't reuse shr as this is an in-place operation
   # Do we need to return the shifted out part?
   #
@@ -177,7 +179,7 @@ func shiftRight*(a: var Limbs, k: int) =
   #       is probably easier to parallelize for the compiler
   #       (antidependence WAR vs loop-carried dependence RAW)
 
-  # checkWordShift(k)
+  debug: doAssert 0 < k and k < WordBitwidth
 
   for i in 0 ..< a.len-1:
     a[i] = (a[i] shr k) or (a[i+1] shl (WordBitWidth - k))
