@@ -65,6 +65,11 @@ declareCurves:
     testingCurve: true
     bitwidth: 16
     modulus: "0xFFEF" # 65519 in hex
+
+  curve BabyBear: # BabyBear field used in SNARKs and zkVMs
+    bitwidth: 31
+    modulus: "0x78000001" # `0b1111000000000000000000000000001 = 15·2²⁷ + 1 = 2³¹ - 2²⁷ + 1`
+
   curve Mersenne61:
     testingCurve: true
     bitwidth: 61
