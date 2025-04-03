@@ -43,7 +43,7 @@ func has1extraBit(F: type Fp): bool =
 
 func sqrx2x_complex_asm_adx*(
         r: var array[2, FpDbl],
-        a: array[2, Fp]) =
+        a: array[2, Fp]) {.meter.} =
   ## Complex squaring on 𝔽p2
   # This specialized proc inlines all calls and avoids many ADX support checks.
   # and push/pop for paramater passing.
@@ -63,7 +63,7 @@ func sqrx2x_complex_asm_adx*(
 
 func sqrx_complex_sparebit_asm_adx*(
         r: var array[2, Fp],
-        a: array[2, Fp]) =
+        a: array[2, Fp]) {.meter.} =
   ## Complex squaring on 𝔽p2
   # This specialized proc inlines all calls and avoids many ADX support checks.
   # and push/pop for paramater passing.
@@ -83,7 +83,7 @@ func sqrx_complex_sparebit_asm_adx*(
 
 func mul2x_fp2_complex_asm_adx*(
         r: var array[2, FpDbl],
-        a, b: array[2, Fp]) =
+        a, b: array[2, Fp]) {.meter.} =
   ## Complex multiplication on 𝔽p2
   var D {.noInit.}: typeof(r.c0)
   var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)

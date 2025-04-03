@@ -78,8 +78,8 @@ func bestBucketBitSize(inputSize: int, scalarBitwidth: static int, useSignedBuck
     if 13 <= result:
       result -= 1
 
-func `~*=`[Gt: ExtensionField](a: var Gt, b: Gt) {.inline.} =
-  # TODO: Analyze the inputs to see if there is avalue in more complex shortcuts (-1, or partial 0 coordinates)
+func `~*=`[Gt: ExtensionField](a: var Gt, b: Gt) {.meter, inline.} =
+  # TODO: Analyze the inputs to see if there is a value in more complex shortcuts (-1, or partial 0 coordinates)
   if a.isOne().bool():
     a = b
   elif b.isOne().bool():
@@ -87,22 +87,22 @@ func `~*=`[Gt: ExtensionField](a: var Gt, b: Gt) {.inline.} =
   else:
     a *= b
 
-func `~/=`[Gt: ExtensionField](a: var Gt, b: Gt) {.inline.} =
+func `~/=`[Gt: ExtensionField](a: var Gt, b: Gt) {.meter, inline.} =
   ## Cyclotomic division
   var t {.noInit.}: Gt
   t.cyclotomic_inv(b)
   a ~*= t
 
-func setNeutral[Gt: ExtensionField](a: var Gt) {.inline.} =
+func setNeutral[Gt: ExtensionField](a: var Gt) {.meter, inline.} =
   a.setOne()
 
-func `~*=`(a: var T2Prj, b: T2Aff) {.inline.} =
+func `~*=`(a: var T2Prj, b: T2Aff) {.meter, inline.} =
   a.mixedProd_vartime(a, b)
 
-func `~*=`(a: var T2Prj, b: T2Prj) {.inline.} =
+func `~*=`(a: var T2Prj, b: T2Prj) {.meter, inline.} =
   a.prod(a, b)
 
-func `~/=`(a: var T2Prj, b: T2Aff) {.inline.} =
+func `~/=`(a: var T2Prj, b: T2Aff) {.meter, inline.} =
   ## Cyclotomic division
   var t {.noInit.}: T2Aff
   t.inv(b)

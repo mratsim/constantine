@@ -20,7 +20,7 @@ import
 var rng*: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
-echo "bench xoshiro512** seed: ", seed
+echo "metering xoshiro512** seed: ", seed
 
 func random_point*(rng: var RngState, EC: typedesc[EC_ShortW_Aff]): EC {.noInit.} =
   var jac = rng.random_unsafe(EC_ShortW_Jac[EC.F, EC.G])
