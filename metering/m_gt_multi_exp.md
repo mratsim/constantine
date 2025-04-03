@@ -53,166 +53,197 @@ The random seed is fixed for reproducibility
 
 |                         Procedures                         |  # of Calls  | Throughput (ops/s) |    Time (µs)     |  Avg Time (µs)   |
 |------------------------------------------------------------|--------------|--------------------|------------------|------------------|
-|neg*(r: var FF; a: FF)                                      |         19254|        86320291.590|           223.053|             0.012|
-|neg*(a: var FF)                                             |          2048|        26101474.580|            78.463|             0.038|
-|`+=`*(a: var FF; b: FF)                                     |           720|        94401468.467|             7.627|             0.011|
-|double*(a: var FF)                                          |           720|        94924192.485|             7.585|             0.011|
-|sum*(r: var FF; a, b: FF)                                   |        141300|        93223576.262|          1515.711|             0.011|
-|sumUnr*(r: var FF; a, b: FF)                                |        353916|        94649407.860|          3739.231|             0.011|
-|diff*(r: var FF; a, b: FF)                                  |           960|        85653104.925|            11.208|             0.012|
-|prod*(r: var FF; a, b: FF; lazyReduce: static bool = false) |          1536|        59946142.138|            25.623|             0.017|
-|square2x_complex(r: var QuadraticExt2x; a: Fp2)             |           540|         9686619.908|            55.747|             0.103|
-|prod2x_complex(r: var QuadraticExt2x; a, b: Fp2)            |        106158|        11048526.593|          9608.340|             0.091|
-|cyclotomic_inv*(a: var FT)                                  |           256|         2883175.097|            88.791|             0.347|
-|cyclotomic_inv*(r: var FT; a: FT)                           |          2569|         5278622.503|           486.680|             0.189|
-|cyclotomic_square*(r: var FT; a: FT)                        |            60|          373645.535|           160.580|             2.676|
-|`~*=`(a: var Gt; b: Gt)                                     |          6222|          274170.653|         22693.895|             3.647|
-|`~/=`(a: var Gt; b: Gt)                                     |          2569|          256820.514|         10003.095|             3.894|
-|setNeutral(a: var Gt)                                       |           385|        55983713.829|             6.877|             0.018|
-|accumulate(buckets: ptr UncheckedArray[GtAcc]; val: Secr ...|          5632|          269712.192|         20881.518|             3.708|
-|bucketReduce(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            11|            4287.663|          2565.500|           233.227|
-|miniMultiExp(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            11|             463.026|         23756.790|          2159.708|
-|multiExpImpl_vartime(r: var GtAcc; elems: ptr UncheckedA ...|             1|              42.072|         23769.000|         23769.000|
-|multiExp_vartime*(r: var GT; elems: ptr UncheckedArray[G ...|             1|              41.410|         24148.959|         24148.959|
-|multiExp_vartime*(r: var GT; elems: openArray[GT]; expos ...|             1|              41.410|         24148.959|         24148.959|
+|neg*(r: var FF; a: FF)                                      |         19254|       122702592.470|           156.916|             0.008|
+|neg*(a: var FF)                                             |          2048|        33346902.223|            61.415|             0.030|
+|`+=`*(a: var FF; b: FF)                                     |           720|       144115292.234|             4.996|             0.007|
+|double*(a: var FF)                                          |           720|       126961735.144|             5.671|             0.008|
+|sum*(r: var FF; a, b: FF)                                   |        141300|       134697274.311|          1049.019|             0.007|
+|sumUnr*(r: var FF; a, b: FF)                                |        353916|       136966251.478|          2583.965|             0.007|
+|diff*(r: var FF; a, b: FF)                                  |           960|       149393090.570|             6.426|             0.007|
+|prod*(r: var FF; a, b: FF; lazyReduce: static bool = false) |          1536|        73128927.823|            21.004|             0.014|
+|prod2x*(r: var FpDbl; a, b: Fp)                             |        319554|       128695027.412|          2483.033|             0.008|
+|redc2x*(r: var Fp; a: FpDbl)                                |         72516|       114905592.212|           631.092|             0.009|
+|diff2xUnr*(r: var FpDbl; a, b: FpDbl)                       |        212316|       129110095.308|          1644.457|             0.008|
+|diff2xMod*(r: var FpDbl; a, b: FpDbl)                       |        434938|       124428975.543|          3495.472|             0.008|
+|sum2xMod*(r: var FpDbl; a, b: FpDbl)                        |        187900|       120900156.031|          1554.175|             0.008|
+|square2x_complex(r: var QuadraticExt2x; a: Fp2)             |           540|         8165981.128|            66.128|             0.122|
+|prod2x_complex(r: var QuadraticExt2x; a, b: Fp2)            |        106158|         5183667.195|         20479.324|             0.193|
+|cyclotomic_inv*(a: var FT)                                  |           256|         3618374.558|            70.750|             0.276|
+|cyclotomic_inv*(r: var FT; a: FT)                           |          2569|         6448455.032|           398.390|             0.155|
+|cyclotomic_square*(r: var FT; a: FT)                        |            60|          320929.412|           186.957|             3.116|
+|`~*=`(a: var Gt; b: Gt)                                     |          6222|          146563.558|         42452.572|             6.823|
+|`~/=`(a: var Gt; b: Gt)                                     |          2569|          142160.939|         18071.068|             7.034|
+|setNeutral(a: var Gt)                                       |           385|        95155709.343|             4.046|             0.011|
+|accumulate(buckets: ptr UncheckedArray[GtAcc]; val: Secr ...|          5632|          147013.903|         38309.302|             6.802|
+|bucketReduce(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            11|            2334.961|          4711.000|           428.273|
+|miniMultiExp(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            11|             253.630|         43370.209|          3942.746|
+|multiExpImpl_vartime(r: var GtAcc; elems: ptr UncheckedA ...|             1|              23.052|         43380.166|         43380.166|
+|multiExp_vartime*(r: var GT; elems: ptr UncheckedArray[G ...|             1|              22.826|         43810.458|         43810.458|
+|multiExp_vartime*(r: var GT; elems: openArray[GT]; expos ...|             1|              22.826|         43810.500|         43810.500|
 
 ## BLS12-381, Fp12 over Fp6 over Fp2, 128 inputs, non-torus
 
 |                         Procedures                         |  # of Calls  | Throughput (ops/s) |    Time (µs)     |  Avg Time (µs)   |
 |------------------------------------------------------------|--------------|--------------------|------------------|------------------|
-|neg*(r: var FF; a: FF)                                      |         19254|        88220335.488|           218.249|             0.011|
-|neg*(a: var FF)                                             |          2048|        25589124.622|            80.034|             0.039|
-|`+=`*(a: var FF; b: FF)                                     |           720|        85908602.792|             8.381|             0.012|
-|double*(a: var FF)                                          |           720|       102272727.273|             7.040|             0.010|
-|sum*(r: var FF; a, b: FF)                                   |        211560|        91116918.736|          2321.852|             0.011|
-|sumUnr*(r: var FF; a, b: FF)                                |        283656|        92888065.127|          3053.740|             0.011|
-|diff*(r: var FF; a, b: FF)                                  |           960|        94432421.798|            10.166|             0.011|
-|prod*(r: var FF; a, b: FF; lazyReduce: static bool = false) |          1536|        59451927.543|            25.836|             0.017|
-|square2x_complex(r: var QuadraticExt2x; a: Fp2)             |           540|        10031208.203|            53.832|             0.100|
-|prod2x_complex(r: var QuadraticExt2x; a, b: Fp2)            |        106158|        10833964.629|          9798.629|             0.092|
-|cyclotomic_inv*(a: var FT)                                  |           256|         2831419.913|            90.414|             0.353|
-|cyclotomic_inv*(r: var FT; a: FT)                           |          2569|         5168504.514|           497.049|             0.193|
-|cyclotomic_square*(r: var FT; a: FT)                        |            60|          381759.530|           157.167|             2.619|
-|`~*=`(a: var Gt; b: Gt)                                     |          6222|          269578.239|         23080.498|             3.709|
-|`~/=`(a: var Gt; b: Gt)                                     |          2569|          251725.283|         10205.570|             3.973|
-|setNeutral(a: var Gt)                                       |           385|        62867406.924|             6.124|             0.016|
-|accumulate(buckets: ptr UncheckedArray[GtAcc]; val: Secr ...|          5632|          264929.447|         21258.490|             3.775|
-|bucketReduce(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            11|            4229.886|          2600.543|           236.413|
-|miniMultiExp(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            11|             455.240|         24163.083|          2196.644|
-|multiExpImpl_vartime(r: var GtAcc; elems: ptr UncheckedA ...|             1|              41.356|         24180.334|         24180.334|
-|multiExp_vartime*(r: var GT; elems: ptr UncheckedArray[G ...|             1|              40.712|         24562.500|         24562.500|
-|multiExp_vartime*(r: var GT; elems: openArray[GT]; expos ...|             1|              40.712|         24562.583|         24562.583|
+|neg*(r: var FF; a: FF)                                      |         19254|       131545146.480|           146.368|             0.008|
+|neg*(a: var FF)                                             |          2048|        37609725.640|            54.454|             0.027|
+|`+=`*(a: var FF; b: FF)                                     |           720|       172910662.824|             4.164|             0.006|
+|double*(a: var FF)                                          |           720|       171265461.465|             4.204|             0.006|
+|sum*(r: var FF; a, b: FF)                                   |        211560|       143783191.585|          1471.382|             0.007|
+|sumUnr*(r: var FF; a, b: FF)                                |        283656|       145350124.210|          1951.536|             0.007|
+|diff*(r: var FF; a, b: FF)                                  |           960|       159813550.857|             6.007|             0.006|
+|prod*(r: var FF; a, b: FF; lazyReduce: static bool = false) |          1536|        75438337.999|            20.361|             0.013|
+|prod2x*(r: var FpDbl; a, b: Fp)                             |        319554|       138028474.415|          2315.131|             0.007|
+|redc2x*(r: var Fp; a: FpDbl)                                |         72516|       124491414.563|           582.498|             0.008|
+|diff2xUnr*(r: var FpDbl; a, b: FpDbl)                       |        212316|       138593347.629|          1531.935|             0.007|
+|diff2xMod*(r: var FpDbl; a, b: FpDbl)                       |        429083|       132738774.529|          3232.537|             0.008|
+|sum2xMod*(r: var FpDbl; a, b: FpDbl)                        |        182045|       130376616.503|          1396.301|             0.008|
+|square2x_complex(r: var QuadraticExt2x; a: Fp2)             |           540|         8899876.391|            60.675|             0.112|
+|prod2x_complex(r: var QuadraticExt2x; a, b: Fp2)            |        106158|         5529144.285|         19199.716|             0.181|
+|cyclotomic_inv*(a: var FT)                                  |           256|         3797318.144|            67.416|             0.263|
+|cyclotomic_inv*(r: var FT; a: FT)                           |          2569|         6909164.257|           371.825|             0.145|
+|cyclotomic_square*(r: var FT; a: FT)                        |            60|          346486.340|           173.167|             2.886|
+|`~*=`(a: var Gt; b: Gt)                                     |          6222|          157532.392|         39496.639|             6.348|
+|`~/=`(a: var Gt; b: Gt)                                     |          2569|          152816.881|         16810.970|             6.544|
+|setNeutral(a: var Gt)                                       |           385|       106031396.310|             3.631|             0.009|
+|accumulate(buckets: ptr UncheckedArray[GtAcc]; val: Secr ...|          5632|          158170.053|         35607.246|             6.322|
+|bucketReduce(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            11|            2486.507|          4423.876|           402.171|
+|miniMultiExp(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            11|             272.586|         40354.250|          3668.568|
+|multiExpImpl_vartime(r: var GtAcc; elems: ptr UncheckedA ...|             1|              24.778|         40357.750|         40357.750|
+|multiExp_vartime*(r: var GT; elems: ptr UncheckedArray[G ...|             1|              24.545|         40742.208|         40742.208|
+|multiExp_vartime*(r: var GT; elems: openArray[GT]; expos ...|             1|              24.545|         40742.292|         40742.292|
 
 ## BLS12-381, Fp12 over Fp6 over Fp2, 128 inputs, with-torus
 
 |                         Procedures                         |  # of Calls  | Throughput (ops/s) |    Time (µs)     |  Avg Time (µs)   |
 |------------------------------------------------------------|--------------|--------------------|------------------|------------------|
-|neg*(r: var FF; a: FF)                                      |         56561|        84604775.837|           668.532|             0.012|
-|neg*(a: var FF)                                             |          2054|        23331894.495|            88.034|             0.043|
-|`+=`*(a: var FF; b: FF)                                     |             2|        23809523.810|             0.084|             0.042|
-|`-=`*(a: var FF; b: FF)                                     |           370|        82996859.578|             4.458|             0.012|
-|sum*(r: var FF; a, b: FF)                                   |        118050|        88042349.825|          1340.832|             0.011|
-|sumUnr*(r: var FF; a, b: FF)                                |         36716|        90489886.555|           405.747|             0.011|
-|diff*(r: var FF; a, b: FF)                                  |         33674|        89482355.442|           376.320|             0.011|
-|prod*(r: var FF; a, b: FF; lazyReduce: static bool = false) |          1540|        57636887.608|            26.719|             0.017|
-|square*(r: var FF; a: FF; lazyReduce: static bool = false)  |             4|        12012012.012|             0.333|             0.083|
-|sumprod*(r: var FF; a, b: array[N, FF]; lazyReduce: stat ...|         74574|        17977262.646|          4148.240|             0.056|
-|inv_vartime*(r: var FF; a: FF)                              |             2|          539374.326|             3.708|             1.854|
-|square2x_complex(r: var QuadraticExt2x; a: Fp2)             |           552|         9449627.664|            58.415|             0.106|
-|prod2x_complex(r: var QuadraticExt2x; a, b: Fp2)            |         13642|        10365521.004|          1316.094|             0.096|
-|prodImpl_fp6o2_complex_snr_1pi(r: var Fp6[Name]; a, b: F ...|         12429|         1450595.883|          8568.203|             0.689|
-|cyclotomic_inv*(a: var FT)                                  |           256|         2652712.295|            96.505|             0.377|
-|square*(r: var T2Prj[F]; a: T2Prj[F])                       |            60|          350109.409|           171.375|             2.856|
-|`~*=`(a: var T2Prj; b: T2Aff)                               |          5529|          574309.393|          9627.215|             1.741|
-|`~*=`(a: var T2Prj; b: T2Prj)                               |           693|          245976.701|          2817.340|             4.065|
-|`~/=`(a: var T2Prj; b: T2Aff)                               |          2569|          508621.319|          5050.909|             1.966|
-|accumulate(buckets: ptr UncheckedArray[GtAcc]; val: Secr ...|          5632|          544711.722|         10339.414|             1.836|
-|bucketReduce(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            11|            3948.375|          2785.956|           253.269|
-|miniMultiExp(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            11|             817.391|         13457.458|          1223.405|
-|multiExpImpl_vartime(r: var GtAcc; elems: ptr UncheckedA ...|             1|              74.293|         13460.166|         13460.166|
-|multiExp_vartime*(r: var GT; elems: ptr UncheckedArray[G ...|             1|              64.634|         15471.792|         15471.792|
-|multiExp_vartime*(r: var GT; elems: openArray[GT]; expos ...|             1|              64.634|         15471.833|         15471.833|
+|neg*(r: var FF; a: FF)                                      |         56561|       132501077.606|           426.872|             0.008|
+|neg*(a: var FF)                                             |          2054|        35983322.238|            57.082|             0.028|
+|`+=`*(a: var FF; b: FF)                                     |             2|                 inf|             0.000|             0.000|
+|`-=`*(a: var FF; b: FF)                                     |           370|       156646909.399|             2.362|             0.006|
+|sum*(r: var FF; a, b: FF)                                   |        118050|       144184967.145|           818.740|             0.007|
+|sumUnr*(r: var FF; a, b: FF)                                |         36716|       148534718.514|           247.188|             0.007|
+|diff*(r: var FF; a, b: FF)                                  |         33674|       144130802.320|           233.635|             0.007|
+|prod*(r: var FF; a, b: FF; lazyReduce: static bool = false) |          1540|        75431034.483|            20.416|             0.013|
+|square*(r: var FF; a: FF; lazyReduce: static bool = false)  |             4|        95238095.238|             0.042|             0.011|
+|sumprod*(r: var FF; a, b: array[N, FF]; lazyReduce: stat ...|         74574|        20986814.222|          3553.374|             0.048|
+|inv_vartime*(r: var FF; a: FF)                              |             2|          623247.117|             3.209|             1.605|
+|prod2x*(r: var FpDbl; a, b: Fp)                             |         42030|       137851187.626|           304.894|             0.007|
+|redc2x*(r: var Fp; a: FpDbl)                                |         10624|       119171275.056|            89.149|             0.008|
+|diff2xUnr*(r: var FpDbl; a, b: FpDbl)                       |         27284|       138409638.554|           197.125|             0.007|
+|diff2xMod*(r: var FpDbl; a, b: FpDbl)                       |         53702|       129650150.770|           414.207|             0.008|
+|sum2xUnr*(r: var FpDbl; a, b: FpDbl)                        |             4|        48192771.084|             0.083|             0.021|
+|sum2xMod*(r: var FpDbl; a, b: FpDbl)                        |         24492|       129794010.567|           188.699|             0.008|
+|square2x_complex(r: var QuadraticExt2x; a: Fp2)             |           552|         8749405.611|            63.090|             0.114|
+|prod2x_complex(r: var QuadraticExt2x; a, b: Fp2)            |         13642|         5550578.128|          2457.762|             0.180|
+|prodImpl_fp6o2_complex_snr_1pi(r: var Fp6[Name]; a, b: F ...|         12429|         1842136.232|          6747.058|             0.543|
+|cyclotomic_inv*(a: var FT)                                  |           256|         3813666.632|            67.127|             0.262|
+|square*(r: var T2Prj[F]; a: T2Prj[F])                       |            60|          209031.557|           287.038|             4.784|
+|`~*=`(a: var T2Prj; b: T2Aff)                               |          5529|          745849.668|          7413.022|             1.341|
+|`~*=`(a: var T2Prj; b: T2Prj)                               |           693|          148080.942|          4679.873|             6.753|
+|`~/=`(a: var T2Prj; b: T2Aff)                               |          2569|          666131.307|          3856.597|             1.501|
+|accumulate(buckets: ptr UncheckedArray[GtAcc]; val: Secr ...|          5632|          710603.012|          7925.663|             1.407|
+|bucketReduce(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            11|            2382.844|          4616.332|           419.667|
+|miniMultiExp(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            11|             847.033|         12986.501|          1180.591|
+|multiExpImpl_vartime(r: var GtAcc; elems: ptr UncheckedA ...|             1|              76.978|         12990.708|         12990.708|
+|multiExp_vartime*(r: var GT; elems: ptr UncheckedArray[G ...|             1|              68.407|         14618.292|         14618.292|
+|multiExp_vartime*(r: var GT; elems: openArray[GT]; expos ...|             1|              68.407|         14618.375|         14618.375|
 
 ## BLS12-381, Fp12 over Fp4 over Fp2, 256 inputs, non-torus
 
 |                         Procedures                         |  # of Calls  | Throughput (ops/s) |    Time (µs)     |  Avg Time (µs)   |
 |------------------------------------------------------------|--------------|--------------------|------------------|------------------|
-|neg*(r: var FF; a: FF)                                      |         35166|        82856604.307|           424.420|             0.012|
-|neg*(a: var FF)                                             |          4096|        22717944.736|           180.298|             0.044|
-|`+=`*(a: var FF; b: FF)                                     |           756|        90301003.344|             8.372|             0.011|
-|double*(a: var FF)                                          |           756|        91536505.630|             8.259|             0.011|
-|sum*(r: var FF; a, b: FF)                                   |        252939|        88082674.208|          2871.609|             0.011|
-|sumUnr*(r: var FF; a, b: FF)                                |        634506|        88904862.188|          7136.910|             0.011|
-|diff*(r: var FF; a, b: FF)                                  |          1008|        93489148.581|            10.782|             0.011|
-|prod*(r: var FF; a, b: FF; lazyReduce: static bool = false) |          3072|        52603640.473|            58.399|             0.019|
-|square2x_complex(r: var QuadraticExt2x; a: Fp2)             |           567|         9706078.710|            58.417|             0.103|
-|prod2x_complex(r: var QuadraticExt2x; a, b: Fp2)            |        190626|        10452261.858|         18237.775|             0.096|
-|cyclotomic_inv*(a: var FT)                                  |           512|         2506130.720|           204.299|             0.399|
-|cyclotomic_inv*(r: var FT; a: FT)                           |          4581|         5021071.842|           912.355|             0.199|
-|cyclotomic_square*(r: var FT; a: FT)                        |            63|          374069.280|           168.418|             2.673|
-|`~*=`(a: var Gt; b: Gt)                                     |         11208|          260904.659|         42958.221|             3.833|
-|`~/=`(a: var Gt; b: Gt)                                     |          4581|          244905.003|         18705.212|             4.083|
-|setNeutral(a: var Gt)                                       |           705|        54710538.569|            12.886|             0.018|
-|accumulate(buckets: ptr UncheckedArray[GtAcc]; val: Secr ...|         10240|          258035.819|         39684.413|             3.875|
-|bucketReduce(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            10|            2114.818|          4728.540|           472.854|
-|miniMultiExp(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            10|             223.091|         44824.833|          4482.483|
-|multiExpImpl_vartime(r: var GtAcc; elems: ptr UncheckedA ...|             1|              22.305|         44832.084|         44832.084|
-|multiExp_vartime*(r: var GT; elems: ptr UncheckedArray[G ...|             1|              21.898|         45666.125|         45666.125|
-|multiExp_vartime*(r: var GT; elems: openArray[GT]; expos ...|             1|              21.898|         45666.125|         45666.125|
+|neg*(r: var FF; a: FF)                                      |         35166|       126704690.805|           277.543|             0.008|
+|neg*(a: var FF)                                             |          4096|        34578823.847|           118.454|             0.029|
+|`+=`*(a: var FF; b: FF)                                     |           756|       169773186.616|             4.453|             0.006|
+|double*(a: var FF)                                          |           756|       167701863.354|             4.508|             0.006|
+|sum*(r: var FF; a, b: FF)                                   |        252939|       145085575.245|          1743.378|             0.007|
+|sumUnr*(r: var FF; a, b: FF)                                |        634506|       146501318.384|          4331.060|             0.007|
+|diff*(r: var FF; a, b: FF)                                  |          1008|       144890038.810|             6.957|             0.007|
+|prod*(r: var FF; a, b: FF; lazyReduce: static bool = false) |          3072|        79877271.900|            38.459|             0.013|
+|prod2x*(r: var FpDbl; a, b: Fp)                             |        573012|       137301264.775|          4173.392|             0.007|
+|redc2x*(r: var Fp; a: FpDbl)                                |        129888|       124049960.747|          1047.062|             0.008|
+|diff2xUnr*(r: var FpDbl; a, b: FpDbl)                       |        381252|       137476142.380|          2773.223|             0.007|
+|diff2xMod*(r: var FpDbl; a, b: FpDbl)                       |        779851|       132272789.104|          5895.778|             0.008|
+|sum2xMod*(r: var FpDbl; a, b: FpDbl)                        |        336727|       131844901.434|          2553.963|             0.008|
+|square2x_complex(r: var QuadraticExt2x; a: Fp2)             |           567|         8937156.187|            63.443|             0.112|
+|prod2x_complex(r: var QuadraticExt2x; a, b: Fp2)            |        190626|         5544119.501|         34383.458|             0.180|
+|cyclotomic_inv*(a: var FT)                                  |           512|         3806606.544|           134.503|             0.263|
+|cyclotomic_inv*(r: var FT; a: FT)                           |          4581|         6975596.832|           656.718|             0.143|
+|cyclotomic_square*(r: var FT; a: FT)                        |            63|          332966.894|           189.208|             3.003|
+|`~*=`(a: var Gt; b: Gt)                                     |         11208|          157395.771|         71209.029|             6.353|
+|`~/=`(a: var Gt; b: Gt)                                     |          4581|          152702.005|         29999.606|             6.549|
+|setNeutral(a: var Gt)                                       |           705|        97241379.310|             7.250|             0.010|
+|accumulate(buckets: ptr UncheckedArray[GtAcc]; val: Secr ...|         10240|          158735.712|         64509.743|             6.300|
+|bucketReduce(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            10|            1297.515|          7707.041|           770.704|
+|miniMultiExp(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            10|             137.709|         72617.043|          7261.704|
+|multiExpImpl_vartime(r: var GtAcc; elems: ptr UncheckedA ...|             1|              13.770|         72622.000|         72622.000|
+|multiExp_vartime*(r: var GT; elems: ptr UncheckedArray[G ...|             1|              13.626|         73388.625|         73388.625|
+|multiExp_vartime*(r: var GT; elems: openArray[GT]; expos ...|             1|              13.626|         73388.667|         73388.667|
 
 ## BLS12-381, Fp12 over Fp6 over Fp2, 256 inputs, non-torus
 
 |                         Procedures                         |  # of Calls  | Throughput (ops/s) |    Time (µs)     |  Avg Time (µs)   |
 |------------------------------------------------------------|--------------|--------------------|------------------|------------------|
-|neg*(r: var FF; a: FF)                                      |         35166|        81948914.176|           429.121|             0.012|
-|neg*(a: var FF)                                             |          4096|        23624681.332|           173.378|             0.042|
-|`+=`*(a: var FF; b: FF)                                     |           756|        85115964.873|             8.882|             0.012|
-|double*(a: var FF)                                          |           756|        92094043.123|             8.209|             0.011|
-|sum*(r: var FF; a, b: FF)                                   |        378999|        86020887.924|          4405.895|             0.012|
-|sumUnr*(r: var FF; a, b: FF)                                |        508446|        88972315.734|          5714.654|             0.011|
-|diff*(r: var FF; a, b: FF)                                  |          1008|        85765336.510|            11.753|             0.012|
-|prod*(r: var FF; a, b: FF; lazyReduce: static bool = false) |          3072|        55221009.869|            55.631|             0.018|
-|square2x_complex(r: var QuadraticExt2x; a: Fp2)             |           567|         9594233.307|            59.098|             0.104|
-|prod2x_complex(r: var QuadraticExt2x; a, b: Fp2)            |        190626|        10336833.966|         18441.430|             0.097|
-|cyclotomic_inv*(a: var FT)                                  |           512|         2618992.813|           195.495|             0.382|
-|cyclotomic_inv*(r: var FT; a: FT)                           |          4581|         4949591.100|           925.531|             0.202|
-|cyclotomic_square*(r: var FT; a: FT)                        |            63|          363281.993|           173.419|             2.753|
-|`~*=`(a: var Gt; b: Gt)                                     |         11208|          257590.414|         43510.936|             3.882|
-|`~/=`(a: var Gt; b: Gt)                                     |          4581|          241904.733|         18937.207|             4.134|
-|setNeutral(a: var Gt)                                       |           705|        51094361.502|            13.798|             0.020|
-|accumulate(buckets: ptr UncheckedArray[GtAcc]; val: Secr ...|         10240|          254477.607|         40239.297|             3.930|
-|bucketReduce(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            10|            2098.874|          4764.459|           476.446|
-|miniMultiExp(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            10|             220.100|         45433.876|          4543.388|
-|multiExpImpl_vartime(r: var GtAcc; elems: ptr UncheckedA ...|             1|              22.007|         45440.625|         45440.625|
-|multiExp_vartime*(r: var GT; elems: ptr UncheckedArray[G ...|             1|              21.619|         46255.958|         46255.958|
-|multiExp_vartime*(r: var GT; elems: openArray[GT]; expos ...|             1|              21.619|         46256.042|         46256.042|
+|neg*(r: var FF; a: FF)                                      |         35166|       129358101.894|           271.850|             0.008|
+|neg*(a: var FF)                                             |          4096|        35248356.339|           116.204|             0.028|
+|`+=`*(a: var FF; b: FF)                                     |           756|       160373355.961|             4.714|             0.006|
+|double*(a: var FF)                                          |           756|       160851063.830|             4.700|             0.006|
+|sum*(r: var FF; a, b: FF)                                   |        378999|       144678416.061|          2619.596|             0.007|
+|sumUnr*(r: var FF; a, b: FF)                                |        508446|       147919223.163|          3437.322|             0.007|
+|diff*(r: var FF; a, b: FF)                                  |          1008|       170616113.744|             5.908|             0.006|
+|prod*(r: var FF; a, b: FF; lazyReduce: static bool = false) |          3072|        73174217.522|            41.982|             0.014|
+|prod2x*(r: var FpDbl; a, b: Fp)                             |        573012|       137890872.128|          4155.547|             0.007|
+|redc2x*(r: var Fp; a: FpDbl)                                |        129888|       122722131.991|          1058.391|             0.008|
+|diff2xUnr*(r: var FpDbl; a, b: FpDbl)                       |        381252|       138533518.213|          2752.056|             0.007|
+|diff2xMod*(r: var FpDbl; a, b: FpDbl)                       |        769346|       133013460.821|          5783.971|             0.008|
+|sum2xMod*(r: var FpDbl; a, b: FpDbl)                        |        326222|       128821031.399|          2532.366|             0.008|
+|square2x_complex(r: var QuadraticExt2x; a: Fp2)             |           567|         8935466.078|            63.455|             0.112|
+|prod2x_complex(r: var QuadraticExt2x; a, b: Fp2)            |        190626|         5548382.515|         34357.040|             0.180|
+|cyclotomic_inv*(a: var FT)                                  |           512|         3797205.494|           134.836|             0.263|
+|cyclotomic_inv*(r: var FT; a: FT)                           |          4581|         6896520.577|           664.248|             0.145|
+|cyclotomic_square*(r: var FT; a: FT)                        |            63|          347029.046|           181.541|             2.882|
+|`~*=`(a: var Gt; b: Gt)                                     |         11208|          158719.866|         70614.979|             6.300|
+|`~/=`(a: var Gt; b: Gt)                                     |          4581|          153921.025|         29762.016|             6.497|
+|setNeutral(a: var Gt)                                       |           705|       107045247.495|             6.586|             0.009|
+|accumulate(buckets: ptr UncheckedArray[GtAcc]; val: Secr ...|         10240|          160108.491|         63956.633|             6.246|
+|bucketReduce(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            10|            1303.632|          7670.875|           767.087|
+|miniMultiExp(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            10|             138.845|         72022.999|          7202.300|
+|multiExpImpl_vartime(r: var GtAcc; elems: ptr UncheckedA ...|             1|              13.884|         72026.708|         72026.708|
+|multiExp_vartime*(r: var GT; elems: ptr UncheckedArray[G ...|             1|              13.734|         72809.959|         72809.959|
+|multiExp_vartime*(r: var GT; elems: openArray[GT]; expos ...|             1|              13.734|         72809.959|         72809.959|
 
 ## BLS12-381, Fp12 over Fp6 over Fp2, 256 inputs, with-torus
-
 |                         Procedures                         |  # of Calls  | Throughput (ops/s) |    Time (µs)     |  Avg Time (µs)   |
 |------------------------------------------------------------|--------------|--------------------|------------------|------------------|
-|neg*(r: var FF; a: FF)                                      |        103631|        84649113.492|          1224.242|             0.012|
-|neg*(a: var FF)                                             |          4102|        24754088.468|           165.710|             0.040|
+|neg*(r: var FF; a: FF)                                      |        103631|       129407886.275|           800.809|             0.008|
+|neg*(a: var FF)                                             |          4102|        34947519.084|           117.376|             0.029|
 |`+=`*(a: var FF; b: FF)                                     |             2|                 inf|             0.000|             0.000|
-|`-=`*(a: var FF; b: FF)                                     |           388|        94106233.325|             4.123|             0.011|
-|sum*(r: var FF; a, b: FF)                                   |        213827|        87872641.033|          2433.374|             0.011|
-|sumUnr*(r: var FF; a, b: FF)                                |         66038|        90162882.460|           732.430|             0.011|
-|diff*(r: var FF; a, b: FF)                                  |         61714|        87589645.477|           704.581|             0.011|
-|prod*(r: var FF; a, b: FF; lazyReduce: static bool = false) |          3076|        57089829.250|            53.880|             0.018|
-|square*(r: var FF; a: FF; lazyReduce: static bool = false)  |             4|         8714596.950|             0.459|             0.115|
-|sumprod*(r: var FF; a, b: array[N, FF]; lazyReduce: stat ...|        136890|        17828028.098|          7678.359|             0.056|
-|inv_vartime*(r: var FF; a: FF)                              |             2|          466091.820|             4.291|             2.146|
-|square2x_complex(r: var QuadraticExt2x; a: Fp2)             |           579|         9531491.785|            60.746|             0.105|
-|prod2x_complex(r: var QuadraticExt2x; a, b: Fp2)            |         24814|        10474333.577|          2369.029|             0.095|
-|prodImpl_fp6o2_complex_snr_1pi(r: var Fp6[Name]; a, b: F ...|         22815|         1435987.799|         15888.018|             0.696|
-|cyclotomic_inv*(a: var FT)                                  |           512|         2713819.277|           188.664|             0.368|
-|square*(r: var T2Prj[F]; a: T2Prj[F])                       |            63|          351217.554|           179.376|             2.847|
-|`~*=`(a: var T2Prj; b: T2Aff)                               |          9938|          565468.546|         17574.806|             1.768|
-|`~*=`(a: var T2Prj; b: T2Prj)                               |          1270|          245084.795|          5181.880|             4.080|
-|`~/=`(a: var T2Prj; b: T2Aff)                               |          4581|          505328.396|          9065.392|             1.979|
-|accumulate(buckets: ptr UncheckedArray[GtAcc]; val: Secr ...|         10240|          542745.156|         18867.050|             1.842|
-|bucketReduce(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            10|            1935.093|          5167.709|           516.771|
-|miniMultiExp(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            10|             408.821|         24460.582|          2446.058|
-|multiExpImpl_vartime(r: var GtAcc; elems: ptr UncheckedA ...|             1|              40.851|         24479.500|         24479.500|
-|multiExp_vartime*(r: var GT; elems: ptr UncheckedArray[G ...|             1|              35.167|         28435.667|         28435.667|
-|multiExp_vartime*(r: var GT; elems: openArray[GT]; expos ...|             1|              35.167|         28435.750|         28435.750|
+|`-=`*(a: var FF; b: FF)                                     |           388|       118076688.984|             3.286|             0.008|
+|sum*(r: var FF; a, b: FF)                                   |        213827|       140828345.469|          1518.352|             0.007|
+|sumUnr*(r: var FF; a, b: FF)                                |         66038|       144445440.885|           457.183|             0.007|
+|diff*(r: var FF; a, b: FF)                                  |         61714|       143491898.151|           430.087|             0.007|
+|prod*(r: var FF; a, b: FF; lazyReduce: static bool = false) |          3076|        74041979.588|            41.544|             0.014|
+|square*(r: var FF; a: FF; lazyReduce: static bool = false)  |             4|        32000000.000|             0.125|             0.031|
+|sumprod*(r: var FF; a, b: array[N, FF]; lazyReduce: stat ...|        136890|        20475818.595|          6685.447|             0.049|
+|inv_vartime*(r: var FF; a: FF)                              |             2|          551571.980|             3.626|             1.813|
+|prod2x*(r: var FpDbl; a, b: Fp)                             |         75600|       136551073.895|           553.639|             0.007|
+|redc2x*(r: var Fp; a: FpDbl)                                |         19120|       124395750.246|           153.703|             0.008|
+|diff2xUnr*(r: var FpDbl; a, b: FpDbl)                       |         49628|       135367427.042|           366.617|             0.007|
+|diff2xMod*(r: var FpDbl; a, b: FpDbl)                       |         96702|       131104823.392|           737.593|             0.008|
+|sum2xUnr*(r: var FpDbl; a, b: FpDbl)                        |             4|        95238095.238|             0.042|             0.011|
+|sum2xMod*(r: var FpDbl; a, b: FpDbl)                        |         42526|       125849705.988|           337.911|             0.008|
+|square2x_complex(r: var QuadraticExt2x; a: Fp2)             |           579|         8918806.513|            64.919|             0.112|
+|prod2x_complex(r: var QuadraticExt2x; a, b: Fp2)            |         24814|         5465659.233|          4539.983|             0.183|
+|prodImpl_fp6o2_complex_snr_1pi(r: var Fp6[Name]; a, b: F ...|         22815|         1799026.042|         12681.862|             0.556|
+|cyclotomic_inv*(a: var FT)                                  |           512|         3797458.966|           134.827|             0.263|
+|square*(r: var T2Prj[F]; a: T2Prj[F])                       |            63|          210557.979|           299.205|             4.749|
+|`~*=`(a: var T2Prj; b: T2Aff)                               |          9938|          724421.693|         13718.529|             1.380|
+|`~*=`(a: var T2Prj; b: T2Prj)                               |          1270|          146443.966|          8672.259|             6.829|
+|`~/=`(a: var T2Prj; b: T2Aff)                               |          4581|          653314.390|          7011.938|             1.531|
+|accumulate(buckets: ptr UncheckedArray[GtAcc]; val: Secr ...|         10240|          698654.823|         14656.737|             1.431|
+|bucketReduce(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            10|            1160.144|          8619.623|           861.962|
+|miniMultiExp(r: var GtAcc; buckets: ptr UncheckedArray[G ...|            10|             420.192|         23798.665|          2379.867|
+|multiExpImpl_vartime(r: var GtAcc; elems: ptr UncheckedA ...|             1|              42.000|         23809.625|         23809.625|
+|multiExp_vartime*(r: var GT; elems: ptr UncheckedArray[G ...|             1|              36.887|         27110.167|         27110.167|
+|multiExp_vartime*(r: var GT; elems: openArray[GT]; expos ...|             1|              36.887|         27110.167|         27110.167|
