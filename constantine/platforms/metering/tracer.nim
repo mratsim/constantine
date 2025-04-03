@@ -72,7 +72,11 @@ when CTT_METER or CTT_TRACE:
 
   template fnEntry(name: string, id: int, startTime, startCycle: untyped): untyped =
     ## Bench tracing to insert on function entry
-    {.noSideEffect, gcsafe.}:
+    
+    # Timing procedures adds the TimeEffect tag, which interferes with {.tags:[VarTime].}
+    # as TimeEffect is not listed.
+    # cast(tags: []) drops the `TimeEffect` for metering
+    {.noSideEffect, gcsafe, cast(tags: []).}:
       discard Metrics[id].numCalls.atomicInc()
       let startTime = getMonoTime()
       when SupportsGetTicks:
@@ -82,7 +86,11 @@ when CTT_METER or CTT_TRACE:
 
   template fnExit(name: string, id: int, startTime, startCycle: untyped): untyped =
     ## Bench tracing to insert before each function exit
-    {.noSideEffect, gcsafe.}:
+
+    # Timing procedures adds the TimeEffect tag, which interferes with {.tags:[VarTime].}
+    # as TimeEffect is not listed.
+    # cast(tags: []) drops the `TimeEffect` for metering
+    {.noSideEffect, gcsafe, cast(tags: []).}:
       when SupportsGetTicks:
         let stopCycle = getTicks()
       let stopTime = getMonoTime()
@@ -120,24 +128,6 @@ when CTT_METER or CTT_TRACE:
     newBody.add getAst(fnEntry(name, id, startTime, startCycle))
     newbody.add nnkDefer.newTree(getAst(fnExit(name, id, startTime, startCycle)))
     newBody.add procAst.body
-
-    if procAst[4].kind != nnkEmpty:
-      # Timing procedures adds the TimeEffect tag, which interferes with {.tags:[VarTime].}
-      # as TimeEffect is not listed. We drop the `tags` for metering
-      var pragmas: NimNode
-      if procAst[4].len == 1:
-        if procAst[4][0].kind == nnkExprColonExpr and procAst[4][0][0].eqIdent"tags":
-          pragmas = newEmptyNode()
-        else:
-          pragmas = procAst[4]
-      else:
-        pragmas = nnkPragma.newTree()
-        for i in 0 ..< procAst[4].len:
-          if procAst[4][0].kind == nnkExprColonExpr and procAst[4][0][0].eqIdent"tags":
-            continue
-          else:
-            pragmas.add procAst[4][0]
-      procAst[4] = pragmas
 
     procAst.body = newBody
     result = procAst

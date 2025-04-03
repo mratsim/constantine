@@ -20,7 +20,7 @@ import
 var rng*: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
-echo "bench xoshiro512** seed: ", seed
+echo "metering xoshiro512** seed: ", seed
 
 proc msmMeter*(EC: typedesc, numPoints: int) =
   const bits = EC.getScalarField().bits()

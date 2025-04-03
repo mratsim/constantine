@@ -755,7 +755,7 @@ func square2x*(r: var QuadraticExt2x, a: QuadraticExt)
 # Complex squarings
 # ----------------------------------------------------------------------
 
-func square_complex(r: var Fp2, a: Fp2) =
+func square_complex(r: var Fp2, a: Fp2) {.meter.} =
   ## Return a² in 𝔽p2 = 𝔽p[𝑖] in ``r``
   ## ``r`` is initialized/overwritten
   ##
@@ -795,7 +795,7 @@ func square_complex(r: var Fp2, a: Fp2) =
   r.c1.double()          # r.c1 = 2 c0 c1             [1 Mul, 2 Dbl, 1 Sub]
   r.c0.prod(v0, v1)      # r.c0 = (c0 + c1)(c0 - c1)  [2 Mul, 2 Dbl, 1 Sub]
 
-func square2x_complex(r: var QuadraticExt2x, a: Fp2) =
+func square2x_complex(r: var QuadraticExt2x, a: Fp2) {.meter.} =
   ## Double-precision unreduced complex squaring
   static: doAssert a.fromComplexExtension()
 
@@ -815,7 +815,7 @@ func square2x_complex(r: var QuadraticExt2x, a: Fp2) =
 # Complex multiplications
 # ----------------------------------------------------------------------
 
-func prod_complex(r: var Fp2, a, b: Fp2) {.used.} =
+func prod_complex(r: var Fp2, a, b: Fp2) {.meter, used.} =
   ## Return a * b in 𝔽p2 = 𝔽p[𝑖] in ``r``
   ## ``r`` is initialized/overwritten
   ##
@@ -849,7 +849,7 @@ func prod_complex(r: var Fp2, a, b: Fp2) {.used.} =
   t.c1.sumprod([a.c0, a.c1], [b.c1, b.c0])
   r = t
 
-func prod2x_complex(r: var QuadraticExt2x, a, b: Fp2) =
+func prod2x_complex(r: var QuadraticExt2x, a, b: Fp2) {.meter.} =
   ## Double-precision unreduced complex multiplication
   # r and a or b cannot alias
   static: doAssert a.fromComplexExtension()
@@ -982,7 +982,7 @@ func square2x_disjoint*[Fdbl, F](
 # Multiplications (specializations)
 # -------------------------------------------------------------------
 
-func prodImpl_fp4o2_complex_snr_1pi[Name: static Algebra](r: var Fp4[Name], a, b: Fp4[Name]) =
+func prodImpl_fp4o2_complex_snr_1pi[Name: static Algebra](r: var Fp4[Name], a, b: Fp4[Name]) {.meter.} =
   ## Returns r = a * b
   ## For 𝔽p4/𝔽p2 with the following non-residue (NR) constraints:
   ##   * -1 is a quadratic non-residue in 𝔽p hence 𝔽p2 has coordinates a+𝑖b with i = √-1. This implies p ≡ 3 (mod 4)
@@ -1638,7 +1638,7 @@ func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
 # Multiplications (specializations)
 # -------------------------------------------------------------------
 
-func prodImpl_fp6o2_complex_snr_1pi[Name: static Algebra](r: var Fp6[Name], a, b: Fp6[Name]) =
+func prodImpl_fp6o2_complex_snr_1pi[Name: static Algebra](r: var Fp6[Name], a, b: Fp6[Name]) {.meter.} =
   ## Returns r = a * b
   ## For 𝔽p4/𝔽p2 with the following non-residue (NR) constraints:
   ##   * -1 is a quadratic non-residue in 𝔽p hence 𝔽p2 has coordinates a+𝑖b with i = √-1. This implies p ≡ 3 (mod 4)

@@ -362,7 +362,7 @@ func div2*(a: var FF) {.meter.} =
   #   a/2       < M if a is even
   debug: doAssert not carry.bool
 
-func inv*(r: var FF, a: FF) =
+func inv*(r: var FF, a: FF) {.meter.} =
   ## Inversion modulo p
   ##
   ## The inverse of 0 is 0.
@@ -383,7 +383,7 @@ func inv*(a: var FF) =
   ## to affine for elliptic curve
   a.inv(a)
 
-func inv_vartime*(r: var FF, a: FF) {.tags: [VarTime].} =
+func inv_vartime*(r: var FF, a: FF) {.meter, tags: [VarTime].} =
   ## Variable-time Inversion modulo p
   ##
   ## The inverse of 0 is 0.
@@ -412,22 +412,22 @@ func inv_vartime*(a: var FF) {.tags: [VarTime].} =
 #
 # This implements extra primitives for ergonomics.
 
-func `*=`*(a: var FF, b: FF) {.meter.} =
+func `*=`*(a: var FF, b: FF) =
   ## Multiplication modulo p
   a.prod(a, b)
 
-func square*(a: var FF, lazyReduce: static bool = false) {.meter.} =
+func square*(a: var FF, lazyReduce: static bool = false) =
   ## Squaring modulo p
   a.square(a, lazyReduce)
 
-func square_repeated*(a: var FF, num: int, lazyReduce: static bool = false) {.meter.} =
+func square_repeated*(a: var FF, num: int, lazyReduce: static bool = false) =
   ## Repeated squarings
   ## Assumes at least 1 squaring
   for _ in 0 ..< num-1:
     a.square(lazyReduce = true)
   a.square(lazyReduce)
 
-func square_repeated*(r: var FF, a: FF, num: int, lazyReduce: static bool = false) {.meter.} =
+func square_repeated*(r: var FF, a: FF, num: int, lazyReduce: static bool = false) =
   ## Repeated squarings
   r.square(a, lazyReduce = true)
   for _ in 1 ..< num-1:

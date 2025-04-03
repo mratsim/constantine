@@ -424,7 +424,7 @@ proc prod*[F](r: var T2Prj[F], a, b: T2Prj[F]) {.inline.} =
   type QF = QuadraticExt[F]
   QF(r).prod(QF a, QF b)
 
-proc square*[F](r: var T2Prj[F], a: T2Prj[F]) {.inline.} =
+proc square*[F](r: var T2Prj[F], a: T2Prj[F]) {.meter, inline.} =
   type QF = QuadraticExt[F]
   QF(r).square(QF a)
 
