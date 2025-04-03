@@ -50,7 +50,7 @@ func isZero*(a: FpDbl): SecretBool =
 func setZero*(a: var FpDbl) =
   a.limbs2x.setZero()
 
-func prod2x*(r: var FpDbl, a, b: Fp) =
+func prod2x*(r: var FpDbl, a, b: Fp) {.meter.} =
   ## Double-precision multiplication
   ## Store the product of ``a`` by ``b`` into ``r``
   ##
@@ -61,7 +61,7 @@ func prod2x*(r: var FpDbl, a, b: Fp) =
   ## provided spare bits are available in Fp representation
   r.limbs2x.prod(a.mres.limbs, b.mres.limbs)
 
-func square2x*(r: var FpDbl, a: Fp) =
+func square2x*(r: var FpDbl, a: Fp) {.meter.} =
   ## Double-precision squaring
   ## Store the square of ``a`` into ``r``
   ##
@@ -72,7 +72,7 @@ func square2x*(r: var FpDbl, a: Fp) =
   ## provided spare bits are available in Fp representation
   r.limbs2x.square(a.mres.limbs)
 
-func redc2x*(r: var Fp, a: FpDbl) =
+func redc2x*(r: var Fp, a: FpDbl) {.meter.} =
   ## Reduce a double-precision field element into r
   ## from [0, 2ⁿp) range to [0, p) range
   redc2xMont(
@@ -83,14 +83,14 @@ func redc2x*(r: var Fp, a: FpDbl) =
     Fp.getSpareBits()
   )
 
-func diff2xUnr*(r: var FpDbl, a, b: FpDbl) =
+func diff2xUnr*(r: var FpDbl, a, b: FpDbl) {.meter.} =
   ## Double-precision substraction without reduction
   ##
   ## If the result is negative, fully reduced addition/substraction
   ## are necessary afterwards to guarantee the [0, 2ⁿp) range
   discard r.limbs2x.diff(a.limbs2x, b.limbs2x)
 
-func diff2xMod*(r: var FpDbl, a, b: FpDbl) =
+func diff2xMod*(r: var FpDbl, a, b: FpDbl) {.meter.} =
   ## Double-precision modular substraction
   ## Output is conditionally reduced by 2ⁿp
   ## to stay in the [0, 2ⁿp) range
@@ -108,14 +108,14 @@ func diff2xMod*(r: var FpDbl, a, b: FpDbl) =
       addC(carry, sum, r.limbs2x[i+N], FpDbl.getModulus().limbs[i], carry)
       underflowed.ccopy(r.limbs2x[i+N], sum)
 
-func sum2xUnr*(r: var FpDbl, a, b: FpDbl) =
+func sum2xUnr*(r: var FpDbl, a, b: FpDbl) {.meter.} =
   ## Double-precision addition without reduction
   ##
   ## If the result is bigger than 2ⁿp, fully reduced addition/substraction
   ## are necessary afterwards to guarantee the [0, 2ⁿp) range
   discard r.limbs2x.sum(a.limbs2x, b.limbs2x)
 
-func sum2xMod*(r: var FpDbl, a, b: FpDbl) =
+func sum2xMod*(r: var FpDbl, a, b: FpDbl) {.meter.} =
   ## Double-precision modular addition
   ## Output is conditionally reduced by 2ⁿp
   ## to stay in the [0, 2ⁿp) range
@@ -140,7 +140,7 @@ func sum2xMod*(r: var FpDbl, a, b: FpDbl) =
     staticFor i, 0, N:
       overflowed.ccopy(r.limbs2x[i+N], t[i])
 
-func neg2xMod*(r: var FpDbl, a: FpDbl) =
+func neg2xMod*(r: var FpDbl, a: FpDbl) {.meter.} =
   ## Double-precision modular substraction
   ## Negate modulo 2ⁿp
   when UseASM_X86_64:
