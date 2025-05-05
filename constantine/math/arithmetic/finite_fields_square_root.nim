@@ -361,13 +361,13 @@ func invsqrt_if_square_vartime*[Name](r: var Fp[Name], a: Fp[Name]): SecretBool 
 # Legendre symbol / Euler's Criterion / Kronecker's symbol
 # ------------------------------------------------------------
 
-func isSquare*(a: Fp): SecretBool =
+func isSquare*(a: FF): SecretBool =
   ## Returns true if ``a`` is a square (quadratic residue) in 𝔽p
   ##
   ## Assumes that the prime modulus ``p`` is public.
-  var aa {.noInit.}: Fp.getBigInt()
+  var aa {.noInit.}: FF.getBigInt()
   aa.fromField(a)
-  let symbol = legendre(aa.limbs, Fp.getModulus().limbs, aa.bits)
+  let symbol = legendre(aa.limbs, FF.getModulus().limbs, aa.bits)
   return not(symbol == MaxWord)
 
 {.pop.} # inline
