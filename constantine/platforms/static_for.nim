@@ -34,6 +34,14 @@ macro staticFor*(idx: untyped{nkIdent}, start, stopEx: static int, body: untyped
       ident("unrolledIter_" & $idx & $i),
       body.replaceNodes(idx, newLit i))
 
+macro staticForStepped*(idx: untyped{nkIdent}, start, stopEx, increment: static int, body: untyped): untyped =
+  ## Version of `staticFor` which takes an increment != 1.
+  result = newStmtList()
+  for i in countup(start, stopEx - increment, increment):
+    result.add nnkBlockStmt.newTree(
+      ident("unrolledIter_" & $idx & $i),
+      body.replaceNodes(idx, newLit i))
+
 macro staticForCountdown*(idx: untyped{nkIdent}, start, stopIncl: static int, body: untyped): untyped =
   result = newStmtList()
   for i in countdown(start, stopIncl):
