@@ -15,15 +15,15 @@ extern crate criterion;
 use constantine_core::hardware;
 use constantine_halo2_zal::CttEngine;
 
-use halo2curves::bn256::{Fr as Scalar, G1Affine as Point};
-use halo2curves::ff::Field;
-use halo2curves::msm::msm_best;
-use halo2curves::zal::MsmAccel;
+use halo2_middleware::halo2curves::bn256::{Fr as Scalar, G1Affine as Point};
+use halo2_middleware::halo2curves::ff::Field;
+use halo2_middleware::halo2curves::msm::msm_best;
+use halo2_middleware::zal::traits::MsmAccel;
 
-use rayon::current_thread_index;
-use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use rand_core::SeedableRng;
 use rand_xorshift::XorShiftRng;
+use rayon::current_thread_index;
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
 use criterion::{BenchmarkId, Criterion};
 use std::time::SystemTime;
