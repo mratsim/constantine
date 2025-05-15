@@ -303,7 +303,7 @@ task make_lib_rust, "Build Constantine library (use within a Rust build.rs scrip
   let rustOutDir = getEnv"OUT_DIR"
   # Compile as position independent, since rust does the same by default
   let extflags = if defined(windows): "" # Windows is fully position independent, flag is a no-op or on error depending on compiler.
-                 else: "--passC:-fPIC"
+                 else: " --passC:-fPIC "
   genStaticLib(rustOutDir, rustOutDir/"nimcache", extflags)
 
 task make_zkalc, "Build a benchmark executable for zkalc (with Clang)":
