@@ -17,17 +17,21 @@ when (NimMajor, NimMinor) >= (2, 0): # Task-level dependencies
   taskRequires "make_zkalc", "jsony"
   taskRequires "make_zkalc", "cliche"
 
+  taskRequires "test", "asynctools"
   taskRequires "test", "jsony"
   taskRequires "test", "yaml"
   taskRequires "test", "gmp#head"
 
+  taskRequires "test_parallel", "asynctools"
   taskRequires "test_parallel", "jsony"
   taskRequires "test_parallel", "yaml"
   taskRequires "test_parallel", "gmp#head"
 
+  taskRequires "test_no_gmp", "asynctools"
   taskRequires "test_no_gmp", "jsony"
   taskRequires "test_no_gmp", "yaml"
 
+  taskRequires "test_parallel_no_gmp", "asynctools"
   taskRequires "test_parallel_no_gmp", "jsony"
   taskRequires "test_parallel_no_gmp", "yaml"
 
