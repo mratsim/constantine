@@ -207,6 +207,13 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
                    elif forceLto: ltoFlags
                    else: ""
 
+  # On Apple Silicon, Homebrew switched to `/opt/homebrew` to avoid conflicts, but this path isn't whitelisted by
+  # macOS.
+  # Furthermore, SIP actively blocks `DYLD_LIBRARY_PATH` and other environment variables from affecting system tools,
+  # so `dyld` just ignores this.
+  # We thus need to embed the search path directly into our binary using runtime search path.
+  let linkerOptions = if apple: " --passL:'-L/opt/homebrew/lib -Wl,-rpath,/opt/homebrew/lib' "
+                      else: ""
   let osSpecific =
     if defined(windows): "" # " --passC:-mno-stack-arg-probe "
       # Remove the auto __chkstk, which are: 1. slower, 2. not supported on Rust "stable-gnu" channel.
@@ -219,6 +226,7 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
   compiler &
     envASM & env32 &
     ltoOptions &
+    linkerOptions &
     osSpecific &
     threadLocalStorage &
     compilerFlags()
