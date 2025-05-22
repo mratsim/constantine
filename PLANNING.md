@@ -99,7 +99,7 @@ Other tracks are stretch goals, contributions towards them are accepted.
 - LLVM IR:
   - use internal or private linkage type
   - look into calling conventions like "fast" or "Tail fast"
-  - check if returning a value from function is propely optimized
+  - check if returning a value from function is properly optimized
     compared to in-place result
   - use readnone (pure) and readmem attribute for functions
   - look into passing parameter as arrays instead of pointers?
@@ -139,7 +139,7 @@ Create a "Constantine book" to introduce Constantine concepts and walkthrough av
       Example: Lasso or LogUp+GKR
 
     - Multilinear Polynomial Commitment Schemes
-      For efficiency when commiting to small values (for example coming from bit manipulation in hash functions)
+      For efficiency when committing to small values (for example coming from bit manipulation in hash functions)
       Example: KZG+Gemini/Zeromorph, Dory, Hyrax, Binius, ...
 
 - STARKS:
