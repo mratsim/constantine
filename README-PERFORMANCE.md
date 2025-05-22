@@ -27,7 +27,7 @@ To measure the performance of Constantine
 ```bash
 git clone https://github.com/mratsim/constantine
 
-# Default compiler. We recommand enforcing CC=clang for best performance.
+# Default compiler. We recommend enforcing CC=clang for best performance.
 nimble bench_fp
 
 # Arithmetic
