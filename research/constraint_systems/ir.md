@@ -105,9 +105,9 @@ In research, there are several approaches to handle that:
   - Datatypes à la carte: http://www.cs.ru.nl/~W.Swierstra/Publications/DataTypesALaCarte.pdf
   - Functional Lenses / Multiplates: http://de.arxiv.org/ftp/arxiv/papers/1103/1103.2841.pdf
   - Monads (and Free Monads?):
-    - [Generic Monadic Construcs for Embedded Languages](https://pdfs.semanticscholar.org/0c92/4ead3a6d833e049d8f224fd0526f47760336.pdf)
+    - [Generic Monadic Constructs for Embedded Languages](https://pdfs.semanticscholar.org/0c92/4ead3a6d833e049d8f224fd0526f47760336.pdf)
   - Object Algebra, traversals, visitor patterns, church encoding: [paper](http://www.informatik.uni-marburg.de/~rendel/oa2ag/rendel14object.pdf) and [slides](http://ps.informatik.uni-tuebingen.de/2014/10/23/presentation-at-oopsla/slides.pdf).
-  - Developping extensible shallow embeddings (functions in host lang) on top of deep embeddings (fixed AST/IR):
+  - Developing extensible shallow embeddings (functions in host lang) on top of deep embeddings (fixed AST/IR):
       - [Folding Domain Specific Language: Deep and Shallow Embedding](https://www.cs.ox.ac.uk/people/jeremy.gibbons/publications/embedding-short.pdf)
       - [Combining Deep and SHallow Embedding for EDSL](http://www.cse.chalmers.se/~josefs/publications/TFP12.pdf) and [paper](http://www.cse.chalmers.se/~josefs/publications/svenningsson2015combining.pdf).
       - [Yin-Yang: Concealing the Deep Embedding of DSLs](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.697.1002&rep=rep1&type=pdf) and [project report](https://geirsson.com/assets/directembedding-report.pdf).

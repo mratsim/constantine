@@ -9,7 +9,7 @@ Function calls have arguments ordered the following way:
 1. Context arguments
 2. Threadpool context
 3. OUT arguments (only written to)
-4. INOUT arguments
+4. INPUT, IN OUT arguments
 5. IN arguments
 
 The first context argument should allow method call syntax
@@ -44,7 +44,7 @@ subroutines.
   - Extremely inefficient codegen in Constantine itself https://github.com/mratsim/constantine/issues/145
     with useless moves instead of in-place construction.
   - In other languages like Rust, users have seen a dramatic 20% increase in performance by moving from out-of-place to in-place mutation: https://www.reddit.com/r/rust/comments/kfs0oe/comment/ggc0dui/
-    - And they are struggling with GCE (Guarenteed Copy Elision) and NRVO/RVO(Named) Return Value Optimization
+    - And they are struggling with GCE (Guaranteed Copy Elision) and NRVO/RVO(Named) Return Value Optimization
       - https://github.com/rust-lang/rust/pull/76986
       - https://github.com/rust-lang/rfcs/pull/2884
 
