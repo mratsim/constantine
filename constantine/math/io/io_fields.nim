@@ -116,7 +116,9 @@ func toDecimal*(f: FF): string =
   ## This function is NOT constant-time at the moment.
   f.toBig().toDecimal()
 
-func fromDecimal*(dst: var FF, decimalString: string) =
+{.pop.} # `fromDecimal` can raise `ValueError`
+
+func fromDecimal*(dst: var FF, decimalString: string) {.raises: [ValueError].} =
   ## Convert a decimal string. The input must be packed
   ## with no spaces or underscores.
   ## This assumes that bits and decimal length are **public.**
@@ -136,7 +138,7 @@ func fromDecimal*(dst: var FF, decimalString: string) =
   let raw {.noinit.} = fromDecimal(dst.mres.typeof, decimalString)
   dst.fromBig(raw)
 
-func fromDecimal*(T: type FF, hexString: string): T {.noInit.}=
+func fromDecimal*(T: type FF, hexString: string): T {.raises: [ValueError], noInit.}=
   ## Convert a decimal string. The input must be packed
   ## with no spaces or underscores.
   ## This assumes that bits and decimal length are **public.**
