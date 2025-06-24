@@ -245,7 +245,7 @@ jobs:
           install: base-devel git mingw-w64-x86_64-toolchain
 
       - name: Install Go [${{ matrix.go_toolchain }}]
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go_toolchain }}
 
