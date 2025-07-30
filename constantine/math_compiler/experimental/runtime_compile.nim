@@ -11,76 +11,13 @@ import
 
 import constantine/platforms/abis/nvidia_abi
 
-import ./nim_ast_to_cuda_ast
+import ./gpu_compiler
 import ./cuda_execute_dsl
 export cuda_execute_dsl
-export nim_ast_to_cuda_ast
+export gpu_compiler
 
 ## Set to true, if you want some extra output (driver & runtime version for example)
 const DebugCuda {.booldefine.} = true
-
-## Dummy data for the typed nature of the `cuda` macro. These define commonly used
-## CUDA specific names so that they produce valid Nim code in the context of a typed macro.
-template global*() {.pragma.}
-template device*() {.pragma.}
-template forceinline*() {.pragma.}
-
-# If attached to a `var` it will be treated as a
-# `__constant__`! Only useful if you want to define a
-# constant without initializing it (and then use
-# `cudaMemcpyToSymbol` / `copyToSymbol` to initialize it
-# before executing the kernel)
-template constant*() {.pragma.}
-type
-  Dim* = cint ## dummy to have access to math
-  NvBlockIdx* = object
-    x*: Dim
-    y*: Dim
-    z*: Dim
-  NvBlockDim = object
-    x*: Dim
-    y*: Dim
-    z*: Dim
-  NvThreadIdx* = object
-    x*: Dim
-    y*: Dim
-    z*: Dim
-  NvGridDim = object
-    x*: Dim
-    y*: Dim
-    z*: Dim
-
-
-## These are dummy elements to make CUDA block / thread index / dim
-## access possible in the *typed* `cuda` macro. It cannot be `const`,
-## because then the typed code would evaluate the values before we
-## can work with it from the typed macro.
-let blockIdx* = NvBlockIdx()
-let blockDim* = NvBlockDim()
-let gridDim* = NvGridDim()
-let threadIdx* = NvThreadIdx()
-
-## Similar for procs. They don't need any implementation, as they won't ever be actually called.
-proc printf*(fmt: string) {.varargs.} = discard
-proc memcpy*(dst, src: pointer, size: int) = discard
-
-## `cuExtern` is mapped to `extern`, but has a different name, because Nim has its
-## own `extern` pragma (due to requiring an argument it cannot be reused):
-## https://nim-lang.org/docs/manual.html#foreign-function-interface-extern-pragma
-template cuExtern*(): untyped {.pragma.}
-template shared*(): untyped {.pragma.}
-## You would typically use `cuExtern` and `shared` together:
-## `var x {.cuExtern, shared.}: array[N, Foo]`
-## for example to declare a constant array that is filled by the
-## host before kernel execution.
-
-## While you can use `malloc` on device with small sizes, it is usually not
-## recommended to do so.
-proc malloc*(size: csize_t): pointer  = discard
-proc free*(p: pointer) = discard
-proc syncthreads*() {.cudaName: "__syncthreads".} = discard
-
-
 
 type
   NVRTC* = object
