@@ -101,7 +101,7 @@ template defPtxHelpers*(): untyped {.dirty.} =
 """
     return res
 
-  proc slct(a, b: uint32, pred: uint32): uint32 {.device, forceinline.} =
+  proc slct(a, b: uint32, pred: int32): uint32 {.device, forceinline.} =
     var res {.volatile.}: uint32
 # "slct.s32 %0, %1, %2, %3;" : "=r"(res) : "r"(a), "r"(b), "r"(pred)
     asm """
