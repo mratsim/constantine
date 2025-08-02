@@ -192,7 +192,7 @@ proc load*(nvrtc: var NVRTC) =
   let status = cuModuleLoadData(nvrtc.module, cstring nvrtc.ptx)
   if status != CUDA_SUCCESS:
     var error_str: cstring #const char* error_str;
-    check cuGetErrorString(status, cast[cstringArray](addr error_str));
+    check cuGetErrorString(status, (error_str));
     echo "Module load failed: ", error_str
     echo "JIT Error log: ", error_log
     echo "JIT Info log: ", info_log
@@ -230,8 +230,7 @@ proc link*(nvrtc: var NVRTC) =
   var status: CUresult
   if res != CUDA_SUCCESS:
     var error_str: cstring
-    #discard cuGetErrorString(res, addr error_str)
-    check cuGetErrorString(status, cast[cstringArray](addr error_str))
+    check cuGetErrorString(status, error_str)
     echo "Link add PTX failed: ", error_str
     echo "Error log: ", errorLog
     quit(1)
@@ -243,7 +242,7 @@ proc link*(nvrtc: var NVRTC) =
                       0, nil, nil)
   if res != CUDA_SUCCESS:
     var error_str: cstring
-    check cuGetErrorString(status, cast[cstringArray](addr error_str));
+    check cuGetErrorString(status, error_str);
     echo "Link add device runtime failed: ", error_str
     echo "Error log: ", errorLog
     quit(1)
@@ -255,7 +254,7 @@ proc link*(nvrtc: var NVRTC) =
   nvrtc.cubinSize = cubinSize
   if res != CUDA_SUCCESS:
     var error_str: cstring
-    check cuGetErrorString(status, cast[cstringArray](addr error_str));
+    check cuGetErrorString(status, error_str);
     echo "Link complete failed: ", error_str
     echo "Error log: ", errorLog
     quit(1)
