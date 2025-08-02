@@ -186,14 +186,15 @@ template defPtxHelpers*(): untyped {.dirty.} =
 """
     return res
 
+
 template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   # Need to get the limbs & spare bits data in a static context
   template getM0ninv(): untyped = static: T.getModulus().negInvModWord().uint32
   template spareBits(): untyped = static: (BigInt().limbs.len * WordSize - T.bits())
+  template numLimbs(): untyped = static: BigInt().limbs.len
 
   ## TODO: avoid the explicit array size here
-  proc toBigInt(limbs: array[1, uint32]): BigInt {.nimonly.} =
-    result.limbs = limbs
+  template toBigInt(ar: typed): BigInt {.nimonly.} = BigInt(limbs: ar)
 
   const M = toBigInt(bigintToUint32Limbs(T.getModulus))
   const MontyOne = toBigInt(bigintToUint32Limbs(T.getMontyOne))
