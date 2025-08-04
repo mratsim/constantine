@@ -340,14 +340,14 @@ macro execCuda*(jitFn: CUfunction,
   ## as an input.
   ##
   ## NOTE: This function is mainly intended for convenient execution of a single kernel
-  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, inputs, newLit 0, passStructByPointer = false)
+  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, inputs, newLit 0, passStructByPointer = true)
 
 macro execCuda*(jitFn: CUfunction,
                 numBlocks, threadsPerBlock: int,
                 res: typed,
                 inputs: typed): untyped =
   ## Overload which takes a target number of threads and blocks
-  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs, newLit 0, passStructByPointer = false)
+  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs, newLit 0, passStructByPointer = true)
 
 macro execCuda*(jitFn: CUfunction,
                 numBlocks, threadsPerBlock: int,
@@ -355,9 +355,9 @@ macro execCuda*(jitFn: CUfunction,
                 inputs: typed,
                 sharedMemSize: typed): untyped =
   ## Overload which takes a target number of threads and blocks and a shared memory size
-  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs, sharedMemSize, passStructByPointer = false)
+  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs, sharedMemSize, passStructByPointer = true)
 
 macro execCuda*(jitFn: CUfunction,
                 res: typed): untyped =
   ## Overload of the above for empty `inputs`
-  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, nnkBracket.newTree(), newLit 0, passStructByPointer = false)
+  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, nnkBracket.newTree(), newLit 0, passStructByPointer = true)
