@@ -637,6 +637,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 ]
 
 const testDescNvidia: seq[string] = @[
+  # LLVM backend
   "tests/gpu/t_load_store.nim",
   "tests/gpu/t_exec_literals_consts.nim",
   "tests/gpu/t_nvidia_fp.nim",
@@ -647,7 +648,13 @@ const testDescNvidia: seq[string] = @[
   "tests/gpu/t_nsqr.nim",
   "tests/gpu/t_nsqr_rt.nim",
   "tests/gpu/t_ec_jac_coords.nim",
-  "tests/gpu/t_ec_sum.nim"
+  "tests/gpu/t_ec_sum.nim",
+  # NVRTC backend
+  "tests/gpu/t_nvrtc_misc_ops.nim",
+  "tests/gpu/t_nvrtc_pass_var.nim",
+  "tests/gpu/t_nvrtc_pass_pointer.nim",
+  "tests/gpu/t_nvrtc_bigint_example.nim",
+  "tests/gpu/t_nvrtc_inbuilt_modadd.nim",
 ]
 
 const testDescThreadpool: seq[string] = @[
@@ -855,6 +862,8 @@ proc addTestSetNvidia(cmdFile: var string) =
       flags = flags & stackHardening
     if path in useSanitizers:
       flags = flags & sanitizers
+    if "nvrtc" in path: # NVRTC backend only supported on 32 bit backend so far
+      flags = flags & " -d:CTT_32"
     cmdFile.testBatch(flags, path)
 
 proc addTestSetThreadpool(cmdFile: var string) =
