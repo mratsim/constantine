@@ -39,10 +39,11 @@ proc genStoreIntFloatFromPtr*(asy: Assembler_LLVM, fd: FieldDescriptor): string 
   let name = fd.name & "_store_int_float"
   let ptrInt = pointer_t(asy.ctx.int64_t())
   let ptrFloat = pointer_t(asy.ctx.float64_t())
+
   asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [ptrInt, ptrFloat, ptrInt, ptrFloat]):
     let (ri, rf, i, f) = llvmParams
-    asy.store(ri, asy.load2(ptrInt, i))
-    asy.store(rf, asy.load2(ptrFloat, f))
+    asy.store(ri, asy.load2(asy.ctx.int64_t(), i))
+    asy.store(rf, asy.load2(asy.ctx.float64_t(), f))
     asy.br.retVoid()
   return name
 
@@ -52,8 +53,8 @@ proc genStoreIntFloat32FromPtr*(asy: Assembler_LLVM, fd: FieldDescriptor): strin
   let ptrFloat = pointer_t(asy.ctx.float32_t())
   asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [ptrInt, ptrFloat, ptrInt, ptrFloat]):
     let (ri, rf, i, f) = llvmParams
-    asy.store(ri, asy.load2(ptrInt, i))
-    asy.store(rf, asy.load2(ptrFloat, f))
+    asy.store(ri, asy.load2(asy.ctx.int32_t(), i))
+    asy.store(rf, asy.load2(asy.ctx.float32_t(), f))
     asy.br.retVoid()
   return name
 
