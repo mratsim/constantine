@@ -32,6 +32,14 @@ const libCuda = "(libcuda.so|libcuda.so)"
 #
 # We need to use the lower-level driver API for JIT modules loading and reloading
 
+
+## Sigh. Due to the `incompatible-pointer-types` now standard in GCC / Clang, we need to
+## define a real `const char*` type for e.g. `cuGetErrorString`. Otherwise we get errors.
+type
+  cstringConstImpl* {.importc: "const char*".} = cstring
+  constChar* = distinct cstringConstImpl
+
+
 type
   CUresult* {.size: sizeof(cint).} = enum
     ##  The API call returned with no errors. In the case of query calls, this
@@ -477,14 +485,27 @@ type
 
   CUdevice* = distinct int32
     ## Compute Device handle
-  CUcontext* = distinct pointer
-  CUmodule* = distinct pointer
-  CUfunction* = distinct pointer
-  CUstream* = distinct pointer
-  CUdeviceptr* = distinct pointer
 
-  CUlinkState_st = object
-  CUlinkState* = ptr CUlinkState_st
+  CUcontext* {.importc: "CUcontext", header: "cuda.h".} = distinct pointer
+  CUmodule*  {.importc: "CUmodule", header: "cuda.h".} = distinct pointer
+  CUfunction* {.importc: "CUfunction", header: "cuda.h".} = distinct pointer
+  CUstream* {.importc: "CUstream", header: "cuda.h".} = distinct pointer
+  CUlinkState* {.importc: "CUlinkState", header: "cuda.h".} = distinct pointer # ptr CUlinkState_st
+
+##
+##  CUDA device pointer
+##  CUdeviceptr is defined as an unsigned integer type whose size matches the size of a pointer on the target platform.
+##
+
+when sizeOf(pointer) == 8:
+  type
+    CUdeviceptr_v2* {.importc: "CUdeviceptr_v2", header: "cuda.h".} = distinct culonglong
+else:
+  type
+    CUdeviceptr_v2* {.importc: "CUdeviceptr_v2", header: "cuda.h".}= distinct cuint
+type
+  CUdeviceptr*  {.importc: "CUdeviceptr", header: "cuda.h".} = CUdeviceptr_v2
+
 
 ######################################################################
 ################################ cuda.h ##############################
@@ -853,8 +874,7 @@ proc cuLinkAddData*(state: CUlinkState; `type`: CUjitInputType; data: pointer;
 proc cuLinkComplete*(state: CUlinkState; cubinOut: ptr pointer; sizeOut: ptr csize_t): CUresult
 
 
-proc cuGetErrorString*(error: CUresult; pStr: cstringArray): CUresult
-
+proc cuGetErrorString*(error: CUresult; pStr: ptr constChar): CUresult
 proc cuLinkAddFile*(state: CUlinkState; `type`: CUjitInputType; path: cstring;
                     numOptions: cuint; options: ptr CUjit_option;
                     optionValues: ptr pointer): CUresult
@@ -863,6 +883,10 @@ proc cuLinkAddFile*(state: CUlinkState; `type`: CUjitInputType; path: cstring;
 
 
 {.pop.} # {.push noconv, importc, dynlib: "libcuda.so", header: "cuda.h"..}
+
+proc cuGetErrorString*(error: CUresult; pStr: var cstring): CUresult =
+  cuGetErrorString(error, cast[ptr constChar](pStr.addr))
+
 
 
 ######################################################################

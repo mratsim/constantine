@@ -286,7 +286,11 @@ proc getTypeName(n: NimNode): string =
   ## Returns the name of the type
   case n.kind
   of nnkIdent, nnkSym: result = n.strVal
-  of nnkObjConstr:  result = n.getTypeInst.strVal
+  of nnkObjConstr:
+    if n[0].kind == nnkEmpty:
+      result = n.getTypeInst.strVal
+    else:
+      result = n[0].strVal # type is the first node
   else: raiseAssert "Unexpected node in `getTypeName`: " & $n.treerepr
 
 proc parseTypeFields(node: NimNode): seq[GpuTypeField]

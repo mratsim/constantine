@@ -59,7 +59,7 @@ const BigIntExample* = cuda:
     output[] = a
     output[].cSetOne(c)
 
-  proc testCsetZero(output: ptr BigInt, a, b: BigInt, c: uint32) {.global.} =
+  proc testCsetZero(output: ptr BigInt, a: BigInt, c: uint32) {.global.} =
     output[] = a
     output[].cSetZero(c.bool)
 
@@ -183,7 +183,7 @@ proc main =
     hOut[5] = 321
     var input: array[8, uint32]
     input = hOut
-    nvrtc.execute("testCsetZero", (hOut), (input, input, 0'u32))
+    nvrtc.execute("testCsetZero", (hOut), (input, 0'u32))
     let expF = [123'u32, 0, 0, 0, 0, 321, 0, 0]
     for i in 0 ..< 8:
       doAssert expF[i] == hOut[i]

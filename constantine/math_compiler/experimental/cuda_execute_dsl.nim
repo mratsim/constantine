@@ -9,6 +9,7 @@
 import constantine/platforms/abis/nvidia_abi
 import std/macros
 from std / strutils import normalize
+from std / sequtils import deduplicate
 
 proc getTypes(n: NimNode): seq[NimNode] =
   case n.kind
@@ -89,6 +90,10 @@ proc determineDevicePtrs(r, i: NimNode, iTypes: seq[NimNode],
     let t = iTypes[idx]
     if t.requiresCopy(passStructByPointer):
       result.add (getIdent(input), input)
+  # Deduplicate the pointers. If one passes in the same argument twice, we don't generate a duplicate
+  # device ptr, e.g.
+  # `nvrtc.execute("testAdd", (hOut), (inFp, inFp))`
+  result = deduplicate(result)
 
 proc assembleParams(r, i: NimNode, iTypes: seq[NimNode], passStructByPointer: bool): seq[NimNode] =
   ## Returns all parameters. Depending on whether they require copies or
@@ -154,6 +159,8 @@ proc genVar(n: NimNode): (NimNode, NimNode) =
   )
 
 proc genLocalVars(inputs: NimNode): (NimNode, NimNode) =
+  ## NOTE: This function explicitly allows duplicate inputs. I.e.
+  ## `nvrtc.execute("testAdd", (hOut), (inFp, inFp))`
   result[0] = newStmtList() # defines local vars
   result[1] = nnkBracket.newTree() # returns new bracket of vars for parameters
   for el in inputs:
@@ -333,14 +340,14 @@ macro execCuda*(jitFn: CUfunction,
   ## as an input.
   ##
   ## NOTE: This function is mainly intended for convenient execution of a single kernel
-  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, inputs, newLit 0, passStructByPointer = false)
+  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, inputs, newLit 0, passStructByPointer = true)
 
 macro execCuda*(jitFn: CUfunction,
                 numBlocks, threadsPerBlock: int,
                 res: typed,
                 inputs: typed): untyped =
   ## Overload which takes a target number of threads and blocks
-  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs, newLit 0, passStructByPointer = false)
+  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs, newLit 0, passStructByPointer = true)
 
 macro execCuda*(jitFn: CUfunction,
                 numBlocks, threadsPerBlock: int,
@@ -348,9 +355,9 @@ macro execCuda*(jitFn: CUfunction,
                 inputs: typed,
                 sharedMemSize: typed): untyped =
   ## Overload which takes a target number of threads and blocks and a shared memory size
-  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs, sharedMemSize, passStructByPointer = false)
+  result = execCudaImpl(jitFn, numBlocks, threadsPerBlock, res, inputs, sharedMemSize, passStructByPointer = true)
 
 macro execCuda*(jitFn: CUfunction,
                 res: typed): untyped =
   ## Overload of the above for empty `inputs`
-  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, nnkBracket.newTree(), newLit 0, passStructByPointer = false)
+  result = execCudaImpl(jitFn, newLit 1, newLit 1, res, nnkBracket.newTree(), newLit 0, passStructByPointer = true)
