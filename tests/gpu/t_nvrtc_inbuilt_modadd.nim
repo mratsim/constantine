@@ -21,9 +21,10 @@ const BigIntExample* = cuda:
   defPtxHelpers()
   defCoreFieldOps(T)
 
-  #proc bigintTest(output: ptr UncheckedArray[uint32], aIn, bIn: ptr BigInt) {.global.} =
+  template getFieldModulus(): untyped = static: T.getModulus().limbs
+
   proc modaddTest(output: ptr UncheckedArray[uint32], a, b: BigInt) {.global.} =
-    let M64 = getFieldModulus() # need a let variable, otherwise modulus does not have an address
+    let M64 = getFieldModulus()
     # Cast the 64bit limbs of field modulus to 32bit limbs to copy
     var data = cast[ptr UncheckedArray[uint32]](addr M64[0])
     ## NOTE: you cannot do `BigInt(limbs: data)`. Leads to invalid C/CUDA code. We might turn calls
