@@ -360,4 +360,5 @@ macro execCuda*(jitFn: CUfunction,
   ## type definitions for finite field elements and elliptic curve points
   ## on the LLVM target).
   execCudaImpl(jitFn, newLit 1, newLit 1, res, inputs,
+               newLit 0,
                passStructByPointer = false)
