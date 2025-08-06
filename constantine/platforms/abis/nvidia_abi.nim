@@ -20,9 +20,7 @@ import ./c_abi
 #
 # ############################################################
 
-import ./libpaths
-tellCompilerToUseCuda()
-const libCuda = "(libcuda.so|libcuda.so)"
+const libCuda = "(libcuda.so|cuda.lib)" # Windows uses static linking for Cuda programs
 
 # Cuda offers 2 APIs:
 # - cuda.h               the driver API
