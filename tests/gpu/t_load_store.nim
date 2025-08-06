@@ -88,6 +88,15 @@ proc execCondBroken*(jitFn: CUfunction, r: var bool; c: bool) =
 # -------------------------
 initializeFullNVPTXTarget()
 
+# Check Cuda Driver API and Cuda Runtime API versions
+# -------------------------
+var driverVersion, runtimeVersion: cint
+check cuDriverGetVersion(driverVersion)
+check cudaRuntimeGetVersion(runtimeVersion)
+
+echo "Cuda Driver version:  ", driverVersion
+echo "Cuda Runtime version: ", runtimeVersion
+
 # Init GPU
 # -------------------------
 let cudaDevice = cudaDeviceInit()
@@ -119,7 +128,7 @@ proc testName(wordSize: int, krn: KernelGen, execKrn: ExecKernel, inputNeedsPtr:
 
   let kernel = cuMod.getCudaKernel(kernName)
 
-  var cond = true #CtTrue
+  var cond = true # CtTrue
   var res: bool
   kernel.execKrn(res, cond)
   echo "Bool result ? ", res, " from : ", cond

@@ -487,6 +487,7 @@ type
     ## Compute Device handle
 
   CUcontext* {.importc.} = distinct pointer
+  CUevent* {.importc.} = distinct pointer
   CUmodule*  {.importc.} = distinct pointer
   CUfunction* {.importc.} = distinct pointer
   CUstream* {.importc.} = distinct pointer
@@ -837,10 +838,18 @@ proc cuDeviceGet*(device: var CUdevice, ordinal: int32): CUresult
 proc cuDeviceGetName*(name: ptr char, len: int32, dev: CUdevice): CUresult
 proc cuDeviceGetAttribute*(r: var int32, attrib: CUdevice_attribute, dev: CUdevice): CUresult
 
-proc cuCtxCreate*(pctx: var CUcontext, flags: uint32, dev: CUdevice): CUresult
+proc cuCtxCreate*(pctx: var CUcontext, flags: uint32, dev: CUdevice): CUresult {.importc: "cuCtxCreate_v2".}
 proc cuCtxDestroy*(ctx: CUcontext): CUresult
-proc cuCtxSynchronize*(ctx: CUcontext): CUresult
+proc cuCtxSynchronize*(ctx: CUcontext): CUresult {.importc: "cuCtxSynchronize_v2".}
 proc cuCtxSynchronize*(): CUresult
+proc cuCtxGetCurrent*(ctx: var CUcontext): CUresult
+proc cuCtxSetCurrent*(ctx: CUcontext): CUresult
+
+proc cuEventCreate*(event: var CUevent, flags: cuint = 0): CUresult
+proc cuEventDestroy*(event: CUevent): CUresult
+proc cuEventRecord*(event: CUevent, stream: CUstream): CUresult
+proc cuEventSynchronize*(event: CUevent): CUresult
+proc cuEventElapsedTime*(ms: var cfloat, start, stop: CUevent): CUresult
 
 proc cuModuleUnload*(module: CUmodule): CUresult
 proc cuModuleGetFunction(kernel: var CUfunction, module: CUmodule, fnName: ptr char): CUresult {.used.}
@@ -864,7 +873,7 @@ proc cuMemFree*(devptr: CUdeviceptr): CUresult
 proc cuMemcpyHtoD*(dst: CUdeviceptr, src: pointer, size: csize_t): CUresult
 proc cuMemcpyDtoH*(dst: pointer, src: CUdeviceptr, size: csize_t): CUresult
 
-proc cuDriverGetVersion*(driverVersion: ptr cint): CUresult
+proc cuDriverGetVersion*(driverVersion: var cint): CUresult
 
 proc cuLinkCreate*(numOptions: cuint; options: ptr CUjit_option;
                    optionValues: ptr pointer; stateOut: ptr CUlinkState): CUresult
@@ -1823,46 +1832,15 @@ type
     cudaMemcpyDefault = 4     ## < Direction of the transfer is inferred from the pointer values. Requires unified virtual addressing
 
 
-proc cudaRuntimeGetVersion*(runtimeVersion: ptr cint): cudaError_t {.cdecl,
+proc cudaRuntimeGetVersion*(runtimeVersion: var cint): cudaError_t {.cdecl,
     importc: "cudaRuntimeGetVersion", dynlib: libCudaRT.}
 
 proc cudaGetDeviceProperties*(prop: ptr cudaDeviceProp; device: cint): cudaError_t {.
     cdecl, importc: "cudaGetDeviceProperties", dynlib: libCudaRT.}
 
-proc cudaEventCreate*(event: ptr cudaEvent_t): cudaError_t {.cdecl,
-    importc: "cudaEventCreate", dynlib: libCudaRT.}
-
-proc cudaEventRecord*(event: cudaEvent_t; stream: cudaStream_t): cudaError_t {.
-    cdecl, importc: "cudaEventRecord", dynlib: libCudaRT.}
-
-proc cudaEventSynchronize*(event: cudaEvent_t): cudaError_t {.cdecl,
-    importc: "cudaEventSynchronize", dynlib: libCudaRT.}
-
-proc cudaDeviceSynchronize*(): cudaError_t {.cdecl,
-    importc: "cudaDeviceSynchronize", dynlib: libCudaRT.}
-
-proc cudaEventElapsedTime*(ms: ptr cfloat; start: cudaEvent_t; `end`: cudaEvent_t): cudaError_t {.
-    cdecl, importc: "cudaEventElapsedTime", dynlib: libCudaRT.}
-
-proc cudaEventDestroy*(event: cudaEvent_t): cudaError_t {.cdecl,
-      importc: "cudaEventDestroy", dynlib: libCudaRT.}
-
-proc cudaMemcpyToSymbol*(symbol: pointer,
-                         src: pointer,
-                         count, offset: csize_t,
-                         kind: cudaMemcpyKind = cudaMemcpyHostToDevice): cudaError_t {.
-    cdecl, importc: "cudaMemcpyToSymbol", dynlib: libCudaRT.}
-
-proc cudaGetSymbolAddress*(devPtr: ptr CUdeviceptr,
-                           symbol: pointer): cudaError_t {.cdecl,
-    importc: "cudaGetSymbolAddress", dynlib: libCudaRT.}
-
-
-
 ######################################################################
 ################################ Utilities ###########################
 ######################################################################
-
 
 template check*(status: CUresult, quitOnFailure = true) =
   ## Check the status code of a CUDA operation

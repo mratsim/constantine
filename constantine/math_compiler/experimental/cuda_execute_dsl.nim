@@ -261,11 +261,12 @@ proc execCudaImpl*(jitFn, numBlocks, threadsPerBlock, res, inputs, sharedMemSize
               else: nil
 
     # Create timing events
-    var start, stop: cudaEvent_t
-    check cudaEventCreate(addr start)
-    check cudaEventCreate(addr stop)
+    var start, stop: CUevent
 
-    check cudaEventRecord(start, nil)
+    check cuEventCreate(start)
+    check cuEventCreate(stop)
+
+    check cuEventRecord(start, CUstream(nil))
     check cuLaunchKernel(
             CUfunction(`jitFn`),     # dummy conversion on NVRTC, required on LLVM
             `numBlocks`, 1, 1,       # grid(x, y, z)
@@ -273,16 +274,16 @@ proc execCudaImpl*(jitFn, numBlocks, threadsPerBlock, res, inputs, sharedMemSize
             sharedMemBytes = `sharedMemSize`.uint32,
             CUstream(nil),
             pAr, nil)
-    check cudaDeviceSynchronize()
-    check cudaEventRecord(stop, nil)
-    check cudaEventSynchronize(stop)
+    check cuCtxSynchronize()
+    check cuEventRecord(stop, CUstream(nil))
+    check cuEventSynchronize(stop)
 
     var elapsedTime: float32
-    check cudaEventElapsedTime(addr elapsedTime, start, stop)
+    check cuEventElapsedTime(elapsedTime, start, stop)
     echo "[INFO]: Kernel execution took: ", elapsedTime, " ms"
 
-    check cudaEventDestroy(start)
-    check cudaEventDestroy(stop)
+    check cuEventDestroy(start)
+    check cuEventDestroy(stop)
 
 
   # copy back results
