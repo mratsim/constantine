@@ -73,8 +73,6 @@ export
 
 func cuModuleLoadData*(module: var CUmodule, sourceCode: openArray[char]): CUresult {.inline.}=
   cuModuleLoadData(module, sourceCode[0].unsafeAddr)
-func cuModuleGetFunction*(kernel: var CUfunction, module: CUmodule, fnName: openArray[char]): CUresult {.inline.}=
-  cuModuleGetFunction(kernel, module, fnName[0].unsafeAddr)
 
 proc cudaDeviceInit*(deviceID = 0'i32): CUdevice =
 
@@ -156,9 +154,6 @@ proc codegenNvidiaPTX*(asy: Assembler_LLVM, sm: tuple[major, minor: int32]): str
 #
 # ############################################################
 
-proc getCudaKernel*(cuMod: CUmodule, fnName: string): CUfunction =
-  check cuModuleGetFunction(result, cuMod, fnName)
-
 proc exec*[T](jitFn: CUfunction, r: var T, a, b: T) =
   ## Execute a binary operation in the form r <- op(a, b)
   ## on Nvidia GPU
@@ -233,12 +228,6 @@ type
 
   NvidiaAssembler* = ref NvidiaAssemblerObj
 
-  ## We define a distinct version of the `CUfunction` type to differentiate
-  ## producing a kernel via the LLVM backend from the more direct approach
-  ## using NVRTC. This is because the data passing for field elements
-  ## is more complicated on the LLVM side (requires a manual copy).
-  CUfunctionLLVM* = distinct CUfunction
-
 proc `=destroy`*(nv: NvidiaAssemblerObj) =
   ## XXX: Need to also call the finalizer for `asy` in the future!
   # NOTE: In the destructor we don't want to quit on a `check` failure.
@@ -254,6 +243,9 @@ proc `=destroy`*(nv: NvidiaAssemblerObj) =
   check nv.cuMod.cuModuleUnload(), quitOnFailure = false
   check nv.cuCtx.cuCtxDestroy(), quitOnFailure = false
   `=destroy`(nv.asy)
+
+proc getCudaKernel*(cuMod: CUmodule, fnName: string): CUfunction =
+  check cuModuleGetFunction(result, cuMod, fnName[0].addr)
 
 proc initNvAsm*[Name: static Algebra](field: type FF[Name], wordSize: int = 32, backend = bkNvidiaPTX): NvidiaAssembler =
   ## Constructs an `NvidiaAssembler` object, which compiles code for the Nvidia target
@@ -315,7 +307,7 @@ proc initNvAsm*[Name: static Algebra](field: type EC_ShortW_Jac[Fp[Name], G1], w
   result.fd = result.cd.fd
   result.asy.definePrimitives(result.cd)
 
-proc compile*(nv: NvidiaAssembler, kernName: string): CUfunctionLLVM =
+proc compile*(nv: NvidiaAssembler, kernName: string): CUfunction =
   ## Overload of `compile` below.
   ## Call this version if you have manually used the Assembler_LLVM object
   ## to build instructions and have a kernel name you wish to compile.
@@ -340,24 +332,24 @@ proc compile*(nv: NvidiaAssembler, kernName: string): CUfunctionLLVM =
   check cuModuleLoadData(nv.cuMod, ptx)
   # will be cleaned up when `NvidiaAssembler` goes out of scope
 
-  result = CUfunctionLLVM(nv.cuMod.getCudaKernel(kernName))
+  result = nv.cuMod.getCudaKernel(kernName)
 
-proc compile*(nv: NvidiaAssembler, fn: FieldFnGenerator): CUfunctionLLVM =
+proc compile*(nv: NvidiaAssembler, fn: FieldFnGenerator): CUfunction =
   ## Given a function that generates code for a finite field operation, compile
   ## that function on the given Nvidia target and return a CUDA function.
   # execute the `fn`
   let kernName = nv.asy.fn(nv.fd)
-  result = CUfunctionLLVM(nv.compile(kernName))
+  result = nv.compile(kernName)
 
-proc compile*(nv: NvidiaAssembler, fn: CurveFnGenerator): CUfunctionLLVM =
+proc compile*(nv: NvidiaAssembler, fn: CurveFnGenerator): CUfunction =
   ## Given a function that generates code for an elliptic curve operation, compile
   ## that function on the given Nvidia target and return a CUDA function.
   # execute the `fn`
   let kernName = nv.asy.fn(nv.cd)
-  result = CUfunctionLLVM(nv.compile(kernName))
+  result = nv.compile(kernName)
 
 import ./experimental/cuda_execute_dsl
-macro execCuda*(jitFn: CUfunctionLLVM,
+macro execCuda*(jitFn: CUfunction,
                 res: typed,
                 inputs: typed): untyped =
   ## See `execCuda` in `constantine/math_compiler/experimental/cuda_execute_dsl.nim`
@@ -368,4 +360,5 @@ macro execCuda*(jitFn: CUfunctionLLVM,
   ## type definitions for finite field elements and elliptic curve points
   ## on the LLVM target).
   execCudaImpl(jitFn, newLit 1, newLit 1, res, inputs,
+               newLit 0,
                passStructByPointer = false)

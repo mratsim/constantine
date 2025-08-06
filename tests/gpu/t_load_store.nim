@@ -25,7 +25,7 @@ import
 
 type
   KernelGen = proc(asy: Assembler_LLVM, fd: FieldDescriptor): string
-  ExecKernel = proc(jitFn: CUfunction, r: var bool; c: bool)
+  ExecKernel = proc(jitFn: CUfunction, r: var bool; c: bool) {.nimcall.}
 
 proc genStoreBool*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   let name = fd.name & "_store_bool"

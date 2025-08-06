@@ -19,7 +19,7 @@ const BigIntExample* = cuda:
 
   defBigInt(N)
   defPtxHelpers()
-  defCoreFieldOps()
+  defCoreFieldOps(T)
 
   proc testPointer(x: ptr BigInt) {.device.} =
     ## just write data to the bigint
@@ -49,9 +49,9 @@ proc main =
   nvrtc.threadsPerBlock = 1
 
   nvrtc.execute("test", (hOut), ())
+  var exp = [0'u32, 1, 2, 3, 4, 5, 6, 7]
   for i in 0 ..< 8:
-    echo hOut[i]
-
+    doAssert exp[i] == hOut[i]
 
 when isMainModule:
   main()
