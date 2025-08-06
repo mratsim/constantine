@@ -486,11 +486,11 @@ type
   CUdevice* = distinct int32
     ## Compute Device handle
 
-  CUcontext* {.importc: "CUcontext", header: "cuda.h".} = distinct pointer
-  CUmodule*  {.importc: "CUmodule", header: "cuda.h".} = distinct pointer
-  CUfunction* {.importc: "CUfunction", header: "cuda.h".} = distinct pointer
-  CUstream* {.importc: "CUstream", header: "cuda.h".} = distinct pointer
-  CUlinkState* {.importc: "CUlinkState", header: "cuda.h".} = distinct pointer # ptr CUlinkState_st
+  CUcontext* {.importc.} = distinct pointer
+  CUmodule*  {.importc.} = distinct pointer
+  CUfunction* {.importc.} = distinct pointer
+  CUstream* {.importc.} = distinct pointer
+  CUlinkState* {.importc.} = distinct pointer # ptr CUlinkState_st
 
 ##
 ##  CUDA device pointer
@@ -499,12 +499,12 @@ type
 
 when sizeOf(pointer) == 8:
   type
-    CUdeviceptr_v2* {.importc: "CUdeviceptr_v2", header: "cuda.h".} = distinct culonglong
+    CUdeviceptr_v2* {.importc.} = distinct culonglong
 else:
   type
-    CUdeviceptr_v2* {.importc: "CUdeviceptr_v2", header: "cuda.h".}= distinct cuint
+    CUdeviceptr_v2* {.importc.}= distinct cuint
 type
-  CUdeviceptr*  {.importc: "CUdeviceptr", header: "cuda.h".} = CUdeviceptr_v2
+  CUdeviceptr*  {.importc.} = CUdeviceptr_v2
 
 
 ######################################################################
@@ -828,7 +828,7 @@ type                          ##
 
 
 
-{.push noconv, importc, dynlib: libCuda, header: "cuda.h".}
+{.push noconv, importc, dynlib: libCuda.}
 
 proc cuInit*(flags: uint32): CUresult
 
@@ -882,7 +882,7 @@ proc cuLinkAddFile*(state: CUlinkState; `type`: CUjitInputType; path: cstring;
 
 
 
-{.pop.} # {.push noconv, importc, dynlib: "libcuda.so", header: "cuda.h"..}
+{.pop.} # {.push noconv, importc, dynlib: "libcuda.so"..}
 
 proc cuGetErrorString*(error: CUresult; pStr: var cstring): CUresult =
   cuGetErrorString(error, cast[ptr constChar](pStr.addr))
