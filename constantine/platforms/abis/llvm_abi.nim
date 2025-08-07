@@ -8,7 +8,8 @@
 
 import ./c_abi
 
-const libLLVM = "libLLVM-(16|17|18).so"
+# LLVM 20+ is needed for RTX5000 series - https://github.com/llvm/llvm-project/commit/965ff7fa309d4408b4ccf5df7e59fec264c905c5
+const libLLVM = "libLLVM-(20|19|18|17|16).so"
 static: echo "[Constantine] Using library " & libLLVM
 
 # ############################################################

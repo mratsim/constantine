@@ -328,6 +328,7 @@ proc compile*(nv: NvidiaAssembler, kernName: string): CUfunction =
 
   # GPU exec
   # -------------------------
+  # TODO: we create contexts but we never garbage collect them.
   check cuCtxCreate(nv.cuCtx, 0, nv.device)
   check cuModuleLoadData(nv.cuMod, ptx)
   # will be cleaned up when `NvidiaAssembler` goes out of scope
