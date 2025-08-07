@@ -422,10 +422,10 @@ proc nsqr*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef, count: int,
       rA[i] = aA[i]
 
     # `r` now stores `a`
-    for i in countdown(count, 1):
+    for i in countdown(count-1, 0):
       # `mtymul` does not touch `r` until the end to store the result. It uses a temporary
       # buffer internally. So we can just pass `r` 3 times!
-      let fR = i == 1 and not skipFinalSub # only reduce on last iteration
+      let fR = i == 0 and not skipFinalSub # only reduce on last iteration
       asy.mtymul(fd, ri, ri, ri, M, finalReduce = fR)
 
     asy.br.retVoid()

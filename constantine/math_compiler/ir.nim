@@ -920,7 +920,8 @@ macro llvmFor*(asy: untyped, iter: untyped, start, stop, isCountup: typed, body:
     llvmForImpl(`asy`, `iter`, `label`, `start`, `stop`, `isCountup`, `body`)
 
 template llvmFor*(asy: untyped, iter: untyped, start, stop: typed, body: untyped): untyped {.dirty.} =
-  ## Start and stop must be Nim values
+  ## Start and stop must be Nim values.
+  ## Stop is included.
   block:
     let isCountup = start < stop
     asy.llvmFor iter, start, stop, isCountup:
@@ -928,12 +929,14 @@ template llvmFor*(asy: untyped, iter: untyped, start, stop: typed, body: untyped
 
 template llvmForCountup*(asy: untyped, iter: untyped, start, stop: typed, body: untyped): untyped  {.dirty.} =
   ## Start and stop can either be Nim or LLVM values
+  ## Stop is included.
   block:
     asy.llvmFor iter, start, stop, true:
       body
 
 template llvmForCountdown*(asy: untyped, iter: untyped, start, stop: typed, body: untyped): untyped  {.dirty.} =
   ## Start and stop can either be Nim or LLVM values
+  ## Stop is included.
   block:
     asy.llvmFor iter, start, stop, false:
       body
