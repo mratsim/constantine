@@ -106,7 +106,7 @@ template checkOp(kernel, exp, hOut, a, b: untyped): untyped =
 proc main =
   var nvrtc = initNvrtc(BigIntExample)
   # echo the generated CUDA code
-  echo BigIntExample
+  # echo BigIntExample
 
   nvrtc.compile()
   nvrtc.getPtx()

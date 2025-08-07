@@ -1114,13 +1114,10 @@ macro cuda*(body: typed): string =
   ## - most regular Nim features :)
   var ctx = GpuContext()
   let gpuAst = ctx.toGpuAst(body)
-  ## NOTE: `header` is currently unused. Not sure yet if we'll ever need it.
-  let header = """
-// #include "foo.h"
-"""
-
+  # NOTE: it doesn't seem like it's possible to add a header to a NVRTC kernel.
+  # NVRTC safe stdlib is implemented at https://github.com/NVIDIA/jitify
   let body = ctx.genCuda(gpuAst)
-  result = newLit(header & body)
+  result = newLit(body)
 
 when isMainModule:
   # Mini example

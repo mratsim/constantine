@@ -108,15 +108,15 @@ proc initNvrtc*(cuda: string, name = "sample.cu"): NVRTC =
   ## Initializes an NVRTC object for the given program `cuda`
   when DebugCuda:
     var x: cint
-    check cuDriverGetVersion(x.addr)
+    check cuDriverGetVersion(x)
     echo "Driver version: ", x
 
     var rtVer: cint
-    echo cudaRuntimeGetVersion(addr rtVer)
+    echo cudaRuntimeGetVersion(rtVer)
     echo "Runtime ver: ", rtVer
 
     var prop: cudaDeviceProp
-    echo cudaGetDeviceProperties(addr prop, 0);
+    echo cudaGetDeviceProperties(prop, 0);
     echo "Compute capability: ", prop.major, " ", prop.minor
 
   var
@@ -129,7 +129,7 @@ proc initNvrtc*(cuda: string, name = "sample.cu"): NVRTC =
 
   # Create an instance of nvrtcProgram based on the passed code
   var prog: nvrtcProgram
-  check nvrtcCreateProgram(addr(prog), cstring cuda, cstring name, 0, nil, nil)
+  check nvrtcCreateProgram(prog, cstring cuda, cstring name, 0, nil, nil)
 
   result = NVRTC(prog: prog, name: name,
                  device: device,
@@ -139,7 +139,7 @@ proc initNvrtc*(cuda: string, name = "sample.cu"): NVRTC =
 proc log*(nvrtc: var NVRTC) =
   ## Retrieve the compilation log.
   var logSize: csize_t
-  check nvrtcGetProgramLogSize(nvrtc.prog, addr logSize)
+  check nvrtcGetProgramLogSize(nvrtc.prog, logSize)
 
   var log = cstring newString(Natural logSize)
 
@@ -151,7 +151,7 @@ proc compile*(nvrtc: var NVRTC) =
   # Note: Can specify GPU target architecture explicitly with '-arch' flag.
   const
     Options = [
-      cstring "--gpu-architecture=compute_61", # or whatever your GPU arch is
+      cstring "--gpu-architecture=compute_75", # or whatever your GPU arch is
       # "--fmad=false", # and whatever other options for example
     ]
 
@@ -169,12 +169,12 @@ proc compile*(nvrtc: var NVRTC) =
 proc getPtx*(nvrtc: var NVRTC) =
   ## Obtain PTX from the program.
   var ptxSize: csize_t
-  check nvrtcGetPTXSize(nvrtc.prog, addr ptxSize)
+  check nvrtcGetPTXSize(nvrtc.prog, ptxSize)
 
   var ptx = newString(int ptxSize)
   check nvrtcGetPTX(nvrtc.prog, ptx)
 
-  check nvrtcDestroyProgram(addr nvrtc.prog) # Destroy the program.
+  check nvrtcDestroyProgram(nvrtc.prog) # Destroy the program.
   nvrtc.ptx = ptx
 
   when DebugCuda:

@@ -101,7 +101,7 @@ from std / sequtils import mapIt
 proc main =
   var nvrtc = initNvrtc(BigIntExample)
   # echo the generated CUDA code
-  echo BigIntExample
+  # echo BigIntExample
   writeFile("/tmp/kernel.cu", BigIntExample)
 
   nvrtc.compile()
