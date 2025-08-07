@@ -216,6 +216,26 @@ suite "Random Modular Squaring is consistent with Modular Multiplication" & " ["
     for _ in 0 ..< Iters:
       random_long01Seq(Vesta)
 
+suite "Modular multiplication - bugs highlighted by property-based testing":
+    test "Edwards25519 - 32-bit Crandall prime acceleration":
+      block:
+        # Nvidia backend copied Crandall as-is without converting out of Montgomery domain.
+        var a, b: Fp[Edwards25519]
+        a.fromHex"0x007ffffff6825fff001ff67ff0a5fffffda0000000002567e00024d00000001f"
+        b.fromHex"0x7ffffffffecfc00000800097ffd200010088007fffffffffe007ffba97fed24d"
+
+        var r_mul, r_expected: Fp[Edwards25519]
+        r_expected.fromHex"0x271c295b1362f23fb414095b7c8385068685645b554289b99085b28cd43fd034"
+
+        r_mul.prod(a, b)
+
+        doAssert bool(r_mul == r_expected), block:
+          "\n" &
+          "a: " & a.toHex & "\n" &
+          "b: " & b.toHex & "\n" &
+          "result:   " & r_mul.toHex & "\n" &
+          "expected: " & r_expected.toHex & "\n"
+
 suite "Modular squaring - bugs highlighted by property-based testing":
   test "a² == (-a)² on for Fp[2^127 - 1] - #61":
     var a{.noInit.}: Fp[Mersenne127]
@@ -320,7 +340,6 @@ suite "Modular squaring - bugs highlighted by property-based testing":
     check:
       bool(a2mul == expected)
       bool(a2sqr == expected)
-
 
 proc random_sumprod(Name: static Algebra, N: static int) =
   template sumprod_test(random_instancer: untyped) =

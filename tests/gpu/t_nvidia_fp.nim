@@ -94,7 +94,7 @@ proc main() =
     # P224,
     BN254_Nogami,
     BN254_Snarks,
-    Edwards25519,
+    # Edwards25519, # TODO - reactivate once Crandall accel is implemented on Nvidia #557
     Bandersnatch,
     Pallas,
     Vesta,
