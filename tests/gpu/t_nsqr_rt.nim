@@ -26,7 +26,7 @@ proc testName[Name: static Algebra](field: type FF[Name], wordSize: int, a: FF[N
     var rCPU: field
     rCPU = a
 
-    for i in countdown(count, 1):
+    for _ in 0 ..< count:
       rCPU = rCPU * rCPU
 
     # For GPU:
@@ -38,6 +38,7 @@ proc testName[Name: static Algebra](field: type FF[Name], wordSize: int, a: FF[N
     doAssert bool(rCPU == rGPU)
 
 let a = Fp[BN254_Snarks].fromHex("0x12345678FF11FFAA00321321CAFECAFE")
+echo "a: ", a.toHex()
 
 testName(Fp[BN254_Snarks], 32, a, 2)
 testName(Fp[BN254_Snarks], 32, a, 3)

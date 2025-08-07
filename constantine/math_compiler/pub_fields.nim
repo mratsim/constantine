@@ -311,7 +311,7 @@ template genCountdownLoop(asy: Assembler_LLVM, fn, initialValue: ValueRef, body:
   # Loop exit
   asy.br.positionAtEnd(loopExit)
 
-proc genFpNsqrRT*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
+proc genFpNsqrRt*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## Generate a public field n-square proc
   ## with signature
   ##   `void name(FieldType r, FieldType a, count int)`
@@ -330,7 +330,7 @@ proc genFpNsqrRT*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
     for i in 0 ..< fd.numWords:
       rA[i] = aA[i]
 
-    asy.llvmForCountdown i, count, 0: # countdown from count to 0
+    asy.llvmForCountdown i, count, 1: # countdown from count to 1 (included)
       # use `mtymul` to multiply `r·r` and store it again in `r`
       asy.mtymul(fd, r, r, r, M)
 
