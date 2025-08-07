@@ -825,7 +825,8 @@ type                          ##
                            ##
     CU_JIT_INPUT_NVVM = 5, CU_JIT_NUM_INPUT_TYPES = 6
 
-
+{.pragma: v1, noconv, importc, dynlib: libCuda.}
+{.pragma: v2, noconv, importc: "$1_v2", dynlib: libCuda.}
 
 {.push noconv, importc, dynlib: libCuda.}
 
@@ -836,9 +837,14 @@ proc cuDeviceGet*(device: var CUdevice, ordinal: int32): CUresult
 proc cuDeviceGetName*(name: ptr char, len: int32, dev: CUdevice): CUresult
 proc cuDeviceGetAttribute*(r: var int32, attrib: CUdevice_attribute, dev: CUdevice): CUresult
 
-proc cuCtxCreate*(pctx: var CUcontext, flags: uint32, dev: CUdevice): CUresult {.importc: "cuCtxCreate_v2".}
+{.pop.}
+
+proc cuCtxCreate*(pctx: var CUcontext, flags: uint32, dev: CUdevice): CUresult {.v2.}
+proc cuCtxSynchronize*(ctx: CUcontext): CUresult {.v2.}
+
+{.push noconv, importc, dynlib: libCuda.}
+
 proc cuCtxDestroy*(ctx: CUcontext): CUresult
-proc cuCtxSynchronize*(ctx: CUcontext): CUresult {.importc: "cuCtxSynchronize_v2".}
 proc cuCtxSynchronize*(): CUresult
 proc cuCtxGetCurrent*(ctx: var CUcontext): CUresult
 proc cuCtxSetCurrent*(ctx: CUcontext): CUresult
@@ -865,31 +871,27 @@ proc cuLaunchKernel*(
        extra: ptr pointer
      ): CUresult {.used.}
 
-proc cuMemAlloc*(devptr: var CUdeviceptr, size: csize_t): CUresult
-proc cuMemAllocManaged*(devptr: var CUdeviceptr, size: csize_t, flags: Flag[CUmemAttach_flags]): CUresult
-proc cuMemFree*(devptr: CUdeviceptr): CUresult
-proc cuMemcpyHtoD*(dst: CUdeviceptr, src: pointer, size: csize_t): CUresult
-proc cuMemcpyDtoH*(dst: pointer, src: CUdeviceptr, size: csize_t): CUresult
+{.pop.} # {.push noconv, importc, dynlib: "libcuda.so"..}
 
-proc cuDriverGetVersion*(driverVersion: var cint): CUresult
+proc cuMemAlloc*(devptr: var CUdeviceptr, size: csize_t): CUresult {.v2.}
+proc cuMemAllocManaged*(devptr: var CUdeviceptr, size: csize_t, flags: Flag[CUmemAttach_flags]): CUresult {.v1.}
+proc cuMemFree*(devptr: CUdeviceptr): CUresult {.v2.}
+proc cuMemcpyHtoD*(dst: CUdeviceptr, src: pointer, size: csize_t): CUresult {.v2.}
+proc cuMemcpyDtoH*(dst: pointer, src: CUdeviceptr, size: csize_t): CUresult {.v2.}
+
+proc cuDriverGetVersion*(driverVersion: var cint): CUresult {.v1.}
 
 proc cuLinkCreate*(numOptions: cuint; options: ptr CUjit_option;
-                   optionValues: ptr pointer; stateOut: ptr CUlinkState): CUresult
+                   optionValues: ptr pointer; stateOut: ptr CUlinkState): CUresult {.v2.}
 proc cuLinkAddData*(state: CUlinkState; `type`: CUjitInputType; data: pointer;
                    size: csize_t; name: cstring; numOptions: cuint;
-                   options: ptr CUjit_option; optionValues: ptr pointer): CUresult
-proc cuLinkComplete*(state: CUlinkState; cubinOut: ptr pointer; sizeOut: ptr csize_t): CUresult
-
-
-proc cuGetErrorString*(error: CUresult; pStr: ptr constChar): CUresult
+                   options: ptr CUjit_option; optionValues: ptr pointer): CUresult {.v2.}
+proc cuLinkComplete*(state: CUlinkState; cubinOut: ptr pointer; sizeOut: ptr csize_t): CUresult {.v1.}
 proc cuLinkAddFile*(state: CUlinkState; `type`: CUjitInputType; path: cstring;
                     numOptions: cuint; options: ptr CUjit_option;
-                    optionValues: ptr pointer): CUresult
+                    optionValues: ptr pointer): CUresult {.v2.}
 
-
-
-
-{.pop.} # {.push noconv, importc, dynlib: "libcuda.so"..}
+proc cuGetErrorString*(error: CUresult; pStr: ptr constChar): CUresult {.v1.}
 
 proc cuGetErrorString*(error: CUresult; pStr: var cstring): CUresult =
   cuGetErrorString(error, cast[ptr constChar](pStr.addr))
@@ -926,24 +928,24 @@ type
     NVRTC_ERROR_NAME_EXPRESSION_NOT_VALID = 10, NVRTC_ERROR_INTERNAL_ERROR = 11,
     NVRTC_ERROR_TIME_FILE_WRITE_FAILED = 12
 
-proc nvrtcCreateProgram*(prog: ptr nvrtcProgram; src: cstring; name: cstring;
+proc nvrtcCreateProgram*(prog: var nvrtcProgram; src: cstring; name: cstring;
                         numHeaders: cint; headers: cstringArray;
                         includeNames: cstringArray): nvrtcResult {.discardable, cdecl,
     importc: "nvrtcCreateProgram", dynlib: libNvrtc.}
 
-proc nvrtcDestroyProgram*(prog: ptr nvrtcProgram): nvrtcResult {.discardable, cdecl,
+proc nvrtcDestroyProgram*(prog: var nvrtcProgram): nvrtcResult {.discardable, cdecl,
     importc: "nvrtcDestroyProgram", dynlib: libNvrtc.}
 
 proc nvrtcCompileProgram*(prog: nvrtcProgram; numOptions: cint; options: cstringArray): nvrtcResult {.discardable,
     cdecl, importc: "nvrtcCompileProgram", dynlib: libNvrtc.}
 
-proc nvrtcGetPTXSize*(prog: nvrtcProgram; ptxSizeRet: ptr csize_t): nvrtcResult {.discardable,
+proc nvrtcGetPTXSize*(prog: nvrtcProgram; ptxSizeRet: var csize_t): nvrtcResult {.discardable,
     cdecl, importc: "nvrtcGetPTXSize", dynlib: libNvrtc.}
 
 proc nvrtcGetPTX*(prog: nvrtcProgram; ptx: cstring): nvrtcResult {.discardable, cdecl,
     importc: "nvrtcGetPTX", dynlib: libNvrtc.}
 
-proc nvrtcGetProgramLogSize*(prog: nvrtcProgram; logSizeRet: ptr csize_t): nvrtcResult {.discardable,
+proc nvrtcGetProgramLogSize*(prog: nvrtcProgram; logSizeRet: var csize_t): nvrtcResult {.discardable,
     cdecl, importc: "nvrtcGetProgramLogSize", dynlib: libNvrtc.}
 
 proc nvrtcGetProgramLog*(prog: nvrtcProgram; log: cstring): nvrtcResult {.discardable, cdecl,
@@ -1833,7 +1835,7 @@ type
 proc cudaRuntimeGetVersion*(runtimeVersion: var cint): cudaError_t {.cdecl,
     importc: "cudaRuntimeGetVersion", dynlib: libCudaRT.}
 
-proc cudaGetDeviceProperties*(prop: ptr cudaDeviceProp; device: cint): cudaError_t {.
+proc cudaGetDeviceProperties*(prop: var cudaDeviceProp; device: cint): cudaError_t {.
     cdecl, importc: "cudaGetDeviceProperties", dynlib: libCudaRT.}
 
 ######################################################################

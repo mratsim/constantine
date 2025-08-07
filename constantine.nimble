@@ -986,6 +986,9 @@ task test_nvidia, "Run all tests for Nvidia GPUs":
   cmdFile.addTestSetNvidia()
   for cmd in cmdFile.splitLines():
     if cmd != "": # Windows doesn't like empty commands
+      echo "\n=============================================================================================="
+      echo "Running '", cmd, "'"
+      echo "=============================================================================================="
       exec cmd
 
 # BigInt benchmark
