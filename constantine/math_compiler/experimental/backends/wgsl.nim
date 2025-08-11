@@ -488,8 +488,6 @@ proc injectAddressOf(ctx: var GpuContext, n: var GpuAst) =
       n = GpuAst(kind: gpuConv, convTo: GpuType(kind: gtBool), convExpr: n)
   of gpuDeref:
     # XXX: Don't really need to check if type is pointer if we already have `deref`
-    ## XXX: What if we are in a call (not the global) already and the argument is `ptr<storage, ...>`?
-    ## Wouldn't we need to skip the removal of deref, or do we handle that implicitly?
     if n.dOf.kind == gpuIdent and n.dOf.iSym in ctx.globals and (let p = ctx.globals[n.dOf.iSym]; p.typ.kind == gtPtr):
       # replace deref by access to itself
       n = n.dOf
