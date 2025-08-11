@@ -92,6 +92,8 @@ proc getInnerPointerType(n: NimNode): GpuType =
     # VarTy
     #   Sym "BigInt"
     result = nimToGpuType(n[0])
+  elif n.kind == nnkSym: # symbol of e.g. `ntyVar`
+    result = nimToGpuType(n.getTypeInst())
   else:
     raiseAssert "Found what: " & $n.treerepr
 
