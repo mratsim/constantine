@@ -825,5 +825,5 @@ proc codegen*(ctx: var GpuContext): string =
   for fnIdent, fn in ctx.fnTab:
     if fn.isGlobal():
       ## XXX: make adjustable!
-      result.add "@compute @workgroup_size(NUM_WORKGROUPS)\n"
+      result.add "@compute @workgroup_size(WORKGROUP_SIZE)\n"
     result.add ctx.genWebGpu(fn) & "\n\n"
