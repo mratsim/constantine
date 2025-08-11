@@ -205,6 +205,7 @@ proc determineSymKind(arg: GpuAst): GpuSymbolKind =
   of gpuBlock: arg.statements[^1].determineSymKind() # look at last element
   of gpuPrefix: gsLocal # equivalent to constructing a local var
   of gpuConv: gsLocal # a converted value will be a local var
+  of gpuCast: arg.cExpr.determineSymKind() # symbol kind of the thing we cast
   else:
     raiseAssert "Not implemented to determine symbol kind from node: " & $arg
 
@@ -225,6 +226,7 @@ proc determineMutability(arg: GpuAst): bool =
   of gpuBlock: arg.statements[^1].determineMutability() # look at last element
   of gpuPrefix: false # equivalent to constructing a local var
   of gpuConv: false # a converted value will be immutable
+  of gpuCast: arg.cExpr.determineMutability() # mutability of the thing we cast
   else:
     raiseAssert "Not implemented to determine mutability from node: " & $arg
 
@@ -250,8 +252,9 @@ proc determineIdent(arg: GpuAst): GpuAst =
   of gpuBlock: arg.statements[^1].determineIdent()
   of gpuPrefix: dfl()
   of gpuConv: dfl()
+  of gpuCast: arg.cExpr.determineIdent() # ident of the thing we cast
   else:
-    raiseAssert "Not implemented to determine mutability from node: " & $arg
+    raiseAssert "Not implemented to determine ident from node: " & $arg
 
 proc getGenericArguments(args: seq[GpuAst], params: seq[GpuParam], callerParams: Table[string, GpuParam]): seq[GenericArg] =
   ## If an argument is not a ptr argument in the original function (`params`) then
