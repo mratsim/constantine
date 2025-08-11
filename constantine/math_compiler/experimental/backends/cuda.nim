@@ -43,6 +43,7 @@ proc gpuTypeToString*(t: GpuTypeKind): string =
   of gtVoidPtr: "void*"
   of gtObject: "struct"
   of gtString: "const char*"
+  of gtUA: "" # `UncheckedArray` by itself is nothing in CUDA
   else:
     raiseAssert "Invalid type : " & $t
 
