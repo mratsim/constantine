@@ -11,7 +11,7 @@ import std / [macros, strutils, sequtils, options, sugar, tables, strformat, has
 import ./gpu_types
 import ./backends/backends
 
-proc nimToGpuType(n: NimNode): GpuType
+proc nimToGpuType(n: NimNode, allowToFail: bool = false): GpuType
 
 proc initGpuType(kind: GpuTypeKind): GpuType =
   ## If `kind` is `gtPtr` `to` must be the type we point to
@@ -75,25 +75,25 @@ proc unpackGenericInst(t: NimNode): NimNode =
 proc toGpuTypeKind(t: NimNode): GpuTypeKind =
   result = t.unpackGenericInst().typeKind.toGpuTypeKind()
 
-proc getInnerPointerType(n: NimNode): GpuType =
+proc getInnerPointerType(n: NimNode, allowToFail: bool = false): GpuType =
   doAssert n.typeKind in {ntyPtr, ntyPointer, ntyUncheckedArray, ntyVar} or n.kind == nnkPtrTy, "But was: " & $n.treerepr & " of typeKind " & $n.typeKind
   if n.typeKind in {ntyPointer, ntyUncheckedArray}:
     let typ = n.getTypeInst()
     doAssert typ.kind == nnkBracketExpr, "No, was: " & $typ.treerepr
     doAssert typ[0].kind in {nnkIdent, nnkSym}
     doAssert typ[0].strVal in ["ptr", "UncheckedArray"]
-    result = nimToGpuType(typ[1])
+    result = nimToGpuType(typ[1], allowToFail)
   elif n.kind == nnkPtrTy:
-    result = nimToGpuType(n[0])
+    result = nimToGpuType(n[0], allowToFail)
   elif n.kind == nnkAddr:
     let typ = n.getTypeInst()
-    result = getInnerPointerType(typ)
+    result = getInnerPointerType(typ, allowToFail)
   elif n.kind == nnkVarTy:
     # VarTy
     #   Sym "BigInt"
-    result = nimToGpuType(n[0])
+    result = nimToGpuType(n[0], allowToFail)
   elif n.kind == nnkSym: # symbol of e.g. `ntyVar`
-    result = nimToGpuType(n.getTypeInst())
+    result = nimToGpuType(n.getTypeInst(), allowToFail)
   else:
     raiseAssert "Found what: " & $n.treerepr
 
@@ -130,34 +130,38 @@ proc getTypeName(n: NimNode): string =
   else: raiseAssert "Unexpected node in `getTypeName`: " & $n.treerepr
 
 proc parseTypeFields(node: NimNode): seq[GpuTypeField]
-proc nimToGpuType(n: NimNode): GpuType =
+proc nimToGpuType(n: NimNode, allowToFail: bool = false): GpuType =
   ## Maps a Nim type to a type on the GPU
+  ##
+  ## If `allowToFail` is `true`, we return `GpuType(kind: gtVoid)` in cases
+  ## where we would otherwise raise. This is so that in some cases where
+  ## we only _attempt_ to determine a type, we can do so safely.
   case n.kind
   of nnkIdentDefs: # extract type for let / var based on explicit or implicit type
     if n[n.len - 2].kind != nnkEmpty: # explicit type
-      result = nimToGpuType(n[n.len - 2])
+      result = nimToGpuType(n[n.len - 2], allowToFail)
     else: # take from last element
-      result = nimToGpuType(n[n.len - 1].getTypeInst())
+      result = nimToGpuType(n[n.len - 1].getTypeInst(), allowToFail)
   of nnkConstDef:
     if n[1].kind != nnkEmpty: # has an explicit type
-      result = nimToGpuType(n[1])
+      result = nimToGpuType(n[1], allowToFail)
     else:
-      result = nimToGpuType(n[2]) # derive from the RHS literal
+      result = nimToGpuType(n[2], allowToFail) # derive from the RHS literal
   else:
     if n.kind == nnkEmpty: return initGpuType(gtVoid)
     case n.typeKind
     of ntyBool, ntyInt .. ntyUint64: # includes all float types
       result = initGpuType(toGpuTypeKind n.typeKind)
     of ntyPtr:
-      result = initGpuPtrType(getInnerPointerType(n), implicitPtr = false)
+      result = initGpuPtrType(getInnerPointerType(n, allowToFail), implicitPtr = false)
     of ntyVar:
-      result = initGpuPtrType(getInnerPointerType(n), implicitPtr = true)
+      result = initGpuPtrType(getInnerPointerType(n, allowToFail), implicitPtr = true)
     of ntyPointer:
       result = initGpuVoidPtr()
     of ntyUncheckedArray:
       ## Note: this is just the internal type of the array. It is only a pointer due to
       ## `ptr UncheckedArray[T]`. We simply remove the `UncheckedArray` part.
-      result = initGpuUAType(getInnerPointerType(n))
+      result = initGpuUAType(getInnerPointerType(n, allowToFail))
     of ntyObject:
       let impl = n.getTypeImpl
       let flds = impl.parseTypeFields()
@@ -166,7 +170,7 @@ proc nimToGpuType(n: NimNode): GpuType =
     of ntyArray:
       # For a generic, static array type, e.g.:
       if n.kind == nnkSym:
-        return nimToGpuType(getTypeImpl(n))
+        return nimToGpuType(getTypeImpl(n), allowToFail)
       if n.len == 3:
         # BracketExpr
         #   Sym "array"
@@ -189,8 +193,12 @@ proc nimToGpuType(n: NimNode): GpuType =
       result = initGpuType(gtVoid)
       error("Generics are not supported in the CUDA DSL so far.")
     of ntyGenericInst:
-      result = n.unpackGenericInst().nimToGpuType()
-    else: raiseAssert "Type : " & $n.typeKind & " not supported yet: " & $n.treerepr
+      result = n.unpackGenericInst().nimToGpuType(allowToFail)
+    else:
+      if allowToFail:
+        result = GpuType(kind: gtVoid)
+      else:
+        raiseAssert "Type : " & $n.typeKind & " not supported yet: " & $n.treerepr
 
 proc assignOp(op: string, isBoolean: bool): string =
   ## Returns the correct CUDA operation given the Nim operator.
@@ -533,13 +541,14 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     result.bLeft = ctx.toGpuAst(node[1])
     result.bRight = ctx.toGpuAst(node[2])
     # We patch the types of int / float literals. WGSL does not automatically convert literals
-    # to the target type.
+    # to the target type. Determining the type here _can_ fail. In that case the
+    # `lType` field will just be `gtVoid`, like the default.
     if result.bLeft.kind == gpuLit and result.bRight.kind != gpuLit:
       # determine literal type based on `bRight`
-      result.bLeft.lType = nimToGpuType(node[2])
+      result.bLeft.lType = nimToGpuType(node[2], allowToFail = true)
     elif result.bRight.kind == gpuLit and result.bLeft.kind != gpuLit:
       # determine literal type based on `bLeft`
-      result.bRight.lType = nimToGpuType(node[1])
+      result.bRight.lType = nimToGpuType(node[1], allowToFail = true)
 
   of nnkDotExpr:
     ## NOTE: As we use a typed macro, we only encounter `DotExpr` for *actual* field accesses and NOT
