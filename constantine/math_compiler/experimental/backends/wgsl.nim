@@ -792,18 +792,14 @@ proc codegen*(ctx: var GpuContext): string =
   ## the order in which functions are defined
 
   var bindingCounter = 0
-  proc mutatePtrsToArrays(p: GpuType): GpuType =
-    ## If the type is a pointer type, return the type it points to, unless it is a
-    ## `ptr UncheckedArray` / `gtPtr` to `gtUA` *or* it is an implicit pointer
-    ## via `var T`, in which case we just leave the inner type.
+  proc mutateToAllowedTypes(p: GpuType): GpuType =
+    ## We strip pointer types `ptr T` to only emit `T`. This is because all global parameters
+    ## must be global storage buffers. These cannot be of `ptr` type. If an implicit, runtime
+    ## sized array is desired, use `ptr UncheckedArray[T]`, which will emit `array<T>`.
     ##
     ## If we have a `bool` type, we need to convert it to a `i32` (also applies to `ptr bool`)
     case p.kind
-    of gtPtr:
-      if not p.implicit and p.to.kind != gtUA:
-        GpuType(kind: gtArray, aLen: 0, aTyp: mutatePtrsToArrays(p.to)) # set to zero size to generate `array<foo>`
-      else: # `implicit == true` implies it's a `var T` argument. In this case we just generate the `T` type
-        mutatePtrsToArrays(p.to) # if it is `ptr bool`
+    of gtPtr: mutateToAllowedTypes(p.to) # if it is `ptr bool`
     of gtBool: ## boolean must become `i32`. Will inject `bool(foo)` into globals
       GpuType(kind: gtInt32)
     else: p
@@ -811,7 +807,7 @@ proc codegen*(ctx: var GpuContext): string =
     ## XXX: deduce read or read_write based on argument type!
     let rw = if p.typ.kind == gtPtr: "read_write" else: "read"
     result = &"@group(0) @binding({bindingCounter}) var<storage, " & rw & "> "
-    let typ = mutatePtrsToArrays(p.typ)
+    let typ = mutateToAllowedTypes(p.typ)
     result.add gpuTypeToString(typ, p.ident, allowEmptyIdent = false) & ";\n"
     inc bindingCounter
 
