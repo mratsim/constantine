@@ -56,7 +56,7 @@ proc fromAddressSpace(addrSpace: AddressSpace): GpuSymbolKind =
 proc constructPtrSignature(addrSpace: AddressSpace, idTyp: GpuType, ptrStr, typStr: string): string =
   ## Constructs the `ptr<addressSpace, typStr, [read / read_write]>` string, which only includes
   ## the RW string if the address space is `storage`
-  let rw = if not idTyp.isNil: idTyp.mutable else: false # symbol is a pointer -> mutable (can be implicit via `var T`)
+  let rw = if idTyp.kind != gtVoid: idTyp.mutable else: false # symbol is a pointer -> mutable (can be implicit via `var T`)
   let rwStr = if rw: "read_write" else: "read"
   case addrSpace
   of asStorage: result = &"{ptrStr}<{addrSpace}, {typStr}, {rwStr}>"
