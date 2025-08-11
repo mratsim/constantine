@@ -552,26 +552,17 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
   case ast.kind
   of gpuVoid: return # nothing to emit
   of gpuProc:
-
-    ## XXX: if a {.global.} / attGlobal proc, lift arguments
-    ## Store all arguments in the `GpuContext`
-    ## *AFTER* processing all of the code, generate header and place at beginning
-    ## Most difficult:
-    ## - track identifiers from {.global.} functions into arbitrary layers and remove
-    ## BUT, we can also have a full preprocessing pass.
-
     let attrs = collect:
       for att in ast.pAttributes:
         $att
 
-    # Parameters
     var params: seq[string]
     for p in ast.pParams:
       params.add gpuTypeToString(p.typ, p.ident, allowEmptyIdent = false)
     var fnArgs = params.join(", ")
     if $attGlobal in attrs:
       doAssert fnArgs.len == 0, "Global function `" & $ast.pName.ident() & "` still has arguments!"
-      ## XXX: clean this up. Add the global id builtin
+      ## XXX: make this more flexible. In theory can be any name
       fnArgs = "@builtin(global_invocation_id) global_id: vec3<u32>"
     let fnSig = genFunctionType(ast.pRetType, ast.pName.ident(), fnArgs)
 
