@@ -58,6 +58,10 @@ proc gpuTypeToString*(t: GpuType, ident: string = "", allowArrayToPtr = false,
   var skipIdent = false
   case t.kind
   of gtPtr:
+    var t = t # if `ptr UncheckedArray`, remove the `gtUA` layer. No meaning on CUDA
+    if t.to.kind == gtUA:
+      t.to = t.to.uaTo
+
     if t.to.kind == gtArray: # ptr to array type
       # need to pass `*` for the pointer into the identifier, i.e.
       # `state: var array[4, BigInt]`
