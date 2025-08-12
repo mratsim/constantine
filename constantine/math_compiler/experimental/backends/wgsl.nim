@@ -637,8 +637,8 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
         of gpuConv: dfl()
         else:
           raiseAssert "Not implemented to determine mutability from node: " & $arg
-      let leftTyp = ast.aLeft.determineIdent().iTyp
-      if leftTyp.kind == gtPtr and leftTyp.to.kind == gtInt32:
+      let leftId = ast.aLeft.determineIdent()
+      if leftId.kind != gpuVoid and leftId.iTyp.kind == gtPtr and leftId.iTyp.to.kind == gtInt32:
         # If the LHS is `i32` then a conversion to `i32` is either a no-op, if the left always was
         # `i32` (and the Nim compiler type checked it for us) *OR* the RHS is a boolean expression and
         # we patched the `bool -> i32` and thus need to convert it.
