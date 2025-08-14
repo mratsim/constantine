@@ -212,6 +212,7 @@ type
   GpuFieldInit* = object
     name*: string
     value*: GpuAst
+    typ*: GpuType
 
   ## XXX: UNUSED
   TemplateInfo* = object
@@ -385,7 +386,13 @@ proc clone*(ast: GpuAst): GpuAst =
     result = GpuAst(kind: gpuObjConstr)
     result.ocName = ast.ocName
     for f in ast.ocFields:
-      result.ocFields.add(GpuFieldInit(name: f.name, value: f.value.clone()))
+      result.ocFields.add(
+        GpuFieldInit(
+          name: f.name,
+          value: f.value.clone(),
+          typ: f.typ.clone()
+        )
+      )
   of gpuInlineAsm:
     result = GpuAst(kind: gpuInlineAsm)
     result.stmt = ast.stmt

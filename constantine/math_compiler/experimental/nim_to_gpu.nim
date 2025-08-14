@@ -658,16 +658,21 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     for i in 1 ..< node.len: # all fields to be init'd
       doAssert node[i].kind == nnkExprColonExpr
       ocFields.add GpuFieldInit(name: node[i][0].strVal,
-                                value: ctx.toGpuAst(node[i][1]))
+                                value: ctx.toGpuAst(node[i][1]),
+                                typ: GpuType(kind: gtVoid))
+
     # now add fields in order of the type declaration
     for i in 0 ..< flds.len:
       let idx = findIdx(ocFields, flds[i].name)
       if idx >= 0:
-        result.ocFields.add ocFields[idx]
+        var f = ocFields[idx]
+        f.typ = flds[i].typ
+        result.ocFields.add f
       else:
         let dfl = GpuAst(kind: gpuLit, lValue: "DEFAULT", lType: GpuType(kind: gtVoid))
         result.ocFields.add GpuFieldInit(name: flds[i].name,
-                                         value: dfl)
+                                         value: dfl,
+                                         typ: flds[i].typ)
 
   of nnkAsmStmt:
     doAssert node.len == 2
