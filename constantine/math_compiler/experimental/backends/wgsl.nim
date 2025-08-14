@@ -671,6 +671,23 @@ proc updateSymsInGlobals(ctx: var GpuContext, n: GpuAst) =
     for ch in n:
       ctx.updateSymsInGlobals(ch)
 
+proc checkCodeValid(ctx: var GpuContext, n: GpuAst) =
+  ## Checks if the code is valid according to WGSL spec.
+  ## So far handles:
+  ## - variables (`var`) to pointer types are not allowed
+  ##
+  ## Some code is already rejected in earlier passes, if a compiler pass would transform
+  ## the code in such a way as making a detection of illegal code invalid.
+  case n.kind
+  of gpuVar:
+    if n.vType.kind == gtPtr and n.vMutable: # `vMutable == var` -> not allowed to store pointers
+      let code = ctx.genWebGpu(n)
+      raiseAssert "The node: `" & $code & "` constructs a variable (`var`) to a pointer type. This " &
+        "is invalid in WGSL. Use `let`."
+  else:
+    for ch in n:
+      ctx.checkCodeValid(ch)
+
 proc pullConstantPragmaVars(ctx: var GpuContext, blk: var GpuAst) =
   ## Filters out all `var foo {.constant.}: dtype` from the `globalBlocks` and adds them to
   ## the `globals` of the context. Such variables are *not* regular global constants, but rather
@@ -779,6 +796,10 @@ proc storagePass*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
   # 5. (Actually finally) patch all additional things invalid in WGSL, e.g. `x += 5` -> `x = x + 5`
   for (fnIdent, fn) in mpairs(ctx.fnTab):
     ctx.makeCodeValid(fn, inGlobal = fn.isGlobal())
+
+  # 6. finally raise error if we find anything that is not allowed in WGSL after our transformations
+  for (fnIdent, fn) in pairs(ctx.fnTab):
+    ctx.checkCodeValid(fn)
 
 
 proc size(ctx: var GpuContext, a: GpuAst): string = size(ctx.genWebGpu(a))
