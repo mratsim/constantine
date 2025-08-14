@@ -703,6 +703,19 @@ iterator mitems*(ast: var GpuAst): var GpuAst =
 iterator items*(ast: GpuAst): GpuAst =
   iterImpl(ast, mutable = false)
 
+iterator mpairs*(ast: var GpuAst): (int, var GpuAst) =
+  ## Iterate over all child nodes of the given AST and the index
+  var i = 0
+  for el in mitems(ast):
+    yield (i, el)
+    inc i
+
+iterator pairs*(ast: GpuAst): (int, GpuAst) =
+  var i = 0
+  for el in items(ast):
+    yield (i, el)
+    inc i
+
 
 ## General utility helpers
 
