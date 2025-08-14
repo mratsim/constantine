@@ -246,6 +246,10 @@ type
     #                        ## when we finish, we pop. Before we pop, we assign the variable definitions to the `gpuBlock`
     #                        ## `locals`
     genSymCount*: int ## increases for every generated identifier (currently only underscore `_`), hence the basic solution
+    ## Maps a struct type and field name, which is of pointer type to the value the user assigns
+    ## in the constructor. Allows us to later replace `foo.ptrField` by the assignment in the `Foo()`
+    ## constructor (WebGPU only).
+    structsWithPtrs*: Table[(string, string), GpuAst]
 
   GenericArg* = object
     addrSpace*: AddressSpace ## We store the address space, because that's what matters
