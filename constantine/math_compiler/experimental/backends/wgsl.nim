@@ -512,6 +512,31 @@ proc updateSymsInGlobals(ctx: var GpuContext, n: GpuAst) =
     for ch in n:
       ctx.updateSymsInGlobals(ch)
 
+proc pullConstantPragmaVars(ctx: var GpuContext, blk: var GpuAst) =
+  ## Filters out all `var foo {.constant.}: dtype` from the `globalBlocks` and adds them to
+  ## the `globals` of the context. Such variables are *not* regular global constants, but rather
+  ## `storage` buffers, which are filled before the kernel is executed.
+  ##
+  ## XXX: Document current not ideal behavior that one needs to be careful to pass data into
+  ## `wgsl.fakeExecute` precisely in the order in which the `var foo {.constant.}` are defined
+  ## *AND* after all kernel parameters!
+  doAssert blk.kind == gpuBlock, "Argument must be a block, but is: " & $blk.kind
+  var i = 0
+  while i < blk.len:
+    doAssert blk.kind == gpuBlock
+    let g = blk.statements[i]
+    if g.kind == gpuVar and atvConstant in g.vAttributes:
+      # remove this from `globalBlocks` and add to `globals`
+      doAssert g.vInit.kind == gpuVoid, "A variable annotated with `{.constant.}` must not have an initialization!"
+      # we construct a fake parameter from it
+      ## XXX: `storage` address space is probably what we want, but think more about it
+      let param = GpuParam(ident: g.vName, typ: g.vType, addressSpace: asStorage)
+      ctx.globals[param.ident.iSym] = param
+      blk.statements.delete(i)
+      # no need to increase `i`
+    else:
+      inc i
+
 proc storagePass*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
   ## If `kernel` is a global function, we *only* generate code for that kernel.
   ## This is useful if your GPU code contains multiple kernels with differing
@@ -538,6 +563,12 @@ proc storagePass*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
     else:
       discard
 
+  # 2.b filter out all `var foo {.constant.}: dtype` from the `globalBlocks` and add them to
+  #    the `globals`
+  # `globalBlocks` has two entries:
+  # 0: variables
+  # 1: types
+  ctx.pullConstantPragmaVars(ctx.globalBlocks[0])
   # 3. Using all global functions, we traverse their AST for any `gpuCall` node. We inspect
   #    the functions called and record them in `fnTab`. If they have pointer arguments we
   #    generate a generic instantiation for the exact pointer types used.
