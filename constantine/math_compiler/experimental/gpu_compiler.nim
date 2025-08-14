@@ -94,16 +94,17 @@ proc malloc*(size: csize_t): pointer  = discard
 proc free*(p: pointer) = discard
 proc syncthreads*() {.cudaName: "__syncthreads".} = discard
 
-macro toGpuAst*(body: typed): GpuAst =
+macro toGpuAst*(body: typed): (GpuGenericsInfo, GpuAst) =
   ## WARNING: The following are *not* supported:
   ## - UFCS: because this is a pure untyped DSL, there is no way to disambiguate between
   ##         what is a field access and a function call. Hence we assume any `nnkDotExpr`
   ##         is actually a field access!
   ## - most regular Nim features :)
-  echo body.treerepr
-  echo body.repr
   var ctx = GpuContext()
-  newLit(ctx.toGpuAst(body))
+  let ast = ctx.toGpuAst(body)
+  let gen = toSeq(ctx.genericInsts.values)
+  let g = GpuGenericsInfo(data: gen)
+  newLit((g, ast))
 
 macro cuda*(body: typed): string =
   ## WARNING: The following are *not* supported:
@@ -119,12 +120,14 @@ macro cuda*(body: typed): string =
   let body = ctx.codegen(gpuAst)
   result = newLit(body)
 
-proc codegen*(ast: GpuAst, kernel: string = ""): string =
+proc codegen*(gen: GpuGenericsInfo, ast: GpuAst, kernel: string = ""): string =
   ## Generates the code based on the given AST (optionally at runtime) and restricts
   ## it to a single global kernel (WebGPU) if any given.
-  let ast = ast.clone() ## XXX: remove clone
   var ctx = GpuContext()
+  for fn in gen.data: # assign generics info to correct table
+    ctx.genericInsts[fn.pName] = fn
   result = ctx.codegen(ast, kernel)
+
 
 when isMainModule:
   # Mini example

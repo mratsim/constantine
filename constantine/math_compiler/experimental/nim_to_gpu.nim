@@ -105,7 +105,9 @@ proc determineArrayLength(n: NimNode): int =
   of nnkIdent:
     let msg = """Found array with length given by identifier: $#!
 You might want to create a typed template taking a typed parameter for this
-constant to force the Nim compiler to bind the symbol.
+constant to force the Nim compiler to bind the symbol. In theory though this
+error should not appear anymore though, as we don't try to parse generic
+functions.
 """ % n[1].strVal
     raiseAssert msg
   else:
@@ -248,7 +250,8 @@ proc requiresMemcpy(n: NimNode): bool =
 proc collectProcAttributes(n: NimNode): set[GpuAttribute] =
   doAssert n.kind == nnkPragma
   for pragma in n:
-    doAssert pragma.kind in [nnkIdent, nnkSym], "Unexpected node kind: " & $pragma.treerepr
+    doAssert pragma.kind in [nnkIdent, nnkSym, nnkCall], "Unexpected node kind: " & $pragma.treerepr
+    let pragma = if pragma.kind == nnkCall: pragma[0] else: pragma
     case pragma.strVal
     of "device": result.incl attDevice
     of "global": result.incl attGlobal
@@ -374,42 +377,55 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     result = ctx.toGpuAst(node[0])
 
   of nnkProcDef, nnkFuncDef:
-    result = GpuAst(kind: gpuProc)
-    result.pName = ctx.toGpuAst(node.name)
-    result.pName.symbolKind = gsProc ## This is a procedure identifier
-    doAssert node[3].kind == nnkFormalParams
-    result.pRetType = nimToGpuType(node[3][0]) # arg 0 is return type
-    # Process pragmas
-    if node.pragma.kind != nnkEmpty:
-      doAssert node.pragma.len > 0, "Pragma kind non empty, but no pragma?"
-      result.pAttributes = collectProcAttributes(node.pragma)
-      if result.pAttributes.len == 0: # means `nimonly` was applied
-        return GpuAst(kind: gpuVoid)
-    # Process parameters
-    for i in 1 ..< node[3].len:
-      let param = node[3][i]
-      let numParams = param.len - 2 # 3 if one param, one more for each of same type, example:
-      let typIdx = param.len - 2 # second to last is the type
-      # IdentDefs
-      #   Ident "x"
-      #   Ident "y"
-      #   Ident "res"
-      #   PtrTy
-      #     Ident "float32"   # `param.len - 2`
-      #   Empty               # `param.len - 1`
-      let paramType = nimToGpuType(param[typIdx])
-      #echo "Argument: ", param.treerepr, " has tpye: ", paramType
-      for i in 0 ..< numParams:
-        var p = ctx.toGpuAst(param[i])
-        let symKind = if attGlobal in result.pAttributes: gsGlobalKernelParam
-                      else: gsDeviceKernelParam
-        p.iTyp = paramType     ## Update the type of the symbol
-        p.symbolKind = symKind ## and the symbol kind
-        let param = GpuParam(ident: p, typ: paramType)
-        result.pParams.add(param)
+    # if it is a _generic_ function, we don't actually process it here. instead we add it to
+    # the `generics` set. When we encounter a `gpuCall` we will then check if the function
+    # being called is part of the generic set and look up its _instantiated_ implementation
+    # to parse it. The parsed generics are stored in the `genericInsts` table.
+    let name = ctx.toGpuAst(node.name)
+    if node[2].kind == nnkGenericParams: # is a generic
+      ctx.generics.incl name.iName # need to use raw name, *not* symbol
+      result = GpuAst(kind: gpuVoid)
+    else:
+      result = GpuAst(kind: gpuProc)
+      result.pName = name
+      result.pName.symbolKind = gsProc ## This is a procedure identifier
+      doAssert node[3].kind == nnkFormalParams
+      result.pRetType = nimToGpuType(node[3][0]) # arg 0 is return type
+      # Process pragmas
+      if node.pragma.kind != nnkEmpty:
+        doAssert node.pragma.len > 0, "Pragma kind non empty, but no pragma?"
+        result.pAttributes = collectProcAttributes(node.pragma)
+        if result.pAttributes.len == 0: # means `nimonly` was applied
+          return GpuAst(kind: gpuVoid)
+      # Process parameters
+      echo "Node: ", node.treerepr
+      if node[2].kind == nnkGenericParams:
+        echo node[2][0].getImpl().treerepr
+        echo node[2][0].treerepr
+      for i in 1 ..< node[3].len:
+        let param = node[3][i]
+        let numParams = param.len - 2 # 3 if one param, one more for each of same type, example:
+        let typIdx = param.len - 2 # second to last is the type
+        # IdentDefs
+        #   Ident "x"
+        #   Ident "y"
+        #   Ident "res"
+        #   PtrTy
+        #     Ident "float32"   # `param.len - 2`
+        #   Empty               # `param.len - 1`
+        let paramType = nimToGpuType(param[typIdx])
+        #echo "Argument: ", param.treerepr, " has tpye: ", paramType
+        for i in 0 ..< numParams:
+          var p = ctx.toGpuAst(param[i])
+          let symKind = if attGlobal in result.pAttributes: gsGlobalKernelParam
+                        else: gsDeviceKernelParam
+          p.iTyp = paramType     ## Update the type of the symbol
+          p.symbolKind = symKind ## and the symbol kind
+          let param = GpuParam(ident: p, typ: paramType)
+          result.pParams.add(param)
 
-    result.pBody = ctx.toGpuAst(node.body)
-      .ensureBlock() # single line procs should be a block to generate `;`
+      result.pBody = ctx.toGpuAst(node.body)
+        .ensureBlock() # single line procs should be a block to generate `;`
 
   of nnkLetSection, nnkVarSection:
     # For a section with multiple declarations, create a block
@@ -518,8 +534,22 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     result = GpuAst(kind: gpuVoid)
 
   of nnkCall, nnkCommand:
-    # Check if this is a template call
+    # `name` below is name + signature hash. Check if this is a generic based on node repr
     let name = ctx.getFnName(node[0]) # cannot use `strVal`, might be a symchoice
+    if node[0].repr in ctx.generics: # process the generic instantiaton and store
+      # We need both `getImpl` for the *body* and `getTypeInst` for the actual signature
+      # Only the latter contains e.g. correct instantiation of static array sizes
+      let inst = node[0].getImpl()
+      let sig = node[0].getTypeInst()
+      inst.params = sig.params # copy over the parameters
+      let fn = ctx.toGpuAst(inst)
+      doAssert fn.pName.iSym == name.iSym, "Not matching"
+      # now overwrite the identifier's `iName` field by its `iSym` so that different
+      # generic insts have different
+      fn.pName.iName = fn.pName.iSym
+      name.iName = fn.pName.iSym
+      ctx.genericInsts[fn.pName] = fn
+
     let args = node[1..^1].mapIt(ctx.toGpuAst(it))
     # Producing a template call something like this (but problematic due to overloads etc)
     # we could then perform manual replacement of the template in the CUDA generation pass.
@@ -571,7 +601,8 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
   of nnkSym:
     let s = node.repr & "_" & node.signatureHash()
     # NOTE: The reason we have a tab of known symbols is not to keep the same _reference_ to each
-    # symbol, but rather to allow having the same symbol kind (set in the caller of this call).
+    # symbol, but rather to allow having the same symbol kind and appropriate type for each
+    # symbol `GpuAst` (of kind `gpuIdent`), which is set in the caller of this call.
     # For example in `nnkCall` nodes returning the value from the table automatically means the
     # `symbolKind` is local / function argument etc.
     if s notin ctx.sigTab:
@@ -581,7 +612,7 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
       if result.iName == "_":
         result.iName = "tmp_" & $ctx.genSymCount
         inc ctx.genSymCount
-        #ctx.sigTab[s] = result
+      ctx.sigTab[s] = result
     else:
       result = ctx.sigTab[s]
 
@@ -746,6 +777,8 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
       doAssert el.kind == nnkConstDef
       result.statements.add ctx.toGpuAst(el)
 
+  of nnkWhenStmt:
+    raiseAssert "We shouldn't be seeing a `when` statement after sem check of the Nim code."
   else:
     echo "Unhandled node kind in toGpuAst: ", node.kind
     raiseAssert "Unhandled node kind in toGpuAst: " & $node.treerepr

@@ -250,6 +250,20 @@ type
     ## in the constructor. Allows us to later replace `foo.ptrField` by the assignment in the `Foo()`
     ## constructor (WebGPU only).
     structsWithPtrs*: Table[(string, string), GpuAst]
+    ## Set of all generic proc names we have encountered in Nim -> GpuAst. When
+    ## we see an `nnkCall` we check if we call a generic function. If so, look up
+    ## the instantiated generic, parse it and store in `genericInsts` below.
+    generics*: HashSet[string]
+
+    ## Stores the unique identifiers (keys) and the implementations of the
+    ## precise generic instantiations that are called.
+    genericInsts*: OrderedTable[GpuAst, GpuAst]
+
+  ## We rely on being able to compute a `newLit` from the result of `toGpuAst`. Currently we
+  ## only need the `genericInsts` field data (the values). Trying to `newLit` the full `GpuContext`
+  ## causes trouble.
+  GpuGenericsInfo* = object
+    data*: seq[GpuAst]
 
   GenericArg* = object
     addrSpace*: AddressSpace ## We store the address space, because that's what matters
