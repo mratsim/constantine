@@ -388,6 +388,11 @@ proc scanGenerics(ctx: var GpuContext, n: GpuAst, callerParams: Table[string, Gp
   ## of that function (hence the name `scanGenerics`). The generic instance will be added
   ## to `fnTab` instead. The name of the generic will be derived based on the types
   ## of arguments with respect to mutability and address space.
+  ##
+  ## In addition this function records any time a `struct` is constructed in a `gpuObjConstr`
+  ## node and a pointer field assigned to it. As pointer fields are not valid in WGSL, we
+  ## record them here to replace them by their arguments passed to the constructor later.
+  ## The pointers _must_ be pointers passed into a global kernel (i.e. `storage` address space).
   case n.kind
   of gpuCall:
     let fn = n.cName
@@ -438,6 +443,18 @@ proc scanGenerics(ctx: var GpuContext, n: GpuAst, callerParams: Table[string, Gp
     # Harvest generics from arguments to this call!
     for arg in n.cArgs:
       ctx.scanGenerics(arg, callerParams)
+  of gpuObjConstr:
+    # If pointer argument of `storage`, strip out, if pointer type field
+    # otherwise, raise CT error
+    for f in n.ocFields:
+      if f.typ.kind == gtPtr:
+        doAssert f.value.kind in [gpuAddr, gpuIdent], "Constructing a pointer field " &
+          "from a more complex expression than an ident or an address-of operation " &
+          "is currently not supported."
+        let id = f.value.determineIdent()
+        doAssert id.symbolKind == gsGlobalKernelParam, "Assigning a pointer to a non storage address space " &
+          "variable (i.e. an argument to a global kernel) is not supported: " & $f
+        ctx.structsWithPtrs[(n.ocName, f.name)] = id
   else:
     for ch in n:
       ctx.scanGenerics(ch, callerParams)
@@ -513,13 +530,129 @@ proc rewriteCompoundAssignment(n: GpuAst): GpuAst =
     # leave untouched
     result = n
 
+proc getStructName(n: GpuAst): string =
+  ## Given an identifier `gpuIdent` (or `Deref` of one), return the name of the struct type
+  ## the ident is of or an empty string if it is not (pointing to) a struct.
+  doAssert n.kind in [gpuIdent, gpuDeref], "Dot expression of anything not an address currently not supported: " & $n.kind
+  var p = n
+  if p.kind == gpuDeref:
+    p = n.dOf
+  result = if p.iTyp.kind == gtPtr and p.iTyp.to.kind == gtObject:
+             p.iTyp.to.name
+           elif p.iTyp.kind == gtObject:
+             p.iTyp.name
+           else: ""
+
 proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string
 proc makeCodeValid(ctx: var GpuContext, n: var GpuAst, inGlobal: bool) =
+  ## Addresses other AST patterns that need to be rewritten on WGSL. Aspects
+  ## that are rewritten include:
+  ##
+  ## - (`gpuBinOp`) rewriting compound assignment operators as regular assignments, `x += y` ↦ `x = x + y`
+  ##
+  ## - (`gpuDot`) replace field access of struct pointer fields by the pointers passed into the object
+  ##   constructor (ref `scanGenerics`). `inGlobal` is used to decide what exactly we replace
+  ##   it by. Inside of a global function the variables won't be pointers, hence we insert `&foo`.
+  ##   In device functions, the globals will have been passed into the function as a parameter,
+  ##   `ptr<storage, ...>`. Thus, we replace by `foo`.
+  ##   NOTE: We could consider to move this into `scanGenerics`, but for the moment I prefer to
+  ##   do code transformations here and `scanGenerics` being only about data collection.
+  ##
+  ## - (`gpuAssign`) compile time errors, if a user tries to assign a pointer to a struct pointer field
+  ##   outside the constructor.
+  ##
+  ## - (`gpuCall`) potentially update signatures of our custom generic functions. In `scanGenerics` if we
+  ##   have a call like `foo(bar.ptrField)` we will determine the signature of `foo` to have
+  ##   a `function` pointer, because `bar` will be a local struct instance. However, due to
+  ##   our replacement rules and fact that *only* storage pointers may be assigned to constructors
+  ##   the correct signature would be `storage` for the first argument after replacing `bar.ptrField`
+  ##   by its value in the constructor.
+  ##
+  ## - (`gpuObjConstr`) delete arguments to object constructors, which assign pointer fields.
+  ##
+  ## - (`gpuVar`) update types of new variables based on the RHS. May have changed since Nim -> GpuAst,
+  ##   due to `gpuDot` replacement further up.
+  ##
+  ## NOTE: A few cases already raise compile time errors _here_ and not in `checkCodeValid`,
+  ## as some transformations otherwise break the detection.
   case n.kind
   of gpuBinOp:
     n = rewriteCompoundAssignment(n)
     for ch in mitems(n): # now go over children
       ctx.makeCodeValid(ch, inGlobal)
+  of gpuObjConstr: # strip out arguments that are pointer types
+    let t = n.ocName
+    var i = 0
+    while i < n.ocFields.len:
+      let f = n.ocFields[i]
+      if (t, f.name) in ctx.structsWithPtrs:
+        if f.typ.kind == gtPtr:
+          n.ocFields.delete(i)
+        else:
+          inc i
+      else:
+        inc i
+  of gpuDot: # replace `foo.bar` by storage pointer recorded in `scanGenerics`, i.e. `foo.bar` -> `&res`
+    var p = n.dParent
+    let id = getStructName(p)
+    doAssert n.dField.kind == gpuIdent, "Dot expression must contain an ident as field: " & $n.dField.kind
+    let field = n.dField.ident()
+    if id.len > 0 and (id, field) in ctx.structsWithPtrs: # this is in the struct with pointer
+      let v = ctx.structsWithPtrs[(id, field)]
+      ## XXX: only need `addr` if we are in a global function, not otherwise, because in device functions,
+      ## we will have passed the parameter
+      if inGlobal:
+        n = GpuAst(kind: gpuAddr, aOf: v) # overwrite with the address of value passed in to the object constructor
+      else:
+        n = v
+  of gpuAssign: # checks we don't have `foo.x = res` for `x` a pointer field
+    if n.aLeft.kind == gpuDot and n.aLeft.dParent.kind in [gpuIdent, gpuDeref]:
+      let dot = n.aLeft
+      let id = getStructName(dot.dParent)
+      if id.len > 0:
+        doAssert dot.dField.kind == gpuIdent, "Dot expression must contain an ident as field: " & $dot.dField.kind
+        let field = dot.dField.ident()
+        if (id, field) in ctx.structsWithPtrs:
+          raiseAssert "Assignment of a struct (`" & id & "`) field of a pointer type is not supported. " &
+            "Assign pointer fields in the constructor only. In code: " & $ctx.genWebGpu(n)
+    for ch in mitems(n):
+      ctx.makeCodeValid(ch, inGlobal)
+  of gpuCall:
+    # we might need to update the type of generics, if we did the replacement in `gpuDot`, because
+    # a struct ptr field will have had the wrong storage type
+    for ch in mitems(n): # first process children
+      ctx.makeCodeValid(ch, inGlobal)
+    # now check if any argument's type mismatches against the generic we recorded
+    let fnName = n.cName
+    if fnName in ctx.fnTab: # otherwise will not be generated by us, so irrelevan
+      # NOTE: theoretically, if we had struct pointer field replacements with symbols that had
+      # *different* address spaces, we'd need to split one generic into multiple again here.
+      # But that shouldn't be possible, because our entire replacement is currently only
+      # sane if we store a *storage pointer* in a struct. We would have raised in `scanGenerics`
+      # because of invalid pointer assignment in an object constructor.
+      let fn = ctx.fnTab[fnName]
+      let params = fn.pParams
+      for i, arg in n: # walk the parameters again and compare
+        let argId = arg.determineIdent()
+        if argId.kind != gpuVoid and argId.ident().len > 0:
+          var p = params[i]
+          ## XXX: update anything else? We mostly care about the address space here, because
+          ## the rest _should_ be the same anyway.
+          if p.addressSpace != argId.symbolKind.toAddressSpace():
+            p.addressSpace = argId.symbolKind.toAddressSpace()
+            p.ident.symbolKind = argId.symbolKind
+            fn.pParams[i] = p # write back, not a ref type!
+  of gpuVar:
+    # first recurse on the `gpuVar` to get possible replacements
+    for ch in mitems(n):
+      ctx.makeCodeValid(ch, inGlobal)
+    # update LHS with info from RHS by copying over its symbol kind. Different types are
+    # possible after replacements of `gpuDot` nodes above.
+    if n.vType.kind == gtPtr:
+      let rightId = n.vInit.determineIdent()
+      n.vName.symbolKind = rightId.symbolKind
+      n.vType.mutable = rightId.iTyp.mutable
+      n.vName.iTyp.mutable = rightId.iTyp.mutable
   else:
     for ch in mitems(n):
       ctx.makeCodeValid(ch, inGlobal)
@@ -563,6 +696,31 @@ proc pullConstantPragmaVars(ctx: var GpuContext, blk: var GpuAst) =
     else:
       inc i
 
+proc removeStructPointerFields(blk: var GpuAst) =
+  ## Filters out `ptr` fields from all structs.
+  ##
+  ## If a type is used with `storage` pointer arguments, we will later perform replacement of field
+  ## access to the pointer field by the value we assign.
+  ##
+  ## If the user assigns a local (`function`) pointer, we raise a CT error. We _could_ in theory support
+  ## replacement for local pointer types too, but it requires a more careful analysis of which
+  ## local to replace by and the name in other scopes. I.e. passing a local pointer to a constructor
+  ## which has a different name than in the calling scope would require us to traverse the AST up to
+  ## the calling scope.
+  ##
+  ## Given the extreme limitations on `let` variables with pointers anyway, I don't think there is muc
+  ## purpose on supporting such features.
+  doAssert blk.kind == gpuBlock, "Argument must be a block, but is: " & $blk.kind
+  for typ in mitems(blk):
+    doAssert typ.kind == gpuTypeDef
+    var i = 0
+    while i < typ.tFields.len:
+      let f = typ.tFields[i]
+      if f.typ.kind == gtPtr: # delete
+        typ.tFields.delete(i)
+      else:
+        inc i
+
 proc storagePass*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
   ## If `kernel` is a global function, we *only* generate code for that kernel.
   ## This is useful if your GPU code contains multiple kernels with differing
@@ -595,6 +753,9 @@ proc storagePass*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
   # 0: variables
   # 1: types
   ctx.pullConstantPragmaVars(ctx.globalBlocks[0])
+  # 2.c remove all fields of structs, which have pointer type
+  removeStructPointerFields(ctx.globalBlocks[1])
+
   # 3. Using all global functions, we traverse their AST for any `gpuCall` node. We inspect
   #    the functions called and record them in `fnTab`. If they have pointer arguments we
   #    generate a generic instantiation for the exact pointer types used.
