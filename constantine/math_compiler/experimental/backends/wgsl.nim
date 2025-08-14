@@ -751,6 +751,10 @@ proc storagePass*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
   ctx.globalBlocks.add varBlock
   ctx.globalBlocks.add typBlock
 
+  # Now add the generics to the `allFnTab`
+  for k, v in pairs(ctx.genericInsts):
+    ctx.allFnTab[k] = v
+
   # 2. Remove all arguments from global functions, as none are allowed in WGSL
   for (fnIdent, fn) in mpairs(ctx.fnTab): # mutating the function in the table
     if (fn.isGlobal() and kernel.len > 0 and fn.pName.ident() == kernel) or
