@@ -559,10 +559,10 @@ proc pretty*(n: GpuAst, indent: int = 0): string =
     result.add pretty(n.vName, indent + 2)
     result.add pretty(n.vInit, indent + 2)
     if n.vAttributes.len > 0:
-      result.add id("Attributes")
+      result.add idd("Attributes")
       for attr in n.vAttributes:
         let indent = indent + 2
-        result.add id(attr)
+        result.add idd(attr)
   of gpuAssign:
     result.add pretty(n.aLeft, indent + 2)
     result.add pretty(n.aRight, indent + 2)
@@ -599,11 +599,13 @@ proc pretty*(n: GpuAst, indent: int = 0): string =
       let indent = indent + 2
       result.add id(t.name)
   of gpuObjConstr:
-    result.add id("Ident", n.ocName)
-    result.add id("Fields")
+    result.add idd("Ident", n.ocName)
+    result.add idd("Fields")
     for f in n.ocFields:
-      let indent = indent + 2
-      result.add id("Name", f.name)
+      var indent = indent + 2
+      result.add idd("Field")
+      indent = indent + 2
+      result.add idd("Name", f.name)
       result.add pretty(f.value, indent + 2)
   of gpuInlineAsm:
     result.add id(n.stmt)
