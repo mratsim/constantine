@@ -655,30 +655,6 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
         result = indentStr & genMemcpy(ctx.address(ast.aLeft), ctx.address(ast.aRight),
                                        ctx.size(ast.aLeft))
     else:
-      proc determineIdent(arg: GpuAst): GpuAst =
-        ## Tries to determine the underlying ident that is contained in this node.
-        ## The issue is the argument to a `gpuCall` can be a complicated expression.
-        ## Depending on the node it may be possible to extract a simple identifier,
-        ## e.g. for `addr(foo)` (`gpuAddr` of `gpuIdent` node) we can get the ident.
-        ## If this fails, we return a `gpuVoid` node.
-        ##
-        ## TODO: Think about if it ever makes sense to extract the ident underlying
-        ## e.g. `deref` and use _that_ to determine mutability & address space.
-        template dfl(): untyped = GpuAst(kind: gpuVoid)
-        case arg.kind
-        of gpuIdent: arg
-        of gpuAddr: arg.aOf.determineIdent()
-        of gpuDeref: arg.dOf.determineIdent()
-        of gpuCall: dfl()
-        of gpuIndex: arg.iArr.determineIdent()
-        of gpuDot: arg.dParent.determineIdent()
-        of gpuLit: dfl()
-        of gpuBinOp: dfl()
-        of gpuBlock: arg.statements[^1].determineIdent()
-        of gpuPrefix: dfl()
-        of gpuConv: dfl()
-        else:
-          raiseAssert "Not implemented to determine mutability from node: " & $arg
       let leftId = ast.aLeft.determineIdent()
       if leftId.kind != gpuVoid and leftId.iTyp.kind == gtPtr and leftId.iTyp.to.kind == gtInt32:
         # If the LHS is `i32` then a conversion to `i32` is either a no-op, if the left always was
