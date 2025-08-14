@@ -764,7 +764,12 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
   of gpuObjConstr:
     result = ast.ocName & "("
     for i, el in ast.ocFields:
-      result.add ctx.genWebGpu(el.value)
+      if el.value.kind == gpuLit and el.value.lValue == "DEFAULT":
+        # use type to construct a default value
+        let typStr = gpuTypeToString(el.typ, allowEmptyIdent = true)
+        result.add typStr & "()"
+      else:
+        result.add ctx.genWebGpu(el.value)
       if i < ast.ocFields.len - 1:
         result.add ", "
     result.add ")"
