@@ -498,6 +498,20 @@ proc injectAddressOf(ctx: var GpuContext, n: var GpuAst) =
     for ch in mitems(n):
       ctx.injectAddressOf(ch)
 
+proc updateSymsInGlobals(ctx: var GpuContext, n: GpuAst) =
+  ## Update symbols in global functions to have same mutability and symbolkind as
+  ## parameters
+  case n.kind
+  of gpuIdent:
+    if n.iSym in ctx.globals:
+      n.symbolKind = gsGlobalKernelParam
+      if n.iTyp.kind == gtPtr:
+        let g = ctx.globals[n.iSym]
+        n.iTyp.mutable = g.typ.kind == gtPtr # arguments as pointers == mutable
+  else:
+    for ch in n:
+      ctx.updateSymsInGlobals(ch)
+
 proc storagePass*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
   ## If `kernel` is a global function, we *only* generate code for that kernel.
   ## This is useful if your GPU code contains multiple kernels with differing
@@ -518,6 +532,9 @@ proc storagePass*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
       for p in fn.pParams:
         ctx.globals[p.ident.iSym] = p # copy all parameters over to globals
       fn.pParams.setLen(0) # delete function's parameters
+      # now update all appearances of the parameters, now globals, such that they reflect
+      # the correct symbol kind and mutability
+      ctx.updateSymsInGlobals(fn)
     else:
       discard
 
