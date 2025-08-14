@@ -498,6 +498,32 @@ proc injectAddressOf(ctx: var GpuContext, n: var GpuAst) =
     for ch in mitems(n):
       ctx.injectAddressOf(ch)
 
+proc rewriteCompoundAssignment(n: GpuAst): GpuAst =
+  doAssert n.kind == gpuBinOp
+  if n.bOp in ["<=", "==", ">=", "!="]: return n
+
+  template genAssign(left, rnode, op: typed): untyped =
+    let right = GpuAst(kind: gpuBinOp, bOp: op, bLeft: left, bRight: rnode)
+    GpuAst(kind: gpuAssign, aLeft: left, aRight: right, aRequiresMemcpy: false)
+
+  let op = n.bOp
+  if op.len >= 2 and op[^1] == '=':
+    result = genAssign(n.bLeft, n.bRight, op[0 .. ^2]) # all but last
+  else:
+    # leave untouched
+    result = n
+
+proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string
+proc makeCodeValid(ctx: var GpuContext, n: var GpuAst, inGlobal: bool) =
+  case n.kind
+  of gpuBinOp:
+    n = rewriteCompoundAssignment(n)
+    for ch in mitems(n): # now go over children
+      ctx.makeCodeValid(ch, inGlobal)
+  else:
+    for ch in mitems(n):
+      ctx.makeCodeValid(ch, inGlobal)
+
 proc updateSymsInGlobals(ctx: var GpuContext, n: GpuAst) =
   ## Update symbols in global functions to have same mutability and symbolkind as
   ## parameters
@@ -589,33 +615,11 @@ proc storagePass*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
     if fn.isGlobal(): # non global functions don't need to be mutated
       ctx.injectAddressOf(fn)
 
-
-  proc rewriteCompoundAssignment(n: GpuAst): GpuAst =
-    doAssert n.kind == gpuBinOp
-
-    template genAssign(left, rnode, op: typed): untyped =
-      let right = GpuAst(kind: gpuBinOp, bOp: op, bLeft: left, bRight: rnode)
-      GpuAst(kind: gpuAssign, aLeft: left, aRight: right, aRequiresMemcpy: false)
-
-    let op = n.bOp
-    if op.len >= 2 and op[^1] == '=':
-      result = genAssign(n.bLeft, n.bRight, op[0 .. ^2]) # all but last
-    else:
-      # leave untouched
-      result = n
-
-  proc makeCodeValid(ctx: var GpuContext, n: var GpuAst) =
-    case n.kind
-    of gpuBinOp: n = rewriteCompoundAssignment(n)
-    else:
-      for ch in mitems(n):
-        ctx.makeCodeValid(ch)
   # 5. (Actually finally) patch all additional things invalid in WGSL, e.g. `x += 5` -> `x = x + 5`
   for (fnIdent, fn) in mpairs(ctx.fnTab):
-    ctx.makeCodeValid(fn)
+    ctx.makeCodeValid(fn, inGlobal = fn.isGlobal())
 
 
-proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string
 proc size(ctx: var GpuContext, a: GpuAst): string = size(ctx.genWebGpu(a))
 proc address(ctx: var GpuContext, a: GpuAst): string = address(ctx.genWebGpu(a))
 
