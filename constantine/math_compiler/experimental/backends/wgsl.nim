@@ -162,7 +162,7 @@ proc farmTopLevel(ctx: var GpuContext, ast: GpuAst, kernel: string, varBlock, ty
       ctx.farmTopLevel(ch, kernel, varBlock, typBlock)
   of gpuVar, gpuConstexpr:
     varBlock.statements.add ast
-  of gpuTypeDef:
+  of gpuTypeDef, gpuAlias:
     typBlock.statements.add ast
   else:
     discard
@@ -729,6 +729,7 @@ proc removeStructPointerFields(blk: var GpuAst) =
   ## purpose on supporting such features.
   doAssert blk.kind == gpuBlock, "Argument must be a block, but is: " & $blk.kind
   for typ in mitems(blk):
+    if typ.kind == gpuAlias: continue # don't need to mutate aliases!
     doAssert typ.kind == gpuTypeDef
     var i = 0
     while i < typ.tFields.len:
@@ -981,6 +982,9 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     for el in ast.tFields:
       result.add "  " & gpuTypeToString(el.typ, newGpuIdent(el.name)) & ",\n"
     result.add "}"
+
+  of gpuAlias:
+    result = "alias " & ast.aName & " = " & ctx.genWebGpu(ast.aTo)
 
   of gpuObjConstr:
     result = ast.ocName & "("
