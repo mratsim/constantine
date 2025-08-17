@@ -429,6 +429,10 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
       result.pBody = ctx.toGpuAst(node.body)
         .ensureBlock() # single line procs should be a block to generate `;`
 
+      # Add to table of known functions
+      if result.pName notin ctx.allFnTab:
+        ctx.allFnTab[result.pName] = result
+
   of nnkLetSection, nnkVarSection:
     # For a section with multiple declarations, create a block
     result = GpuAst(kind: gpuBlock)
@@ -538,7 +542,10 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
   of nnkCall, nnkCommand:
     # `name` below is name + signature hash. Check if this is a generic based on node repr
     let name = ctx.getFnName(node[0]) # cannot use `strVal`, might be a symchoice
-    if node[0].repr in ctx.generics: # process the generic instantiaton and store
+    if node[0].repr in ctx.generics or name notin ctx.allFnTab:
+      # process the generic instantiaton and store *or* pull in a proc defined outside
+      # the `cuda` macro by its implementation.
+      ## XXX: for CUDA backend need to annotate all pulled in procs with `{.device.}`!
       # We need both `getImpl` for the *body* and `getTypeInst` for the actual signature
       # Only the latter contains e.g. correct instantiation of static array sizes
       let inst = node[0].getImpl()
