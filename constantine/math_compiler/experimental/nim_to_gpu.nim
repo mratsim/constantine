@@ -164,7 +164,9 @@ proc nimToGpuType(n: NimNode, allowToFail: bool = false): GpuType =
       ## Note: this is just the internal type of the array. It is only a pointer due to
       ## `ptr UncheckedArray[T]`. We simply remove the `UncheckedArray` part.
       result = initGpuUAType(getInnerPointerType(n, allowToFail))
-    of ntyObject:
+    of ntyObject, ntyAlias:
+      # for aliases, treat them identical to regular object types, but
+      # `getTypeName` returns the alias!
       let impl = n.getTypeImpl
       let flds = impl.parseTypeFields()
       let typName = getTypeName(n) # might be an object construction
@@ -677,8 +679,16 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
       doAssert el.kind == nnkTypeDef
       result.statements.add ctx.toGpuAst(el)
   of nnkTypeDef:
-    result = GpuAst(kind: gpuTypeDef, tName: node[0].strVal)
-    result.tFields = parseTypeFields(node[2])
+    doAssert node.len == 3, "TypeDef node does not have 3 children: " & $node.len
+    case node[2].kind
+    of nnkObjectTy: # regular `type foo = object`
+      result = GpuAst(kind: gpuTypeDef, tName: node[0].strVal)
+      result.tFields = parseTypeFields(node[2])
+    of nnkSym:      # a type alias `type foo = bar`
+      result = GpuAst(kind: gpuAlias, aName: node[0].strVal,
+                      aTo: ctx.toGpuAst(node[2]))
+    else:
+      raiseAssert "Unexpected node kind in TypeDef: " & $node[2].kind
   of nnkObjConstr:
     let typName = getTypeName(node)
     result = GpuAst(kind: gpuObjConstr, ocName: typName)

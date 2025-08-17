@@ -33,6 +33,7 @@ type
     gpuDot          # Member access (a.b)
     gpuIndex        # Array indexing (a[b])
     gpuTypeDef      # Type definition
+    gpuAlias        # A type alias
     gpuObjConstr    # Object (struct) constructor
     gpuInlineAsm    # Inline assembly (PTX)
     gpuAddr         # Address of an expression
@@ -161,6 +162,10 @@ type
     of gpuTypeDef:
       tName*: string ## XXX: could make GpuAst, but don't really need the types as symbols
       tFields*: seq[GpuTypeField]
+    of gpuAlias:
+      aName*: string ## Name of the type alias
+      aTo*: GpuAst ## Type the alias maps to
+      aDistinct*: bool ## If the alias is a distinct type in Nim.
     of gpuObjConstr:
       ocName*: string  # type we construct
       ## XXX: it would be better if we already fill the fields with default values here
@@ -400,6 +405,10 @@ proc clone*(ast: GpuAst): GpuAst =
     result.tName = ast.tName
     for f in ast.tFields:
       result.tFields.add(GpuTypeField(name: f.name, typ: f.typ.clone()))
+  of gpuAlias:
+    result = GpuAst(kind: gpuAlias)
+    result.aName = ast.aName
+    result.aTo = ast.aTo.clone()
   of gpuObjConstr:
     result = GpuAst(kind: gpuObjConstr)
     result.ocName = ast.ocName
@@ -616,6 +625,9 @@ proc pretty*(n: GpuAst, indent: int = 0): string =
     for t in n.tFields:
       let indent = indent + 2
       result.add id(t.name)
+  of gpuAlias:
+    result.add id("Alias", n.aName)
+    result.add pretty(n.aTo, indent + 2)
   of gpuObjConstr:
     result.add idd("Ident", n.ocName)
     result.add idd("Fields")
