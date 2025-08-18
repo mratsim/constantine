@@ -343,6 +343,30 @@ proc getFnName(ctx: var GpuContext, n: NimNode): GpuAst =
     # ctx.sigTab[sig] = result
   result.symbolKind = gsProc # make sure it's a proc
 
+proc addProcToGenericInsts(ctx: var GpuContext, node: NimNode, name: GpuAst) =
+  ## Looks up the implementation of the given function and stores it in our table
+  ## of generic instantiations.
+  ##
+  ## For any looked up procedure, we attach the `{.device.}` pragma.
+  ##
+  ## Mutates the `name` of the given function to match its generic name.
+  # We need both `getImpl` for the *body* and `getTypeInst` for the actual signature
+  # Only the latter contains e.g. correct instantiation of static array sizes
+  let inst = node[0].getImpl()
+  let sig = node[0].getTypeInst()
+  inst.params = sig.params # copy over the parameters
+  let fn = ctx.toGpuAst(inst)
+  if fn.kind == gpuVoid: # should be an inbuilt proc, i.e. annotated with `{.builtin.}`
+    doAssert inst.isBuiltIn()
+  else:
+    fn.pAttributes.incl attDevice # make sure this is interpreted as a device function
+    doAssert fn.pName.iSym == name.iSym, "Not matching"
+    # now overwrite the identifier's `iName` field by its `iSym` so that different
+    # generic insts have different
+    fn.pName.iName = fn.pName.iSym
+    name.iName = fn.pName.iSym ## update the name of the called function
+    ctx.genericInsts[fn.pName] = fn
+
 proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
   ## XXX: things still left to do:
   ## - support `result` variable? Currently not supported. Maybe we will won't
@@ -521,6 +545,7 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     ## NOTE: Currently we process templates, but we expect them to be already
     ## expanded by the Nim compiler. Thus we could in theory expand them manually
     ## but fortunately we don't need to.
+    return GpuAst(kind: gpuVoid)
     let tName = node[0].strVal
 
     # Extract parameters
@@ -546,18 +571,7 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
       # process the generic instantiaton and store *or* pull in a proc defined outside
       # the `cuda` macro by its implementation.
       ## XXX: for CUDA backend need to annotate all pulled in procs with `{.device.}`!
-      # We need both `getImpl` for the *body* and `getTypeInst` for the actual signature
-      # Only the latter contains e.g. correct instantiation of static array sizes
-      let inst = node[0].getImpl()
-      let sig = node[0].getTypeInst()
-      inst.params = sig.params # copy over the parameters
-      let fn = ctx.toGpuAst(inst)
-      doAssert fn.pName.iSym == name.iSym, "Not matching"
-      # now overwrite the identifier's `iName` field by its `iSym` so that different
-      # generic insts have different
-      fn.pName.iName = fn.pName.iSym
-      name.iName = fn.pName.iSym
-      ctx.genericInsts[fn.pName] = fn
+      ctx.addProcToGenericInsts(node, name)
 
     let args = node[1..^1].mapIt(ctx.toGpuAst(it))
     # Producing a template call something like this (but problematic due to overloads etc)
@@ -687,18 +701,42 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
       result.statements.add ctx.toGpuAst(el)
   of nnkTypeDef:
     doAssert node.len == 3, "TypeDef node does not have 3 children: " & $node.len
-    case node[2].kind
-    of nnkObjectTy: # regular `type foo = object`
-      result = GpuAst(kind: gpuTypeDef, tName: node[0].strVal)
-      result.tFields = parseTypeFields(node[2])
-    of nnkSym:      # a type alias `type foo = bar`
-      result = GpuAst(kind: gpuAlias, aName: node[0].strVal,
-                      aTo: ctx.toGpuAst(node[2]))
+    let name = ctx.toGpuAst(node[0])
+    if node[1].kind == nnkGenericParams: # if this is a generic, only store existence of it
+                                         # will store the instantiatons in `nnkObjConstr`
+      result = GpuAst(kind: gpuVoid)
     else:
-      raiseAssert "Unexpected node kind in TypeDef: " & $node[2].kind
+      let typ = nimToGpuType(node[0])
+      case node[2].kind
+      of nnkObjectTy: # regular `type foo = object`
+        result = GpuAst(kind: gpuTypeDef, tTyp: typ)
+        result.tFields = parseTypeFields(node[2])
+      of nnkSym:      # a type alias `type foo = bar`
+        result = GpuAst(kind: gpuAlias, aTyp: typ,
+                        aTo: ctx.toGpuAst(node[2]))
+      else:
+        raiseAssert "Unexpected node kind in TypeDef: " & $node[2].kind
+
+      # include this the set of known types to not generate duplicates
+      ctx.types[typ] = result
+      # Reset the type we return to void. We now generate _all_ types from the
+      # `types`.
+      result = GpuAst(kind: gpuVoid)
   of nnkObjConstr:
-    let typName = getTypeName(node)
-    result = GpuAst(kind: gpuObjConstr, ocName: typName)
+    ## this should never see `genericParam` I think
+    let typ = nimToGpuType(node)
+    if typ notin ctx.types: # this should handle not just local types, but also any "pulled in" type
+      # store the type instantiation
+      let typDef = GpuAst(kind: gpuTypeDef, tTyp: typ)
+      case typ.kind
+      of gtObject:      typDef.tFields = typ.oFields
+      of gtGenericInst: typDef.tFields = typ.gFields
+      else:
+        raiseAssert "Type: " & $pretty(typ) & " is neither object type nor generic instantiation."
+
+      ctx.types[typ] = typDef
+
+    result = GpuAst(kind: gpuObjConstr, ocType: typ)
     # get all fields of the type
     let flds = node[0].getTypeImpl.parseTypeFields() # sym
     # find all fields that have been defined by the user

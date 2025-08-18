@@ -160,14 +160,14 @@ type
       pOp*: string
       pVal*: GpuAst
     of gpuTypeDef:
-      tName*: string ## XXX: could make GpuAst, but don't really need the types as symbols
+      tTyp*: GpuType ## the actual type. Used to generate the name
       tFields*: seq[GpuTypeField]
     of gpuAlias:
-      aName*: string ## Name of the type alias
+      aTyp*: GpuType ## Name of the type alias
       aTo*: GpuAst ## Type the alias maps to
       aDistinct*: bool ## If the alias is a distinct type in Nim.
     of gpuObjConstr:
-      ocName*: string  # type we construct
+      ocType*: GpuType  # type we construct
       ## XXX: it would be better if we already fill the fields with default values here
       ocFields*: seq[GpuFieldInit] # the fields we initialize
     of gpuInlineAsm:
@@ -254,7 +254,7 @@ type
     ## Maps a struct type and field name, which is of pointer type to the value the user assigns
     ## in the constructor. Allows us to later replace `foo.ptrField` by the assignment in the `Foo()`
     ## constructor (WebGPU only).
-    structsWithPtrs*: Table[(string, string), GpuAst]
+    structsWithPtrs*: Table[(GpuType, string), GpuAst]
     ## Set of all generic proc names we have encountered in Nim -> GpuAst. When
     ## we see an `nnkCall` we check if we call a generic function. If so, look up
     ## the instantiated generic, parse it and store in `genericInsts` below.
@@ -264,11 +264,17 @@ type
     ## precise generic instantiations that are called.
     genericInsts*: OrderedTable[GpuAst, GpuAst]
 
+    ## Table of all known types. Filled during Nim -> GpuAst. Includes generic
+    ## instantiations, but also all other types.
+    ## Key: the raw type. Value: a full `gpuTypeDef`
+    types*: OrderedTable[GpuType, GpuAst]
+
   ## We rely on being able to compute a `newLit` from the result of `toGpuAst`. Currently we
   ## only need the `genericInsts` field data (the values). Trying to `newLit` the full `GpuContext`
   ## causes trouble.
   GpuGenericsInfo* = object
-    data*: seq[GpuAst]
+    procs*: seq[GpuAst]
+    types*: seq[GpuAst]
 
   GenericArg* = object
     addrSpace*: AddressSpace ## We store the address space, because that's what matters
@@ -402,16 +408,16 @@ proc clone*(ast: GpuAst): GpuAst =
     result.iIndex = ast.iIndex.clone()
   of gpuTypeDef:
     result = GpuAst(kind: gpuTypeDef)
-    result.tName = ast.tName
+    result.tTyp = ast.tTyp.clone()
     for f in ast.tFields:
       result.tFields.add(GpuTypeField(name: f.name, typ: f.typ.clone()))
   of gpuAlias:
     result = GpuAst(kind: gpuAlias)
-    result.aName = ast.aName
+    result.aTyp = ast.aTyp.clone()
     result.aTo = ast.aTo.clone()
   of gpuObjConstr:
     result = GpuAst(kind: gpuObjConstr)
-    result.ocName = ast.ocName
+    result.ocType = ast.ocType.clone()
     for f in ast.ocFields:
       result.ocFields.add(
         GpuFieldInit(
@@ -645,16 +651,16 @@ proc pretty*(n: GpuAst, indent: int = 0): string =
     result.add id("Op", n.pOp)
     result.add pretty(n.pVal, indent + 2)
   of gpuTypeDef:
-    result.add id("Type", n.tName)
+    result.add id("Type", pretty(n.tTyp))
     result.add id("Fields")
     for t in n.tFields:
       let indent = indent + 2
       result.add id(t.name)
   of gpuAlias:
-    result.add id("Alias", n.aName)
+    result.add id("Alias", pretty(n.aTyp))
     result.add pretty(n.aTo, indent + 2)
   of gpuObjConstr:
-    result.add idd("Ident", n.ocName)
+    result.add idd("Ident", pretty(n.ocType))
     result.add idd("Fields")
     for f in n.ocFields:
       var indent = indent + 2
