@@ -59,6 +59,7 @@ type
     typ*: GpuType
 
   GpuType* = ref object
+    builtin*: bool ## Whether the type refers to a builtin type or not
     case kind*: GpuTypeKind
     of gtPtr:
       to*: GpuType # `ptr T` points to `to`
