@@ -23,6 +23,11 @@ template global*() {.pragma.}
 template device*() {.pragma.}
 template forceinline*() {.pragma.}
 
+## If attached to a function, type or variable it will refer to a built in
+## in the target backend. This is used for all the functions, types and variables
+## defined below to indicate that we do not intend to generate code for them.
+template builtin*() {.pragma.}
+
 # If attached to a `var` it will be treated as a
 # `__constant__`! Only useful if you want to define a
 # constant without initializing it (and then use
@@ -54,25 +59,24 @@ type
     y*: DimWgsl
     z*: DimWgsl
 
-
 ## These are dummy elements to make CUDA block / thread index / dim
 ## access possible in the *typed* `cuda` macro. It cannot be `const`,
 ## because then the typed code would evaluate the values before we
 ## can work with it from the typed macro.
-let blockIdx* = NvBlockIdx()
-let blockDim* = NvBlockDim()
-let gridDim* = NvGridDim()
-let threadIdx* = NvThreadIdx()
+let blockIdx* {.builtin.} = NvBlockIdx()
+let blockDim* {.builtin.} = NvBlockDim()
+let gridDim* {.builtin.} = NvGridDim()
+let threadIdx* {.builtin.} = NvThreadIdx()
 
 ## WebGPU specific
-let global_id* = WgslGridDim()
+let global_id* {.builtin.} = WgslGridDim()
 
 ## Similar for procs. They don't need any implementation, as they won't ever be actually called.
-proc printf*(fmt: string) {.varargs.} = discard
-proc memcpy*(dst, src: pointer, size: int) = discard
+proc printf*(fmt: string) {.varargs, builtin.} = discard
+proc memcpy*(dst, src: pointer, size: int) {.builtin.} = discard
 
 ## WebGPU select
-proc select*[T](f, t: T, cond: bool): T =
+proc select*[T](f, t: T, cond: bool): T {.builtin.} =
   # Implementation to run WebGPU code on CPU
   if cond: t
   else: f
@@ -90,9 +94,9 @@ template private*(): untyped {.pragma.}
 
 ## While you can use `malloc` on device with small sizes, it is usually not
 ## recommended to do so.
-proc malloc*(size: csize_t): pointer  = discard
-proc free*(p: pointer) = discard
-proc syncthreads*() {.cudaName: "__syncthreads".} = discard
+proc malloc*(size: csize_t): pointer {.builtin.}  = discard
+proc free*(p: pointer) {.builtin.} = discard
+proc syncthreads*() {.cudaName: "__syncthreads", builtin.} = discard
 
 macro toGpuAst*(body: typed): (GpuGenericsInfo, GpuAst) =
   ## WARNING: The following are *not* supported:
