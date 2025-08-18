@@ -855,11 +855,11 @@ proc cuDeviceGetAttribute*(r: var int32, attrib: CUdevice_attribute, dev: CUdevi
 {.pop.}
 
 proc cuCtxCreate*(pctx: var CUcontext, flags: uint32, dev: CUdevice): CUresult {.v2.}
+proc cuCtxDestroy*(ctx: CUcontext): CUresult {.v2.}
 proc cuCtxSynchronize*(ctx: CUcontext): CUresult {.v2.}
 
 {.push noconv, importc, dynlib: libCuda.}
 
-proc cuCtxDestroy*(ctx: CUcontext): CUresult
 proc cuCtxSynchronize*(): CUresult
 proc cuCtxGetCurrent*(ctx: var CUcontext): CUresult
 proc cuCtxSetCurrent*(ctx: CUcontext): CUresult
@@ -875,7 +875,6 @@ proc cuModuleUnload*(module: CUmodule): CUresult
 proc cuModuleGetFunction(kernel: var CUfunction, module: CUmodule, fnName: ptr char): CUresult {.used.}
 proc cuModuleLoadData*(module: var CUmodule; image: pointer): CUresult
 proc cuModuleGetFunction*(hfunc: var CUfunction; hmod: CUmodule; name: cstring): CUresult
-proc cuModuleGetGlobal*(dptr: var CUdeviceptr, bytes: ptr csize_t, hmod: CUmodule, name: cstring): CUresult
 
 proc cuLaunchKernel*(
        kernel: CUfunction,
@@ -888,6 +887,8 @@ proc cuLaunchKernel*(
      ): CUresult {.used.}
 
 {.pop.} # {.push noconv, importc, dynlib: "libcuda.so"..}
+
+proc cuModuleGetGlobal*(dptr: var CUdeviceptr, bytes: ptr csize_t, hmod: CUmodule, name: cstring): CUresult {.v2.}
 
 proc cuMemAlloc*(devptr: var CUdeviceptr, size: csize_t): CUresult {.v2.}
 proc cuMemAllocManaged*(devptr: var CUdeviceptr, size: csize_t, flags: Flag[CUmemAttach_flags]): CUresult {.v1.}
