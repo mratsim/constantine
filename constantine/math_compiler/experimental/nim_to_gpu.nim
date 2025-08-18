@@ -274,18 +274,31 @@ proc requiresMemcpy(n: NimNode): bool =
   ## At the moment we only emit a `memcpy` statement for array types
   result = n.typeKind == ntyArray and n.kind != nnkBracket # need to emit a memcpy
 
+proc isBuiltIn(n: NimNode): bool =
+  ## Checks if the given proc is a `{.builtin.}` (or if it is a Nim "built in"
+  ## proc that uses `importc`, as we cannot emit those; they _need_ to have a
+  ## WGSL / CUDA equivalent built in)
+  doAssert n.kind in [nnkProcDef, nnkFuncDef], "Argument is not a proc: " & $n.treerepr
+  for pragma in n.pragma:
+    doAssert pragma.kind in [nnkIdent, nnkSym, nnkCall, nnkExprColonExpr], "Unexpected node kind: " & $pragma.treerepr
+    let pragma = if pragma.kind in [nnkCall, nnkExprColonExpr]: pragma[0] else: pragma
+    if pragma.strVal in ["builtin", "importc"]:
+      return true
+
 proc collectProcAttributes(n: NimNode): set[GpuAttribute] =
   doAssert n.kind == nnkPragma
   for pragma in n:
-    doAssert pragma.kind in [nnkIdent, nnkSym, nnkCall], "Unexpected node kind: " & $pragma.treerepr
-    let pragma = if pragma.kind == nnkCall: pragma[0] else: pragma
+    doAssert pragma.kind in [nnkIdent, nnkSym, nnkCall, nnkExprColonExpr], "Unexpected node kind: " & $pragma.treerepr
+    let pragma = if pragma.kind in [nnkCall, nnkExprColonExpr]: pragma[0] else: pragma
     case pragma.strVal
     of "device": result.incl attDevice
     of "global": result.incl attGlobal
     of "forceinline": result.incl attForceInline
-    of "nimonly":
+    of "nimonly", "builtin":
       # used to fully ignore functions!
       return
+    of "importc": # encountered if we analyze a proc from outside `cuda` scope
+      return # this _should_ be a builtin function that has a counterpart in Nim, e.g. `math.ceil`
     else:
       raiseAssert "Unexpected pragma for procs: " & $pragma.treerepr
 
