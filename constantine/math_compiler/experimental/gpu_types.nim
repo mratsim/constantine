@@ -530,6 +530,31 @@ proc removePrefix(s, p: string): string =
   result = s
   result.removePrefix(p)
 
+proc pretty*(t: GpuType): string =
+  ## returns a flat (but lossy) string representation of the type
+  if t == nil:
+    result = "GpuType(nil)"
+  else:
+    case t.kind
+    of gtPtr:
+      result = if t.implicit: "var " else: "ptr "
+      result.add pretty(t.to)
+    of gtUA:
+      result = "UncheckedArray[" & t.uaTo.pretty() & "]"
+    of gtObject:
+      result = t.name # just the name
+    of gtArray:
+      result = "array[" & $t.aLen & ", " & t.aTyp.pretty() & "]"
+    of gtGenericInst:
+      result = t.gName & "["
+      for i, g in t.gArgs:
+        result.add pretty(g)
+        if i < t.gArgs.high:
+          result.add ", "
+      result.add "]"
+    else:
+      result = ($t.kind).removePrefix("gt")
+
 proc pretty*(n: GpuAst, indent: int = 0): string =
   template id(): untyped = repeat(" ", indent)
   template idn(x): untyped = repeat(" ", indent) & $x
