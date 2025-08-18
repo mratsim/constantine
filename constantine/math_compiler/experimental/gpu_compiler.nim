@@ -102,8 +102,9 @@ macro toGpuAst*(body: typed): (GpuGenericsInfo, GpuAst) =
   ## - most regular Nim features :)
   var ctx = GpuContext()
   let ast = ctx.toGpuAst(body)
-  let gen = toSeq(ctx.genericInsts.values)
-  let g = GpuGenericsInfo(data: gen)
+  let genProcs = toSeq(ctx.genericInsts.values)
+  let genTypes = toSeq(ctx.types.values)
+  let g = GpuGenericsInfo(procs: genProcs, types: genTypes)
   newLit((g, ast))
 
 macro cuda*(body: typed): string =
@@ -124,8 +125,10 @@ proc codegen*(gen: GpuGenericsInfo, ast: GpuAst, kernel: string = ""): string =
   ## Generates the code based on the given AST (optionally at runtime) and restricts
   ## it to a single global kernel (WebGPU) if any given.
   var ctx = GpuContext()
-  for fn in gen.data: # assign generics info to correct table
+  for fn in gen.procs: # assign generics info to correct table
     ctx.genericInsts[fn.pName] = fn
+  for typ in gen.types: # assign generics info to correct table
+    ctx.types[typ.tTyp] = typ
   result = ctx.codegen(ast, kernel)
 
 
