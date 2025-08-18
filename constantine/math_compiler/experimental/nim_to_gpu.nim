@@ -60,6 +60,25 @@ proc toGpuTypeKind(t: NimTypeKind): GpuTypeKind =
   else:
     raiseAssert "Not supported yet: " & $t
 
+proc parseTypeFields(node: NimNode): seq[GpuTypeField]
+proc initGpuGenericInst(t: NimNode): GpuType =
+  doAssert t.typeKind == ntyGenericInst, "Input is not a generic instantiation: " & $t.treerepr & " of typeKind: " & $t.typeKind
+  case t.kind
+  of nnkBracketExpr: # regular generic instantiation
+    result = GpuType(kind: gtGenericInst, gName: t[0].repr)
+    for i in 1 ..< t.len: # grab all generic arguments
+      let typ = nimToGpuType(t[i])
+      result.gArgs.add typ
+    # now parse the object fields
+    let impl = t.getTypeImpl() # impl for the `gFields`
+    result.gFields = parseTypeFields(impl)
+  of nnkObjConstr:
+    doAssert t.len == 1, "Unexpected length of ObjConstr node: " & $t.len & " of node: " & $t.treerepr
+    result = initGpuGenericInst(t[0])
+  else:
+    raiseAssert "Unexpected node kind in for genericInst: " & $t.treerepr
+  echo "Got generic inst: ", result
+
 proc unpackGenericInst(t: NimNode): NimNode =
   let tKind = t.typeKind
   if tKind == ntyGenericInst:
@@ -131,7 +150,6 @@ proc getTypeName(n: NimNode): string =
       result = n[0].strVal # type is the first node
   else: raiseAssert "Unexpected node in `getTypeName`: " & $n.treerepr
 
-proc parseTypeFields(node: NimNode): seq[GpuTypeField]
 proc nimToGpuType(n: NimNode, allowToFail: bool = false): GpuType =
   ## Maps a Nim type to a type on the GPU
   ##
@@ -197,7 +215,14 @@ proc nimToGpuType(n: NimNode, allowToFail: bool = false): GpuType =
       result = initGpuType(gtVoid)
       error("Generics are not supported in the CUDA DSL so far.")
     of ntyGenericInst:
-      result = n.unpackGenericInst().nimToGpuType(allowToFail)
+      result = initGpuGenericInst(n)
+      #result = n.unpackGenericInst().nimToGpuType(allowToFail)
+    of ntyTypeDesc:
+      # `getType` returns a `BracketExpr` of eg:
+      # BracketExpr
+      #   Sym "typeDesc"
+      #   Sym "float32"
+      result = n.getType[1].nimToGpuType(allowToFail) # for a type desc we need to recurse using the type of it
     else:
       if allowToFail:
         result = GpuType(kind: gtVoid)
