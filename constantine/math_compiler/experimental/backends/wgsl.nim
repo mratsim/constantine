@@ -112,6 +112,14 @@ proc gpuTypeToString*(t: GpuType, id: GpuAst = newGpuIdent(), allowArrayToPtr = 
     else:
       result = &"{identPrefix}array<{typ}, {t.aLen}>"
     skipIdent = true
+  of gtGenericInst:
+    # NOTE: WGSL does not support actual custom generic types. And as we only anyway deal with generic instantiations
+    # we simply turn e.g. `foo[float32, uint32]` into `foo_f32_u32`.
+    result = t.gName & "_"
+    for i, g in t.gArgs:
+      result.add gpuTypeToString(g)
+      if i < t.gArgs.high:
+        result.add "_"
   of gtObject: result = t.name
   of gtUA:     result = gpuTypeToString(t.kind) & "<" & gpuTypeToString(t.uaTo, allowEmptyIdent = allowEmptyIdent) & ">"
   else:        result = gpuTypeToString(t.kind)

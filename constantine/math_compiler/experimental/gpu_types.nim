@@ -46,12 +46,13 @@ type
   GpuTypeKind* = enum
     gtVoid,
     gtBool, gtUint8, gtUint16, gtInt16, gtUint32, gtInt32, gtUint64, gtInt64, gtFloat32, gtFloat64, gtSize_t, # atomics
-    gtArray,     # Static array `array[N, dtype]` -> `dtype[N]`
+    gtArray,       # Static array `array[N, dtype]` -> `dtype[N]`
     gtString,
-    gtObject,    # Struct types
-    gtPtr,       # Pointer type, carries inner type
-    gtUA,        # UncheckedArray (UA) mapped to runtime sized arrays
-    gtVoidPtr    # Opaque void pointer
+    gtObject,      # Struct types
+    gtPtr,         # Pointer type, carries inner type
+    gtUA,          # UncheckedArray (UA) mapped to runtime sized arrays
+    gtGenericInst, # Instantiated generic type with one or more generic arguments (instantiated!)
+    gtVoidPtr      # Opaque void pointer
 
   GpuTypeField* = object
     name*: string
@@ -75,6 +76,10 @@ type
       aLen*: int     # The length of the array. If `aLen == -1` we look at a generic (static) array. Will be given at instantiation time
                     # On both CUDA and WebGPU a length of `0` is also used to generate `int foo[]` (CUDA)
                     # `array<foo>` (WebGPU) (runtime sized arrays), which are generated from `ptr UncheckedArray[float32]` for example.
+    of gtGenericInst:
+      gName*: string # name of the generic type
+      gArgs*: seq[GpuType] # list of the instantiated generic arguments e.g. `vec3<f32>` on WGSL backend
+      gFields*: seq[GpuTypeField] # same as `oFields` for `gtObject`
     else: discard
 
   GpuAttribute* = enum
@@ -304,6 +309,12 @@ proc clone*(typ: GpuType): GpuType =
   of gtArray:
     result.aTyp = typ.aTyp.clone()
     result.aLen = typ.aLen
+  of gtGenericInst:
+    result.gName = typ.gName
+    for g in typ.gArgs:
+      result.gArgs.add g.clone()
+    for f in typ.gFields:
+      result.gFields.add GpuTypeField(name: f.name, typ: f.typ.clone())
   else: discard
 
 proc clone*(ast: GpuAst): GpuAst =
@@ -463,6 +474,12 @@ proc hash*(t: GpuType): Hash =
   of gtArray:
     h = h !& hash(t.aTyp)
     h = h !& hash(t.aLen)
+  of gtGenericInst:
+    h = h !& hash(t.gName)
+    for g in t.gArgs:
+      h = h !& hash(g)
+    for f in t.gFields:
+      h = h !& hash(f)
   else: discard
   result = !$ h
 
@@ -491,6 +508,15 @@ proc `==`*(a, b: GpuType): bool =
       else:
         for i in 0 ..< a.oFields.len:
           result = result and (a.oFields[i] == b.oFields[i])
+    of gtGenericInst:
+      result = a.gName == b.gName
+      if a.gArgs.len != b.gArgs.len: result = false
+      elif a.gFields.len != b.gFields.len: result = false
+      else:
+        for i in 0 ..< a.gArgs.len:
+          result = result and (a.gArgs[i] == b.gArgs[i])
+        for i in 0 ..< a.gFields.len:
+          result = result and (a.gFields[i] == b.gFields[i])
     of gtArray: result = a.aTyp == b.aTyp and a.aLen == b.aLen
     else: discard
 
