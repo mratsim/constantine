@@ -256,7 +256,7 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     result = ast.pOp & ctx.genCuda(ast.pVal)
 
   of gpuTypeDef:
-    result = "struct " & ast.tName & "{\n"
+    result = "struct " & gpuTypeToString(ast.tTyp) & "{\n"
     for el in ast.tFields:
       result.add "  " & gpuTypeToString(el.typ, el.name) & ";\n"
     result.add "}"
