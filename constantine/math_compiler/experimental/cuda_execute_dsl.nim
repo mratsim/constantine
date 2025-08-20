@@ -62,6 +62,12 @@ proc requiresCopy(n: NimNode, passStructByPointer: bool): bool =
       result = false
     else:
       result = true
+  of ntyAlias:
+    let impl = n.getTypeInst()
+    if impl.kind in [nnkIdent, nnkSym] and impl.strVal.normalize == "cudeviceptr":
+      result = false
+    else:
+      result = true
   else:
     result = true
 
