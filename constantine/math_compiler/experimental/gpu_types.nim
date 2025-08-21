@@ -463,7 +463,7 @@ proc `==`*(a, b: GpuAst): bool =
 
 proc len*(ast: GpuAst): int =
   case ast.kind
-  of gpuProc:      3 ## XXX:
+  of gpuProc:      1
   of gpuCall:      1 + ast.cArgs.len
   of gpuBlock:     ast.statements.len
   of gpuIf:
