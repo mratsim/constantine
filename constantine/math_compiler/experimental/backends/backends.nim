@@ -14,23 +14,6 @@ when defined(cuda):
 else:
   const Backend* = bkWGSL
 
-proc gpuTypeToString*(t: GpuTypeKind): string =
-  case Backend
-  of bkCuda: cuda.gpuTypeToString(t)
-  of bkWGSL: wgsl.gpuTypeToString(t)
-
-proc gpuTypeToString*(t: GpuType, ident = newGpuIdent(), allowArrayToPtr = false,
-                      allowEmptyIdent = false,
-                     ): string =
-  case Backend
-  of bkCuda: cuda.gpuTypeToString(t, ident.ident(), allowArrayToPtr, allowEmptyIdent)
-  of bkWGSL: wgsl.gpuTypeToString(t, ident, allowArrayToPtr, allowEmptyIdent)
-
-proc genFunctionType*(typ: GpuType, fn: string, fnArgs: string): string =
-  case Backend
-  of bkCuda: cuda.genFunctionType(typ, fn, fnArgs)
-  of bkWGSL: wgsl.genFunctionType(typ, fn, fnArgs)
-
 proc codegen*(ctx: var GpuContext, ast: GpuAst, kernel: string = ""): string =
   case Backend
   of bkCuda:
