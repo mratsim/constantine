@@ -104,6 +104,7 @@ type
       pParams*: seq[GpuParam]
       pBody*: GpuAst
       pAttributes*: set[GpuAttribute] # order not important, hence set
+      forwardDeclare*: bool ## can be set to true to _only_ generate a forward declaration
     of gpuCall:
       cName*: GpuAst ## Will be a `GpuIdent`
       cArgs*: seq[GpuAst]

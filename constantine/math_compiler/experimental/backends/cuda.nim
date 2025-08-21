@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import std / [macros, strformat, strutils, sugar, sequtils]
+import std / [macros, strformat, strutils, sugar, sequtils, tables, algorithm]
 
 import ../gpu_types
 import ./common_utils
@@ -119,10 +119,61 @@ proc genFunctionType*(typ: GpuType, fn: string, fnArgs: string): string =
 proc genMemcpy(lhs, rhs, size: string): string =
   result = &"memcpy({lhs}, {rhs}, {size})"
 
+proc scanFunctions(ctx: var GpuContext, n: GpuAst) =
+  ## Iterates over the given function and checks for all `gpuCall` nodes. Any function
+  ## called in the scope is added to `fnTab`. This is a form of dead code elimination.
+  case n.kind
+  of gpuCall:
+    let fn = n.cName
+    if fn in ctx.allFnTab:
+      # Check if any of the parameters are pointers (otherwise non generic)
+      if fn notin ctx.fnTab: # function not known, add to `fnTab` (i.e. avoid code elimination)
+        let fnCalled = ctx.allFnTab[fn]
+        ctx.fnTab[fn] = fnCalled
+        # still "scan for functions", i.e. fill `fnTab` from inner calls
+        for ch in fnCalled:
+          ctx.scanFunctions(ch)
+      # else we don't do anything for this function
+    # Harvest functions from arguments to this call!
+    for arg in n.cArgs:
+      ctx.scanFunctions(arg)
+  else:
+    for ch in n:
+      ctx.scanFunctions(ch)
 
 proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string
 proc size(ctx: var GpuContext, a: GpuAst): string = size(ctx.genCuda(a))
 proc address(ctx: var GpuContext, a: GpuAst): string = address(ctx.genCuda(a))
+
+proc preprocess*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
+
+  # 1. Add all data from `genericInsts` and `types` tables
+  #    In CUDA the types have to be before any possible global variables using
+  #    them!
+  for k, v in pairs(ctx.genericInsts):
+    ctx.allFnTab[k] = v
+  # And all the known types
+  for k, typ in pairs(ctx.types):
+    ctx.globalBlocks.add typ
+
+  # 2. Fill table with all *global* functions or *only* the specific `kernel`
+  #    if any given
+  var varBlock = GpuAst(kind: gpuBlock)
+  var typBlock = GpuAst(kind: gpuBlock)
+  ctx.farmTopLevel(ast, kernel, varBlock, typBlock)
+  ctx.globalBlocks.add varBlock
+  ctx.globalBlocks.add typBlock
+  ## XXX: `typBlock` should now always be empty, as we pass all
+  ## found types into `ctx.types`
+
+  # 3. Using all global functions, we traverse their AST for any `gpuCall` node. We inspect
+  #    the functions called and record them in `fnTab`.
+  let fns = toSeq(ctx.fnTab.pairs)
+  for (fnIdent, fn) in fns: # everything in `fnTab` at this point is a global function
+    # Get the original arguments (before lifting them) of this function. Needed in scan
+    # to check if `gpuCall` argument is a parameter.
+    let fnOrig = ctx.allFnTab[fnIdent]
+    ctx.scanFunctions(fn)
 
 proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
   ## The actual CUDA code generator.
@@ -143,10 +194,13 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
 
     # extern "C" is needed to avoid name mangling
     result = indentStr & "extern \"C\" " & attrs.join(" ") & " " &
-             fnSig & "{\n"
-
-    result &= ctx.genCuda(ast.pBody, indent + 1)
-    result &= "\n" & indentStr & "}"
+             fnSig
+    if ast.forwardDeclare:
+      result.add ";"
+    else:
+      result.add "{\n"
+      result &= ctx.genCuda(ast.pBody, indent + 1)
+      result &= "\n" & indentStr & "}"
 
   of gpuBlock:
     result = ""
@@ -296,3 +350,19 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     echo "Unhandled node kind in genCuda: ", ast.kind
     raiseAssert "Unhandled node kind in genCuda: " & ast.repr
     result = ""
+
+proc codegen*(ctx: var GpuContext): string =
+  ## Generate the actual code for all pieces of the puzzle
+  # 1. generate code for the global blocks (types, global vars etc)
+  for blk in ctx.globalBlocks:
+    result.add ctx.genCuda(blk) & ";\n\n"
+
+  # 2. generate all regular functions
+  let fns = toSeq(ctx.fnTab.pairs)
+  for (fnIdent, fn) in fns:
+    let fnC = fn.clone()
+    fnC.forwardDeclare = true
+    result.add ctx.genCuda(fnC) & "\n"
+
+  for fnIdent, fn in ctx.fnTab:
+    result.add ctx.genCuda(fn) & "\n\n"
