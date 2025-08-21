@@ -47,10 +47,7 @@ proc toGpuTypeKind(t: NimTypeKind): GpuTypeKind =
   of ntyInt16: gtInt16
   of ntyInt32: gtInt32
   of ntyInt64: gtInt64
-  of ntyInt:
-    case Backend
-    of bkCuda: gtInt64
-    of bkWGSL: gtInt32 ## XXX: we map Nim `int` to `int32`!
+  of ntyInt:   gtInt32 # `int` is always mapped to `int32` as that is the more "native" type on GPUs
   of ntyFloat: gtFloat64
   of ntyFloat32: gtFloat32
   of ntyFloat64: gtFloat64
