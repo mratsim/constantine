@@ -813,7 +813,7 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     if $attGlobal in attrs:
       doAssert fnArgs.len == 0, "Global function `" & $ast.pName.ident() & "` still has arguments!"
       ## XXX: make this more flexible. In theory can be any name
-      fnArgs = "@builtin(global_invocation_id) global_id: vec3<u32>"
+      fnArgs = "@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(num_workgroups) num_workgroups: vec3<u32>"
     let fnSig = genFunctionType(ast.pRetType, ast.pName.ident(), fnArgs)
 
     result = indentStr & "fn " & fnSig & " {\n"

@@ -70,6 +70,7 @@ let threadIdx* {.builtin.} = NvThreadIdx()
 
 ## WebGPU specific
 let global_id* {.builtin.} = WgslGridDim()
+let num_workgroups* {.builtin.} = WgslGridDim()
 
 ## Similar for procs. They don't need any implementation, as they won't ever be actually called.
 proc printf*(fmt: string) {.varargs, builtin.} = discard
