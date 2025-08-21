@@ -11,7 +11,7 @@ import
   constantine/math_compiler/experimental/runtime_compile,
   constantine/serialization/io_limbs
 
-import constantine/math_compiler/experimental/nvrtc_field_ops
+import constantine/math_compiler/experimental/gpu_field_ops
 
 proc toFp[Name: static Algebra](FF: type Fp[Name], ar: array[8, uint32]): Fp[Name] =
   var resBI: matchingBigInt(BN254_Snarks)

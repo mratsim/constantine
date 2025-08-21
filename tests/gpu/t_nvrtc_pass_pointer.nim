@@ -10,7 +10,7 @@ import
   constantine/math_compiler/experimental/runtime_compile,
   constantine/serialization/io_limbs
 
-import constantine/math_compiler/experimental/nvrtc_field_ops
+import constantine/math_compiler/experimental/gpu_field_ops
 
 const N = 8
 type T = Fp[BN254_Snarks]
