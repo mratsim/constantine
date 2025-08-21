@@ -34,8 +34,8 @@ proc genFunctionType*(typ: GpuType, fn: string, fnArgs: string): string =
 proc codegen*(ctx: var GpuContext, ast: GpuAst, kernel: string = ""): string =
   case Backend
   of bkCuda:
-    ctx.preprocess(ast, kernel)
+    cuda.preprocess(ctx, ast, kernel)
     result = cuda.codegen(ctx)
   of bkWGSL:
-    ctx.storagePass(ast, kernel)
+    wgsl.preprocess(ctx, ast, kernel)
     result = wgsl.codegen(ctx)

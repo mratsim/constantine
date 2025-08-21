@@ -720,7 +720,7 @@ proc removeStructPointerFields(blk: var GpuAst) =
       else:
         inc i
 
-proc storagePass*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
+proc preprocess*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
   ## If `kernel` is a global function, we *only* generate code for that kernel.
   ## This is useful if your GPU code contains multiple kernels with differing
   ## parameters to avoid having to fill dummy buffers for all the unused parameters
