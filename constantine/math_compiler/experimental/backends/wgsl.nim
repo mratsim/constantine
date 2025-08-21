@@ -147,34 +147,6 @@ proc genFunctionType*(typ: GpuType, fn: string, fnArgs: string): string =
     if typ.len > 0:
       result.add &" -> {typ}"
 
-proc isGlobal(fn: GpuAst): bool =
-  doAssert fn.kind == gpuProc, "Not a function, but: " & $fn.kind
-  result = attGlobal in fn.pAttributes
-
-proc farmTopLevel(ctx: var GpuContext, ast: GpuAst, kernel: string, varBlock, typBlock: var GpuAst) =
-  ## Farms the top level of the code for functions, variable and type definition.
-  ## All functions are added to the `allFnTab`, while only global ones (or even only
-  ## `kernel` if any) is added to the `fnTab` as the starting point for the remaining
-  ## logic.
-  ## Variables and types are collected in `varBlock` and `typBlock`.
-  case ast.kind
-  of gpuProc:
-    ctx.allFnTab[ast.pName] = ast
-    if kernel.len > 0 and ast.pName.ident() == kernel and ast.isGlobal():
-      ctx.fnTab[ast.pName] = ast.clone() # store global function extra
-    elif kernel.len == 0 and ast.isGlobal():
-      ctx.fnTab[ast.pName] = ast.clone() # store global function extra
-  of gpuBlock:
-    # could be a type definition or global variable
-    for ch in ast:
-      ctx.farmTopLevel(ch, kernel, varBlock, typBlock)
-  of gpuVar, gpuConstexpr:
-    varBlock.statements.add ast
-  of gpuTypeDef, gpuAlias:
-    typBlock.statements.add ast
-  else:
-    discard
-
 proc patchType(t: GpuType): GpuType =
   ## Applies patches needed for WGSL support. E.g. `bool` cannot be a storage variable.
   result = t
