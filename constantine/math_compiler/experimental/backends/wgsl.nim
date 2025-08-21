@@ -513,7 +513,8 @@ proc rewriteCompoundAssignment(n: GpuAst): GpuAst =
 proc getStructType(n: GpuAst): GpuType =
   ## Given an identifier `gpuIdent` (or `Deref` of one), return the struct type
   ## the ident is of or a GpuType of `void` if it is not (pointing to) a struct.
-  doAssert n.kind in [gpuIdent, gpuDeref], "Dot expression of anything not an address currently not supported: " & $n.kind
+  doAssert n.kind in [gpuIdent, gpuDeref], "Dot expression of anything not an address currently not supported: " &
+    $n.kind & " for node: " & $n
   var p = n
   if p.kind == gpuDeref:
     p = n.dOf
