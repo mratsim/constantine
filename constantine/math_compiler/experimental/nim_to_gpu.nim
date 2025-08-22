@@ -161,6 +161,67 @@ functions.
       doAssert n[1][1].intVal == 0, "No is: " & $n.treerepr
       result = n[1][2].intVal + 1
 
+proc constructTupleTypeName(n: NimNode): string =
+  ## XXX: overthink if this should really be here and not somewhere else
+  ##
+  ## Given a tuple, generate a name from the field names and types, e.g.
+  ## `Tuple_lo_BaseType_hi_BaseType`
+  ##
+  ## XXX: `getTypeImpl.repr` is a hacky way to get a string name of the underlying
+  ## type, e.g. for `BaseType`. Aliases would lead to duplicate tuple types.
+  result = "Tuple_"
+  doAssert n.kind in [nnkTupleTy, nnkTupleConstr]
+  for i, ch in n:
+    case ch.kind
+    of nnkIdentDefs:
+      let typName = ch[ch.len - 2].getTypeImpl.repr # second to last is type name of field(s)
+      for j in 0 ..< ch.len - 2:
+        # Example:
+        # IdentDefs
+        #   Ident "hi"
+        #   Ident "lo"      `..< ch.len - 2 `
+        #   Sym "BaseType"  `..< ch.len - 1`
+        #   Empty           `..< ch.len`
+        result.add ch[j].strVal & "_" & typName
+        if j < ch.len - 3:
+          result.add "_"
+      if i < n.len - 1:
+        result.add "_"
+    of nnkExprColonExpr:
+      # ExprColonExpr
+      #   Sym "hi"
+      #   Infix
+      #     Sym "shr"
+      #     Sym "n"
+      #     IntLit 16
+      # -> these are tuple types that are constructed in place using `(foo: bar, ar: br)`
+      #    give them a slightly different name
+      let typName = ch[0].getTypeImpl.repr ## XXX
+      doAssert ch[0].kind == nnkSym, "Not a symbol, but: " & $ch.treerepr
+      result.add ch[0].strVal & "_" & typName
+      if i < n.len - 1:
+        result.add "_"
+    of nnkSym:
+      # TupleConstr
+      #   Sym "BaseType" <-- e.g. here
+      #   Sym "BaseType"
+      let typName = ch.getTypeImpl.repr
+      result.add "Field" & $i & "_" & typName
+      if i < n.len - 1:
+        result.add "_"
+    else:
+      # TupleConstr      e.g. a tuple constr like this
+      #   Infix
+      #     Sym "shr"
+      #     Sym "n"
+      #     IntLit 16
+      #   Infix
+      #     Sym "and"
+      #     Sym "n"
+      #     UInt32Lit 65535
+      # -> Try again with type impl
+      return constructTupleTypeName(getTypeImpl(n))
+
 proc getTypeName(n: NimNode): string =
   ## Returns the name of the type
   case n.kind
@@ -170,6 +231,8 @@ proc getTypeName(n: NimNode): string =
       result = n.getTypeInst.strVal
     else:
       result = n[0].strVal # type is the first node
+  of nnkTupleTy, nnkTupleConstr:
+    result = constructTupleTypeName(n)
   else: raiseAssert "Unexpected node in `getTypeName`: " & $n.treerepr
 
 proc nimToGpuType(n: NimNode, allowToFail: bool = false, allowArrayIdent: bool = false): GpuType =
@@ -203,11 +266,12 @@ proc nimToGpuType(n: NimNode, allowToFail: bool = false, allowArrayIdent: bool =
     of ntyUncheckedArray:
       ## Note: this is just the internal type of the array. It is only a pointer due to
       ## `ptr UncheckedArray[T]`. We simply remove the `UncheckedArray` part.
-    of ntyObject, ntyAlias:
       result = initGpuUAType(getInnerPointerType(n, allowToFail, allowArrayIdent))
+    of ntyObject, ntyAlias, ntyTuple:
       # for aliases, treat them identical to regular object types, but
       # `getTypeName` returns the alias!
-      let impl = n.getTypeImpl
+      let impl = if n.kind == nnkTupleConstr: n # might actually _lose_ information if used getTypeImpl
+                 else: n.getTypeImpl
       let flds = impl.parseTypeFields()
       let typName = getTypeName(n) # might be an object construction
       result = initGpuObjectType(typName, flds)
@@ -279,12 +343,34 @@ proc assignPrefixOp(op: string): string =
   else: result = op
 
 proc parseTypeFields(node: NimNode): seq[GpuTypeField] =
-  doAssert node.kind == nnkObjectTy
-  doAssert node[2].kind == nnkRecList
-  for ch in node[2]:
-    doAssert ch.kind == nnkIdentDefs and ch.len == 3
-    result.add GpuTypeField(name: ch[0].strVal,
-                            typ: nimToGpuType(ch[1]))
+  case node.kind
+  of nnkObjectTy:
+    doAssert node[2].kind == nnkRecList
+    for ch in node[2]:
+      doAssert ch.kind == nnkIdentDefs and ch.len == 3
+      result.add GpuTypeField(name: ch[0].strVal,
+                              typ: nimToGpuType(ch[1]))
+  of nnkTupleTy:
+    for ch in node:
+      doAssert ch.kind == nnkIdentDefs and ch.len == 3
+      result.add GpuTypeField(name: ch[0].strVal,
+                              typ: nimToGpuType(ch[1]))
+  of nnkTupleConstr:
+    # TupleConstr
+    #   Sym "BaseType"
+    #   Sym "BaseType"
+    for i, ch in node:
+      case ch.kind
+      of nnkSym:
+        result.add GpuTypeField(name: "Field" & $i,
+                                typ: nimToGpuType(ch))
+      of nnkExprColonExpr:
+        result.add GpuTypeField(name: ch[0].strVal,
+                                typ: nimToGpuType(ch[1]))
+      else:
+        return parseTypeFields(node.getTypeImpl) # will likely fall back to constr with `nnkSym`
+  else:
+    raiseAssert "Unsupported type to parse fields from: " & $node.kind
 
 template findIdx(col, el): untyped =
   var res = -1
@@ -696,9 +782,21 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     result.dField = ctx.toGpuAst(node[1])
 
   of nnkBracketExpr:
-    result = GpuAst(kind: gpuIndex)
-    result.iArr = ctx.toGpuAst(node[0])
-    result.iIndex = ctx.toGpuAst(node[1])
+    case node[0].typeKind
+    of ntyTuple:
+      # need to replace `[idx]` by field access
+      let typ = nimToGpuType(node[0].getTypeImpl)
+      #doAssert typ in ctx.types
+      doAssert node[1].kind == nnkIntLit
+      let idx = node[1].intVal
+      let field = typ.oFields[idx].name
+      result = GpuAst(kind: gpuDot,
+                      dParent: ctx.toGpuAst(node[0]),
+                      dField: ctx.toGpuAst(ident(field)))
+    else:
+      result = GpuAst(kind: gpuIndex)
+      result.iArr = ctx.toGpuAst(node[0])
+      result.iIndex = ctx.toGpuAst(node[1])
 
   of nnkIdent, nnkOpenSymChoice:
     result = newGpuIdent()
@@ -823,7 +921,7 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
 
     result = GpuAst(kind: gpuObjConstr, ocType: typ)
     # get all fields of the type
-    let flds = node[0].getTypeImpl.parseTypeFields() # sym
+    let flds = typ.oFields
     # find all fields that have been defined by the user
     var ocFields: seq[GpuFieldInit]
     for i in 1 ..< node.len: # all fields to be init'd
@@ -844,6 +942,47 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
         result.ocFields.add GpuFieldInit(name: flds[i].name,
                                          value: dfl,
                                          typ: flds[i].typ)
+  of nnkTupleConstr:
+    let typ = nimToGpuType(node)
+    if typ notin ctx.types: # this should handle not just local types, but also any "pulled in" type
+      # store the type instantiation
+      let typDef = GpuAst(kind: gpuTypeDef, tTyp: typ)
+      case typ.kind
+      of gtObject:      typDef.tFields = typ.oFields
+      of gtGenericInst: typDef.tFields = typ.gFields
+      else:
+        raiseAssert "Type: " & $pretty(typ) & " is neither object type nor generic instantiation."
+      ctx.types[typ] = typDef
+
+    result = GpuAst(kind: gpuObjConstr, ocType: typ)
+    # get all fields of the type
+    let flds = typ.oFields
+    # find all fields that have been defined by the user
+    var ocFields: seq[GpuFieldInit]
+    for i in 0 ..< node.len: # all fields to be init'd
+      case node[i].kind
+      of nnkExprColonExpr:
+        ocFields.add GpuFieldInit(name: node[i][0].strVal,
+                                  value: ctx.toGpuAst(node[i][1]),
+                                  typ: GpuType(kind: gtVoid))
+      else:
+        ocFields.add GpuFieldInit(name: "Field" & $i,
+                                  value: ctx.toGpuAst(node[i]),
+                                  typ: GpuType(kind: gtVoid))
+
+    # now add fields in order of the type declaration
+    for i in 0 ..< flds.len:
+      let idx = findIdx(ocFields, flds[i].name)
+      if idx >= 0:
+        var f = ocFields[idx]
+        f.typ = flds[i].typ
+        result.ocFields.add f
+      else:
+        let dfl = GpuAst(kind: gpuLit, lValue: "DEFAULT", lType: GpuType(kind: gtVoid))
+        result.ocFields.add GpuFieldInit(name: flds[i].name,
+                                         value: dfl,
+                                         typ: flds[i].typ)
+
 
   of nnkAsmStmt:
     doAssert node.len == 2
