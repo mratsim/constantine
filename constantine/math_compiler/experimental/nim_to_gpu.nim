@@ -532,6 +532,51 @@ proc gpuTypeMaybeFromSymbol(t: NimNode, n: NimNode): GpuType =
     # an existing symbol cannot be `void` by definition, then it wouldn't be a symbol. Means
     # `allowArrayIdent` triggered due to an ident in the type. Use symbol for type instead
     result = n.getTypeInst.nimToGpuType()
+proc maybeInsertResult(ast: var GpuAst, retType: GpuType, fnName: string) =
+  ## Will insert a `gpuVar` for the implicit `result` variable, unless there
+  ## is a user defined `var result` that shadows it at the top level of the proc
+  ## body.
+  ##
+  ## Finally adds a `return result` statement if
+  ## - we add a `result` variable
+  ## - there is no `return` statement as the _last_ statement in the proc
+  if retType.kind == gtVoid: return # nothing to do if the proc returns nothing
+
+  proc hasCustomResult(n: GpuAst): bool =
+    doAssert n.kind == gpuBlock
+    for ch in n: # iterate all top level statements in the proc body
+      case ch.kind
+      of gpuVar:
+        if ch.vName.ident() == "result":
+          ## XXX: could maybe consider to emit a CT warning that `result` shadows the implicit
+          ## result variable
+          echo "[WARNING] ", fnName, " has a custom `result` variable, which shadows the implicit `result`."
+          return true
+      else:
+        discard
+
+  proc lastIsReturn(n: GpuAst): bool =
+    doAssert n.kind == gpuBlock
+    if n.statements[^1].kind == gpuReturn: return true
+
+  if not hasCustomResult(ast):
+    # insert `gpuVar` as the *first* statement
+    let resId = GpuAst(kind: gpuIdent, iName: "result",
+                       iSym: "result",
+                       iTyp: retType,
+                       symbolKind: gsLocal)
+    let res = GpuAst(kind: gpuVar, vName: resId,
+                     vType: retType,
+                     vInit: GpuAst(kind: gpuVoid), # no initialization
+                     vRequiresMemcpy: false,
+                     vMutable: true)
+    ast.statements.insert(res, 0)
+    # NOTE: The compiler rewrites expressions at the end of a `proc` into
+    # an assignment to `block: result = <expression>` for us.
+    if not lastIsReturn(ast):
+      # insert `return result`
+      ast.statements.add GpuAst(kind: gpuReturn, rValue: resId)
+
 proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
   ## XXX: things still left to do:
   ## - support `result` variable? Currently not supported. Maybe we will won't
@@ -623,6 +668,7 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
 
       result.pBody = ctx.toGpuAst(node.body)
         .ensureBlock() # single line procs should be a block to generate `;`
+      result.pBody.maybeInsertResult(result.pRetType, result.pName.ident())
 
       # Add to table of known functions
       if result.pName notin ctx.allFnTab:
@@ -764,6 +810,7 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     result.bOp = assignOp(node[0].repr, isBoolean) # repr so that open sym choice gets correct name
     result.bLeft = ctx.toGpuAst(node[1])
     result.bRight = ctx.toGpuAst(node[2])
+
     # We patch the types of int / float literals. WGSL does not automatically convert literals
     # to the target type. Determining the type here _can_ fail. In that case the
     # `lType` field will just be `gtVoid`, like the default.
