@@ -348,6 +348,7 @@ proc clone*(ast: GpuAst): GpuAst =
     result.forwardDeclare = result.forwardDeclare
   of gpuCall:
     result = GpuAst(kind: gpuCall)
+    result.cIsExpr = ast.cIsExpr
     result.cName = ast.cName.clone()
     for arg in ast.cArgs:
       result.cArgs.add(arg.clone())
@@ -465,7 +466,6 @@ proc clone*(ast: GpuAst): GpuAst =
     result.convExpr = ast.convExpr.clone()
   of gpuCast:
     result = GpuAst(kind: gpuCast)
-    result.cIsExpr = ast.cIsExpr
     result.cTo = ast.cTo.clone()
     result.cExpr = ast.cExpr.clone()
   of gpuComment:
