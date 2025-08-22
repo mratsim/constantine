@@ -575,6 +575,8 @@ proc maybeInsertResult(ast: var GpuAst, retType: GpuType, fnName: string) =
           ## result variable
           echo "[WARNING] ", fnName, " has a custom `result` variable, which shadows the implicit `result`."
           return true
+      of gpuBlock: # need to look at `gpuBlock` from top level, because variables are defined in a block
+        result = result or hasCustomResult(ch)
       else:
         discard
 
