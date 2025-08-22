@@ -216,7 +216,9 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
       result.add "\n" & indentStr & "} // " & ast.blockLabel & "\n"
 
   of gpuVar:
-    result = indentStr & ast.vAttributes.join(" ") & " " & gpuTypeToString(ast.vType, ast.vName.ident())
+    let attrs = if ast.vAttributes.len > 0: ast.vAttributes.join(" ") & " "
+                else: ""
+    result = indentStr & attrs & gpuTypeToString(ast.vType, ast.vName.ident())
     # If there is an initialization, the type might require a memcpy
     if ast.vInit.kind != gpuVoid and not ast.vRequiresMemcpy:
       result &= " = " & ctx.genCuda(ast.vInit)
