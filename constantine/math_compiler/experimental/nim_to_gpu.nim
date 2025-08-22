@@ -420,7 +420,7 @@ proc collectProcAttributes(n: NimNode): set[GpuAttribute] =
     case pragma.strVal
     of "device": result.incl attDevice
     of "global": result.incl attGlobal
-    of "forceinline": result.incl attForceInline
+    of "inline", "forceinline": result.incl attForceInline
     of "nimonly", "builtin":
       # used to fully ignore functions!
       return
