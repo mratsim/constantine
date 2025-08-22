@@ -109,6 +109,7 @@ type
       pAttributes*: set[GpuAttribute] # order not important, hence set
       forwardDeclare*: bool ## can be set to true to _only_ generate a forward declaration
     of gpuCall:
+      cIsExpr*: bool ## If the call returns a value
       cName*: GpuAst ## Will be a `GpuIdent`
       cArgs*: seq[GpuAst]
     of gpuTemplateCall:
@@ -155,6 +156,7 @@ type
       aValues*: seq[string] ## XXX: make `GpuAst` for case where we store a symbol in an array
       aLitType*: GpuType # type of first element
     of gpuBlock:
+      isExpr*: bool ## Whether this block represents an expression, i.e. it returns something
       blockLabel*: string # optional name of the block. If any given, will open a `{ }` scope in CUDA
       statements*: seq[GpuAst]
       ## XXX: we could add a `locals` argument here, which would refer to all local variables
@@ -273,6 +275,10 @@ type
     ## Stores the unique identifiers (keys) and the implementations of the
     ## precise generic instantiations that are called.
     genericInsts*: OrderedTable[GpuAst, GpuAst]
+
+    ## Storse all builtin / nimonly / importc / ... functions we encounter so that we can
+    ## check if they return a value when we encounter them in a `gpuCall`
+    builtins*: OrderedTable[GpuAst, GpuAst]
 
     ## Table of all known types. Filled during Nim -> GpuAst. Includes generic
     ## instantiations, but also all other types.
@@ -409,6 +415,7 @@ proc clone*(ast: GpuAst): GpuAst =
     result.pVal = ast.pVal.clone()
   of gpuBlock:
     result = GpuAst(kind: gpuBlock)
+    result.isExpr = ast.isExpr
     result.blockLabel = ast.blockLabel
     for stmt in ast.statements:
       result.statements.add(stmt.clone())
@@ -458,6 +465,7 @@ proc clone*(ast: GpuAst): GpuAst =
     result.convExpr = ast.convExpr.clone()
   of gpuCast:
     result = GpuAst(kind: gpuCast)
+    result.cIsExpr = ast.cIsExpr
     result.cTo = ast.cTo.clone()
     result.cExpr = ast.cExpr.clone()
   of gpuComment:
