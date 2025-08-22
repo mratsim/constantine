@@ -532,6 +532,18 @@ proc gpuTypeMaybeFromSymbol(t: NimNode, n: NimNode): GpuType =
     # an existing symbol cannot be `void` by definition, then it wouldn't be a symbol. Means
     # `allowArrayIdent` triggered due to an ident in the type. Use symbol for type instead
     result = n.getTypeInst.nimToGpuType()
+
+proc isExpression(n: GpuAst): bool =
+  ## Returns whether the given AST node is an expression
+  case n.kind
+  of gpuCall: # only if it returns something!
+    result = n.cIsExpr
+  of gpuBinOp, gpuIdent, gpuLit, gpuArrayLit, gpuPrefix, gpuDot, gpuIndex, gpuObjConstr,
+     gpuAddr, gpuDeref, gpuConv, gpuCast, gpuConstExpr:
+    result = true
+  else:
+    result = false
+
 proc maybeInsertResult(ast: var GpuAst, retType: GpuType, fnName: string) =
   ## Will insert a `gpuVar` for the implicit `result` variable, unless there
   ## is a user defined `var result` that shadows it at the top level of the proc
@@ -577,6 +589,21 @@ proc maybeInsertResult(ast: var GpuAst, retType: GpuType, fnName: string) =
       # insert `return result`
       ast.statements.add GpuAst(kind: gpuReturn, rValue: resId)
 
+proc fnReturnsValue(ctx: GpuContext, fn: GpuAst): bool =
+  ## Returns true if the given `fn` (gpuIdent) returns a value.
+  ## The function can either be:
+  ## - an inbuilt function
+  ## - a generic instantiation
+  ## - contained in `allFnTab`
+  if fn in ctx.allFnTab:
+    result = ctx.allFnTab[fn].pRetType.kind != gtVoid
+  elif fn in ctx.genericInsts:
+    result = ctx.genericInsts[fn].pRetType.kind != gtVoid
+  elif fn in ctx.builtins:
+    result = ctx.builtins[fn].pRetType.kind != gtVoid
+  else:
+    raiseAssert "The function: " & $fn & " is not known anywhere."
+
 proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
   ## XXX: things still left to do:
   ## - support `result` variable? Currently not supported. Maybe we will won't
@@ -602,9 +629,18 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
                     blockLabel: blockLabel)
     for i in 1 ..< node.len: # index 0 is the block label
       result.statements.add ctx.toGpuAst(node[i])
+  of nnkBlockExpr:
+    ## XXX: For CUDA just a block?
+    let blockLabel = if node[0].kind in {nnkSym, nnkIdent}: node[0].strVal
+                     elif node[0].kind == nnkEmpty: ""
+                     else: raiseAssert "Unexpected node in block label field: " & $node.treerepr
+    result = GpuAst(kind: gpuBlock, blockLabel: blockLabel, isExpr: true)
+    for el in node:
+      if el.kind != nnkEmpty:
+        result.statements.add ctx.toGpuAst(el)
   of nnkStmtListExpr: # for statements that return a value.
     ## XXX: For CUDA just a block?
-    result = GpuAst(kind: gpuBlock)
+    result = GpuAst(kind: gpuBlock, isExpr: true)
     for el in node:
       if el.kind != nnkEmpty:
         result.statements.add ctx.toGpuAst(el)
@@ -642,7 +678,8 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
       if node.pragma.kind != nnkEmpty:
         doAssert node.pragma.len > 0, "Pragma kind non empty, but no pragma?"
         result.pAttributes = collectProcAttributes(node.pragma)
-        if result.pAttributes.len == 0: # means `nimonly` was applied
+        if result.pAttributes.len == 0: # means `nimonly` was applied / is a `builtin`
+          ctx.builtins[name] = result # store in builtins, so that we know if it returns a value when called
           return GpuAst(kind: gpuVoid)
       # Process parameters
       for i in 1 ..< node[3].len:
@@ -798,7 +835,8 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
       result.tcName = name
       result.tcArgs = args
     else:
-      result = GpuAst(kind: gpuCall)
+      let fnIsExpr = ctx.fnReturnsValue(name)
+      result = GpuAst(kind: gpuCall, cIsExpr: fnIsExpr)
       result.cName = name
       result.cArgs = args
 
