@@ -43,6 +43,17 @@ proc initGpuArrayType(aTyp: NimNode, len: int): GpuType =
   ## Construct an statically sized array type
   result = GpuType(kind: gtArray, aTyp: nimToGpuType(aTyp), aLen: len)
 
+proc toTypeDef(typ: GpuType): GpuAst =
+  ## Converts a given object or generic instantiation type into an AST of a
+  ## corresponding type def.
+  # store the type instantiation
+  result = GpuAst(kind: gpuTypeDef, tTyp: typ)
+  case typ.kind
+  of gtObject:      result.tFields = typ.oFields
+  of gtGenericInst: result.tFields = typ.gFields
+  else:
+    raiseAssert "Type: " & $pretty(typ) & " is neither object type nor generic instantiation."
+
 proc toGpuTypeKind(t: NimTypeKind): GpuTypeKind =
   case t
   #of ntyBool, ntyChar:
@@ -871,6 +882,8 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     of ntyTuple:
       # need to replace `[idx]` by field access
       let typ = nimToGpuType(node[0].getTypeImpl)
+      if typ notin ctx.types:
+        ctx.types[typ] = toTypeDef(typ)
       #doAssert typ in ctx.types
       doAssert node[1].kind == nnkIntLit
       let idx = node[1].intVal
@@ -994,15 +1007,7 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     ## this should never see `genericParam` I think
     let typ = nimToGpuType(node)
     if typ notin ctx.types: # this should handle not just local types, but also any "pulled in" type
-      # store the type instantiation
-      let typDef = GpuAst(kind: gpuTypeDef, tTyp: typ)
-      case typ.kind
-      of gtObject:      typDef.tFields = typ.oFields
-      of gtGenericInst: typDef.tFields = typ.gFields
-      else:
-        raiseAssert "Type: " & $pretty(typ) & " is neither object type nor generic instantiation."
-
-      ctx.types[typ] = typDef
+      ctx.types[typ] = toTypeDef(typ)
 
     result = GpuAst(kind: gpuObjConstr, ocType: typ)
     # get all fields of the type
@@ -1030,14 +1035,7 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
   of nnkTupleConstr:
     let typ = nimToGpuType(node)
     if typ notin ctx.types: # this should handle not just local types, but also any "pulled in" type
-      # store the type instantiation
-      let typDef = GpuAst(kind: gpuTypeDef, tTyp: typ)
-      case typ.kind
-      of gtObject:      typDef.tFields = typ.oFields
-      of gtGenericInst: typDef.tFields = typ.gFields
-      else:
-        raiseAssert "Type: " & $pretty(typ) & " is neither object type nor generic instantiation."
-      ctx.types[typ] = typDef
+      ctx.types[typ] = toTypeDef(typ)
 
     result = GpuAst(kind: gpuObjConstr, ocType: typ)
     # get all fields of the type
