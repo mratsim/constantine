@@ -339,6 +339,7 @@ proc clone*(ast: GpuAst): GpuAst =
       result.pParams.add(clonedParam)
     result.pBody = ast.pBody.clone()
     result.pAttributes = ast.pAttributes
+    result.forwardDeclare = result.forwardDeclare
   of gpuCall:
     result = GpuAst(kind: gpuCall)
     result.cName = ast.cName.clone()
