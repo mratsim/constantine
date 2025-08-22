@@ -70,6 +70,10 @@ declareCurves:
     bitwidth: 31
     modulus: "0x78000001" # `0b1111000000000000000000000000001 = 15·2²⁷ + 1 = 2³¹ - 2²⁷ + 1`
 
+  curve Goldilocks: # GoldiLocks field used in SNARKs and zkVMs
+    bitwidth: 64
+    modulus: "0xFFFFFFFF00000001" # `1111111111111111111111111111111100000000000000000000000000000001 = 2^64 - 2^32 + 1`
+
   curve Mersenne61:
     testingCurve: true
     bitwidth: 61
