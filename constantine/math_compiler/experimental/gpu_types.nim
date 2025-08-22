@@ -53,6 +53,9 @@ type
     gtUA,          # UncheckedArray (UA) mapped to runtime sized arrays
     gtGenericInst, # Instantiated generic type with one or more generic arguments (instantiated!)
     gtVoidPtr      # Opaque void pointer
+    gtInvalid      # Can be returned to indicate a call to `nimToGpuType` failed to determine a type
+                   ## XXX: make this the default value and replace all `gtVoid` placeholders by it
+
 
   GpuTypeField* = object
     name*: string
