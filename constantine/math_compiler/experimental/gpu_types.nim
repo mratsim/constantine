@@ -827,9 +827,12 @@ proc ident*(n: GpuAst): string =
   result = n.iName
 
 template withoutSemicolon*(ctx: var GpuContext, body: untyped): untyped =
-  ctx.skipSemicolon = true
-  body
-  ctx.skipSemicolon = false
+  if not ctx.skipSemicolon: # if we are already skipping, leave true
+    ctx.skipSemicolon = true
+    body
+    ctx.skipSemicolon = false
+  else:
+    body
 
 proc getInnerArrayLengths*(t: GpuType): string =
   ## Returns the lengths of the inner array types for a nested array.
