@@ -285,9 +285,12 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
       result = ctx.genCuda(expandedBody, indent)
 
   of gpuBinOp:
-    result = indentStr & "(" & ctx.genCuda(ast.bLeft) & " " &
-             ast.bOp & " " &
-             ctx.genCuda(ast.bRight) & ")"
+    ctx.withoutSemicolon:
+      let l = ctx.genCuda(ast.bLeft)
+      let r = ctx.genCuda(ast.bRight)
+      result = indentStr & "(" & l & " " &
+               ast.bOp & " " &
+               r & ")"
 
   of gpuIdent:
     result = ast.ident()

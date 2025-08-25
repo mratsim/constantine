@@ -931,9 +931,12 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
       result = ctx.genWebGpu(expandedBody, indent)
 
   of gpuBinOp:
-    result = indentStr & "(" & ctx.genWebGpu(ast.bLeft) & " " &
-             ast.bOp & " " &
-             ctx.genWebGpu(ast.bRight) & ")"
+    ctx.withoutSemicolon:
+      let l = ctx.genWebGpu(ast.bLeft)
+      let r = ctx.genWebGpu(ast.bRight)
+      result = indentStr & "(" & l & " " &
+               ast.bOp & " " &
+               r & ")"
 
   of gpuIdent:
     result = ast.ident()
