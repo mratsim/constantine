@@ -94,7 +94,6 @@ proc initGpuGenericInst(t: NimNode): GpuType =
     result = initGpuGenericInst(t[0])
   else:
     raiseAssert "Unexpected node kind in for genericInst: " & $t.treerepr
-  echo "Got generic inst: ", result
 
 proc unpackGenericInst(t: NimNode): NimNode =
   let tKind = t.typeKind
