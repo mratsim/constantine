@@ -681,6 +681,8 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     if node[2].kind == nnkGenericParams: # is a generic
       ctx.generics.incl name.iName # need to use raw name, *not* symbol
       result = GpuAst(kind: gpuVoid)
+    elif node.body.kind == nnkEmpty: # just a forward declaration
+      result = GpuAst(kind: gpuVoid)
     else:
       result = GpuAst(kind: gpuProc)
       result.pName = name
