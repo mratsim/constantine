@@ -427,6 +427,8 @@ proc collectProcAttributes(n: NimNode): set[GpuAttribute] =
       return # this _should_ be a builtin function that has a counterpart in Nim, e.g. `math.ceil`
     of "varargs": # attached to some builtins, e.g. `printf` on CUDA backend
       continue
+    of "magic":
+      return
     else:
       raiseAssert "Unexpected pragma for procs: " & $pragma.treerepr
 
