@@ -584,7 +584,7 @@ proc maybeInsertResult(ast: var GpuAst, retType: GpuType, fnName: string) =
     doAssert n.kind == gpuBlock
     if n.statements[^1].kind == gpuReturn: return true
 
-  if not hasCustomResult(ast):
+  if not hasCustomResult(ast) and not lastIsReturn(ast):
     # insert `gpuVar` as the *first* statement
     let resId = GpuAst(kind: gpuIdent, iName: "result",
                        iSym: "result",
