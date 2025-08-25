@@ -501,6 +501,16 @@ proc getFnName(ctx: var GpuContext, n: NimNode): GpuAst =
           result = ctx.toGpuAst(n) # if _no_ pragma
       else:
         result = ctx.toGpuAst(n) # if not proc or func
+
+      # handle overloads with different signatures
+      if n.strVal in ctx.symChoices:
+        # this is an overload of another function with different signature (not a generic, but
+        # overloads are not allowed in CUDA/WGSL/...). Update `sigTab` entry by using `iSym`
+        # for `iName` field for unique name
+        let id = ctx.sigTab[sig]
+        id.iName = id.iSym
+      else:
+        ctx.symChoices.incl result.iName # store this name in `symChoices`
   else:
     # else we use the str representation (repr for open / closed sym choice nodes)
     result = toAst n.repr
@@ -665,7 +675,7 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     # the `generics` set. When we encounter a `gpuCall` we will then check if the function
     # being called is part of the generic set and look up its _instantiated_ implementation
     # to parse it. The parsed generics are stored in the `genericInsts` table.
-    let name = ctx.toGpuAst(node.name)
+    let name = ctx.getFnName(node.name)
     if node[2].kind == nnkGenericParams: # is a generic
       ctx.generics.incl name.iName # need to use raw name, *not* symbol
       result = GpuAst(kind: gpuVoid)
