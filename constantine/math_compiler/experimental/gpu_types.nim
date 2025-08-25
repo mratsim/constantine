@@ -285,6 +285,13 @@ type
     ## Key: the raw type. Value: a full `gpuTypeDef`
     types*: OrderedTable[GpuType, GpuAst]
 
+    ## This is _effectively_ just a set of all already produced function symbols.
+    ## We use it to determine if when encountering another function with the same
+    ## name, but different arguments to instead of using `iName` to use `iSym` as
+    ## the function name. This is to avoid overload issues in backends that don't
+    ## allow overloading by function signatures.
+    symChoices*: HashSet[string]
+
   ## We rely on being able to compute a `newLit` from the result of `toGpuAst`. Currently we
   ## only need the `genericInsts` field data (the values). Trying to `newLit` the full `GpuContext`
   ## causes trouble.
