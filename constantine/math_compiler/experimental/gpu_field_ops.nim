@@ -189,52 +189,58 @@ template defWGSLHelpers*(): untyped {.dirty.} =
   ## Global variable to simulate carry flag. Private == one for each thread
   var carry_flag {.private.}: uint32 = 0'u32
 
-  # Add with carry out (sets carry flag)
   proc add_co(a: uint32, b: uint32): uint32 {.device.} =
+    # Add with carry out (sets carry flag)
     let result = a + b
     # Check for overflow: carry occurs if result < a (or result < b)
     carry_flag = select(0'u32, 1'u32, result < a)
     return result
 
-  # Add with carry in and carry out
   proc add_cio(a: uint32, b: uint32): uint32 {.device.} =
+    # Add with carry in and carry out
     let temp = a + b
     let result = temp + carry_flag
     # Carry out if: temp overflowed OR (temp + carry overflowed)
     carry_flag = select(0'u32, 1'u32, (temp < a) or (result < temp))
     return result
 
-  # Add with carry in only
   proc add_ci(a: uint32, b: uint32): uint32 {.device.} =
+    # Add with carry in only.
+    # NOTE: `carry_flag` is not reset, because the next call after
+    # an `add_ci` *must* be `add_co` or `sub_bo`, but never
+    # `add/sub_cio/ci`!
     let temp = a + b
     let result = temp + carry_flag
     # Don't update carry flag for this operation
     return result
 
-  # Subtract with borrow out (sets borrow flag)
   proc sub_bo(a: uint32, b: uint32): uint32 {.device.} =
+    # Subtract with borrow out (sets borrow flag)
     let result = a - b
     # Borrow occurs if a < b
     carry_flag = select(0'u32, 1'u32, a < b)
     return result
 
-  # Subtract with borrow in only
-  proc sub_bi(a: uint32, b: uint32): uint32 {.device.} =
-    let temp = a - b
-    let result = temp - carry_flag
-    # Don't update carry flag for this operation
-    return result
-
-  # Subtract with borrow in and borrow out
   proc sub_bio(a: uint32, b: uint32): uint32 {.device.} =
+    # Subtract with borrow in and borrow out
+    # NOTE: `carry_flag` is not reset, because the next call after
+    # an `add_ci` *must* be `add_co` or `sub_bo`, but never
+    # `add/sub_cio/ci`!
     let temp = a - b
     let result = temp - carry_flag
     # Borrow out if: a < b OR (temp - borrow underflowed)
     carry_flag = select(0'u32, 1'u32, (a < b) or (temp < carry_flag))
     return result
 
-  # Select based on condition (equivalent to PTX slct)
+  proc sub_bi(a: uint32, b: uint32): uint32 {.device.} =
+    # Subtract with borrow in only
+    let temp = a - b
+    let result = temp - carry_flag
+    # Don't update carry flag for this operation
+    return result
+
   proc slct(a: uint32, b: uint32, pred: int32): uint32 {.device.} =
+    # Select based on condition (equivalent to PTX slct)
     return select(b, a, pred >= 0)
 
   proc mul_lo(a, b: uint32): uint32 {.device, forceinline.} =
@@ -261,8 +267,8 @@ template defWGSLHelpers*(): untyped {.dirty.} =
 
     return p3 + (p1 shr 16) + (p2 shr 16) + carry
 
-  # r <- a * b + c (multiply-add low)
   proc mulloadd(a, b, c: uint32): uint32 {.device, forceinline.} =
+    # r <- a * b + c (multiply-add low)
     return mul_lo(a, b) + c
 
   proc mulloadd_co(a, b, c: uint32): uint32 {.device, forceinline.} =
@@ -280,8 +286,8 @@ template defWGSLHelpers*(): untyped {.dirty.} =
     let product = mul_lo(a, b)
     return add_cio(product, c)
 
-  # r <- (a * b) >> 32 + c (multiply-add high)
   proc mulhiadd(a, b, c: uint32): uint32 {.device, forceinline.} =
+    # r <- (a * b) >> 32 + c (multiply-add high)
     return mul_hi(a, b) + c
 
   proc mulhiadd_co(a, b, c: uint32): uint32 {.device, forceinline.} =
@@ -582,7 +588,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r = mtymul_CIOS_sparebit(a, b, M, true)
 
   proc ccopy(a: var BigInt, b: BigInt, condition: bool) {.device.} =
-    ## Conditional copy in CUDA
+    ## Conditional copy.
     ## If condition is true: b is copied into a
     ## If condition is false: a is left unmodified
     ##
@@ -599,7 +605,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
       a[i] = slct(b[i], a[i], cond)
 
   proc csetZero(r: var BigInt, condition: bool) {.device.} =
-    ## Conditionally set `r` to zero in CUDA
+    ## Conditionally set `r` to zero.
     ##
     ## Note: This is constant-time
     var t = BigInt()
@@ -607,14 +613,14 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r.ccopy(t, condition)
 
   proc csetOne(r: var BigInt, condition: bool) {.device.} =
-    ## Conditionally set `r` to one in CUDA
+    ## Conditionally set `r` to one.
     ##
     ## Note: This is constant-time
     template mOne: untyped = MontyOne
     r.ccopy(mOne, condition)
 
   proc cadd(r: var BigInt, a: BigInt, condition: bool) {.device.} =
-    ## Conditionally add `a` to `r` in place in CUDA.
+    ## Conditionally add `a` to `r` in place..
     ##
     ## Note: This is constant-time
     var t = BigInt()
@@ -622,7 +628,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r.ccopy(t, condition)
 
   proc csub(r: var BigInt, a: BigInt, condition: bool) {.device.} =
-    ## Conditionally subtract `a` from `r` in place in CUDA.
+    ## Conditionally subtract `a` from `r` in place.
     ##
     ## Note: This is constant-time
     var t = BigInt()
@@ -630,14 +636,13 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r.ccopy(t, condition)
 
   proc doubleElement(r: var BigInt, a: BigInt) {.device.} =
-    ## Double `a` and store it in `r` in CUDA.
+    ## Double `a` and store it in `r`.
     ##
     ## Note: This is constant-time
     r.add(a, a)
 
   proc nsqr(r: var BigInt, a: BigInt, count: int) {.device.} =
-    ## Performs `nsqr`, that is multiple squarings of `a` and stores it in `r`
-    ## in CUDA.
+    ## Performs `nsqr`, that is multiple squarings of `a` and stores it in `r`.
     ##
     ## Note: This is constant-time
     ##
@@ -649,7 +654,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r = mtymul_CIOS_sparebit(r, r, M, finalReduce = true)
 
   proc isZero(r: var bool, a: BigInt) {.device.} =
-    ## Checks if `a` is zero in CUDA. Result is written to `r`.
+    ## Checks if `a` is zero. Result is written to `r`.
     ##
     ## Note: This is constant-time
     #r = true
@@ -661,7 +666,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r = isZero == 0'u32
 
   proc isOdd(r: var bool, a: BigInt) {.device.} =
-    ## Checks if the Montgomery value of `a` is odd in CUDA. Result is written to `r`.
+    ## Checks if the Montgomery value of `a` is odd. Result is written to `r`.
     ##
     ## IMPORTANT: The canonical value may or may not be odd if the Montgomery
     ## representation is odd (and vice versa!).
@@ -671,7 +676,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r = (a[0] and 1'u32).bool
 
   proc neg(r: var BigInt, a: BigInt) {.device.} =
-    ## Computes the negation of `a` and stores it in `r` in CUDA.
+    ## Computes the negation of `a` and stores it in `r`.
     ##
     ## Note: This is constant-time
     # Check if input is zero
@@ -687,14 +692,14 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
 
   proc cneg(r: var BigInt, a: BigInt, condition: bool) {.device.} =
     ## Conditionally negate `a` and store it in `r` if `condition` is true, otherwise
-    ## copy over `a` into `r` in CUDA.
+    ## copy over `a` into `r`.
     ##
     ## Note: This is constant-time
     r.neg(a)
     r.ccopy(a, not condition)
 
   proc shiftRight(r: var BigInt, k: uint32) {.device.} =
-    ## Shift `r` right by `k` bits in-nplace in CUDA.
+    ## Shift `r` right by `k` bits in-nplace.
     ##
     ## k MUST be less than the base word size (2^31)
     ##
@@ -716,7 +721,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r[lastIdx] = r[lastIdx] shr k
 
   proc div2(r: var BigInt) {.device.} =
-    ## Divide `r` by 2 in-place in CUDA.
+    ## Divide `r` by 2 in-place.
     ##
     ## Note: This is constant-time
     # check if the input is odd
