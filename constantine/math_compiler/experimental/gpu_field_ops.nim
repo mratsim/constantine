@@ -306,6 +306,113 @@ template defWGSLHelpers*(): untyped {.dirty.} =
     return add_cio(hi_product, c)
 
 
+template defBigIntCompare*(): untyped {.dirty.} =
+  ## This template adds a comparison operator for BigInts `<` (which is rewritten to
+  ## a function call `less`) as well as a `toCanonical` function to turn a Montgomery
+  ## representation into a canonical representation.
+  ## It is included in the `defCoreFieldOps` by default, so you need not manually use it.
+
+  proc less(a, b: BigInt): bool {.device.} =
+    ## Returns true if a < b for two big ints in *canonical*
+    ## representation.
+    ##
+    ## NOTE: The inputs are compared *as is*. That means if they are
+    ## in Montgomery representation the result will not reflect the
+    ## ordering relation of their associated canonical values!
+    ## Call `toCanonical` on field elements in Montgomery order before
+    ## comparing them.
+    ##
+    ## Comparison is constant-time
+    var borrow: uint32
+    # calculate sub with borrows for side effect. Use borrow flag
+    # at the end to determine if value was smaller
+    discard sub_bo(a[0], b[0])
+    staticFor i, 1, a.len:
+      discard sub_bio(a[i], b[i])
+    borrow = sub_bi(0'u32, 0'u32)
+    return borrow.bool
+
+  # template to rewrite `<` into a function call. Most backends don't allow custom operators
+  template `<`(b1, b2: BigInt): untyped = less(b1, b2)
+
+  proc muladd1_gpu(hi, lo: var uint32, a, b, c: uint32) {.device, forceinline.} =
+    ## Extended precision multiplication + addition
+    ## (hi, lo) <- a*b + c
+    ##
+    ## Note: 0xFFFFFFFF_FFFFFFFF² -> (hi: 0xFFFFFFFFFFFFFFFE, lo: 0x0000000000000001)
+    ##       so adding any c cannot overflow
+    ##
+    ## Note: `_gpu` prefix to not confuse Nim compiler with `precompute/muladd1`
+    lo = mulloadd_co(a, b, c)     # low part of a*b + c with carry out
+    hi = mulhiadd_ci(a, b, 0'u32) # high part of a*b with carry in
+
+  proc muladd2_gpu(hi, lo: var uint32, a, b, c1, c2: uint32) {.device, forceinline.} =
+    ## Extended precision multiplication + addition + addition
+    ## (hi, lo) <- a*b + c1 + c2
+    ##
+    ## Note: 0xFFFFFFFF_FFFFFFFF² -> (hi: 0xFFFFFFFFFFFFFFFE, lo: 0x0000000000000001)
+    ##       so adding 0xFFFFFFFFFFFFFFFF leads to (hi: 0xFFFFFFFFFFFFFFFF, lo: 0x0000000000000000)
+    ##       and we have enough space to add again 0xFFFFFFFFFFFFFFFF without overflowing
+    ##
+    ## Note: `_gpu` prefix to not confuse Nim compiler with `precompute/muladd2`
+    lo = mulloadd_co(a, b, c1)    # low part of a*b + c1 with carry out
+    hi = mulhiadd_ci(a, b, 0'u32) # high part of a*b with carry in
+    # Add c2 with carry propagation
+    lo = add_co(lo, c2)
+    hi = add_ci(hi, 0'u32)
+
+  proc sub_no_mod(a, b: BigInt): BigInt {.device.} =
+    ## Generate an optimized substraction kernel
+    ## with parameters `a, b, modulus: Limbs -> Limbs`
+    ## I.e. this does _not_ perform modular reduction.
+    var t = BigInt()
+    t[0] = sub_bo(a[0], b[0])
+    staticFor i, 1, a.len:
+      t[i] = sub_bio(a[i], b[i])
+    return t
+
+  proc sub_no_mod(r: var BigInt, a, b: BigInt) {.device.} =
+    ## Subtraction of two finite field elements stored in `a` and `b`
+    ## *without* modular reduction.
+    ## The result is stored in `r`.
+    r = sub_no_mod(a, b)
+
+  proc csub_no_mod(r: var BigInt, a: BigInt, condition: bool) {.device.} =
+    ## Conditionally subtract `a` from `r` in place *without* modular
+    ## reduction.
+    ##
+    ## Note: This is constant-time
+    var t = BigInt()
+    t.sub_no_mod(r, a)
+    r.ccopy(t, condition)
+
+  proc fromMont_CIOS(r: var BigInt, a, M: BigInt, m0ninv: uint32) {.device.} =
+    ## Convert from Montgomery form to canonical BigInt form
+    # for i in 0 .. n-1:
+    #   m <- t[0] * m0ninv mod 2ʷ (i.e. simple multiplication)
+    #   C, _ = t[0] + m * M[0]
+    #   for j in 1 ..n-1:
+    #     (C, t[j-1]) <- r[j] + m*M[j] + C
+    #   t[n-1] = C
+
+    var t = a # Ensure working in registers
+
+    staticFor i, 0, N:
+      let m = t[0] * m0ninv
+      var C, lo: uint32
+      muladd1_gpu(C, lo, m, M[0], t[0])
+      staticFor j, 1, N:
+        muladd2_gpu(C, t[j-1], m, M[j], C, t[j])
+      t[N-1] = C
+
+    t.csub_no_mod(M, not (t < M))
+    r = t
+
+  proc toCanonical(b: BigInt): BigInt {.device.} =
+    var canon: BigInt
+    canon.fromMont_CIOS(b, M, M0NInv)
+    return canon
+
 template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   # Need to get the limbs & spare bits data in a static context
   template getM0ninv(): untyped = static: T.getModulus().negInvModWord().uint32
