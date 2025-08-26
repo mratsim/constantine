@@ -346,10 +346,15 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     result = "(*" & ctx.genCuda(ast.dOf) & ")"
 
   of gpuConstexpr:
+    ## TODO: We need to change the code such that we emit `constexpr` inside of procs and
+    ## `__constant__` outside of procs. The point is we want to support mapping to `__constant__`
+    ## for `const foo = bar` Nim declarations to evaluate values at Nim's compile time.
+    ## Alternatively, make user write `const foo {.constant.} = bar` to produce a global
+    ## `__constant__` value.
     if ast.cType.kind == gtArray:
-      result = indentStr & "__constant__ " & gpuTypeToString(ast.cType, ctx.genCuda(ast.cIdent)) & " = " & ctx.genCuda(ast.cValue)
+      result = indentStr & "constexpr " & gpuTypeToString(ast.cType, ctx.genCuda(ast.cIdent)) & " = " & ctx.genCuda(ast.cValue)
     else:
-      result = indentStr & "__constant__ " & gpuTypeToString(ast.cType, allowEmptyIdent = true) & " " & ctx.genCuda(ast.cIdent) & " = " & ctx.genCuda(ast.cValue)
+      result = indentStr & "constexpr " & gpuTypeToString(ast.cType, allowEmptyIdent = true) & " " & ctx.genCuda(ast.cIdent) & " = " & ctx.genCuda(ast.cValue)
 
   else:
     echo "Unhandled node kind in genCuda: ", ast.kind
