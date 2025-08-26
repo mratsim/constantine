@@ -427,6 +427,10 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   const PP1D2 = toBigInt(bigintToUint32Limbs(T.getPrimePlus1div2))
   const M0NInv = getM0ninv().uint32
 
+  # `ccopy` needed for BigInt comparison logic
+  proc ccopy(a: var BigInt, b: BigInt, condition: bool) {.device.}
+  defBigIntCompare() # contains `toCanonical` and `<` comparison for canonical BigInts
+
   proc finalSubMayOverflow(a, M: BigInt): BigInt {.device.} =
     ## If a >= Modulus: r <- a-M
     ## else:            r <- a
@@ -511,7 +515,6 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
       t[i] = sub_bio(a[i], b[i])
 
     let underflowMask = sub_bi(0'u32, 0'u32)
-
     # If underflow
     # TODO: predicated mov instead?
     var maskedM: BigInt = BigInt()
@@ -523,7 +526,6 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
       t[i] = add_cio(t[i], maskedM[i])
     when N > 1:
       t[N-1] = add_ci(t[N-1], maskedM[N-1])
-
     return t
 
   proc mtymul_CIOS_sparebit(a, b, M: BigInt, finalReduce: bool): BigInt {.device.} =
@@ -689,11 +691,6 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     ## The result is stored in `r`.
     r = modsub(a, b, M)
 
-  proc mul(r: var BigInt, a, b: BigInt) {.device.} =
-    ## Multiplication of two finite field elements stored in `a` and `b`.
-    ## The result is stored in `r`.
-    r = mtymul_CIOS_sparebit(a, b, M, true)
-
   proc ccopy(a: var BigInt, b: BigInt, condition: bool) {.device.} =
     ## Conditional copy.
     ## If condition is true: b is copied into a
@@ -772,6 +769,11 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
       isZero = isZero or a[i]
     r = isZero == 0'u32
 
+  proc isZero(a: BigInt): bool {.device, forceinline.} =
+    result.isZero(a)
+  proc isNonZero(a: BigInt): bool {.device, forceinline.} =
+    result = not isZero(a)
+
   proc isOdd(r: var bool, a: BigInt) {.device.} =
     ## Checks if the Montgomery value of `a` is odd. Result is written to `r`.
     ##
@@ -840,3 +842,71 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
 
     # if it was odd, add `M+1/2` to go 'half-way around'
     r.cadd(PP1D2, isO)
+
+  proc mul_lohi(hi, lo: var uint32, a, b: uint32) {.device, forceinline.} =
+    lo = mul_lo(a, b)
+    hi = mul_hi(a, b)
+
+  proc mulAcc(t, u, v: var uint32, a, b: uint32) {.device, forceinline.} =
+    ## (t, u, v) <- (t, u, v) + a * b
+    v = mulloadd_co(a, b, v)     # v = (a*b).low + v, with carry out
+    u = mulhiadd_cio(a, b, u)    # u = (a*b).high + u + carry, with carry out
+    t = add_ci(t, 0'u32)         # t = t + carry
+
+  proc mtymul_FIPS(a, b, M: BigInt, lazyReduce: static bool = false): BigInt {.device.} =
+    ## Montgomery Multiplication using Finely Integrated Product Scanning (FIPS).
+    ## This implementation can be used for fields that do not have any spare bits.
+    ##
+    ## This maps
+    ## - [0, 2p) -> [0, 2p) with lazyReduce
+    ## - [0, 2p) -> [0, p) without
+    ##
+    ## lazyReduce skips the final substraction step.
+    # - Architectural Enhancements for Montgomery
+    #   Multiplication on Embedded RISC Processors
+    #   Johann Großschädl and Guy-Armand Kamendje, 2003
+    #   https://pure.tugraz.at/ws/portalfiles/portal/2887154/ACNS2003_AEM.pdf
+    #
+    # - New Speed Records for Montgomery Modular
+    #   Multiplication on 8-bit AVR Microcontrollers
+    #   Zhe Liu and Johann Großschädl, 2013
+    #   https://eprint.iacr.org/2013/882.pdf
+    template m0ninv: untyped = M0NInv
+    var z = BigInt() # zero-init, ensure on stack and removes in-place problems in tower fields
+    const L = a.len
+    var t, u, v = 0'u32
+
+    staticFor i, 0, L:
+      staticFor j, 0, i:
+        mulAcc(t, u, v, a[j], b[i-j])
+        mulAcc(t, u, v, z[j], M[i-j])
+      mulAcc(t, u, v, a[i], b[0])
+      z[i] = v * m0ninv
+      mulAcc(t, u, v, z[i], M[0])
+      v = u
+      u = t
+      t = 0'u32
+
+    staticFor i, L, 2*L:
+      staticFor j, i-L+1, L:
+        mulAcc(t, u, v, a[j], b[i-j])
+        mulAcc(t, u, v, z[j], M[i-j])
+      z[i-L] = v
+      v = u
+      u = t
+      t = 0'u32
+
+    when not lazyReduce:
+      let cond = v != 0 or not(z < M)
+      # conditionally subtract using *non modular subtraction*. If `cond == true`,
+      # we are in `M <= z <= 2M` and can safely subtract `M`.
+      z.csub_no_mod(M, cond)
+    return z
+
+  proc mul(r: var BigInt, a, b: BigInt) {.device.} =
+    ## Multiplication of two finite field elements stored in `a` and `b`.
+    ## The result is stored in `r`.
+    when spareBits() >= 1:
+      r = mtymul_CIOS_sparebit(a, b, M, true)
+    else: # e.g. Goldilocks
+      r = mtymul_FIPS(a, b, M, false)
