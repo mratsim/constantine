@@ -41,9 +41,9 @@ unsafe extern "C" {
 #[repr(align(64))]
 #[derive(Copy, Clone)]
 pub struct ctt_sha256_context {
-    message_schedule: [u32; 16usize],
-    buf: [byte; 64usize],
-    msgLen: u64,
+    pub message_schedule: [u32; 16usize],
+    pub buf: [byte; 64usize],
+    pub msgLen: u64,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -56,6 +56,15 @@ const _: () = {
     ["Offset of field: ctt_sha256_context::msgLen"]
         [::core::mem::offset_of!(ctt_sha256_context, msgLen) - 128usize];
 };
+impl Default for ctt_sha256_context {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 unsafe extern "C" {
     #[doc = " Initialize or reinitialize a Sha256 context."]
     pub fn ctt_sha256_init(ctx: *mut ctt_sha256_context);
@@ -89,9 +98,9 @@ unsafe extern "C" {
     pub fn ctt_csprng_sysrand(buffer: *mut ::core::ffi::c_void, len: usize) -> bool;
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct big381 {
-    limbs: [secret_word; 6usize],
+    pub limbs: [secret_word; 6usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -100,9 +109,9 @@ const _: () = {
     ["Offset of field: big381::limbs"][::core::mem::offset_of!(big381, limbs) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct big255 {
-    limbs: [secret_word; 4usize],
+    pub limbs: [secret_word; 4usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -111,9 +120,9 @@ const _: () = {
     ["Offset of field: big255::limbs"][::core::mem::offset_of!(big255, limbs) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct big254 {
-    limbs: [secret_word; 4usize],
+    pub limbs: [secret_word; 4usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -122,9 +131,9 @@ const _: () = {
     ["Offset of field: big254::limbs"][::core::mem::offset_of!(big254, limbs) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct big253 {
-    limbs: [secret_word; 4usize],
+    pub limbs: [secret_word; 4usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -165,9 +174,9 @@ unsafe extern "C" {
     pub fn ctt_big381_marshalBE(dst: *mut byte, dst_len: usize, src: *const big381) -> bool;
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_fr {
-    limbs: [secret_word; 4usize],
+    pub limbs: [secret_word; 4usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -176,9 +185,9 @@ const _: () = {
     ["Offset of field: bls12_381_fr::limbs"][::core::mem::offset_of!(bls12_381_fr, limbs) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_fp {
-    limbs: [secret_word; 6usize],
+    pub limbs: [secret_word; 6usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -187,9 +196,9 @@ const _: () = {
     ["Offset of field: bls12_381_fp::limbs"][::core::mem::offset_of!(bls12_381_fp, limbs) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_fp2 {
-    c: [bls12_381_fp; 2usize],
+    pub c: [bls12_381_fp; 2usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -198,10 +207,10 @@ const _: () = {
     ["Offset of field: bls12_381_fp2::c"][::core::mem::offset_of!(bls12_381_fp2, c) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_g1_aff {
-    x: bls12_381_fp,
-    y: bls12_381_fp,
+    pub x: bls12_381_fp,
+    pub y: bls12_381_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -212,11 +221,11 @@ const _: () = {
         [::core::mem::offset_of!(bls12_381_g1_aff, y) - 48usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_g1_jac {
-    x: bls12_381_fp,
-    y: bls12_381_fp,
-    z: bls12_381_fp,
+    pub x: bls12_381_fp,
+    pub y: bls12_381_fp,
+    pub z: bls12_381_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -229,11 +238,11 @@ const _: () = {
         [::core::mem::offset_of!(bls12_381_g1_jac, z) - 96usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_g1_prj {
-    x: bls12_381_fp,
-    y: bls12_381_fp,
-    z: bls12_381_fp,
+    pub x: bls12_381_fp,
+    pub y: bls12_381_fp,
+    pub z: bls12_381_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -246,10 +255,10 @@ const _: () = {
         [::core::mem::offset_of!(bls12_381_g1_prj, z) - 96usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_g2_aff {
-    x: bls12_381_fp2,
-    y: bls12_381_fp2,
+    pub x: bls12_381_fp2,
+    pub y: bls12_381_fp2,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -260,11 +269,11 @@ const _: () = {
         [::core::mem::offset_of!(bls12_381_g2_aff, y) - 96usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_g2_jac {
-    x: bls12_381_fp2,
-    y: bls12_381_fp2,
-    z: bls12_381_fp2,
+    pub x: bls12_381_fp2,
+    pub y: bls12_381_fp2,
+    pub z: bls12_381_fp2,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -277,11 +286,11 @@ const _: () = {
         [::core::mem::offset_of!(bls12_381_g2_jac, z) - 192usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_g2_prj {
-    x: bls12_381_fp2,
-    y: bls12_381_fp2,
-    z: bls12_381_fp2,
+    pub x: bls12_381_fp2,
+    pub y: bls12_381_fp2,
+    pub z: bls12_381_fp2,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -1274,9 +1283,9 @@ unsafe extern "C" {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_fr {
-    limbs: [secret_word; 4usize],
+    pub limbs: [secret_word; 4usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -1286,9 +1295,9 @@ const _: () = {
         [::core::mem::offset_of!(bn254_snarks_fr, limbs) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_fp {
-    limbs: [secret_word; 4usize],
+    pub limbs: [secret_word; 4usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -1298,9 +1307,9 @@ const _: () = {
         [::core::mem::offset_of!(bn254_snarks_fp, limbs) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_fp2 {
-    c: [bn254_snarks_fp; 2usize],
+    pub c: [bn254_snarks_fp; 2usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -1309,10 +1318,10 @@ const _: () = {
     ["Offset of field: bn254_snarks_fp2::c"][::core::mem::offset_of!(bn254_snarks_fp2, c) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_g1_aff {
-    x: bn254_snarks_fp,
-    y: bn254_snarks_fp,
+    pub x: bn254_snarks_fp,
+    pub y: bn254_snarks_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -1324,11 +1333,11 @@ const _: () = {
         [::core::mem::offset_of!(bn254_snarks_g1_aff, y) - 32usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_g1_jac {
-    x: bn254_snarks_fp,
-    y: bn254_snarks_fp,
-    z: bn254_snarks_fp,
+    pub x: bn254_snarks_fp,
+    pub y: bn254_snarks_fp,
+    pub z: bn254_snarks_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -1342,11 +1351,11 @@ const _: () = {
         [::core::mem::offset_of!(bn254_snarks_g1_jac, z) - 64usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_g1_prj {
-    x: bn254_snarks_fp,
-    y: bn254_snarks_fp,
-    z: bn254_snarks_fp,
+    pub x: bn254_snarks_fp,
+    pub y: bn254_snarks_fp,
+    pub z: bn254_snarks_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -1360,10 +1369,10 @@ const _: () = {
         [::core::mem::offset_of!(bn254_snarks_g1_prj, z) - 64usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_g2_aff {
-    x: bn254_snarks_fp2,
-    y: bn254_snarks_fp2,
+    pub x: bn254_snarks_fp2,
+    pub y: bn254_snarks_fp2,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -1375,11 +1384,11 @@ const _: () = {
         [::core::mem::offset_of!(bn254_snarks_g2_aff, y) - 64usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_g2_jac {
-    x: bn254_snarks_fp2,
-    y: bn254_snarks_fp2,
-    z: bn254_snarks_fp2,
+    pub x: bn254_snarks_fp2,
+    pub y: bn254_snarks_fp2,
+    pub z: bn254_snarks_fp2,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -1393,11 +1402,11 @@ const _: () = {
         [::core::mem::offset_of!(bn254_snarks_g2_jac, z) - 128usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_g2_prj {
-    x: bn254_snarks_fp2,
-    y: bn254_snarks_fp2,
-    z: bn254_snarks_fp2,
+    pub x: bn254_snarks_fp2,
+    pub y: bn254_snarks_fp2,
+    pub z: bn254_snarks_fp2,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -2451,9 +2460,9 @@ unsafe extern "C" {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct pallas_fr {
-    limbs: [secret_word; 4usize],
+    pub limbs: [secret_word; 4usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -2462,9 +2471,9 @@ const _: () = {
     ["Offset of field: pallas_fr::limbs"][::core::mem::offset_of!(pallas_fr, limbs) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct pallas_fp {
-    limbs: [secret_word; 4usize],
+    pub limbs: [secret_word; 4usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -2473,10 +2482,10 @@ const _: () = {
     ["Offset of field: pallas_fp::limbs"][::core::mem::offset_of!(pallas_fp, limbs) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct pallas_ec_aff {
-    x: pallas_fp,
-    y: pallas_fp,
+    pub x: pallas_fp,
+    pub y: pallas_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -2486,11 +2495,11 @@ const _: () = {
     ["Offset of field: pallas_ec_aff::y"][::core::mem::offset_of!(pallas_ec_aff, y) - 32usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct pallas_ec_jac {
-    x: pallas_fp,
-    y: pallas_fp,
-    z: pallas_fp,
+    pub x: pallas_fp,
+    pub y: pallas_fp,
+    pub z: pallas_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -2501,11 +2510,11 @@ const _: () = {
     ["Offset of field: pallas_ec_jac::z"][::core::mem::offset_of!(pallas_ec_jac, z) - 64usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct pallas_ec_prj {
-    x: pallas_fp,
-    y: pallas_fp,
-    z: pallas_fp,
+    pub x: pallas_fp,
+    pub y: pallas_fp,
+    pub z: pallas_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -2974,9 +2983,9 @@ unsafe extern "C" {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct vesta_fr {
-    limbs: [secret_word; 4usize],
+    pub limbs: [secret_word; 4usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -2985,9 +2994,9 @@ const _: () = {
     ["Offset of field: vesta_fr::limbs"][::core::mem::offset_of!(vesta_fr, limbs) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct vesta_fp {
-    limbs: [secret_word; 4usize],
+    pub limbs: [secret_word; 4usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -2996,10 +3005,10 @@ const _: () = {
     ["Offset of field: vesta_fp::limbs"][::core::mem::offset_of!(vesta_fp, limbs) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct vesta_ec_aff {
-    x: vesta_fp,
-    y: vesta_fp,
+    pub x: vesta_fp,
+    pub y: vesta_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -3009,11 +3018,11 @@ const _: () = {
     ["Offset of field: vesta_ec_aff::y"][::core::mem::offset_of!(vesta_ec_aff, y) - 32usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct vesta_ec_jac {
-    x: vesta_fp,
-    y: vesta_fp,
-    z: vesta_fp,
+    pub x: vesta_fp,
+    pub y: vesta_fp,
+    pub z: vesta_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -3024,11 +3033,11 @@ const _: () = {
     ["Offset of field: vesta_ec_jac::z"][::core::mem::offset_of!(vesta_ec_jac, z) - 64usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct vesta_ec_prj {
-    x: vesta_fp,
-    y: vesta_fp,
-    z: vesta_fp,
+    pub x: vesta_fp,
+    pub y: vesta_fp,
+    pub z: vesta_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -3559,9 +3568,9 @@ unsafe extern "C" {
     ) -> ctt_codec_ecc_status;
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct banderwagon_fr {
-    limbs: [secret_word; 4usize],
+    pub limbs: [secret_word; 4usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -3571,9 +3580,9 @@ const _: () = {
         [::core::mem::offset_of!(banderwagon_fr, limbs) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct banderwagon_fp {
-    limbs: [secret_word; 4usize],
+    pub limbs: [secret_word; 4usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -3583,10 +3592,10 @@ const _: () = {
         [::core::mem::offset_of!(banderwagon_fp, limbs) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct banderwagon_ec_aff {
-    x: banderwagon_fp,
-    y: banderwagon_fp,
+    pub x: banderwagon_fp,
+    pub y: banderwagon_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -3598,11 +3607,11 @@ const _: () = {
         [::core::mem::offset_of!(banderwagon_ec_aff, y) - 32usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct banderwagon_ec_jac {
-    x: banderwagon_fp,
-    y: banderwagon_fp,
-    z: banderwagon_fp,
+    pub x: banderwagon_fp,
+    pub y: banderwagon_fp,
+    pub z: banderwagon_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -3616,11 +3625,11 @@ const _: () = {
         [::core::mem::offset_of!(banderwagon_ec_jac, z) - 64usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct banderwagon_ec_prj {
-    x: banderwagon_fp,
-    y: banderwagon_fp,
-    z: banderwagon_fp,
+    pub x: banderwagon_fp,
+    pub y: banderwagon_fp,
+    pub z: banderwagon_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -4255,7 +4264,7 @@ unsafe extern "C" {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_bls_fp {
-    raw: [byte; 48usize],
+    pub raw: [byte; 48usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -4263,10 +4272,19 @@ const _: () = {
     ["Alignment of ctt_eth_bls_fp"][::core::mem::align_of::<ctt_eth_bls_fp>() - 1usize];
     ["Offset of field: ctt_eth_bls_fp::raw"][::core::mem::offset_of!(ctt_eth_bls_fp, raw) - 0usize];
 };
+impl Default for ctt_eth_bls_fp {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_bls_fp2 {
-    coords: [ctt_eth_bls_fp; 2usize],
+    pub coords: [ctt_eth_bls_fp; 2usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -4275,10 +4293,19 @@ const _: () = {
     ["Offset of field: ctt_eth_bls_fp2::coords"]
         [::core::mem::offset_of!(ctt_eth_bls_fp2, coords) - 0usize];
 };
+impl Default for ctt_eth_bls_fp2 {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct ctt_eth_bls_seckey {
-    raw: [byte; 32usize],
+    pub raw: [byte; 32usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -4290,8 +4317,8 @@ const _: () = {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_bls_pubkey {
-    x: ctt_eth_bls_fp,
-    y: ctt_eth_bls_fp,
+    pub x: ctt_eth_bls_fp,
+    pub y: ctt_eth_bls_fp,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -4302,11 +4329,20 @@ const _: () = {
     ["Offset of field: ctt_eth_bls_pubkey::y"]
         [::core::mem::offset_of!(ctt_eth_bls_pubkey, y) - 48usize];
 };
+impl Default for ctt_eth_bls_pubkey {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_bls_signature {
-    x: ctt_eth_bls_fp2,
-    y: ctt_eth_bls_fp2,
+    pub x: ctt_eth_bls_fp2,
+    pub y: ctt_eth_bls_fp2,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -4318,6 +4354,15 @@ const _: () = {
     ["Offset of field: ctt_eth_bls_signature::y"]
         [::core::mem::offset_of!(ctt_eth_bls_signature, y) - 96usize];
 };
+impl Default for ctt_eth_bls_signature {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_bls_batch_sig_accumulator {
@@ -4335,8 +4380,8 @@ pub enum ctt_eth_bls_status {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_span {
-    data: *mut byte,
-    len: usize,
+    pub data: *mut byte,
+    pub len: usize,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -4345,6 +4390,15 @@ const _: () = {
     ["Offset of field: ctt_span::data"][::core::mem::offset_of!(ctt_span, data) - 0usize];
     ["Offset of field: ctt_span::len"][::core::mem::offset_of!(ctt_span, len) - 8usize];
 };
+impl Default for ctt_span {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 unsafe extern "C" {
     #[must_use]
     pub fn ctt_eth_bls_pubkey_is_zero(pubkey: *const ctt_eth_bls_pubkey) -> bool;
@@ -4564,7 +4618,7 @@ pub type ctt_eth_kzg_context = ctt_eth_kzg_context_struct;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_kzg_commitment {
-    raw: [byte; 48usize],
+    pub raw: [byte; 48usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -4574,10 +4628,19 @@ const _: () = {
     ["Offset of field: ctt_eth_kzg_commitment::raw"]
         [::core::mem::offset_of!(ctt_eth_kzg_commitment, raw) - 0usize];
 };
+impl Default for ctt_eth_kzg_commitment {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_kzg_proof {
-    raw: [byte; 48usize],
+    pub raw: [byte; 48usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -4586,10 +4649,19 @@ const _: () = {
     ["Offset of field: ctt_eth_kzg_proof::raw"]
         [::core::mem::offset_of!(ctt_eth_kzg_proof, raw) - 0usize];
 };
+impl Default for ctt_eth_kzg_proof {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_kzg_blob {
-    raw: [byte; 131072usize],
+    pub raw: [byte; 131072usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -4598,10 +4670,19 @@ const _: () = {
     ["Offset of field: ctt_eth_kzg_blob::raw"]
         [::core::mem::offset_of!(ctt_eth_kzg_blob, raw) - 0usize];
 };
+impl Default for ctt_eth_kzg_blob {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct ctt_eth_kzg_opening_challenge {
-    raw: [byte; 32usize],
+    pub raw: [byte; 32usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -4613,9 +4694,9 @@ const _: () = {
         [::core::mem::offset_of!(ctt_eth_kzg_opening_challenge, raw) - 0usize];
 };
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct ctt_eth_kzg_eval_at_challenge {
-    raw: [byte; 32usize],
+    pub raw: [byte; 32usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
