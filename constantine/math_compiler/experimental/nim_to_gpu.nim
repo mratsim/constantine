@@ -328,16 +328,21 @@ proc nimToGpuType(n: NimNode, allowToFail: bool = false, allowArrayIdent: bool =
     #  error("o")
     of ntyGenericInvocation:
       result = initGpuType(gtInvalid)
-      error("Generics are not supported in the CUDA DSL so far.")
+      error("Generics are not supported in the CUDA DSL so far.") # Note: this should not appear nowadays
     of ntyGenericInst:
       result = initGpuGenericInst(n)
-      #result = n.unpackGenericInst().nimToGpuType(allowToFail)
     of ntyTypeDesc:
       # `getType` returns a `BracketExpr` of eg:
       # BracketExpr
       #   Sym "typeDesc"
       #   Sym "float32"
       result = n.getType[1].nimToGpuType(allowToFail, allowArrayIdent) # for a type desc we need to recurse using the type of it
+    of ntyUnused2:
+      # BracketExpr
+      #   Sym "lent"
+      #   Sym "BigInt"
+      doAssert n.kind == nnkBracketExpr and n[0].strVal == "lent", "ntyUnused2: " & $n.treerepr
+      result = initGpuPtrType(nimToGpuType(n[1]), implicitPtr = false)
     else:
       if allowToFail:
         result = GpuType(kind: gtVoid)
