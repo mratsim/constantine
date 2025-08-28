@@ -41,13 +41,15 @@ proc requiresCopy(n: NimNode, passStructByPointer: bool): bool =
   case n.typeKind
   of ntyBool, ntyChar, ntyInt .. ntyUint64: # range includes all floats
     result = false
-  of ntyObject, ntyArray:
+  of ntyObject:
     if passStructByPointer:
       result = false # regular objects can just be copied!
     else:
       result = true # struct passing by pointer forbidden
     ## NOTE: strictly speaking this is not the case of course! If the object
     ## contains refs, it won't hold!
+  of ntyArray: # statically sized arrays are passed by pointer in CUDA / C++ / C!
+    result = true
   of ntyGenericInst:
     if passStructByPointer:
       let impl = n.getTypeImpl()
@@ -55,6 +57,12 @@ proc requiresCopy(n: NimNode, passStructByPointer: bool): bool =
     else:
       result = true # for now assume it needs to be copied
   of ntyDistinct:
+    let impl = n.getTypeInst()
+    if impl.kind in [nnkIdent, nnkSym] and impl.strVal.normalize == "cudeviceptr":
+      result = false
+    else:
+      result = true
+  of ntyAlias:
     let impl = n.getTypeInst()
     if impl.kind in [nnkIdent, nnkSym] and impl.strVal.normalize == "cudeviceptr":
       result = false
