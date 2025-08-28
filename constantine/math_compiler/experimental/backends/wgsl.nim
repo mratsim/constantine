@@ -115,7 +115,9 @@ proc gpuTypeToString*(t: GpuType, id: GpuAst = newGpuIdent(), allowArrayToPtr = 
   of gtGenericInst:
     # NOTE: WGSL does not support actual custom generic types. And as we only anyway deal with generic instantiations
     # we simply turn e.g. `foo[float32, uint32]` into `foo_f32_u32`.
-    result = t.gName & "_"
+    result = t.gName
+    if t.gArgs.len > 0:
+      result.add "_"
     for i, g in t.gArgs:
       result.add gpuTypeToString(g)
       if i < t.gArgs.high:
