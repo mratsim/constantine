@@ -74,6 +74,7 @@ proc toGpuTypeKind(t: NimTypeKind): GpuTypeKind =
   of ntyUInt16: gtUint16
   of ntyUInt32: gtUint32
   of ntyUInt64: gtUint64
+  of ntyString: gtString
   else:
     raiseAssert "Not supported yet: " & $t
 
@@ -274,6 +275,8 @@ proc nimToGpuType(n: NimNode, allowToFail: bool = false, allowArrayIdent: bool =
     if n.kind == nnkEmpty: return initGpuType(gtVoid)
     case n.typeKind
     of ntyBool, ntyInt .. ntyUint64: # includes all float types
+      result = initGpuType(toGpuTypeKind n.typeKind)
+    of ntyString: # only supported on some backends!
       result = initGpuType(toGpuTypeKind n.typeKind)
     of ntyPtr:
       result = initGpuPtrType(getInnerPointerType(n, allowToFail, allowArrayIdent), implicitPtr = false)
