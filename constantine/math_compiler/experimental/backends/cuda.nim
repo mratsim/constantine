@@ -95,7 +95,18 @@ proc gpuTypeToString*(t: GpuType, ident: string = "", allowArrayToPtr = false,
       else:
         result = gpuTypeToString(t.aTyp, allowEmptyIdent = allowEmptyIdent) & " " & ident & "[" & $t.aLen & "]"
     skipIdent = true
+  of gtGenericInst:
+    # NOTE: WGSL does not support actual custom generic types. And as we only anyway deal with generic instantiations
+    # we simply turn e.g. `foo[float32, uint32]` into `foo_f32_u32`.
+    result = t.gName
+    if t.gArgs.len > 0:
+      result.add "_"
+    for i, g in t.gArgs:
+      result.add gpuTypeToString(g)
+      if i < t.gArgs.high:
+        result.add "_"
   of gtObject: result = t.name
+  of gtUA:     result = gpuTypeToString(t.uaTo, allowEmptyIdent = allowEmptyIdent) ## XXX: unchecked array just T?
   else:        result = gpuTypeToString(t.kind)
 
   if ident.len > 0 and not skipIdent: # still need to add ident
@@ -373,6 +384,7 @@ proc codegen*(ctx: var GpuContext): string =
     let fnC = fn.clone()
     fnC.forwardDeclare = true
     result.add ctx.genCuda(fnC) & "\n"
+  result.add "\n\n"
 
   for fnIdent, fn in ctx.fnTab:
     result.add ctx.genCuda(fn) & "\n\n"
