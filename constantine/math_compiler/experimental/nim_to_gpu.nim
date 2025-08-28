@@ -429,6 +429,7 @@ proc collectProcAttributes(n: NimNode): set[GpuAttribute] =
       continue
     of "magic":
       return
+    of "raises": discard # result.incl attDevice #discard # XXX
     else:
       raiseAssert "Unexpected pragma for procs: " & $pragma.treerepr
 
@@ -453,12 +454,13 @@ proc collectAttributes(n: NimNode): seq[GpuVarAttribute] =
     # NOTE: We don't use `parseEnum`, because on the Nim side some of the attributes
     # do not match the CUDA string we need to emit, which is what the string value of
     # the `GpuVarAttribute` enum stores
-    case pragma.strVal
-    of "cuExtern", "extern": result.add atvExtern
+    case pragma.strVal.normalize
+    of "cuextern", "extern": result.add atvExtern
     of "shared": result.add atvShared
     of "private": result.add atvPrivate
     of "volatile": result.add atvVolatile
     of "constant": result.add atvConstant
+    of "noinit": discard # XXX: ignore for now
     else:
       raiseAssert "Unexpected pragma: " & $pragma.treerepr
 
