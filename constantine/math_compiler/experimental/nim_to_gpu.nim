@@ -93,6 +93,19 @@ proc initGpuGenericInst(t: NimNode): GpuType =
   of nnkObjConstr:
     doAssert t.len == 1, "Unexpected length of ObjConstr node: " & $t.len & " of node: " & $t.treerepr
     result = initGpuGenericInst(t[0])
+  of nnkSym:
+    let impl = getTypeImpl(t)
+    case impl.kind
+    of nnkDistinctTy:
+      ## XXX: assumes distinct of inbuilt type, not object!
+      result = nimToGpuType(impl[0])
+    of nnkObjectTy:
+      doAssert impl.kind == nnkObjectTy, "Unexpected node kind for generic inst: " & $impl.treerepr
+      ## XXX: use signature hash for type name? Otherwise will produce duplicates
+      result = GpuType(kind: gtGenericInst, gName: t.repr)
+      result.gFields = parseTypeFields(impl)
+    else:
+      raiseAssert "Unexpected node kind in for genericInst: " & $t.treerepr
   else:
     raiseAssert "Unexpected node kind in for genericInst: " & $t.treerepr
 
