@@ -171,6 +171,7 @@ functions.
       doAssert n[1][1].intVal == 0, "No is: " & $n.treerepr
       result = n[1][2].intVal + 1
 
+proc getTypeName(n: NimNode, recursedSym: bool = false): string
 proc constructTupleTypeName(n: NimNode): string =
   ## XXX: overthink if this should really be here and not somewhere else
   ##
@@ -179,12 +180,14 @@ proc constructTupleTypeName(n: NimNode): string =
   ##
   ## XXX: `getTypeImpl.repr` is a hacky way to get a string name of the underlying
   ## type, e.g. for `BaseType`. Aliases would lead to duplicate tuple types.
+  ## UPDATE: I changed the implementation to recurse into `getTypeName`
+  ## TODO: verify that this did not break the tuple test & specifically check for aliases
   result = "Tuple_"
   doAssert n.kind in [nnkTupleTy, nnkTupleConstr]
   for i, ch in n:
     case ch.kind
     of nnkIdentDefs:
-      let typName = ch[ch.len - 2].getTypeImpl.repr # second to last is type name of field(s)
+      let typName = ch[ch.len - 2].getTypeName() # second to last is type name of field(s)
       for j in 0 ..< ch.len - 2:
         # Example:
         # IdentDefs
@@ -206,7 +209,7 @@ proc constructTupleTypeName(n: NimNode): string =
       #     IntLit 16
       # -> these are tuple types that are constructed in place using `(foo: bar, ar: br)`
       #    give them a slightly different name
-      let typName = ch[0].getTypeImpl.repr ## XXX
+      let typName = ch[0].getTypeName() ## XXX
       doAssert ch[0].kind == nnkSym, "Not a symbol, but: " & $ch.treerepr
       result.add ch[0].strVal & "_" & typName
       if i < n.len - 1:
@@ -215,7 +218,7 @@ proc constructTupleTypeName(n: NimNode): string =
       # TupleConstr
       #   Sym "BaseType" <-- e.g. here
       #   Sym "BaseType"
-      let typName = ch.getTypeImpl.repr
+      let typName = ch.getTypeName()
       result.add "Field" & $i & "_" & typName
       if i < n.len - 1:
         result.add "_"
@@ -232,10 +235,15 @@ proc constructTupleTypeName(n: NimNode): string =
       # -> Try again with type impl
       return constructTupleTypeName(getTypeImpl(n))
 
-proc getTypeName(n: NimNode): string =
+proc getTypeName(n: NimNode, recursedSym: bool = false): string =
   ## Returns the name of the type
   case n.kind
-  of nnkIdent, nnkSym: result = n.strVal
+  of nnkIdent: result = n.strVal
+  of nnkSym:
+    if recursedSym:
+      result = n.strVal
+    else:
+      result = n.getTypeInst.getTypeName(true)
   of nnkObjConstr:
     if n[0].kind == nnkEmpty:
       result = n.getTypeInst.strVal
