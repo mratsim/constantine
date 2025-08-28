@@ -252,6 +252,12 @@ proc getTypeName(n: NimNode, recursedSym: bool = false): string =
       result = n[0].strVal # type is the first node
   of nnkTupleTy, nnkTupleConstr:
     result = constructTupleTypeName(n)
+  of nnkBracketExpr:
+    # construct a type name `Foo_Bar_Baz`
+    for i, ch in n:
+      result.add ch.getTypeName()
+      if i < n.len - 1:
+        result.add "_"
   else: raiseAssert "Unexpected node in `getTypeName`: " & $n.treerepr
 
 proc nimToGpuType(n: NimNode, allowToFail: bool = false, allowArrayIdent: bool = false): GpuType =
