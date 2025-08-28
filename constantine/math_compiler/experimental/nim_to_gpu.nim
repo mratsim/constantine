@@ -447,7 +447,8 @@ proc isBuiltIn(n: NimNode): bool =
       return true
 
 proc collectProcAttributes(n: NimNode): set[GpuAttribute] =
-  doAssert n.kind == nnkPragma
+  doAssert n.kind in [nnkPragma, nnkEmpty]
+  if n.kind == nnkEmpty: return # no pragmas
   for pragma in n:
     doAssert pragma.kind in [nnkIdent, nnkSym, nnkCall, nnkExprColonExpr], "Unexpected node kind: " & $pragma.treerepr
     let pragma = if pragma.kind in [nnkCall, nnkExprColonExpr]: pragma[0] else: pragma
@@ -644,6 +645,16 @@ proc parseProcReturnType(ctx: var GpuContext, params: NimNode): GpuType =
       result = GpuType(kind: gtInvalid)
   ctx.maybeAddType(result)
 
+proc toGpuProcSignature(ctx: var GpuContext, params: NimNode, attrs: set[GpuAttribute]): GpuProcSignature =
+  ## Creates a `GpuProcSignature` from the given `params` node of type `nnkFormalParams`
+
+  ##
+  ## NOTE: This procedure is only called from generically instantiated procs. Therefore,
+  ## we shouldn't need to worry about getting `gtInvalid` return types here.
+  doAssert params.kind == nnkFormalParams, "Argument is not FormalParams, but: " & $params.treerepr
+  result = GpuProcSignature(params: ctx.parseProcParameters(params, attrs),
+                            retType: ctx.parseProcReturnType(params))
+
 proc addProcToGenericInsts(ctx: var GpuContext, node: NimNode, name: GpuAst) =
   ## Looks up the implementation of the given function and stores it in our table
   ## of generic instantiations.
@@ -656,9 +667,30 @@ proc addProcToGenericInsts(ctx: var GpuContext, node: NimNode, name: GpuAst) =
   let inst = node[0].getImpl()
   let sig = node[0].getTypeInst()
   inst.params = sig.params # copy over the parameters
+
+  # turn the signature into a `GpuProcSignature`
+  let attrs = collectProcAttributes(inst.pragma)
+  let procSig = ctx.toGpuProcSignature(sig.params, attrs)
+  if name in ctx.processedProcs:
+    return
+  else:
+    # Need to add isym here so that if we have recursive calls, we don't end up
+    # calling `toGpuAst` recursively forever
+    ctx.processedProcs[name] = procSig
+
   let fn = ctx.toGpuAst(inst)
-  if fn.kind == gpuVoid: # should be an inbuilt proc, i.e. annotated with `{.builtin.}`
-    doAssert inst.isBuiltIn()
+  if fn.kind == gpuVoid:
+    # Should be an inbuilt proc, i.e. annotated with `{.builtin.}`. However,
+    # functions that are available otherwise (e.g. in Nim's system like `abs`)
+    # in Nim _and_ backends will also show up here. Unless we wanted to manually
+    # wrap all of these, we can just skip the `isBuiltin` check here.
+    # If the user uses something not available in the backend, they'll get a
+    # compiler error from that compiler.
+    # It's mostly a matter of usability: For common procs like `abs` we cannot
+    # so easily define a custom overload `proc abs(...): ... {.builtin.}`, because
+    # that would overwrite the Nim version.
+    # doAssert inst.isBuiltIn()
+    return
   else:
     fn.pAttributes.incl attDevice # make sure this is interpreted as a device function
     doAssert fn.pName.iSym == name.iSym, "Not matching"
@@ -738,6 +770,8 @@ proc fnReturnsValue(ctx: GpuContext, fn: GpuAst): bool =
     result = ctx.genericInsts[fn].pRetType.kind != gtVoid
   elif fn in ctx.builtins:
     result = ctx.builtins[fn].pRetType.kind != gtVoid
+  elif fn in ctx.processedProcs:
+    result = ctx.processedProcs[fn].retType.kind != gtVoid
   else:
     raiseAssert "The function: " & $fn & " is not known anywhere."
 

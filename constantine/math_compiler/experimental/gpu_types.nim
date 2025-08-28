@@ -236,6 +236,10 @@ type
     params*: seq[string]
     body*: GpuAst
 
+  GpuProcSignature* = object
+    params*: seq[GpuParam]
+    retType*: GpuType
+
   GpuContext* = object
     ## XXX: need table for generic invocations. Then when we encounter a type, need to map to
     ## the specific version
@@ -275,6 +279,12 @@ type
     ## Stores the unique identifiers (keys) and the implementations of the
     ## precise generic instantiations that are called.
     genericInsts*: OrderedTable[GpuAst, GpuAst]
+
+    ## Table of procs and their signature to avoid looping infinitely for recursive procs
+    ## Arguments are:
+    ## - Key: ident of the proc
+    ## - Value: signature of the (possibly generic) instantiation
+    processedProcs*: OrderedTable[GpuAst, GpuProcSignature]
 
     ## Storse all builtin / nimonly / importc / ... functions we encounter so that we can
     ## check if they return a value when we encounter them in a `gpuCall`
@@ -547,6 +557,17 @@ proc `==`*(a, b: GpuAst): bool =
     raiseAssert "Unsupported equality for GpuAst that are not idents"
   else:
     result = a.iSym == b.iSym and a.iTyp == b.iTyp and a.symbolKind == b.symbolKind
+
+proc `==`*(a, b: GpuProcSignature): bool =
+  if a.retType != b.retType: result = false
+  elif a.params.len != b.params.len:
+    result = false
+  else:
+    result = true
+    for i in 0 ..< a.params.len:
+      let ap = a.params[i]
+      let bp = b.params[i]
+      result = result and (ap == bp)
 
 proc len*(ast: GpuAst): int =
   case ast.kind
