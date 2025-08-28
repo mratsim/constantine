@@ -584,6 +584,66 @@ proc getFnName(ctx: var GpuContext, n: NimNode): GpuAst =
     # ctx.sigTab[sig] = result
   result.symbolKind = gsProc # make sure it's a proc
 
+proc gpuTypeMaybeFromSymbol(t: NimNode, n: NimNode): GpuType =
+  ## Returns the type from a given Nim node `t` representing a type.
+  ## If that fails due to an identifier in the type, we instead try
+  ## to look up the type from the associated symbol, `n`.
+  result = nimToGpuType(t, allowArrayIdent = true)
+  if result.kind == gtInvalid:
+    # an existing symbol cannot be `void` by definition, then it wouldn't be a symbol. Means
+    # `allowArrayIdent` triggered due to an ident in the type. Use symbol for type instead
+    result = n.getTypeInst.nimToGpuType()
+
+proc maybeAddType*(ctx: var GpuContext, typ: GpuType) =
+  ## Adds the given type to the table of known types, if it is some kind of
+  ## object type.
+  ##
+  ## XXX: What about aliases and distincts?
+  if typ.kind in [gtObject, gtGenericInst] and typ notin ctx.types:
+    ctx.types[typ] = toTypeDef(typ)
+
+proc parseProcParameters(ctx: var GpuContext, params: NimNode, attrs: set[GpuAttribute]): seq[GpuParam] =
+  ## Returns all parameters of the given procedure from the `params` node
+  ## of type `nnkFormalParams`.
+  doAssert params.kind == nnkFormalParams, "Argument is not FormalParams, but: " & $params.treerepr
+  for i in 1 ..< params.len:
+    let param = params[i]
+    let numParams = param.len - 2 # 3 if one param, one more for each of same type, example:
+    let typIdx = param.len - 2 # second to last is the type
+    # IdentDefs
+    #   Ident "x"
+    #   Ident "y"
+    #   Ident "res"
+    #   PtrTy
+    #     Ident "float32"   # `param.len - 2`
+    #   Empty               # `param.len - 1`
+    let paramType = gpuTypeMaybeFromSymbol(param[typIdx], param[typIdx-1])
+    ctx.maybeAddType(paramType)
+    for i in 0 ..< numParams:
+      var p = ctx.toGpuAst(param[i])
+      let symKind = if attGlobal in attrs: gsGlobalKernelParam
+                    else: gsDeviceKernelParam
+      p.iTyp = paramType     ## Update the type of the symbol
+      p.symbolKind = symKind ## and the symbol kind
+      let param = GpuParam(ident: p, typ: paramType)
+      result.add(param)
+
+proc parseProcReturnType(ctx: var GpuContext, params: NimNode): GpuType =
+  ## Returns the return type of the given procedure from the `params` node
+  ## of type `nnkFormalParams`.
+  doAssert params.kind == nnkFormalParams, "Argument is not FormalParams, but: " & $params.treerepr
+  let retType = params[0] # arg 0 is return type
+  if retType.kind == nnkEmpty:
+    result = GpuType(kind: gtVoid) # actual void return
+  else:
+    # attempt to get type. If fails, we need to wait for a caller to this function to get types
+    # (e.g. returns something like `array[FOO, BigInt]` where `FOO` is a constant defined outside
+    # the macro. We then rely on our generics logic to later look this up when called
+    result = nimToGpuType(retType, allowArrayIdent = true)
+    if result.kind == gtVoid: # stop parsing this function
+      result = GpuType(kind: gtInvalid)
+  ctx.maybeAddType(result)
+
 proc addProcToGenericInsts(ctx: var GpuContext, node: NimNode, name: GpuAst) =
   ## Looks up the implementation of the given function and stores it in our table
   ## of generic instantiations.
@@ -607,16 +667,6 @@ proc addProcToGenericInsts(ctx: var GpuContext, node: NimNode, name: GpuAst) =
     fn.pName.iName = fn.pName.iSym
     name.iName = fn.pName.iSym ## update the name of the called function
     ctx.genericInsts[fn.pName] = fn
-
-proc gpuTypeMaybeFromSymbol(t: NimNode, n: NimNode): GpuType =
-  ## Returns the type from a given Nim node `t` representing a type.
-  ## If that fails due to an identifier in the type, we instead try
-  ## to look up the type from the associated symbol, `n`.
-  result = nimToGpuType(t, allowArrayIdent = true)
-  if result.kind == gtInvalid:
-    # an existing symbol cannot be `void` by definition, then it wouldn't be a symbol. Means
-    # `allowArrayIdent` triggered due to an ident in the type. Use symbol for type instead
-    result = n.getTypeInst.nimToGpuType()
 
 proc isExpression(n: GpuAst): bool =
   ## Returns whether the given AST node is an expression
@@ -750,18 +800,12 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
       result = GpuAst(kind: gpuProc)
       result.pName = name
       result.pName.symbolKind = gsProc ## This is a procedure identifier
-      doAssert node[3].kind == nnkFormalParams
-      let retType = node[3][0] # arg 0 is return type
-      if retType.kind == nnkEmpty:
-        result.pRetType = GpuType(kind: gtVoid) # actual void return
-      else:
-        # attempt to get type. If fails, we need to wait for a caller to this function to get types
-        # (e.g. returns something like `array[FOO, BigInt]` where `FOO` is a constant defined outside
-        # the macro. We then rely on our generics logic to later look this up when called
-        result.pRetType = nimToGpuType(retType, allowArrayIdent = true)
-        if result.pRetType.kind == gtVoid: # stop parsing this function
-          ctx.generics.incl name.iName # need to use raw name, *not* symbol
-          return GpuAst(kind: gpuVoid)
+      let params = node[3]
+      doAssert params.kind == nnkFormalParams
+      result.pRetType = ctx.parseProcReturnType(params)
+      if result.pRetType.kind == gtInvalid:
+        ctx.generics.incl name.iName # need to use raw name, *not* symbol
+        return GpuAst(kind: gpuVoid)
 
       # Process pragmas
       if node.pragma.kind != nnkEmpty:
@@ -771,27 +815,7 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
           ctx.builtins[name] = result # store in builtins, so that we know if it returns a value when called
           return GpuAst(kind: gpuVoid)
       # Process parameters
-      for i in 1 ..< node[3].len:
-        let param = node[3][i]
-        let numParams = param.len - 2 # 3 if one param, one more for each of same type, example:
-        let typIdx = param.len - 2 # second to last is the type
-        # IdentDefs
-        #   Ident "x"
-        #   Ident "y"
-        #   Ident "res"
-        #   PtrTy
-        #     Ident "float32"   # `param.len - 2`
-        #   Empty               # `param.len - 1`
-        let paramType = gpuTypeMaybeFromSymbol(param[typIdx], param[typIdx-1])
-        for i in 0 ..< numParams:
-          var p = ctx.toGpuAst(param[i])
-          let symKind = if attGlobal in result.pAttributes: gsGlobalKernelParam
-                        else: gsDeviceKernelParam
-          p.iTyp = paramType     ## Update the type of the symbol
-          p.symbolKind = symKind ## and the symbol kind
-          let param = GpuParam(ident: p, typ: paramType)
-          result.pParams.add(param)
-
+      result.pParams = ctx.parseProcParameters(params, result.pAttributes)
       result.pBody = ctx.toGpuAst(node.body)
         .ensureBlock() # single line procs should be a block to generate `;`
       result.pBody.maybeInsertResult(result.pRetType, result.pName.ident())
@@ -826,6 +850,7 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
         varNode.vAttributes = collectAttributes(declaration[0][1])
       else: raiseAssert "Unexpected node kind for variable: " & $declaration.treeRepr
       varNode.vType = gpuTypeMaybeFromSymbol(declaration, declaration[0])
+      ctx.maybeAddType(varNode.vType)
       varNode.vName.iTyp = varNode.vType # also store the type in the symbol, for easier lookup later
       # This is a *local* variable (i.e. `function` address space on WGSL) unless it is
       # annotated with `{.shared.}` (-> `workspace` in WGSL)
@@ -960,8 +985,7 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     of ntyTuple:
       # need to replace `[idx]` by field access
       let typ = nimToGpuType(node[0].getTypeImpl)
-      if typ notin ctx.types:
-        ctx.types[typ] = toTypeDef(typ)
+      ctx.maybeAddType(typ)
       #doAssert typ in ctx.types
       doAssert node[1].kind == nnkIntLit
       let idx = node[1].intVal
@@ -1084,9 +1108,7 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
   of nnkObjConstr:
     ## this should never see `genericParam` I think
     let typ = nimToGpuType(node)
-    if typ notin ctx.types: # this should handle not just local types, but also any "pulled in" type
-      ctx.types[typ] = toTypeDef(typ)
-
+    ctx.maybeAddType(typ)
     result = GpuAst(kind: gpuObjConstr, ocType: typ)
     # get all fields of the type
     let flds = typ.oFields
@@ -1112,8 +1134,7 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
                                          typ: flds[i].typ)
   of nnkTupleConstr:
     let typ = nimToGpuType(node)
-    if typ notin ctx.types: # this should handle not just local types, but also any "pulled in" type
-      ctx.types[typ] = toTypeDef(typ)
+    ctx.maybeAddType(typ)
 
     result = GpuAst(kind: gpuObjConstr, ocType: typ)
     # get all fields of the type
