@@ -501,6 +501,28 @@ proc collectAttributes(n: NimNode): seq[GpuVarAttribute] =
 
 proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst
 
+proc maybePatchFnName(n: var GpuAst) =
+  ## Patches the function name for names that are not allowed on most backends, but appear
+  ## commonly in Nim (custom operators).
+  ##
+  ## NOTE: I think that the binary operators don't actually appear as a `gpuCall`, but still
+  ## as an infix node, even after sem checking by the Nim compiler.
+  doAssert n.kind == gpuIdent
+  template patch(arg, by: untyped): untyped =
+    arg.iSym = arg.iSym.replace(arg.iName, by)
+    arg.iName = by
+  let name = n.iName
+  case name
+  of "[]":  patch(n, "get")
+  of "[]=": patch(n, "set")
+  of "+":   patch(n, "add")
+  of "-":   patch(n, "sub")
+  of "*":   patch(n, "mul")
+  of "/":   patch(n, "div")
+  else:
+    # leave as is
+    discard
+
 proc getFnName(ctx: var GpuContext, n: NimNode): GpuAst =
   ## Returns the name for the function. Either the symbol name _or_
   ## the `{.cudaName.}` pragma argument.
@@ -540,6 +562,10 @@ proc getFnName(ctx: var GpuContext, n: NimNode): GpuAst =
           result = ctx.toGpuAst(n) # if _no_ pragma
       else:
         result = ctx.toGpuAst(n) # if not proc or func
+
+      # possibly patch function names, e.g. custom `[]`, `[]=`, `+` etc operators
+      # (inbuilt won't show up as a function name, but rather as a specific node kind, eg `nnkIndex`
+      result.maybePatchFnName()
 
       # handle overloads with different signatures
       if n.strVal in ctx.symChoices:
