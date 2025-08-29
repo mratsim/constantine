@@ -431,7 +431,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   proc ccopy(a: var BigInt, b: BigInt, condition: bool) {.device.}
   defBigIntCompare() # contains `toCanonical` and `<` comparison for canonical BigInts
 
-  proc finalSubMayOverflow(a, M: BigInt): BigInt {.device.} =
+  proc finalSubMayOverflow(a, M: BigInt, overflowedLimbs: uint32): BigInt {.device.} =
     ## If a >= Modulus: r <- a-M
     ## else:            r <- a
     ##
@@ -442,9 +442,6 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
     var scratch: BigInt = BigInt()
 
-    # Contains 0x0001 (if overflowed limbs) or 0x0000
-    let overflowedLimbs = add_ci(0'u32, 0'u32)
-
     # Now substract the modulus, and test a < M with the last borrow
     scratch[0] = sub_bo(a[0], M[0])
     staticFor i, 1, N:
@@ -454,9 +451,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     # 2. if a >= M, underflowedModulus >= 0
     # if underflowedModulus >= 0: a-M else: a
     # TODO: predicated mov instead?
-    ## TODO: Fix this. `slct` needs a negative value for the else branch
     let underflowedModulus = sub_bi(overflowedLimbs, 0'u32)
-
     var r: BigInt = BigInt()
     staticFor i, 0, N:
       r[i] = slct(scratch[i], a[i], cast[int32](underflowedModulus))
@@ -479,9 +474,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
       scratch[i] = sub_bio(a[i], M[i])
 
     # If it underflows here, `a` was smaller than the modulus, which is what we want
-    ## TODO: Fix this. `slct` needs a negative value for the else branch
     let underflowedModulus = sub_bi(0'u32, 0'u32)
-
     var r: BigInt = BigInt()
     staticFor i, 0, N:
       r[i] = slct(scratch[i], a[i], cast[int32](underflowedModulus))
@@ -490,18 +483,21 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   proc modadd(a, b, M: BigInt): BigInt {.device.} =
     ## Generate an optimized modular addition kernel
     ## with parameters `a, b, modulus: Limbs -> Limbs`
-    # try to add two bigints
     var t = BigInt() # temporary
 
     t[0] = add_co(a[0], b[0])
     staticFor i, 1, N:
       t[i] = add_cio(a[i], b[i])
 
-    # can use `when` of course!
-    when spareBits() >= 1: # if spareBits() >= 1: # would also work
+    when spareBits() >= 1:
       t = finalSubNoOverflow(t, M)
     else:
-      t = finalSubMayOverflow(t, M)
+      # Contains 0x0001 (if overflowed limbs) or 0x0000
+      # This _must_ be computed here and not inside of `finalSubMayOverflow`. In a
+      # debug build on CUDA the carry flag would (potentially) be reset going into
+      # the function.
+      let overflowedLimbs = add_ci(0'u32, 0'u32)
+      t = finalSubMayOverflow(t, M, overflowedLimbs)
 
     return t
 
