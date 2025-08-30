@@ -172,6 +172,7 @@ runPrecompileTests("bn256ScalarMul.json", eth_evm_bn254_g1mul, 64)
 runPrecompileTests("bn256Pairing.json", eth_evm_bn254_ecpairingcheck, 32)
 
 runPrecompileTests("eip-2537/add_G1_bls.json", eth_evm_bls12381_g1add, 128)
+runPrecompileTests("blsG1AddNimbus.json", eth_evm_bls12381_g1add, 128)
 runPrecompileTests("eip-2537/fail-add_G1_bls.json", eth_evm_bls12381_g1add, 128)
 runPrecompileTests("eip-2537/add_G2_bls.json", eth_evm_bls12381_g2add, 256)
 runPrecompileTests("eip-2537/fail-add_G2_bls.json", eth_evm_bls12381_g2add, 256)
