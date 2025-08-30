@@ -277,7 +277,7 @@ proc parseEip2537(dst: var Fp[BLS12_381], src: openArray[byte]): CttEvmStatus {.
 
   # Now check that all lower bytes are empty
   var allZero = success # if `success` already false we still continue
-  for i in 0 ..< 15: # order irrelevant
+  for i in 0 ..< 16: # order irrelevant
     allZero = allZero and (src[i] == 0)
 
   if not allZero or not bool(big < Fp[BLS12_381].getModulus()):
@@ -1060,7 +1060,6 @@ func eth_evm_bls12381_g2msm*(r: var openArray[byte], inputs: openarray[byte]): C
 
   freeHeapAligned(points)
   freeHeapAligned(coefs_big)
-
 
 func eth_evm_bls12381_pairingcheck*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Elliptic curve pairing check on BLS12-381
