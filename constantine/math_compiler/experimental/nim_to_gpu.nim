@@ -1145,7 +1145,9 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     ctx.maybeAddType(typ)
     result = GpuAst(kind: gpuObjConstr, ocType: typ)
     # get all fields of the type
-    let flds = typ.oFields
+    let flds = if typ.kind == gtObject: typ.oFields
+               elif typ.kind == gtGenericInst: typ.gFields
+               else: raiseAssert "ObjConstr must have an object type: " & $typ
     # find all fields that have been defined by the user
     var ocFields: seq[GpuFieldInit]
     for i in 1 ..< node.len: # all fields to be init'd
