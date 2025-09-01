@@ -6,180 +6,10 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import std / [macros, strutils, sequtils, options, sugar, tables, strformat]
+import std / [macros, strutils, sequtils, options, sugar, tables, strformat, hashes, sets]
 
-type
-  GpuNodeKind = enum
-    gpuVoid         # Just an empty statement. Useful to not emit anything
-    gpuProc         # Function definition (both device and global)
-    gpuCall         # Function call
-    gpuTemplateCall # Call to a Nim template
-    gpuIf           # If statement
-    gpuFor          # For loop
-    gpuWhile        # While loop
-    gpuBinOp        # Binary operation
-    gpuVar          # Variable declaration
-    gpuAssign       # Assignment
-    gpuIdent        # Identifier
-    gpuLit          # Literal value
-    gpuArrayLit     # Literal array constructor `[1, 2, 3]`
-    gpuPrefix       # Prefix e.g. `-`
-    gpuBlock        # Block of statements
-    gpuReturn       # Return statement
-    gpuDot          # Member access (a.b)
-    gpuIndex        # Array indexing (a[b])
-    gpuTypeDef      # Type definition
-    gpuObjConstr    # Object (struct) constructor
-    gpuInlineAsm    # Inline assembly (PTX)
-    gpuAddr         # Address of an expression
-    gpuDeref        # Dereferences an expression
-    gpuCast         # Cast expression
-    gpuComment      # Just a comment
-    gpuConstexpr    # A `constexpr`, i.e. compile time constant (Nim `const`)
-
-  GpuTypeKind = enum
-    gtVoid,
-    gtBool, gtUint8, gtUint16, gtInt16, gtUint32, gtInt32, gtUint64, gtInt64, gtFloat32, gtFloat64, gtSize_t, # atomics
-    gtArray,     # Static array `array[N, dtype]` -> `dtype[N]`
-    gtString,
-    gtObject,    # Struct types
-    gtPtr,       # Pointer type, carries inner type
-    gtVoidPtr    # Opaque void pointer
-
-  GpuTypeField = object
-    name: string
-    typ: GpuType
-
-  GpuType = ref object
-    case kind: GpuTypeKind
-    of gtPtr: to: GpuType # points to `to`
-    of gtObject:
-      name: string
-      oFields: seq[GpuTypeField]
-    of gtArray:
-      aTyp: GpuType # the inner type (must be some atomic base type at the moment)
-      aLen: int     # The length of the array. If `aLen == -1` we look at a generic (static) array. Will be given at instantiation time
-    else: discard
-
-  GpuAttribute = enum
-    attDevice = "__device__"
-    attGlobal = "__global__"
-    attForceInline = "__forceinline__"
-
-  GpuVarAttribute = enum
-    atvExtern = "extern"
-    atvShared = "__shared__"
-    atvVolatile = "volatile"
-    atvConstant = "__constant__" # use `{.constant.}` pragma, e.g. `var foo {.constant.}`
-
-  GpuAst = ref object
-    case kind: GpuNodeKind
-    of gpuVoid: discard
-    of gpuProc:
-      pName: string
-      pRetType: GpuType
-      pParams: seq[tuple[name: string, typ: GpuType]]
-      pBody: GpuAst
-      pAttributes: set[GpuAttribute] # order not important, hence set
-    of gpuCall:
-      cName: string
-      cArgs: seq[GpuAst]
-    of gpuTemplateCall:
-      tcName: string
-      tcArgs: seq[GpuAst]  # Arguments for template instantiation
-    of gpuIf:
-      ifCond: GpuAst
-      ifThen: GpuAst
-      ifElse: Option[GpuAst]  # None if no else branch
-    of gpuFor:
-      fVar: string
-      fStart, fEnd: GpuAst
-      fBody: GpuAst
-    of gpuWhile:
-      wCond: GpuAst
-      wBody: GpuAst
-    of gpuBinOp:
-      bOp: string
-      bLeft, bRight: GpuAst
-    of gpuVar:
-      vName: string
-      vType: GpuType
-      vInit: GpuAst
-      vRequiresMemcpy: bool
-      vAttributes: seq[GpuVarAttribute] # order is important, hence seq
-    of gpuAssign:
-      aLeft, aRight: GpuAst
-      aRequiresMemcpy: bool
-    of gpuIdent:
-      iName: string
-    of gpuLit:
-      lValue: string
-      lType: GpuType
-    of gpuConstexpr:
-      cIdent: GpuAst # the identifier
-      cValue: GpuAst # not just a string to support different types easily
-      cType: GpuType
-    of gpuArrayLit:
-      aValues: seq[string]
-      aLitType: GpuType # type of first element
-    of gpuBlock:
-      blockLabel: string # optional name of the block. If any given, will open a `{ }` scope in CUDA
-      statements: seq[GpuAst]
-    of gpuReturn:
-      rValue: GpuAst
-    of gpuDot:
-      dParent: GpuAst
-      dField: GpuAst #string
-    of gpuIndex:
-      iArr: GpuAst
-      iIndex: GpuAst
-    of gpuPrefix:
-      pOp: string
-      pVal: GpuAst
-    of gpuTypeDef:
-      tName: string
-      tFields: seq[GpuTypeField]
-    of gpuObjConstr:
-      ocName: string # type we construct
-      ## XXX: it would be better if we already fill the fields with default values here
-      ocFields: seq[GpuFieldInit] # the fields we initialize
-    of gpuInlineAsm:
-      stmt: string
-    of gpuComment:
-      comment: string
-    of gpuCast:
-      cTo: GpuType # type to cast to
-      cExpr: GpuAst # expression we cast
-    of gpuAddr:
-      aOf: GpuAst
-    of gpuDeref:
-      dOf: GpuAst
-
-  GpuFieldInit = object
-    name: string
-    value: GpuAst
-
-  TemplateInfo = object
-    params: seq[string]
-    body: GpuAst
-
-  GpuContext = object
-    ## XXX: need table for generic invocations. Then when we encounter a type, need to map to
-    ## the specific version
-    ## However, also need to keep every *generic procedure*. In their bodies the types are
-    ## only defined once they are called after all.
-    skipSemicolon: bool # whether we *currently* add semicolons at the end of a block or not
-    templates: Table[string, TemplateInfo]  # Maps template names to their info
-
-template nimonly*(): untyped {.pragma.}
-template cudaName*(s: string): untyped {.pragma.}
-
-
-proc `$`(x: GpuType): string =
-  if x == nil:
-    result = "GpuType(nil)"
-  else:
-    result = $x[]
+import ./gpu_types
+import ./backends/backends
 
 proc nimToGpuType(n: NimNode): GpuType
 
@@ -188,9 +18,13 @@ proc initGpuType(kind: GpuTypeKind): GpuType =
   if kind in [gtObject, gtPtr, gtArray]: raiseAssert "Objects/Pointers/Arrays must be constructed using `initGpuPtr/Object/ArrayType` "
   result = GpuType(kind: kind)
 
-proc initGpuPtrType(to: GpuType): GpuType =
+proc initGpuPtrType(to: GpuType, implicitPtr: bool): GpuType =
   ## If `kind` is `gtPtr` `to` must be the type we point to
-  result = GpuType(kind: gtPtr, to: to)
+  result = GpuType(kind: gtPtr, to: to, implicit: implicitPtr)
+
+proc initGpuUAType(to: GpuType): GpuType =
+  ## Initializes a GPU type for an unchecked array (ptr wraps this)
+  result = GpuType(kind: gtUA, uaTo: to)
 
 proc initGpuVoidPtr(): GpuType =
   result = GpuType(kind: gtVoidPtr)
@@ -213,7 +47,7 @@ proc toGpuTypeKind(t: NimTypeKind): GpuTypeKind =
   of ntyInt16: gtInt16
   of ntyInt32: gtInt32
   of ntyInt64: gtInt64
-  of ntyInt:   gtInt64
+  of ntyInt:   gtInt32 # `int` is always mapped to `int32` as that is the more "native" type on GPUs
   of ntyFloat: gtFloat64
   of ntyFloat32: gtFloat32
   of ntyFloat64: gtFloat64
@@ -312,14 +146,16 @@ proc nimToGpuType(n: NimNode): GpuType =
     case n.typeKind
     of ntyBool, ntyInt .. ntyUint64: # includes all float types
       result = initGpuType(toGpuTypeKind n.typeKind)
-    of ntyPtr, ntyVar:
-      result = initGpuPtrType(getInnerPointerType(n))
+    of ntyPtr:
+      result = initGpuPtrType(getInnerPointerType(n), implicitPtr = false)
+    of ntyVar:
+      result = initGpuPtrType(getInnerPointerType(n), implicitPtr = true)
     of ntyPointer:
       result = initGpuVoidPtr()
     of ntyUncheckedArray:
       ## Note: this is just the internal type of the array. It is only a pointer due to
       ## `ptr UncheckedArray[T]`. We simply remove the `UncheckedArray` part.
-      result = getInnerPointerType(n)
+      result = initGpuUAType(getInnerPointerType(n))
     of ntyObject:
       let impl = n.getTypeImpl
       let flds = impl.parseTypeFields()
@@ -399,36 +235,6 @@ proc requiresMemcpy(n: NimNode): bool =
   ## At the moment we only emit a `memcpy` statement for array types
   result = n.typeKind == ntyArray and n.kind != nnkBracket # need to emit a memcpy
 
-proc getFnName(n: NimNode): string =
-  ## Returns the name for the function. Either the symbol name _or_
-  ## the `{.cudaName.}` pragma argument.
-  # check if the implementation has a pragma
-  if n.kind == nnkSym:
-    # Check if `cudaName` pragma used:
-    # ProcDef
-    #   Sym "syncthreads"
-    #   Empty
-    #   Empty
-    #   FormalParams
-    #     Empty
-    #   Pragma
-    #     ExprColonExpr
-    #       Sym "cudaName"           <- if this exists
-    #       StrLit "__syncthreads"   <- use this name
-    #   Empty
-    #   DiscardStmt
-    #     Empty
-    let impl = n.getImpl
-    if impl.kind in [nnkProcDef, nnkFuncDef]:
-      let pragma = impl.pragma
-      if pragma.kind != nnkEmpty and pragma[0].kind == nnkExprColonExpr:
-        if pragma[0][0].kind in [nnkIdent, nnkSym] and pragma[0][0].strVal == "cudaName":
-          return pragma[0][1].strVal # return early to avoid lots of branches
-  # else we use the str representation (repr for open / closed sym choice nodes)
-  result = n.repr
-
-
-
 proc collectProcAttributes(n: NimNode): set[GpuAttribute] =
   doAssert n.kind == nnkPragma
   for pragma in n:
@@ -467,12 +273,62 @@ proc collectAttributes(n: NimNode): seq[GpuVarAttribute] =
     case pragma.strVal
     of "cuExtern", "extern": result.add atvExtern
     of "shared": result.add atvShared
+    of "private": result.add atvPrivate
     of "volatile": result.add atvVolatile
     of "constant": result.add atvConstant
     else:
       raiseAssert "Unexpected pragma: " & $pragma.treerepr
 
-proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
+proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst
+
+proc getFnName(ctx: var GpuContext, n: NimNode): GpuAst =
+  ## Returns the name for the function. Either the symbol name _or_
+  ## the `{.cudaName.}` pragma argument.
+  template toAst(fn): untyped = GpuAst(kind: gpuIdent, iName: fn, symbolKind: gsProc)
+  # check if the implementation has a pragma
+
+  if n.kind == nnkSym:
+    # Check if `cudaName` pragma used:
+    # ProcDef
+    #   Sym "syncthreads"
+    #   Empty
+    #   Empty
+    #   FormalParams
+    #     Empty
+    #   Pragma
+    #     ExprColonExpr
+    #       Sym "cudaName"           <- if this exists
+    #       StrLit "__syncthreads"   <- use this name
+    #   Empty
+    #   DiscardStmt
+    #     Empty
+    let sig = n.repr & "_" & n.signatureHash()
+    if sig in ctx.sigTab:
+      result = ctx.sigTab[sig]
+    else:
+      let impl = n.getImpl
+      if impl.kind in [nnkProcDef, nnkFuncDef]:
+        let pragma = impl.pragma
+        if pragma.kind != nnkEmpty and pragma[0].kind == nnkExprColonExpr:
+          if pragma[0][0].kind in [nnkIdent, nnkSym] and pragma[0][0].strVal == "cudaName":
+            # want to replace fn name
+            result = toAst pragma[0][1].strVal
+            ctx.sigTab[sig] = result
+          else:
+            result = ctx.toGpuAst(n) # if no `cudaName` pragma
+        else:
+          result = ctx.toGpuAst(n) # if _no_ pragma
+      else:
+        result = ctx.toGpuAst(n) # if not proc or func
+  else:
+    # else we use the str representation (repr for open / closed sym choice nodes)
+    result = toAst n.repr
+    #raiseAssert "This fn identifier is not a symbol?! " & $n.repr
+    # If it's not a symbol, there is no signature associated
+    # ctx.sigTab[sig] = result
+  result.symbolKind = gsProc # make sure it's a proc
+
+proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
   ## XXX: things still left to do:
   ## - support `result` variable? Currently not supported. Maybe we will won't
 
@@ -509,9 +365,16 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
 
   of nnkProcDef, nnkFuncDef:
     result = GpuAst(kind: gpuProc)
-    result.pName = node.name.strVal
+    result.pName = ctx.toGpuAst(node.name)
+    result.pName.symbolKind = gsProc ## This is a procedure identifier
     doAssert node[3].kind == nnkFormalParams
     result.pRetType = nimToGpuType(node[3][0]) # arg 0 is return type
+    # Process pragmas
+    if node.pragma.kind != nnkEmpty:
+      doAssert node.pragma.len > 0, "Pragma kind non empty, but no pragma?"
+      result.pAttributes = collectProcAttributes(node.pragma)
+      if result.pAttributes.len == 0: # means `nimonly` was applied
+        return GpuAst(kind: gpuVoid)
     # Process parameters
     for i in 1 ..< node[3].len:
       let param = node[3][i]
@@ -525,15 +388,15 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
       #     Ident "float32"   # `param.len - 2`
       #   Empty               # `param.len - 1`
       let paramType = nimToGpuType(param[typIdx])
+      #echo "Argument: ", param.treerepr, " has tpye: ", paramType
       for i in 0 ..< numParams:
-        result.pParams.add((param[i].strVal, paramType))
-
-    # Process pragmas
-    if node.pragma.kind != nnkEmpty:
-      doAssert node.pragma.len > 0, "Pragma kind non empty, but no pragma?"
-      result.pAttributes = collectProcAttributes(node.pragma)
-      if result.pAttributes.len == 0: # means `nimonly` was applied
-        return GpuAst(kind: gpuVoid)
+        var p = ctx.toGpuAst(param[i])
+        let symKind = if attGlobal in result.pAttributes: gsGlobalKernelParam
+                      else: gsDeviceKernelParam
+        p.iTyp = paramType     ## Update the type of the symbol
+        p.symbolKind = symKind ## and the symbol kind
+        let param = GpuParam(ident: p, typ: paramType)
+        result.pParams.add(param)
 
     result.pBody = ctx.toGpuAst(node.body)
       .ensureBlock() # single line procs should be a block to generate `;`
@@ -550,7 +413,7 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
         #   Sym "res"             # declaration[0]
         #   Sym "uint32"
         #   Empty
-        varNode.vName = declaration[0].strVal
+        varNode.vName = ctx.toGpuAst(declaration[0])
       of nnkPragmaExpr:
         # IdentDefs               # declaration
         #   PragmaExpr            # declaration[0]
@@ -559,11 +422,18 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
         #       Ident "volatile"
         #   Sym "uint32"
         #   Empty
-        varNode.vName = declaration[0][0].strVal
+        varNode.vName = ctx.toGpuAst(declaration[0][0])
         doAssert declaration[0][1].kind == nnkPragma
         varNode.vAttributes = collectAttributes(declaration[0][1])
       else: raiseAssert "Unexpected node kind for variable: " & $declaration.treeRepr
       varNode.vType = nimToGpuType(declaration)
+      varNode.vName.iTyp = varNode.vType # also store the type in the symbol, for easier lookup later
+      # This is a *local* variable (i.e. `function` address space on WGSL) unless it is
+      # annotated with `{.shared.}` (-> `workspace` in WGSL)
+      varNode.vName.symbolKind = if atvShared in varNode.vAttributes: gsShared
+                                 elif atvPrivate in varNode.vAttributes: gsPrivate
+                                 else: gsLocal
+      varNode.vMutable = node.kind == nnkVarSection
       ## XXX: handle initialization for array types. Need a memcpy!
       ## In principle should be straightforward. Turn e.g.
       ## ```nim
@@ -580,6 +450,8 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
       if declaration.len > 2 and declaration[2].kind != nnkEmpty:  # Has initialization
         varNode.vInit = ctx.toGpuAst(declaration[2])
         varNode.vRequiresMemcpy = requiresMemcpy(declaration[2])
+      else:
+        varNode.vInit = ctx.toGpuAst(declaration[2])
       result.statements.add(varNode)
 
   of nnkAsgn:
@@ -594,11 +466,16 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     result.ifCond = ctx.toGpuAst(branch[0])
     result.ifThen = ensureBlock ctx.toGpuAst(branch[1])
     if node.len > 1 and node[^1].kind == nnkElse:
-      result.ifElse = some(ensureBlock ctx.toGpuAst(node[^1][0]))
+      result.ifElse = ensureBlock ctx.toGpuAst(node[^1][0])
+    else:
+      result.ifElse = GpuAst(kind: gpuVoid)
 
   of nnkForStmt:
     result = GpuAst(kind: gpuFor)
-    result.fVar = node[0].strVal
+    doAssert node[0].kind in {nnkIdent, nnkSym}, "The variable in the for loop is not an identifier or symbol, but: " & $node[0].treerepr
+    result.fVar = ctx.toGpuAst(node[0])
+    result.fVar.symbolKind = gsLocal
+    result.fVar.iTyp = initGpuType(gtInt32) ## XXX: do not force this type
     # Assuming range expression
     result.fStart = ctx.toGpuAst(node[1][1])
     result.fEnd = ctx.toGpuAst(node[1][2])
@@ -632,7 +509,7 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
 
   of nnkCall, nnkCommand:
     # Check if this is a template call
-    let name = getFnName(node[0]) # cannot use `strVal`, might be a symchoice
+    let name = ctx.getFnName(node[0]) # cannot use `strVal`, might be a symchoice
     let args = node[1..^1].mapIt(ctx.toGpuAst(it))
     # Producing a template call something like this (but problematic due to overloads etc)
     # we could then perform manual replacement of the template in the CUDA generation pass.
@@ -653,8 +530,18 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     result.bOp = assignOp(node[0].repr, isBoolean) # repr so that open sym choice gets correct name
     result.bLeft = ctx.toGpuAst(node[1])
     result.bRight = ctx.toGpuAst(node[2])
+    # We patch the types of int / float literals. WGSL does not automatically convert literals
+    # to the target type.
+    if result.bLeft.kind == gpuLit and result.bRight.kind != gpuLit:
+      # determine literal type based on `bRight`
+      result.bLeft.lType = nimToGpuType(node[2])
+    elif result.bRight.kind == gpuLit and result.bLeft.kind != gpuLit:
+      # determine literal type based on `bLeft`
+      result.bRight.lType = nimToGpuType(node[1])
 
   of nnkDotExpr:
+    ## NOTE: As we use a typed macro, we only encounter `DotExpr` for *actual* field accesses and NOT
+    ## for calls using method call syntax without parens
     result = GpuAst(kind: gpuDot)
     result.dParent = ctx.toGpuAst(node[0])
     result.dField = ctx.toGpuAst(node[1])
@@ -664,9 +551,28 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     result.iArr = ctx.toGpuAst(node[0])
     result.iIndex = ctx.toGpuAst(node[1])
 
-  of nnkIdent, nnkSym, nnkOpenSymChoice:
-    result = GpuAst(kind: gpuIdent)
+  of nnkIdent, nnkOpenSymChoice:
+    result = newGpuIdent()
     result.iName = node.repr # for sym choices
+    if result.iName == "_":
+      result.iName = "tmp_" & $ctx.genSymCount
+      inc ctx.genSymCount
+  of nnkSym:
+    let s = node.repr & "_" & node.signatureHash()
+    # NOTE: The reason we have a tab of known symbols is not to keep the same _reference_ to each
+    # symbol, but rather to allow having the same symbol kind (set in the caller of this call).
+    # For example in `nnkCall` nodes returning the value from the table automatically means the
+    # `symbolKind` is local / function argument etc.
+    if s notin ctx.sigTab:
+      result = newGpuIdent()
+      result.iName = node.repr
+      result.iSym = s
+      if result.iName == "_":
+        result.iName = "tmp_" & $ctx.genSymCount
+        inc ctx.genSymCount
+        #ctx.sigTab[s] = result
+    else:
+      result = ctx.sigTab[s]
 
   # literal types
   of nnkIntLit, nnkInt32Lit:
@@ -677,6 +583,10 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     result = GpuAst(kind: gpuLit)
     result.lValue = $node.intVal
     result.lType = initGpuType(gtUInt32)
+  of nnkUIntLit:
+    result = GpuAst(kind: gpuLit)
+    result.lValue = $node.intVal
+    result.lType = initGpuType(gtUInt64) ## XXX: base on target platform!
   of nnkFloat64Lit, nnkFloatLit:
     result = GpuAst(kind: gpuLit)
     result.lValue = $node.floatVal & "f"
@@ -758,7 +668,7 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     let aLitTyp = nimToGpuType(node[0])
     var aValues = newSeq[string]()
     for el in node:
-      ## XXX: do not use `repr`, e.g. if `1'u32` we'll get the `'u32` suffix
+      ## XXX: Support not just int literals
       aValues.add $el.intVal
     result = GpuAst(kind: gpuArrayLit,
                     aValues: aValues,
@@ -770,8 +680,11 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
   of nnkHiddenStdConv:
     doAssert node[0].kind == nnkEmpty
     result = ctx.toGpuAst(node[1])
-  of nnkCast, nnkConv:
-    # also map type conversion, e.g. `let i: int = 5; i.uint32` to a cast
+  of nnkConv:
+    # maps type conversion, e.g. `let i: int = 5; i.uint32`
+    result = GpuAst(kind: gpuConv, convTo: nimToGpuType(node[0]), convExpr: ctx.toGpuAst(node[1]))
+  of nnkCast:
+    # only maps real bit casts
     result = GpuAst(kind: gpuCast, cTo: nimToGpuType(node[0]), cExpr: ctx.toGpuAst(node[1]))
 
   of nnkAddr, nnkHiddenAddr:
@@ -806,6 +719,11 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
                     cIdent: ctx.toGpuAst(node[0]),
                     cValue: ctx.toGpuAst(node[2]),
                     cType: nimToGpuType(node))
+    result.cIdent.iTyp = result.cType # also store the type in the symbol, for easier lookup later
+    result.cIdent.symbolKind = gsLocal #if atvShared in result.vAttributes: gsShared
+                               #elif atvPrivate in varNode.vAttributes: gsPrivate
+                               #else: gsLocal
+
   of nnkConstSection:
     result = GpuAst(kind: gpuBlock)
     for el in node: # walk each type def
@@ -816,328 +734,3 @@ proc toGpuAst(ctx: var GpuContext, node: NimNode): GpuAst =
     echo "Unhandled node kind in toGpuAst: ", node.kind
     raiseAssert "Unhandled node kind in toGpuAst: " & $node.treerepr
     result = GpuAst(kind: gpuBlock)
-
-proc gpuTypeToString(t: GpuTypeKind): string =
-  case t
-  of gtBool: "bool"
-  of gtUint8: "unsigned char"
-  of gtUint16: "unsigned short"
-  of gtUint32: "unsigned int"
-  of gtUint64: "unsigned long long"
-  of gtInt16: "short"
-  of gtInt32: "int"
-  of gtInt64: "long long"
-  of gtFloat32: "float"
-  of gtFloat64: "double"
-  of gtVoid: "void"
-  of gtSize_t: "size_t"
-  of gtPtr: "*"
-  of gtVoidPtr: "void*"
-  of gtObject: "struct"
-  of gtString: "const char*"
-  else:
-    raiseAssert "Invalid type : " & $t
-
-
-proc gpuTypeToString(t: GpuType, ident: string = "", allowArrayToPtr = false, allowEmptyIdent = false): string
-proc getInnerArrayType(t: GpuType): string =
-  ## Returns the name of the inner most type for a nested array.
-  case t.kind
-  of gtArray:
-    result = getInnerArrayType(t.aTyp)
-  else:
-    result = gpuTypeToString(t)
-
-proc getInnerArrayLengths(t: GpuType): string =
-  ## Returns the lengths of the inner array types for a nested array.
-  case t.kind
-  of gtArray:
-    let inner = getInnerArrayLengths(t.aTyp)
-    result = &"[{$t.aLen}]"
-    if inner.len > 0:
-      result.add &"{inner}"
-  else:
-    result = ""
-
-proc gpuTypeToString(t: GpuType, ident: string = "", allowArrayToPtr = false,
-                     allowEmptyIdent = false,
-                    ): string =
-  ## Given an optional identifier required for array types
-  ##
-  ## XXX: we don't support this at the moment, it occured to me as something that
-  ## could be useful sometimes...
-  ## If `allowArrayToPtr` we allow casting a statically sized array to a pointer
-  var skipIdent = false
-  case t.kind
-  of gtPtr:
-    if t.to.kind == gtArray: # ptr to array type
-      # need to pass `*` for the pointer into the identifier, i.e.
-      # `state: var array[4, BigInt]`
-      # must become
-      # `BigInt (*state)[4]`
-      # so as our ident we pass `theIdent = (*<ident>)` and generate the type for the internal
-      # array type, which yields e.g. `BigInt <theIdent>[4]`.
-      let ptrStar = gpuTypeToString(t.kind)
-      result = gpuTypeToString(t.to, "(" & ptrStar & ident & ")")
-      skipIdent = true
-    else:
-      let typ = gpuTypeToString(t.to, allowEmptyIdent = allowEmptyIdent)
-      let ptrStar = gpuTypeToString(t.kind)
-      result = typ & ptrStar
-  of gtArray:
-    # empty idents happen in e.g. function return types or casts
-    if ident.len == 0 and not allowEmptyIdent: # and not allowArrayToPtr:
-      error("Invalid call, got an array type but don't have an identifier: " & $t)
-    case t.aTyp.kind
-    of gtArray: # nested array
-      let typ = getInnerArrayType(t)        # get inner most type
-      let lengths = getInnerArrayLengths(t) # get lengths as `[X][Y][Z]...`
-      result = typ & " " & ident & lengths
-    else:
-      # NOTE: Nested arrays don't have an inner identifier!
-      if t.aLen == 0: ## XXX: for the moment for 0 length arrays we generate flexible arrays instead
-        result = gpuTypeToString(t.aTyp, allowEmptyIdent = allowEmptyIdent) & " " & ident & "[]"
-      else:
-        result = gpuTypeToString(t.aTyp, allowEmptyIdent = allowEmptyIdent) & " " & ident & "[" & $t.aLen & "]"
-    skipIdent = true
-  of gtObject: result = t.name
-  else:        result = gpuTypeToString(t.kind)
-
-  if ident.len > 0 and not skipIdent: # still need to add ident
-    result.add " " & ident
-
-proc genFunctionType(typ: GpuType, fn: string, fnArgs: string): string =
-  ## Returns the correct function with its return type
-  if typ.kind == gtPtr and typ.to.kind == gtArray:
-    # crazy stuff. Syntax to return a pointer to a statically sized array:
-    # `Foo (*fnName(fnArgs))[ArrayLen]`
-    # where the return type is actually:
-    # `Foo (*)[ArrayLen]` (which already is hideous)
-    let arrayTyp = typ.to.aTyp
-    let innerTyp = gpuTypeToString(arrayTyp, allowEmptyIdent = true)
-    let innerLen = $typ.to.aLen
-    result = &"{innerTyp} (*{fn}({fnArgs}))[{innerLen}]"
-  else:
-    # normal stuff
-    result = &"{gpuTypeToString(typ, allowEmptyIdent = true)} {fn}({fnArgs})"
-
-proc genCuda(ctx: var GpuContext, ast: GpuAst, indent = 0): string
-
-proc address(a: string): string = "&" & a
-proc address(ctx: var GpuContext, a: GpuAst): string = address(ctx.genCuda(a))
-
-proc size(a: string): string = "sizeof(" & a & ")"
-proc size(ctx: var GpuContext, a: GpuAst): string = size(ctx.genCuda(a))
-proc size(ctx: var GpuContext, a: GpuType): string = size(gpuTypeToString(a, allowEmptyIdent = true))
-
-proc genMemcpy(lhs, rhs, size: string): string =
-  result = &"memcpy({lhs}, {rhs}, {size})"
-
-template withoutSemicolon(ctx: var GpuContext, body: untyped): untyped =
-  ctx.skipSemicolon = true
-  body
-  ctx.skipSemicolon = false
-
-proc genCuda(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
-  let indentStr = "  ".repeat(indent)
-  #echo "At: ", ast.repr, " SKIP SEMICOLON: ", ctx.skipSemicolon
-
-  case ast.kind
-  of gpuVoid: return # nothing to emit
-  of gpuProc:
-    let attrs = collect:
-      for att in ast.pAttributes:
-        $att
-
-    # Parameters
-    var params: seq[string]
-    for (name, typ) in ast.pParams:
-      params.add gpuTypeToString(typ, name, allowEmptyIdent = false)
-    let fnArgs = params.join(", ")
-    let fnSig = genFunctionType(ast.pRetType, ast.pName, fnArgs)
-
-    # extern "C" is needed to avoid name mangling
-    result = indentStr & "extern \"C\" " & attrs.join(" ") & " " &
-             fnSig & "{\n"
-
-    result &= ctx.genCuda(ast.pBody, indent + 1)
-    result &= "\n" & indentStr & "}"
-
-  of gpuBlock:
-    result = ""
-    if ast.blockLabel.len > 0:
-      result.add "\n" & indentStr & "{ // " & ast.blockLabel & "\n"
-    for i, el in ast.statements:
-      result.add ctx.genCuda(el, indent)
-      if el.kind != gpuBlock and not ctx.skipSemicolon: # nested block ⇒ ; already added
-        result.add ";"
-      if i < ast.statements.high:
-        result.add "\n"
-    if ast.blockLabel.len > 0:
-      result.add "\n" & indentStr & "} // " & ast.blockLabel & "\n"
-
-  of gpuVar:
-    result = indentStr & ast.vAttributes.join(" ") & " " & gpuTypeToString(ast.vType, ast.vName)
-    # If there is an initialization, the type might require a memcpy
-    if ast.vInit != nil and not ast.vRequiresMemcpy:
-      result &= " = " & ctx.genCuda(ast.vInit)
-    elif ast.vInit != nil:
-      result.add ";\n"
-      result.add indentStr & genMemcpy(address(ast.vName), ctx.address(ast.vInit),
-                                       size(ast.vName))
-
-  of gpuAssign:
-    if ast.aRequiresMemcpy:
-      result = indentStr & genMemcpy(ctx.address(ast.aLeft), ctx.address(ast.aRight),
-                                     ctx.size(ast.aLeft))
-    else:
-      result = indentStr & ctx.genCuda(ast.aLeft) & " = " & ctx.genCuda(ast.aRight)
-
-  of gpuIf:
-    # skip semicolon in the condition. Otherwise can lead to problematic code
-    ctx.withoutSemicolon: # skip semicolon for if bodies
-      result = indentStr & "if (" & ctx.genCuda(ast.ifCond) & ") {\n"
-    result &= ctx.genCuda(ast.ifThen, indent + 1) & "\n"
-    result &= indentStr & "}"
-    if ast.ifElse.isSome:
-      result &= " else {\n"
-      result &= ctx.genCuda(ast.ifElse.get, indent + 1) & "\n"
-      result &= indentStr & "}"
-
-  of gpuFor:
-    result = indentStr & "for(int " & ast.fVar & " = " &
-             ctx.genCuda(ast.fStart) & "; " &
-             ast.fVar & " < " & ctx.genCuda(ast.fEnd) & "; " &
-             ast.fVar & "++) {\n"
-    result &= ctx.genCuda(ast.fBody, indent + 1) & "\n"
-    result &= indentStr & "}"
-  of gpuWhile:
-    ctx.withoutSemicolon:
-      result = indentStr & "while (" & ctx.genCuda(ast.wCond) & "){\n"
-    result &= ctx.genCuda(ast.wBody, indent + 1) & "\n"
-    result &= indentStr & "}"
-
-  of gpuDot:
-    result = ctx.genCuda(ast.dParent) & "." & ctx.genCuda(ast.dField)
-
-  of gpuIndex:
-    result = ctx.genCuda(ast.iArr) & "[" & ctx.genCuda(ast.iIndex) & "]"
-
-  of gpuCall:
-    result = indentStr & ast.cName & "(" &
-             ast.cArgs.mapIt(ctx.genCuda(it)).join(", ") & ")"
-
-  of gpuTemplateCall:
-    error("Template calls are not supported at the moment. In theory there shouldn't even _be_ any template " &
-      "calls in the expanded body of the `cuda` macro.")
-    when false: # Template replacement would look something like this:
-      let templ = ctx.templates[ast.tcName]
-      let expandedBody = substituteTemplateArgs(
-        templ.body,
-        templ.params,
-        ast.tcArgs
-      )
-      result = ctx.genCuda(expandedBody, indent)
-
-  of gpuBinOp:
-    result = indentStr & "(" & ctx.genCuda(ast.bLeft) & " " &
-             ast.bOp & " " &
-             ctx.genCuda(ast.bRight) & ")"
-
-  of gpuIdent:
-    result = ast.iName
-
-  of gpuLit:
-    if ast.lType.kind == gtString: result = "\"" & ast.lValue & "\""
-    elif ast.lValue == "DEFAULT": result = "{}" # default initialization, `DEFAULT` placeholder
-    else: result = ast.lValue
-
-  of gpuArrayLit:
-    result = "{"
-    for i, el in ast.aValues:
-      result.add "(" & gpuTypeToString(ast.aLitType) & ")" & el
-      if i < ast.aValues.high:
-        result.add ", "
-    result.add "}"
-
-  of gpuReturn:
-    result = indentStr & "return " & ctx.genCuda(ast.rValue)
-
-  of gpuPrefix:
-    result = ast.pOp & ctx.genCuda(ast.pVal)
-
-  of gpuTypeDef:
-    result = "struct " & ast.tName & "{\n"
-    for el in ast.tFields:
-      result.add "  " & gpuTypeToString(el.typ, el.name) & ";\n"
-    result.add "}"
-
-  of gpuObjConstr:
-    result = "{"
-    for i, el in ast.ocFields:
-      result.add ctx.genCuda(el.value)
-      if i < ast.ocFields.len - 1:
-        result.add ", "
-    result.add "}"
-
-  of gpuInlineAsm:
-    result = indentStr & "asm(" & ast.stmt.strip & ");"
-
-  of gpuComment:
-    result = indentStr & "/* " & ast.comment & " */"
-
-  of gpuCast:
-    result = "(" & gpuTypeToString(ast.cTo, allowEmptyIdent = true) & ")" & ctx.genCuda(ast.cExpr)
-
-  of gpuAddr:
-    result = "(&" & ctx.genCuda(ast.aOf) & ")"
-
-  of gpuDeref:
-    result = "(*" & ctx.genCuda(ast.dOf) & ")"
-
-  of gpuConstexpr:
-    if ast.cType.kind == gtArray:
-      result = indentStr & "__constant__ " & gpuTypeToString(ast.cType, ctx.genCuda(ast.cIdent)) & " = " & ctx.genCuda(ast.cValue)
-    else:
-      result = indentStr & "__constant__ " & gpuTypeToString(ast.cType, allowEmptyIdent = true) & " " & ctx.genCuda(ast.cIdent) & " = " & ctx.genCuda(ast.cValue)
-
-  else:
-    echo "Unhandled node kind in genCuda: ", ast.kind
-    raiseAssert "Unhandled node kind in genCuda: " & ast.repr
-    result = ""
-
-macro cuda*(body: typed): string =
-  ## WARNING: The following are *not* supported:
-  ## - UFCS: because this is a pure untyped DSL, there is no way to disambiguate between
-  ##         what is a field access and a function call. Hence we assume any `nnkDotExpr`
-  ##         is actually a field access!
-  ## - most regular Nim features :)
-  var ctx = GpuContext()
-  let gpuAst = ctx.toGpuAst(body)
-  # NOTE: it doesn't seem like it's possible to add a header to a NVRTC kernel.
-  # NVRTC safe stdlib is implemented at https://github.com/NVIDIA/jitify
-  let body = ctx.genCuda(gpuAst)
-  result = newLit(body)
-
-when isMainModule:
-  # Mini example
-  let kernel = cuda:
-    proc square(x: float32): float32 {.device.} =
-      if x < 0.0'f32:
-        result = 0.0'f32
-      else:
-        result = x * x
-
-    proc computeSquares(
-      output: ptr float32,
-      input: ptr float32,
-      n: int32
-    ) {.global.} =
-      let idx: uint32 = blockIdx.x * blockDim.x + threadIdx.x
-      if idx < n:
-        var temp: float32 = 0.0'f32
-        for i in 0..<4:
-          temp += square(input[idx + i * n])
-        output[idx] = temp
-
-  echo kernel

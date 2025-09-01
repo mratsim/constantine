@@ -126,7 +126,6 @@ template defPtxHelpers*(): untyped {.dirty.} =
 """
     return res
 
-
   # r <- a * b + c
   proc mulloadd(a, b, c: uint32): uint32 {.device, forceinline.} =
     var res {.volatile.}: uint32
@@ -186,6 +185,120 @@ template defPtxHelpers*(): untyped {.dirty.} =
 """
     return res
 
+template defWGSLHelpers*(): untyped {.dirty.} =
+  ## Global variable to simulate carry flag. Private == one for each thread
+  var carry_flag {.private.}: uint32 = 0'u32
+
+  # Add with carry out (sets carry flag)
+  proc add_co(a: uint32, b: uint32): uint32 {.device.} =
+    let result = a + b
+    # Check for overflow: carry occurs if result < a (or result < b)
+    carry_flag = select(0'u32, 1'u32, result < a)
+    return result
+
+  # Add with carry in and carry out
+  proc add_cio(a: uint32, b: uint32): uint32 {.device.} =
+    let temp = a + b
+    let result = temp + carry_flag
+    # Carry out if: temp overflowed OR (temp + carry overflowed)
+    carry_flag = select(0'u32, 1'u32, (temp < a) or (result < temp))
+    return result
+
+  # Add with carry in only
+  proc add_ci(a: uint32, b: uint32): uint32 {.device.} =
+    let temp = a + b
+    let result = temp + carry_flag
+    # Don't update carry flag for this operation
+    return result
+
+  # Subtract with borrow out (sets borrow flag)
+  proc sub_bo(a: uint32, b: uint32): uint32 {.device.} =
+    let result = a - b
+    # Borrow occurs if a < b
+    carry_flag = select(0'u32, 1'u32, a < b)
+    return result
+
+  # Subtract with borrow in only
+  proc sub_bi(a: uint32, b: uint32): uint32 {.device.} =
+    let temp = a - b
+    let result = temp - carry_flag
+    # Don't update carry flag for this operation
+    return result
+
+  # Subtract with borrow in and borrow out
+  proc sub_bio(a: uint32, b: uint32): uint32 {.device.} =
+    let temp = a - b
+    let result = temp - carry_flag
+    # Borrow out if: a < b OR (temp - borrow underflowed)
+    carry_flag = select(0'u32, 1'u32, (a < b) or (temp < carry_flag))
+    return result
+
+  # Select based on condition (equivalent to PTX slct)
+  proc slct(a: uint32, b: uint32, pred: int32): uint32 {.device.} =
+    return select(b, a, pred >= 0)
+
+  proc mul_lo(a, b: uint32): uint32 {.device, forceinline.} =
+    ## Returns the lower 32 bit of the uint32 multiplication
+    ## Native WGSL multiplication automatically wraps to 32 bits
+    return a * b
+
+  proc mul_hi(a, b: uint32): uint32 {.device, forceinline.} =
+    ## Returns the upper 32 bit of the uint32 multiplication
+    ## Decompose into 16-bit chunks to avoid overflow
+    let a_lo = a and 0xFFFF'u32
+    let a_hi = a shr 16
+    let b_lo = b and 0xFFFF'u32
+    let b_hi = b shr 16
+
+    let p0 = a_lo * b_lo
+    let p1 = a_lo * b_hi
+    let p2 = a_hi * b_lo
+    let p3 = a_hi * b_hi
+
+    # Combine intermediate products
+    let middle = (p0 shr 16) + (p1 and 0xFFFF'u32) + (p2 and 0xFFFF'u32)
+    let carry = middle shr 16
+
+    return p3 + (p1 shr 16) + (p2 shr 16) + carry
+
+  # r <- a * b + c (multiply-add low)
+  proc mulloadd(a, b, c: uint32): uint32 {.device, forceinline.} =
+    return mul_lo(a, b) + c
+
+  proc mulloadd_co(a, b, c: uint32): uint32 {.device, forceinline.} =
+    ## Multiply-add low with carry out
+    let product = mul_lo(a, b)
+    return add_co(product, c)
+
+  proc mulloadd_ci(a, b, c: uint32): uint32 {.device, forceinline.} =
+    ## Multiply-add low with carry in
+    let product = mul_lo(a, b)
+    return add_ci(product, c)
+
+  proc mulloadd_cio(a, b, c: uint32): uint32 {.device, forceinline.} =
+    ## Multiply-add low with carry in and carry out
+    let product = mul_lo(a, b)
+    return add_cio(product, c)
+
+  # r <- (a * b) >> 32 + c (multiply-add high)
+  proc mulhiadd(a, b, c: uint32): uint32 {.device, forceinline.} =
+    return mul_hi(a, b) + c
+
+  proc mulhiadd_co(a, b, c: uint32): uint32 {.device, forceinline.} =
+    ## Multiply-add high with carry out
+    let hi_product = mul_hi(a, b)
+    return add_co(hi_product, c)
+
+  proc mulhiadd_ci(a, b, c: uint32): uint32 {.device, forceinline.} =
+    ## Multiply-add high with carry in
+    let hi_product = mul_hi(a, b)
+    return add_ci(hi_product, c)
+
+  proc mulhiadd_cio(a, b, c: uint32): uint32 {.device, forceinline.} =
+    ## Multiply-add high with carry in and carry out
+    let hi_product = mul_hi(a, b)
+    return add_cio(hi_product, c)
+
 
 template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   # Need to get the limbs & spare bits data in a static context
@@ -199,7 +312,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   const M = toBigInt(bigintToUint32Limbs(T.getModulus))
   const MontyOne = toBigInt(bigintToUint32Limbs(T.getMontyOne))
   const PP1D2 = toBigInt(bigintToUint32Limbs(T.getPrimePlus1div2))
-  const M0NInv = getM0ninv()
+  const M0NInv = getM0ninv().uint32
 
   proc finalSubMayOverflow(a, M: BigInt): BigInt {.device.} =
     ## If a >= Modulus: r <- a-M
@@ -229,7 +342,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
 
     var r: BigInt = BigInt()
     staticFor i, 0, N:
-      r[i] = slct(scratch[i], a[i], underflowedModulus.int32)
+      r[i] = slct(scratch[i], a[i], cast[int32](underflowedModulus))
     return r
 
   proc finalSubNoOverflow(a, M: BigInt): BigInt {.device.} =
@@ -254,7 +367,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
 
     var r: BigInt = BigInt()
     staticFor i, 0, N:
-      r[i] = slct(scratch[i], a[i], underflowedModulus.int32)
+      r[i] = slct(scratch[i], a[i], cast[int32](underflowedModulus))
     return r
 
   proc modadd(a, b, M: BigInt): BigInt {.device.} =
@@ -370,7 +483,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
         let bi = b[i]
         var A = 0'u32
 
-        if i == 0:
+        when i == 0:
           staticFor j, 0, N:
             t[j] = mul_lo(a[j], bi)
         else:
@@ -615,4 +728,3 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
 
     # if it was odd, add `M+1/2` to go 'half-way around'
     r.cadd(PP1D2, isO)
-
