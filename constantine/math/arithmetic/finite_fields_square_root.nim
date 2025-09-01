@@ -26,7 +26,7 @@ import
 # Specialized routine for p ≡ 3 (mod 4)
 # ------------------------------------------------------------
 
-func invsqrt_p3mod4(r: var Fp, a: Fp) =
+func invsqrt_p3mod4(r: var FF, a: FF) =
   ## Compute the inverse square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -45,17 +45,17 @@ func invsqrt_p3mod4(r: var Fp, a: Fp) =
   # a^((p-1)/2)) * a^-1 ≡ 1/a  (mod p)
   # a^((p-3)/2))        ≡ 1/a  (mod p)
   # a^((p-3)/4))        ≡ 1/√a (mod p)      # Requires p ≡ 3 (mod 4)
-  static: doAssert Fp.Name.has_P_3mod4_primeModulus()
-  when FP.Name.hasSqrtAddchain():
+  static: doAssert FF.Name.has_P_3mod4_primeModulus()
+  when FF.Name.hasSqrtAddchain():
     r.invsqrt_addchain(a)
   else:
     r = a
-    r.pow_vartime(Fp.getPrimeMinus3div4_BE())
+    r.pow_vartime(FF.getPrimeMinus3div4_BE())
 
 # Specialized routine for p ≡ 5 (mod 8)
 # ------------------------------------------------------------
 
-func invsqrt_p5mod8(r: var Fp, a: Fp) =
+func invsqrt_p5mod8(r: var FF, a: FF) =
   ## Compute the inverse square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -83,7 +83,7 @@ func invsqrt_p5mod8(r: var Fp, a: Fp) =
   #   a^((p-1)/4)) * a⁻¹ ≡  -1/a  (mod p)
   #   a^((p-5)/4))       ≡  -1/a  (mod p)
   #   a^((p-5)/8))       ≡ ± √-1/√a (mod p)
-  # as p ≡ 5 (mod 8), hence 𝑖 ∈ Fp with 𝑖² ≡ −1 (mod p)
+  # as p ≡ 5 (mod 8), hence 𝑖 ∈ FF with 𝑖² ≡ −1 (mod p)
   #   a^((p-5)/8)) * 𝑖    ≡ ± 1/√a (mod p)
   #
   # Atkin Algorithm: branchless, no precomputation
@@ -105,16 +105,16 @@ func invsqrt_p5mod8(r: var Fp, a: Fp) =
   #
   # Hence we set β = (2a)^((p-1)/4)
   # and α = (β/2a)⁽¹⸍²⁾= (2a)^(((p-1)/4 - 1)/2) = (2a)^((p-5)/8)
-  static: doAssert Fp.Name.has_P_5mod8_primeModulus()
-  var alpha{.noInit.}, beta{.noInit.}: Fp
+  static: doAssert FF.Name.has_P_5mod8_primeModulus()
+  var alpha{.noInit.}, beta{.noInit.}: FF
 
   # α = (2a)^((p-5)/8)
   alpha.double(a)
   beta = alpha
-  when Fp.Name.hasSqrtAddchain():
+  when FF.Name.hasSqrtAddchain():
     alpha.invsqrt_addchain_pminus5over8(alpha)
   else:
-    alpha.pow_vartime(Fp.getPrimeMinus5div8_BE())
+    alpha.pow_vartime(FF.getPrimeMinus5div8_BE())
 
   # Note: if r aliases a, for inverse square root we don't use `a` again
 
@@ -136,16 +136,16 @@ func invsqrt_p5mod8(r: var Fp, a: Fp) =
 # Tonelli Shanks for any prime
 # ------------------------------------------------------------
 
-func precompute_tonelli_shanks(a_pre_exp: var Fp, a: Fp) =
-  when FP.Name.hasTonelliShanksAddchain():
+func precompute_tonelli_shanks(a_pre_exp: var FF, a: FF) =
+  when FF.Name.hasTonelliShanksAddchain():
     a_pre_exp.precompute_tonelli_shanks_addchain(a)
   else:
     a_pre_exp = a
-    a_pre_exp.pow_vartime(Fp.Name.tonelliShanks(exponent))
+    a_pre_exp.pow_vartime(FF.Name.tonelliShanks(exponent))
 
 func invsqrt_tonelli_shanks_pre(
-       invsqrt: var Fp,
-       a, a_pre_exp: Fp) =
+       invsqrt: var FF,
+       a, a_pre_exp: FF) =
   ## Compute the inverse_square_root
   ## of `a` via constant-time Tonelli-Shanks
   ##
@@ -153,16 +153,16 @@ func invsqrt_tonelli_shanks_pre(
   ## That is shared with the simultaneous isSquare routine
   template z: untyped = a_pre_exp
   template r: untyped = invsqrt
-  var t {.noInit.}: Fp
-  const e = Fp.Name.tonelliShanks(twoAdicity)
+  var t {.noInit.}: FF
+  const e = FF.Name.tonelliShanks(twoAdicity)
 
   t.square(z)
   t *= a
   r = z
   var b {.noInit.} = t
-  var root {.noInit.} = Fp.Name.tonelliShanks(root_of_unity)
+  var root {.noInit.} = FF.Name.tonelliShanks(root_of_unity)
 
-  var buf {.noInit.}: Fp
+  var buf {.noInit.}: FF
 
   for i in countdown(e, 2, 1):
     if i-2 >= 1:
@@ -176,7 +176,7 @@ func invsqrt_tonelli_shanks_pre(
     t.ccopy(buf, bNotOne)
     b = t
 
-func invsqrt_tonelli_shanks*(r: var Fp, a: Fp) =
+func invsqrt_tonelli_shanks*(r: var FF, a: FF) =
   ## Compute the inverse square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -187,7 +187,7 @@ func invsqrt_tonelli_shanks*(r: var Fp, a: Fp) =
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
-  var a_pre_exp{.noInit.}: Fp
+  var a_pre_exp{.noInit.}: FF
   a_pre_exp.precompute_tonelli_shanks(a)
   invsqrt_tonelli_shanks_pre(r, a, a_pre_exp)
 
@@ -196,7 +196,7 @@ func invsqrt_tonelli_shanks*(r: var Fp, a: Fp) =
 
 {.push inline.}
 
-func invsqrt*[Name](r: var Fp[Name], a: Fp[Name]) =
+func invsqrt*(r: var FF, a: FF) =
   ## Compute the inverse square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -207,14 +207,14 @@ func invsqrt*[Name](r: var Fp[Name], a: Fp[Name]) =
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
-  when Name.has_P_3mod4_primeModulus():
+  when FF.Name.has_P_3mod4_primeModulus():
     r.invsqrt_p3mod4(a)
-  elif Name.has_P_5mod8_primeModulus():
+  elif FF.Name.has_P_5mod8_primeModulus():
     r.invsqrt_p5mod8(a)
   else:
     r.invsqrt_tonelli_shanks(a)
 
-func invsqrt_vartime*[Name](r: var Fp[Name], a: Fp[Name]) =
+func invsqrt_vartime*(r: var FF, a: FF) =
   ## Compute the inverse square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -226,16 +226,16 @@ func invsqrt_vartime*[Name](r: var Fp[Name], a: Fp[Name]) =
   ## This procedure returns a deterministic result
   ##
   ## This procedure is NOT constant-time
-  when Name.has_P_3mod4_primeModulus():
+  when FF.Name.has_P_3mod4_primeModulus():
     r.invsqrt_p3mod4(a)
-  elif Name.has_P_5mod8_primeModulus():
+  elif FF.Name.has_P_5mod8_primeModulus():
     r.invsqrt_p5mod8(a)
-  elif Name == Bandersnatch or Name == Banderwagon:
+  elif FF.Name == Bandersnatch or FF.Name == Banderwagon:
     r.inv_sqrt_precomp_vartime(a)
   else:
     r.invsqrt_tonelli_shanks(a)
 
-func sqrt*[Name](a: var Fp[Name]) =
+func sqrt*(a: var FF) =
   ## Compute the square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -246,11 +246,11 @@ func sqrt*[Name](a: var Fp[Name]) =
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
-  var t {.noInit.}: Fp[Name]
+  var t {.noInit.}: FF
   t.invsqrt(a)
   a *= t
 
-func sqrt_vartime*[Name](a: var Fp[Name]) =
+func sqrt_vartime*(a: var FF) =
   ## Compute the square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -258,11 +258,11 @@ func sqrt_vartime*[Name](a: var Fp[Name]) =
   ## The result is undefined otherwise
   ##
   ## This is NOT constant-time
-  var t {.noInit.}: Fp[Name]
+  var t {.noInit.}: FF
   t.invsqrt_vartime(a)
   a *= t
 
-func sqrt_invsqrt*[Name](sqrt, invsqrt: var Fp[Name], a: Fp[Name]) =
+func sqrt_invsqrt*(sqrt, invsqrt: var FF, a: FF) =
   ## Compute the square root and inverse square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -275,7 +275,7 @@ func sqrt_invsqrt*[Name](sqrt, invsqrt: var Fp[Name], a: Fp[Name]) =
   invsqrt.invsqrt(a)
   sqrt.prod(invsqrt, a)
 
-func sqrt_invsqrt_vartime*[Name](sqrt, invsqrt: var Fp[Name], a: Fp[Name]) =
+func sqrt_invsqrt_vartime*(sqrt, invsqrt: var FF, a: FF) =
   ## Compute the square root of ``a`` and inverse square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -286,7 +286,7 @@ func sqrt_invsqrt_vartime*[Name](sqrt, invsqrt: var Fp[Name], a: Fp[Name]) =
   invsqrt.invsqrt_vartime(a)
   sqrt.prod(invsqrt, a)
 
-func sqrt_invsqrt_if_square*[Name](sqrt, invsqrt: var Fp[Name], a: Fp[Name]): SecretBool  =
+func sqrt_invsqrt_if_square*(sqrt, invsqrt: var FF, a: FF): SecretBool  =
   ## Compute the square root and ivnerse square root of ``a``
   ##
   ## This returns true if ``a`` is square and sqrt/invsqrt contains the square root/inverse square root
@@ -297,11 +297,11 @@ func sqrt_invsqrt_if_square*[Name](sqrt, invsqrt: var Fp[Name], a: Fp[Name]): Se
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   sqrt_invsqrt(sqrt, invsqrt, a)
-  var test {.noInit.}: Fp[Name]
+  var test {.noInit.}: FF
   test.square(sqrt)
   result = test == a
 
-func sqrt_invsqrt_if_square_vartime*[Name](sqrt, invsqrt: var Fp[Name], a: Fp[Name]): SecretBool  =
+func sqrt_invsqrt_if_square_vartime*(sqrt, invsqrt: var FF, a: FF): SecretBool  =
   ## Compute the square root and ivnerse square root of ``a``
   ##
   ## This returns true if ``a`` is square and sqrt/invsqrt contains the square root/inverse square root
@@ -310,11 +310,11 @@ func sqrt_invsqrt_if_square_vartime*[Name](sqrt, invsqrt: var Fp[Name], a: Fp[Na
   ##
   ## This is NOT constant-time
   sqrt_invsqrt_vartime(sqrt, invsqrt, a)
-  var test {.noInit.}: Fp[Name]
+  var test {.noInit.}: FF
   test.square(sqrt)
   result = test == a
 
-func sqrt_if_square*[Name](a: var Fp[Name]): SecretBool =
+func sqrt_if_square*(a: var FF): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a``
   ## if not, ``a`` is undefined.
   ##
@@ -322,11 +322,11 @@ func sqrt_if_square*[Name](a: var Fp[Name]): SecretBool =
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
-  var sqrt{.noInit.}, invsqrt{.noInit.}: Fp[Name]
+  var sqrt{.noInit.}, invsqrt{.noInit.}: FF
   result = sqrt_invsqrt_if_square(sqrt, invsqrt, a)
   a = sqrt
 
-func sqrt_if_square_vartime*[Name](a: var Fp[Name]): SecretBool =
+func sqrt_if_square_vartime*(a: var FF): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a``
   ## if not, ``a`` is undefined.
   ##
@@ -335,11 +335,11 @@ func sqrt_if_square_vartime*[Name](a: var Fp[Name]): SecretBool =
   ## This procedure returns a deterministic result
   ##
   ## This is NOT constant-time
-  var sqrt{.noInit.}, invsqrt{.noInit.}: Fp[Name]
+  var sqrt{.noInit.}, invsqrt{.noInit.}: FF
   result = sqrt_invsqrt_if_square_vartime(sqrt, invsqrt, a)
   a = sqrt
 
-func invsqrt_if_square*[Name](r: var Fp[Name], a: Fp[Name]): SecretBool =
+func invsqrt_if_square*(r: var FF, a: FF): SecretBool =
   ## If ``a`` is a square, compute the inverse square root of ``a``
   ## if not, ``a`` is undefined.
   ##
@@ -347,27 +347,27 @@ func invsqrt_if_square*[Name](r: var Fp[Name], a: Fp[Name]): SecretBool =
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
-  var sqrt{.noInit.}: Fp[Name]
+  var sqrt{.noInit.}: FF
   result = sqrt_invsqrt_if_square(sqrt, r, a)
 
-func invsqrt_if_square_vartime*[Name](r: var Fp[Name], a: Fp[Name]): SecretBool =
+func invsqrt_if_square_vartime*(r: var FF, a: FF): SecretBool =
   ## If ``a`` is a square, compute the inverse square root of ``a``
   ## if not, ``a`` is undefined.
   ##
   ## This procedure is NOT constant-time
-  var sqrt{.noInit.}: Fp[Name]
+  var sqrt{.noInit.}: FF
   result = sqrt_invsqrt_if_square_vartime(sqrt, r, a)
 
 # Legendre symbol / Euler's Criterion / Kronecker's symbol
 # ------------------------------------------------------------
 
-func isSquare*(a: Fp): SecretBool =
+func isSquare*(a: FF): SecretBool =
   ## Returns true if ``a`` is a square (quadratic residue) in 𝔽p
   ##
   ## Assumes that the prime modulus ``p`` is public.
-  var aa {.noInit.}: Fp.getBigInt()
+  var aa {.noInit.}: FF.getBigInt()
   aa.fromField(a)
-  let symbol = legendre(aa.limbs, Fp.getModulus().limbs, aa.bits)
+  let symbol = legendre(aa.limbs, FF.getModulus().limbs, aa.bits)
   return not(symbol == MaxWord)
 
 {.pop.} # inline
@@ -375,7 +375,7 @@ func isSquare*(a: Fp): SecretBool =
 # Fused routines
 # ------------------------------------------------------------
 
-func sqrt_ratio_if_square*(r: var Fp, u, v: Fp): SecretBool {.inline.} =
+func sqrt_ratio_if_square*(r: var FF, u, v: FF): SecretBool {.inline.} =
   ## If u/v is a square, compute √(u/v)
   ## if not, the result is undefined
   ##
@@ -389,19 +389,19 @@ func sqrt_ratio_if_square*(r: var Fp, u, v: Fp): SecretBool {.inline.} =
   # u/v is square iff 𝛘(u/v) = 1 (mod p)
   # As 𝛘(a) = 1 or -1
   # 𝛘(u/v) = 𝛘(ub)
-  var uv{.noInit.}: Fp
+  var uv{.noInit.}: FF
   uv.prod(u, v)                    # uv
   result = r.invsqrt_if_square(uv) # 1/√uv
   r *= u                           # √u/√v
 
-func sqrt_ratio_if_square_vartime*(r: var Fp, u, v: Fp): SecretBool {.inline.} =
+func sqrt_ratio_if_square_vartime*(r: var FF, u, v: FF): SecretBool {.inline.} =
   ## If u/v is a square, compute √(u/v)
   ## if not, the result is undefined
   ##
   ## r must not alias u or v
   ##
   ## This is NOT constant-time
-  var uv{.noInit.}: Fp
+  var uv{.noInit.}: FF
   uv.prod(u, v)                    # uv
   result = r.invsqrt_if_square_vartime(uv) # 1/√uv
   r *= u                           # √u/√v
