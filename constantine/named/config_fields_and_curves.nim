@@ -65,6 +65,16 @@ declareCurves:
     testingCurve: true
     bitwidth: 16
     modulus: "0xFFEF" # 65519 in hex
+  curve Mersenne61:
+    testingCurve: true
+    bitwidth: 61
+    modulus: "0x1fffffffffffffff" # 2^61 - 1
+  curve Mersenne127:
+    testingCurve: true
+    bitwidth: 127
+    modulus: "0x7fffffffffffffffffffffffffffffff" # 2^127 - 1
+    
+  # -----------------------------------------------------------------------------
 
   curve BabyBear: # BabyBear field used in SNARKs and zkVMs
     bitwidth: 31
@@ -74,15 +84,10 @@ declareCurves:
     bitwidth: 31
     modulus: "0x7f000001" # `0b11111111000000000000000000000001 = 255·2²⁴ + 1 = 2³¹ - 2²⁴ + 1`
 
-  curve Mersenne61:
-    testingCurve: true
-    bitwidth: 61
-    modulus: "0x1fffffffffffffff" # 2^61 - 1
-  curve Mersenne127:
-    testingCurve: true
-    bitwidth: 127
-    modulus: "0x7fffffffffffffffffffffffffffffff" # 2^127 - 1
-  # -----------------------------------------------------------------------------
+  curve Goldilocks: # GoldiLocks field used in SNARKs and zkVMs
+    bitwidth: 64
+    modulus: "0xFFFFFFFF00000001" # `1111111111111111111111111111111100000000000000000000000000000001 = 2^64 - 2^32 + 1`
+  
   curve P224: # NIST P-224
     bitwidth: 224
     modulus: "0xffffffffffffffffffffffffffffffff000000000000000000000001"
