@@ -133,7 +133,12 @@ proc codegen*(gen: GpuGenericsInfo, ast: GpuAst, kernel: string = ""): string =
   for fn in gen.procs: # assign generics info to correct table
     ctx.genericInsts[fn.pName] = fn
   for typ in gen.types: # assign generics info to correct table
-    ctx.types[typ.tTyp] = typ
+    case typ.kind
+    of gpuTypeDef:
+      ctx.types[typ.tTyp] = typ
+    of gpuAlias:
+      ctx.types[typ.aTyp] = typ
+    else: raiseAssert "Unexpected node kind assigning to `types`: " & $typ
   result = ctx.codegen(ast, kernel)
 
 
