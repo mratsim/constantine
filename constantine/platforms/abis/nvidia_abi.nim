@@ -484,12 +484,12 @@ type
   CUdevice* = distinct int32
     ## Compute Device handle
 
-  CUcontext* {.importc.} = distinct pointer
-  CUevent* {.importc.} = distinct pointer
-  CUmodule*  {.importc.} = distinct pointer
-  CUfunction* {.importc.} = distinct pointer
-  CUstream* {.importc.} = distinct pointer
-  CUlinkState* {.importc.} = distinct pointer # ptr CUlinkState_st
+  CUcontext*   = distinct pointer
+  CUevent*     = distinct pointer
+  CUmodule*    = distinct pointer
+  CUfunction*  = distinct pointer
+  CUstream*    = distinct pointer
+  CUlinkState* = distinct pointer
 
 ##
 ##  CUDA device pointer
@@ -498,12 +498,12 @@ type
 
 when sizeOf(pointer) == 8:
   type
-    CUdeviceptr_v2* {.importc.} = distinct culonglong
+    CUdeviceptr_v2* = distinct culonglong
 else:
   type
-    CUdeviceptr_v2* {.importc.}= distinct cuint
+    CUdeviceptr_v2* = distinct cuint
 type
-  CUdeviceptr*  {.importc.} = CUdeviceptr_v2
+  CUdeviceptr* = CUdeviceptr_v2
 
 
 ######################################################################
