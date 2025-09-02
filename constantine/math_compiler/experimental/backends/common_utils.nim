@@ -16,12 +16,12 @@ proc isGlobal*(fn: GpuAst): bool =
   doAssert fn.kind == gpuProc, "Not a function, but: " & $fn.kind
   result = attGlobal in fn.pAttributes
 
-proc farmTopLevel*(ctx: var GpuContext, ast: GpuAst, kernel: string, varBlock, typBlock: var GpuAst) =
+proc farmTopLevel*(ctx: var GpuContext, ast: GpuAst, kernel: string, varBlock: var GpuAst) =
   ## Farms the top level of the code for functions, variable and type definition.
   ## All functions are added to the `allFnTab`, while only global ones (or even only
   ## `kernel` if any) is added to the `fnTab` as the starting point for the remaining
   ## logic.
-  ## Variables and types are collected in `varBlock` and `typBlock`.
+  ## Variables are collected in `varBlock`.
   case ast.kind
   of gpuProc:
     ctx.allFnTab[ast.pName] = ast
@@ -32,10 +32,10 @@ proc farmTopLevel*(ctx: var GpuContext, ast: GpuAst, kernel: string, varBlock, t
   of gpuBlock:
     # could be a type definition or global variable
     for ch in ast:
-      ctx.farmTopLevel(ch, kernel, varBlock, typBlock)
+      ctx.farmTopLevel(ch, kernel, varBlock)
   of gpuVar, gpuConstexpr:
     varBlock.statements.add ast
   of gpuTypeDef, gpuAlias:
-    typBlock.statements.add ast
+    raiseAssert "Unexpected type def / alias def found. These should be in `ctx.types` now: " & $ast
   else:
     discard

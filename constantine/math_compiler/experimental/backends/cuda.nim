@@ -170,10 +170,8 @@ proc preprocess*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
   # 2. Fill table with all *global* functions or *only* the specific `kernel`
   #    if any given
   var varBlock = GpuAst(kind: gpuBlock)
-  var typBlock = GpuAst(kind: gpuBlock)
-  ctx.farmTopLevel(ast, kernel, varBlock, typBlock)
+  ctx.farmTopLevel(ast, kernel, varBlock)
   ctx.globalBlocks.add varBlock
-  ctx.globalBlocks.add typBlock
   ## XXX: `typBlock` should now always be empty, as we pass all
   ## found types into `ctx.types`
 

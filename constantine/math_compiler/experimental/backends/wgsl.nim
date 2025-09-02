@@ -732,10 +732,8 @@ proc preprocess*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
   # 1. Fill table with all *global* functions or *only* the specific `kernel`
   #    if any given
   var varBlock = GpuAst(kind: gpuBlock)
-  var typBlock = GpuAst(kind: gpuBlock)
-  ctx.farmTopLevel(ast, kernel, varBlock, typBlock)
+  ctx.farmTopLevel(ast, kernel, varBlock)
   ctx.globalBlocks.add varBlock
-  ctx.globalBlocks.add typBlock
   ## XXX: `typBlock` should now always be empty, as we pass all
   ## found types into `ctx.types`
 
@@ -743,8 +741,10 @@ proc preprocess*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
   for k, v in pairs(ctx.genericInsts):
     ctx.allFnTab[k] = v
   # And all the known types
+  var typBlock = GpuAst(kind: gpuBlock)
   for k, typ in pairs(ctx.types):
-    ctx.globalBlocks.add typ
+    typBlock.statements.add typ
+  ctx.globalBlocks.add typBlock
 
   # 2. Remove all arguments from global functions, as none are allowed in WGSL
   for (fnIdent, fn) in mpairs(ctx.fnTab): # mutating the function in the table
