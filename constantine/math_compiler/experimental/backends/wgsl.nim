@@ -499,15 +499,17 @@ proc injectAddressOf(ctx: var GpuContext, n: var GpuAst) =
 
 proc rewriteCompoundAssignment(n: GpuAst): GpuAst =
   doAssert n.kind == gpuBinOp
-  if n.bOp in ["<=", "==", ">=", "!="]: return n
+  if n.bOp.ident() in ["<=", "==", ">=", "!="]: return n
 
   template genAssign(left, rnode, op: typed): untyped =
     let right = GpuAst(kind: gpuBinOp, bOp: op, bLeft: left, bRight: rnode)
     GpuAst(kind: gpuAssign, aLeft: left, aRight: right, aRequiresMemcpy: false)
 
-  let op = n.bOp
+  let op = n.bOp.ident()
   if op.len >= 2 and op[^1] == '=':
-    result = genAssign(n.bLeft, n.bRight, op[0 .. ^2]) # all but last
+    var opAst = GpuAst(kind: gpuIdent, iName: op[0 .. ^2])
+    opAst.iSym = opAst.iName
+    result = genAssign(n.bLeft, n.bRight, opAst) # all but last
   else:
     # leave untouched
     result = n
@@ -937,7 +939,7 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
       let l = ctx.genWebGpu(ast.bLeft)
       let r = ctx.genWebGpu(ast.bRight)
       result = indentStr & "(" & l & " " &
-               ast.bOp & " " &
+               ctx.genWebGpu(ast.bOp) & " " &
                r & ")"
 
   of gpuIdent:

@@ -990,22 +990,53 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
 
   of nnkInfix:
     result = GpuAst(kind: gpuBinOp)
-    # if left/right is boolean we need logical AND/OR, otherwise
-    # bitwise
-    let isBoolean = node[1].typeKind == ntyBool
-    result.bOp = assignOp(node[0].repr, isBoolean) # repr so that open sym choice gets correct name
-    result.bLeft = ctx.toGpuAst(node[1])
-    result.bRight = ctx.toGpuAst(node[2])
+    # Using `getType` to get the types of the arguuments
+    let typ = node[0].getTypeImpl() # e.g.
+    doAssert typ.kind == nnkProcTy, "Infix node is not a proc but: " & $typ.treerepr
+    # BracketExpr
+    #   Sym "proc"
+    #   Sym "int"  <- return type
+    #   Sym "int"  <- left op type
+    #   Sym "int"  <- right op type
+    result.bLeftTyp = nimToGpuType(typ[0][1])
+    result.bRightTyp = nimToGpuType(typ[0][2])
+    # if either is not a base type (`gtBool .. gtSize_t`) we actually deal with a _function call_
+    # instead of an binary operation. Will thus rewrite.
+    proc ofBasicType(t: GpuType, allowPtrLhs: bool): bool =
+      ## Determines if the given type is a basic POD type *or* a simple pointer to it.
+      ## This is because some infix nodes, e.g. `x += y` will have LHS arguments that are
+      ## `var T`, which appear as an implicit pointer here.
+      ##
+      ## TODO: Handle the case of backend inbuilt special types (like `vec3`), which may indeed
+      ## have inbuilt infix operators. Either by checking if the type has a `{.builtin.}` pragma
+      ## _or_ if there is a wrapped proc for this operator and if so do not rewrite as `gpuCall`
+      ## if that exists.
+      result = (t.kind in gtBool .. gtSize_t)
+      if allowPtrLhs:
+        result = result or ((t.kind == gtPtr) and t.implicit and t.to.kind in gtBool .. gtSize_t)
 
-    # We patch the types of int / float literals. WGSL does not automatically convert literals
-    # to the target type. Determining the type here _can_ fail. In that case the
-    # `lType` field will just be `gtVoid`, like the default.
-    if result.bLeft.kind == gpuLit and result.bRight.kind != gpuLit:
-      # determine literal type based on `bRight`
-      result.bLeft.lType = nimToGpuType(node[2], allowToFail = true)
-    elif result.bRight.kind == gpuLit and result.bLeft.kind != gpuLit:
-      # determine literal type based on `bLeft`
-      result.bRight.lType = nimToGpuType(node[1], allowToFail = true)
+    if not result.bLeftTyp.ofBasicType(true) or not result.bRightTyp.ofBasicType(false):
+      result = GpuAst(kind: gpuCall)
+      result.cName = ctx.getFnName(node[0])
+      result.cArgs = @[ctx.toGpuAst(node[1]), ctx.toGpuAst(node[2])]
+    else:
+      # if left/right is boolean we need logical AND/OR, otherwise bitwise
+      let isBoolean = result.bLeftTyp.kind == gtBool
+      var op = GpuAst(kind: gpuIdent, iName: assignOp(node[0].repr, isBoolean)) # repr so that open sym choice gets correct name
+      op.iSym = op.iName
+      result.bOp = op
+      result.bLeft = ctx.toGpuAst(node[1])
+      result.bRight = ctx.toGpuAst(node[2])
+
+      # We patch the types of int / float literals. WGSL does not automatically convert literals
+      # to the target type. Determining the type here _can_ fail. In that case the
+      # `lType` field will just be `gtVoid`, like the default.
+      if result.bLeft.kind == gpuLit: # and result.bRight.kind != gpuLit:
+        # determine literal type based on `bRight`
+        result.bLeft.lType = result.bLeftTyp # nimToGpuType(node[2], allowToFail = true)
+      elif result.bRight.kind == gpuLit: # and result.bLeft.kind != gpuLit:
+        # determine literal type based on `bLeft`
+        result.bRight.lType = result.bRightTyp #nimToGpuType(node[1], allowToFail = true)
 
   of nnkDotExpr:
     ## NOTE: As we use a typed macro, we only encounter `DotExpr` for *actual* field accesses and NOT
