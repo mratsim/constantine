@@ -79,20 +79,41 @@ proc toGpuTypeKind(t: NimTypeKind): GpuTypeKind =
     raiseAssert "Not supported yet: " & $t
 
 proc parseTypeFields(node: NimNode): seq[GpuTypeField]
+
+proc getGenericTypeName(t: NimNode): string =
+  ## Returns the base name of the generic type, i.e. for
+  ## `Foo[Bar, Baz]` returns `Foo`.
+  case t.kind
+  of nnkSym: result = t.strVal
+  of nnkBracketExpr: result = t[0].getGenericTypeName()
+  else: raiseAssert "Unexpected node kind for generic instantiation type: " & $t.treerepr
+
+proc parseGenericArgs(t: NimNode): seq[GpuType] =
+  case t.kind
+  of nnkSym: return # no generic arguments
+  of nnkBracketExpr:
+    for i in 1 ..< t.len:
+      result.add nimToGpuType(t[i])
+  else:
+    raiseAssert "Unexpected node kind in parseGenericArgs: " & $t.treerepr
+
 proc initGpuGenericInst(t: NimNode): GpuType =
   doAssert t.typeKind == ntyGenericInst, "Input is not a generic instantiation: " & $t.treerepr & " of typeKind: " & $t.typeKind
   case t.kind
   of nnkBracketExpr: # regular generic instantiation
-    result = GpuType(kind: gtGenericInst, gName: t[0].repr)
-    for i in 1 ..< t.len: # grab all generic arguments
-      let typ = nimToGpuType(t[i])
-      result.gArgs.add typ
+    result = GpuType(kind: gtGenericInst, gName: getGenericTypeName(t))
+    result.gArgs = parseGenericArgs(t)
     # now parse the object fields
     let impl = t.getTypeImpl() # impl for the `gFields`
     result.gFields = parseTypeFields(impl)
   of nnkObjConstr:
-    doAssert t.len == 1, "Unexpected length of ObjConstr node: " & $t.len & " of node: " & $t.treerepr
-    result = initGpuGenericInst(t[0])
+    if t.len == 1:   # Generic instantiation without arguments
+      result = initGpuGenericInst(t[0])
+    elif t.len == 2: # ...and with arguments
+      doAssert t[1].kind == nnkExprColonExpr, "ObjConstr does not contain initialization as [1], but: " & $t.treerepr
+      result = initGpuGenericInst(t[0])
+    else:
+      raiseAssert "Unexpected number of elements in `nnkObjConstr` node for generic instantiation: " & $t.treerepr
   of nnkSym:
     let impl = getTypeImpl(t)
     case impl.kind
