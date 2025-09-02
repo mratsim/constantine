@@ -975,7 +975,10 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     result.add "}"
 
   of gpuAlias:
-    result = "alias " & gpuTypeToString(ast.aTyp) & " = " & ctx.genWebGpu(ast.aTo)
+    # Aliases come from `ctx.types` and due to implementation details currently are _not_ wrapped
+    # in a `block` (as they are handled like regular `structs`). However, WebGPU requires semicolons
+    # after alias definitions, but not after `struct`. Hence we add `;` manually here
+    result = "alias " & gpuTypeToString(ast.aTyp) & " = " & ctx.genWebGpu(ast.aTo) & ";"
 
   of gpuObjConstr:
     result = gpuTypeToString(ast.ocType) & "("
