@@ -86,15 +86,17 @@ proc log*(nvrtc: var NVRTC) =
 proc compile*(nvrtc: var NVRTC) =
   # Compile the program with fmad disabled.
   # Note: Can specify GPU target architecture explicitly with '-arch' flag.
-  const
-    Options = [
-      cstring "--gpu-architecture=compute_75", # or whatever your GPU arch is
-      # "--fmad=false", # and whatever other options for example
-    ]
+  var options = @[
+    cstring "--gpu-architecture=compute_75", # or whatever your GPU arch is
+    # "--fmad=false", # and whatever other options for example
+  ]
+  when defined(debugCuda):
+    options.add cstring "--device-debug"       # Equivalent to -g
+    options.add cstring "--generate-line-info" # Equivalent to -lineinfo
 
-    NumberOfOptions = cint Options.len
-  let compileResult =  nvrtcCompileProgram(nvrtc.prog, NumberOfOptions,
-                                           cast[cstringArray](addr Options[0]))
+  let numberOfOptions = cint options.len
+  let compileResult =  nvrtcCompileProgram(nvrtc.prog, numberOfOptions,
+                                           cast[cstringArray](addr options[0]))
 
   nvrtc.log()
   ## XXX: only in `DebugCuda`?

@@ -23,6 +23,11 @@ template global*() {.pragma.}
 template device*() {.pragma.}
 template forceinline*() {.pragma.}
 
+## If attached to a function, type or variable it will refer to a built in
+## in the target backend. This is used for all the functions, types and variables
+## defined below to indicate that we do not intend to generate code for them.
+template builtin*() {.pragma.}
+
 # If attached to a `var` it will be treated as a
 # `__constant__`! Only useful if you want to define a
 # constant without initializing it (and then use
@@ -54,25 +59,25 @@ type
     y*: DimWgsl
     z*: DimWgsl
 
-
 ## These are dummy elements to make CUDA block / thread index / dim
 ## access possible in the *typed* `cuda` macro. It cannot be `const`,
 ## because then the typed code would evaluate the values before we
 ## can work with it from the typed macro.
-let blockIdx* = NvBlockIdx()
-let blockDim* = NvBlockDim()
-let gridDim* = NvGridDim()
-let threadIdx* = NvThreadIdx()
+let blockIdx* {.builtin.} = NvBlockIdx()
+let blockDim* {.builtin.} = NvBlockDim()
+let gridDim* {.builtin.} = NvGridDim()
+let threadIdx* {.builtin.} = NvThreadIdx()
 
 ## WebGPU specific
-let global_id* = WgslGridDim()
+let global_id* {.builtin.} = WgslGridDim()
+let num_workgroups* {.builtin.} = WgslGridDim()
 
 ## Similar for procs. They don't need any implementation, as they won't ever be actually called.
-proc printf*(fmt: string) {.varargs.} = discard
-proc memcpy*(dst, src: pointer, size: int) = discard
+proc printf*(fmt: string) {.varargs, builtin.} = discard
+proc memcpy*(dst, src: pointer, size: int) {.builtin.} = discard
 
 ## WebGPU select
-proc select*[T](f, t: T, cond: bool): T =
+proc select*[T](f, t: T, cond: bool): T {.builtin.} =
   # Implementation to run WebGPU code on CPU
   if cond: t
   else: f
@@ -90,20 +95,22 @@ template private*(): untyped {.pragma.}
 
 ## While you can use `malloc` on device with small sizes, it is usually not
 ## recommended to do so.
-proc malloc*(size: csize_t): pointer  = discard
-proc free*(p: pointer) = discard
-proc syncthreads*() {.cudaName: "__syncthreads".} = discard
+proc malloc*(size: csize_t): pointer {.builtin.}  = discard
+proc free*(p: pointer) {.builtin.} = discard
+proc syncthreads*() {.cudaName: "__syncthreads", builtin.} = discard
 
-macro toGpuAst*(body: typed): GpuAst =
+macro toGpuAst*(body: typed): (GpuGenericsInfo, GpuAst) =
   ## WARNING: The following are *not* supported:
   ## - UFCS: because this is a pure untyped DSL, there is no way to disambiguate between
   ##         what is a field access and a function call. Hence we assume any `nnkDotExpr`
   ##         is actually a field access!
   ## - most regular Nim features :)
-  echo body.treerepr
-  echo body.repr
   var ctx = GpuContext()
-  newLit(ctx.toGpuAst(body))
+  let ast = ctx.toGpuAst(body)
+  let genProcs = toSeq(ctx.genericInsts.values)
+  let genTypes = toSeq(ctx.types.values)
+  let g = GpuGenericsInfo(procs: genProcs, types: genTypes)
+  newLit((g, ast))
 
 macro cuda*(body: typed): string =
   ## WARNING: The following are *not* supported:
@@ -119,12 +126,21 @@ macro cuda*(body: typed): string =
   let body = ctx.codegen(gpuAst)
   result = newLit(body)
 
-proc codegen*(ast: GpuAst, kernel: string = ""): string =
+proc codegen*(gen: GpuGenericsInfo, ast: GpuAst, kernel: string = ""): string =
   ## Generates the code based on the given AST (optionally at runtime) and restricts
   ## it to a single global kernel (WebGPU) if any given.
-  let ast = ast.clone() ## XXX: remove clone
   var ctx = GpuContext()
+  for fn in gen.procs: # assign generics info to correct table
+    ctx.genericInsts[fn.pName] = fn
+  for typ in gen.types: # assign generics info to correct table
+    case typ.kind
+    of gpuTypeDef:
+      ctx.types[typ.tTyp] = typ
+    of gpuAlias:
+      ctx.types[typ.aTyp] = typ
+    else: raiseAssert "Unexpected node kind assigning to `types`: " & $typ
   result = ctx.codegen(ast, kernel)
+
 
 when isMainModule:
   # Mini example

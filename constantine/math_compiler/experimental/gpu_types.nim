@@ -33,6 +33,7 @@ type
     gpuDot          # Member access (a.b)
     gpuIndex        # Array indexing (a[b])
     gpuTypeDef      # Type definition
+    gpuAlias        # A type alias
     gpuObjConstr    # Object (struct) constructor
     gpuInlineAsm    # Inline assembly (PTX)
     gpuAddr         # Address of an expression
@@ -45,18 +46,23 @@ type
   GpuTypeKind* = enum
     gtVoid,
     gtBool, gtUint8, gtUint16, gtInt16, gtUint32, gtInt32, gtUint64, gtInt64, gtFloat32, gtFloat64, gtSize_t, # atomics
-    gtArray,     # Static array `array[N, dtype]` -> `dtype[N]`
+    gtArray,       # Static array `array[N, dtype]` -> `dtype[N]`
     gtString,
-    gtObject,    # Struct types
-    gtPtr,       # Pointer type, carries inner type
-    gtUA,        # UncheckedArray (UA) mapped to runtime sized arrays
-    gtVoidPtr    # Opaque void pointer
+    gtObject,      # Struct types
+    gtPtr,         # Pointer type, carries inner type
+    gtUA,          # UncheckedArray (UA) mapped to runtime sized arrays
+    gtGenericInst, # Instantiated generic type with one or more generic arguments (instantiated!)
+    gtVoidPtr      # Opaque void pointer
+    gtInvalid      # Can be returned to indicate a call to `nimToGpuType` failed to determine a type
+                   ## XXX: make this the default value and replace all `gtVoid` placeholders by it
+
 
   GpuTypeField* = object
     name*: string
     typ*: GpuType
 
   GpuType* = ref object
+    builtin*: bool ## Whether the type refers to a builtin type or not
     case kind*: GpuTypeKind
     of gtPtr:
       to*: GpuType # `ptr T` points to `to`
@@ -74,6 +80,10 @@ type
       aLen*: int     # The length of the array. If `aLen == -1` we look at a generic (static) array. Will be given at instantiation time
                     # On both CUDA and WebGPU a length of `0` is also used to generate `int foo[]` (CUDA)
                     # `array<foo>` (WebGPU) (runtime sized arrays), which are generated from `ptr UncheckedArray[float32]` for example.
+    of gtGenericInst:
+      gName*: string # name of the generic type
+      gArgs*: seq[GpuType] # list of the instantiated generic arguments e.g. `vec3<f32>` on WGSL backend
+      gFields*: seq[GpuTypeField] # same as `oFields` for `gtObject`
     else: discard
 
   GpuAttribute* = enum
@@ -97,7 +107,9 @@ type
       pParams*: seq[GpuParam]
       pBody*: GpuAst
       pAttributes*: set[GpuAttribute] # order not important, hence set
+      forwardDeclare*: bool ## can be set to true to _only_ generate a forward declaration
     of gpuCall:
+      cIsExpr*: bool ## If the call returns a value
       cName*: GpuAst ## Will be a `GpuIdent`
       cArgs*: seq[GpuAst]
     of gpuTemplateCall:
@@ -115,8 +127,10 @@ type
       wCond*: GpuAst
       wBody*: GpuAst
     of gpuBinOp:
-      bOp*: string
+      bOp*: GpuAst # `gpuIdent` of the binary operation
       bLeft*, bRight*: GpuAst
+      # types of left and right nodes. Determined from Nim symbol associated with `bOp`
+      bLeftTyp*, bRightTyp*: GpuType
     of gpuVar:
       vName*: GpuAst ## Will be a `GpuIdent`
       vType*: GpuType
@@ -141,9 +155,10 @@ type
       cValue*: GpuAst # not just a string to support different types easily
       cType*: GpuType
     of gpuArrayLit:
-      aValues*: seq[string] ## XXX: make `GpuAst` for case where we store a symbol in an array
+      aValues*: seq[GpuAst]
       aLitType*: GpuType # type of first element
     of gpuBlock:
+      isExpr*: bool ## Whether this block represents an expression, i.e. it returns something
       blockLabel*: string # optional name of the block. If any given, will open a `{ }` scope in CUDA
       statements*: seq[GpuAst]
       ## XXX: we could add a `locals` argument here, which would refer to all local variables
@@ -159,10 +174,14 @@ type
       pOp*: string
       pVal*: GpuAst
     of gpuTypeDef:
-      tName*: string ## XXX: could make GpuAst, but don't really need the types as symbols
+      tTyp*: GpuType ## the actual type. Used to generate the name
       tFields*: seq[GpuTypeField]
+    of gpuAlias:
+      aTyp*: GpuType ## Name of the type alias
+      aTo*: GpuAst ## Type the alias maps to
+      aDistinct*: bool ## If the alias is a distinct type in Nim.
     of gpuObjConstr:
-      ocName*: string  # type we construct
+      ocType*: GpuType  # type we construct
       ## XXX: it would be better if we already fill the fields with default values here
       ocFields*: seq[GpuFieldInit] # the fields we initialize
     of gpuInlineAsm:
@@ -212,11 +231,16 @@ type
   GpuFieldInit* = object
     name*: string
     value*: GpuAst
+    typ*: GpuType
 
   ## XXX: UNUSED
   TemplateInfo* = object
     params*: seq[string]
     body*: GpuAst
+
+  GpuProcSignature* = object
+    params*: seq[GpuParam]
+    retType*: GpuType
 
   GpuContext* = object
     ## XXX: need table for generic invocations. Then when we encounter a type, need to map to
@@ -245,6 +269,47 @@ type
     #                        ## when we finish, we pop. Before we pop, we assign the variable definitions to the `gpuBlock`
     #                        ## `locals`
     genSymCount*: int ## increases for every generated identifier (currently only underscore `_`), hence the basic solution
+    ## Maps a struct type and field name, which is of pointer type to the value the user assigns
+    ## in the constructor. Allows us to later replace `foo.ptrField` by the assignment in the `Foo()`
+    ## constructor (WebGPU only).
+    structsWithPtrs*: Table[(GpuType, string), GpuAst]
+    ## Set of all generic proc names we have encountered in Nim -> GpuAst. When
+    ## we see an `nnkCall` we check if we call a generic function. If so, look up
+    ## the instantiated generic, parse it and store in `genericInsts` below.
+    generics*: HashSet[string]
+
+    ## Stores the unique identifiers (keys) and the implementations of the
+    ## precise generic instantiations that are called.
+    genericInsts*: OrderedTable[GpuAst, GpuAst]
+
+    ## Table of procs and their signature to avoid looping infinitely for recursive procs
+    ## Arguments are:
+    ## - Key: ident of the proc
+    ## - Value: signature of the (possibly generic) instantiation
+    processedProcs*: OrderedTable[GpuAst, GpuProcSignature]
+
+    ## Storse all builtin / nimonly / importc / ... functions we encounter so that we can
+    ## check if they return a value when we encounter them in a `gpuCall`
+    builtins*: OrderedTable[GpuAst, GpuAst]
+
+    ## Table of all known types. Filled during Nim -> GpuAst. Includes generic
+    ## instantiations, but also all other types.
+    ## Key: the raw type. Value: a full `gpuTypeDef`
+    types*: OrderedTable[GpuType, GpuAst]
+
+    ## This is _effectively_ just a set of all already produced function symbols.
+    ## We use it to determine if when encountering another function with the same
+    ## name, but different arguments to instead of using `iName` to use `iSym` as
+    ## the function name. This is to avoid overload issues in backends that don't
+    ## allow overloading by function signatures.
+    symChoices*: HashSet[string]
+
+  ## We rely on being able to compute a `newLit` from the result of `toGpuAst`. Currently we
+  ## only need the `genericInsts` field data (the values). Trying to `newLit` the full `GpuContext`
+  ## causes trouble.
+  GpuGenericsInfo* = object
+    procs*: seq[GpuAst]
+    types*: seq[GpuAst]
 
   GenericArg* = object
     addrSpace*: AddressSpace ## We store the address space, because that's what matters
@@ -274,6 +339,12 @@ proc clone*(typ: GpuType): GpuType =
   of gtArray:
     result.aTyp = typ.aTyp.clone()
     result.aLen = typ.aLen
+  of gtGenericInst:
+    result.gName = typ.gName
+    for g in typ.gArgs:
+      result.gArgs.add g.clone()
+    for f in typ.gFields:
+      result.gFields.add GpuTypeField(name: f.name, typ: f.typ.clone())
   else: discard
 
 proc clone*(ast: GpuAst): GpuAst =
@@ -293,8 +364,10 @@ proc clone*(ast: GpuAst): GpuAst =
       result.pParams.add(clonedParam)
     result.pBody = ast.pBody.clone()
     result.pAttributes = ast.pAttributes
+    result.forwardDeclare = result.forwardDeclare
   of gpuCall:
     result = GpuAst(kind: gpuCall)
+    result.cIsExpr = ast.cIsExpr
     result.cName = ast.cName.clone()
     for arg in ast.cArgs:
       result.cArgs.add(arg.clone())
@@ -320,9 +393,11 @@ proc clone*(ast: GpuAst): GpuAst =
     result.wBody = ast.wBody.clone()
   of gpuBinOp:
     result = GpuAst(kind: gpuBinOp)
-    result.bOp = ast.bOp
+    result.bOp = ast.bOp.clone()
     result.bLeft = ast.bLeft.clone()
     result.bRight = ast.bRight.clone()
+    result.bLeftTyp = ast.bLeftTyp.clone()
+    result.bRightTyp = ast.bRightTyp.clone()
   of gpuVar:
     result = GpuAst(kind: gpuVar)
     result.vName = ast.vName.clone()
@@ -354,7 +429,8 @@ proc clone*(ast: GpuAst): GpuAst =
     result.cType = ast.cType.clone()
   of gpuArrayLit:
     result = GpuAst(kind: gpuArrayLit)
-    result.aValues = ast.aValues
+    for a in ast.aValues:
+      result.aValues.add a.clone()
     result.aLitType = ast.aLitType.clone()
   of gpuPrefix:
     result = GpuAst(kind: gpuPrefix)
@@ -362,6 +438,7 @@ proc clone*(ast: GpuAst): GpuAst =
     result.pVal = ast.pVal.clone()
   of gpuBlock:
     result = GpuAst(kind: gpuBlock)
+    result.isExpr = ast.isExpr
     result.blockLabel = ast.blockLabel
     for stmt in ast.statements:
       result.statements.add(stmt.clone())
@@ -378,14 +455,24 @@ proc clone*(ast: GpuAst): GpuAst =
     result.iIndex = ast.iIndex.clone()
   of gpuTypeDef:
     result = GpuAst(kind: gpuTypeDef)
-    result.tName = ast.tName
+    result.tTyp = ast.tTyp.clone()
     for f in ast.tFields:
       result.tFields.add(GpuTypeField(name: f.name, typ: f.typ.clone()))
+  of gpuAlias:
+    result = GpuAst(kind: gpuAlias)
+    result.aTyp = ast.aTyp.clone()
+    result.aTo = ast.aTo.clone()
   of gpuObjConstr:
     result = GpuAst(kind: gpuObjConstr)
-    result.ocName = ast.ocName
+    result.ocType = ast.ocType.clone()
     for f in ast.ocFields:
-      result.ocFields.add(GpuFieldInit(name: f.name, value: f.value.clone()))
+      result.ocFields.add(
+        GpuFieldInit(
+          name: f.name,
+          value: f.value.clone(),
+          typ: f.typ.clone()
+        )
+      )
   of gpuInlineAsm:
     result = GpuAst(kind: gpuInlineAsm)
     result.stmt = ast.stmt
@@ -423,6 +510,12 @@ proc hash*(t: GpuType): Hash =
   of gtArray:
     h = h !& hash(t.aTyp)
     h = h !& hash(t.aLen)
+  of gtGenericInst:
+    h = h !& hash(t.gName)
+    for g in t.gArgs:
+      h = h !& hash(g)
+    for f in t.gFields:
+      h = h !& hash(f)
   else: discard
   result = !$ h
 
@@ -451,6 +544,15 @@ proc `==`*(a, b: GpuType): bool =
       else:
         for i in 0 ..< a.oFields.len:
           result = result and (a.oFields[i] == b.oFields[i])
+    of gtGenericInst:
+      result = a.gName == b.gName
+      if a.gArgs.len != b.gArgs.len: result = false
+      elif a.gFields.len != b.gFields.len: result = false
+      else:
+        for i in 0 ..< a.gArgs.len:
+          result = result and (a.gArgs[i] == b.gArgs[i])
+        for i in 0 ..< a.gFields.len:
+          result = result and (a.gFields[i] == b.gFields[i])
     of gtArray: result = a.aTyp == b.aTyp and a.aLen == b.aLen
     else: discard
 
@@ -460,6 +562,17 @@ proc `==`*(a, b: GpuAst): bool =
     raiseAssert "Unsupported equality for GpuAst that are not idents"
   else:
     result = a.iSym == b.iSym and a.iTyp == b.iTyp and a.symbolKind == b.symbolKind
+
+proc `==`*(a, b: GpuProcSignature): bool =
+  if a.retType != b.retType: result = false
+  elif a.params.len != b.params.len:
+    result = false
+  else:
+    result = true
+    for i in 0 ..< a.params.len:
+      let ap = a.params[i]
+      let bp = b.params[i]
+      result = result and (ap == bp)
 
 proc len*(ast: GpuAst): int =
   case ast.kind
@@ -495,6 +608,31 @@ proc `$`*(x: GpuType): string =
 proc removePrefix(s, p: string): string =
   result = s
   result.removePrefix(p)
+
+proc pretty*(t: GpuType): string =
+  ## returns a flat (but lossy) string representation of the type
+  if t == nil:
+    result = "GpuType(nil)"
+  else:
+    case t.kind
+    of gtPtr:
+      result = if t.implicit: "var " else: "ptr "
+      result.add pretty(t.to)
+    of gtUA:
+      result = "UncheckedArray[" & t.uaTo.pretty() & "]"
+    of gtObject:
+      result = t.name # just the name
+    of gtArray:
+      result = "array[" & $t.aLen & ", " & t.aTyp.pretty() & "]"
+    of gtGenericInst:
+      result = t.gName & "["
+      for i, g in t.gArgs:
+        result.add pretty(g)
+        if i < t.gArgs.high:
+          result.add ", "
+      result.add "]"
+    else:
+      result = ($t.kind).removePrefix("gt")
 
 proc pretty*(n: GpuAst, indent: int = 0): string =
   template id(): untyped = repeat(" ", indent)
@@ -545,17 +683,17 @@ proc pretty*(n: GpuAst, indent: int = 0): string =
     result.add pretty(n.wCond, indent + 2)
     result.add pretty(n.wBody, indent + 2)
   of gpuBinOp:
-    result.add idd("Ident", n.bOp)
+    result.add pretty(n.bOp, indent + 2)
     result.add pretty(n.bLeft, indent + 2)
     result.add pretty(n.bRight, indent + 2)
   of gpuVar:
     result.add pretty(n.vName, indent + 2)
     result.add pretty(n.vInit, indent + 2)
     if n.vAttributes.len > 0:
-      result.add id("Attributes")
+      result.add idd("Attributes")
       for attr in n.vAttributes:
         let indent = indent + 2
-        result.add id(attr)
+        result.add idd(attr)
   of gpuAssign:
     result.add pretty(n.aLeft, indent + 2)
     result.add pretty(n.aRight, indent + 2)
@@ -568,7 +706,7 @@ proc pretty*(n: GpuAst, indent: int = 0): string =
     result.add pretty(n.cValue, indent + 2)
   of gpuArrayLit:
     for el in n.aValues:
-      result.add id(el)
+      result.add pretty(el, indent + 2)
   of gpuBlock:
     if n.blockLabel.len > 0:
       result.add id("Label", n.blockLabel)
@@ -586,17 +724,22 @@ proc pretty*(n: GpuAst, indent: int = 0): string =
     result.add id("Op", n.pOp)
     result.add pretty(n.pVal, indent + 2)
   of gpuTypeDef:
-    result.add id("Type", n.tName)
+    result.add id("Type", pretty(n.tTyp))
     result.add id("Fields")
     for t in n.tFields:
       let indent = indent + 2
       result.add id(t.name)
+  of gpuAlias:
+    result.add id("Alias", pretty(n.aTyp))
+    result.add pretty(n.aTo, indent + 2)
   of gpuObjConstr:
-    result.add id("Ident", n.ocName)
-    result.add id("Fields")
+    result.add idd("Ident", pretty(n.ocType))
+    result.add idd("Fields")
     for f in n.ocFields:
-      let indent = indent + 2
-      result.add id("Name", f.name)
+      var indent = indent + 2
+      result.add idd("Field")
+      indent = indent + 2
+      result.add idd("Name", f.name)
       result.add pretty(f.value, indent + 2)
   of gpuInlineAsm:
     result.add id(n.stmt)
@@ -694,6 +837,19 @@ iterator mitems*(ast: var GpuAst): var GpuAst =
 iterator items*(ast: GpuAst): GpuAst =
   iterImpl(ast, mutable = false)
 
+iterator mpairs*(ast: var GpuAst): (int, var GpuAst) =
+  ## Iterate over all child nodes of the given AST and the index
+  var i = 0
+  for el in mitems(ast):
+    yield (i, el)
+    inc i
+
+iterator pairs*(ast: GpuAst): (int, GpuAst) =
+  var i = 0
+  for el in items(ast):
+    yield (i, el)
+    inc i
+
 
 ## General utility helpers
 
@@ -704,9 +860,12 @@ proc ident*(n: GpuAst): string =
   result = n.iName
 
 template withoutSemicolon*(ctx: var GpuContext, body: untyped): untyped =
-  ctx.skipSemicolon = true
-  body
-  ctx.skipSemicolon = false
+  if not ctx.skipSemicolon: # if we are already skipping, leave true
+    ctx.skipSemicolon = true
+    body
+    ctx.skipSemicolon = false
+  else:
+    body
 
 proc getInnerArrayLengths*(t: GpuType): string =
   ## Returns the lengths of the inner array types for a nested array.
