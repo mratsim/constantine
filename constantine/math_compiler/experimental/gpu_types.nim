@@ -127,8 +127,10 @@ type
       wCond*: GpuAst
       wBody*: GpuAst
     of gpuBinOp:
-      bOp*: string
+      bOp*: GpuAst # `gpuIdent` of the binary operation
       bLeft*, bRight*: GpuAst
+      # types of left and right nodes. Determined from Nim symbol associated with `bOp`
+      bLeftTyp*, bRightTyp*: GpuType
     of gpuVar:
       vName*: GpuAst ## Will be a `GpuIdent`
       vType*: GpuType
@@ -391,9 +393,11 @@ proc clone*(ast: GpuAst): GpuAst =
     result.wBody = ast.wBody.clone()
   of gpuBinOp:
     result = GpuAst(kind: gpuBinOp)
-    result.bOp = ast.bOp
+    result.bOp = ast.bOp.clone()
     result.bLeft = ast.bLeft.clone()
     result.bRight = ast.bRight.clone()
+    result.bLeftTyp = ast.bLeftTyp.clone()
+    result.bRightTyp = ast.bRightTyp.clone()
   of gpuVar:
     result = GpuAst(kind: gpuVar)
     result.vName = ast.vName.clone()
@@ -678,7 +682,7 @@ proc pretty*(n: GpuAst, indent: int = 0): string =
     result.add pretty(n.wCond, indent + 2)
     result.add pretty(n.wBody, indent + 2)
   of gpuBinOp:
-    result.add idd("Ident", n.bOp)
+    result.add pretty(n.bOp, indent + 2)
     result.add pretty(n.bLeft, indent + 2)
     result.add pretty(n.bRight, indent + 2)
   of gpuVar:

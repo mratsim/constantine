@@ -300,7 +300,7 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
       let l = ctx.genCuda(ast.bLeft)
       let r = ctx.genCuda(ast.bRight)
       result = indentStr & "(" & l & " " &
-               ast.bOp & " " &
+               ctx.genCuda(ast.bOp) & " " &
                r & ")"
 
   of gpuIdent:
