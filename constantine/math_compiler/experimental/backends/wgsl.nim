@@ -25,7 +25,7 @@ proc literalSuffix(t: GpuType): string =
   of gtUint32: "u"
   of gtInt32: "" # NOTE: We DON'T give as suffix to `i32` literals so that we can rely on more cases
                  # where WebGPU allows literals to be converted automatically!
-  of gtFloat32: "f"
+  of gtFloat32: "" # NOTE: float suffixes _already_ come with an `f` suffix in Nim!
   else: ""
 
 proc toAddressSpace(symKind: GpuSymbolKind): AddressSpace =
