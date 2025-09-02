@@ -959,7 +959,7 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
   of gpuArrayLit:
     result = "array("
     for i, el in ast.aValues:
-      result.add gpuTypeToString(ast.aLitType) & "(" & el & ")"
+      result.add gpuTypeToString(ast.aLitType) & "(" & ctx.genWebGpu(el) & ")"
       if i < ast.aValues.high:
         result.add ", "
     result.add ")"

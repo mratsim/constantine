@@ -155,7 +155,7 @@ type
       cValue*: GpuAst # not just a string to support different types easily
       cType*: GpuType
     of gpuArrayLit:
-      aValues*: seq[string] ## XXX: make `GpuAst` for case where we store a symbol in an array
+      aValues*: seq[GpuAst]
       aLitType*: GpuType # type of first element
     of gpuBlock:
       isExpr*: bool ## Whether this block represents an expression, i.e. it returns something
@@ -429,7 +429,8 @@ proc clone*(ast: GpuAst): GpuAst =
     result.cType = ast.cType.clone()
   of gpuArrayLit:
     result = GpuAst(kind: gpuArrayLit)
-    result.aValues = ast.aValues
+    for a in ast.aValues:
+      result.aValues.add a.clone()
     result.aLitType = ast.aLitType.clone()
   of gpuPrefix:
     result = GpuAst(kind: gpuPrefix)
@@ -705,7 +706,7 @@ proc pretty*(n: GpuAst, indent: int = 0): string =
     result.add pretty(n.cValue, indent + 2)
   of gpuArrayLit:
     for el in n.aValues:
-      result.add id(el)
+      result.add pretty(el, indent + 2)
   of gpuBlock:
     if n.blockLabel.len > 0:
       result.add id("Label", n.blockLabel)

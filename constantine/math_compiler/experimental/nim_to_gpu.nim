@@ -1241,10 +1241,9 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
 
   of nnkBracket:
     let aLitTyp = nimToGpuType(node[0])
-    var aValues = newSeq[string]()
+    var aValues = newSeq[GpuAst]()
     for el in node:
-      ## XXX: Support not just int literals
-      aValues.add $el.intVal
+      aValues.add ctx.toGpuAst(el)
     result = GpuAst(kind: gpuArrayLit,
                     aValues: aValues,
                     aLitType: aLitTyp)
