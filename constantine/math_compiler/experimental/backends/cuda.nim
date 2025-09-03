@@ -152,6 +152,30 @@ proc scanFunctions(ctx: var GpuContext, n: GpuAst) =
     for ch in n:
       ctx.scanFunctions(ch)
 
+proc makeCodeValid(ctx: var GpuContext, n: var GpuAst) =
+  ## Addresses other AST patterns that need to be rewritten on CUDA. Aspects
+  ## that are rewritten include:
+  ##
+  ## - `Index` of `Deref` of `Ident` needs to be rewritten to `Index` of `Ident` if the
+  ##   ident is a pointer type, because `[]` is syntactic sugar for pointer arithmetic
+  ##   (unless the argument is a pointer to a static array)
+  case n.kind
+  of gpuIndex:
+    ## TODO: Assuming we have a more complicated expression instead of a `gpuIdent` in the deref
+    ## we won't perform replacement, but likely we should. Might use something like `determineIdent`
+    ## as used on WGSL in the future. Anyway, worts case this will lead to a NVRTC compile time error.
+    if n.iArr.kind == gpuDeref and
+       n.iArr.dOf.kind == gpuIdent and
+       n.iArr.dOf.iTyp.kind == gtPtr and    # identifier is a pointer?
+       n.iArr.dOf.iTyp.to.kind != gtArray:  # but not to an array
+      n = GpuAst(kind: gpuIndex, iArr: n.iArr.dOf, iIndex: n.iIndex)
+    else:
+      for ch in mitems(n):
+        ctx.makeCodeValid(ch)
+  else:
+    for ch in mitems(n):
+      ctx.makeCodeValid(ch)
+
 proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string
 proc size(ctx: var GpuContext, a: GpuAst): string = size(ctx.genCuda(a))
 proc address(ctx: var GpuContext, a: GpuAst): string = address(ctx.genCuda(a))
@@ -183,6 +207,10 @@ proc preprocess*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
     # to check if `gpuCall` argument is a parameter.
     let fnOrig = ctx.allFnTab[fnIdent]
     ctx.scanFunctions(fn)
+
+  # 4. Finalize the code by performing some required AST transformations to make the code valid.
+  for (fnIdent, fn) in mpairs(ctx.fnTab):
+    ctx.makeCodeValid(fn)
 
 proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
   ## The actual CUDA code generator.

@@ -1286,27 +1286,9 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     # `HiddenAddr` appears for accesses to `var` passed arguments
     result = GpuAst(kind: gpuAddr, aOf: ctx.toGpuAst(node[0]))
 
-  of nnkHiddenDeref:
-    case node.typeKind
-    of ntyUncheckedArray:
-      # `getTypeInst(node)` would yield:
-      # BracketExpr
-      #   Sym "UncheckedArray"
-      #   Sym "uint32"
-      # i.e. it is a `ptr UncheckedArray[T]`
-      # In this case we just ignore the deref, because on the CUDA
-      # side it is just a plain pointer array we index into using
-      # `foo[i]`.
-      result = ctx.toGpuAst(node[0])
-    else:
-      # Otherwise we treat it like a regular deref
-      # HiddenDeref
-      #   Sym "x"
-      # With e.g. `getTypeInst(node) = Sym "BigInt"`
-      # and `node.typeKind = ntyObject`
-      # due to a `var` parameter
-      result = GpuAst(kind: gpuDeref, dOf: ctx.toGpuAst(node[0]))
-  of nnkDerefExpr: #, nnkHiddenDeref:
+  of nnkDerefExpr, nnkHiddenDeref:
+    # treat hidden and regular deref the same nowadays. On some backends may strip derefs, if
+    # they appear e.g. in an `gpuIndex` (CUDA)
     result = GpuAst(kind: gpuDeref, dOf: ctx.toGpuAst(node[0]))
 
   of nnkConstDef:
