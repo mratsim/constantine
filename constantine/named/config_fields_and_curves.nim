@@ -49,6 +49,26 @@ declareCurves:
     testingCurve: true
     bitwidth: 3
     modulus: "0x5"
+  curve Fake13:
+    testingCurve: true
+    bitWidth: 4
+    modulus: "0xd"
+  curve BLS6_6:
+    testingCurve: true
+    bitwidth: 6
+    modulus: "0x2b"
+    family: BarretoLynnScott
+    order: "0x27"
+    orderBitwidth: 6
+    eq_form: ShortWeierstrass
+    coef_a: 0
+    coef_b: 6
+    #nonresidue_fp: 5       #      5   is not a square in 𝔽p
+    #nonresidue_fp2: (0, 1)  # √-5  √-5  is not a square or cube in 𝔽p²
+
+    embedding_degree: 6
+    sexticTwist: M_Twist
+
   curve Fake101:
     testingCurve: true
     bitwidth: 7
