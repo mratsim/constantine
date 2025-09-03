@@ -1104,6 +1104,10 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
       if result.iName == "_":
         result.iName = "tmp_" & $ctx.genSymCount
         inc ctx.genSymCount
+      elif result.iName.startsWith("tmpTuple_"): # will have a Nim gensym'd suffix, replace by custom counter
+        result.iName = "tmpTuple_" & $ctx.genSymCount
+        result.iSym = result.iName & "_" & node.signatureHash() # and update the iSym to not be based on Nim's value either
+        inc ctx.genSymCount
       ctx.sigTab[s] = result
     else:
       result = ctx.sigTab[s]
