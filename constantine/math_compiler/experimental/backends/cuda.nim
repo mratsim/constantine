@@ -196,8 +196,6 @@ proc preprocess*(ctx: var GpuContext, ast: GpuAst, kernel: string = "") =
   var varBlock = GpuAst(kind: gpuBlock)
   ctx.farmTopLevel(ast, kernel, varBlock)
   ctx.globalBlocks.add varBlock
-  ## XXX: `typBlock` should now always be empty, as we pass all
-  ## found types into `ctx.types`
 
   # 3. Using all global functions, we traverse their AST for any `gpuCall` node. We inspect
   #    the functions called and record them in `fnTab`.
