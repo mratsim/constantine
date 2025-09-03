@@ -152,6 +152,56 @@ proc scanFunctions(ctx: var GpuContext, n: GpuAst) =
     for ch in n:
       ctx.scanFunctions(ch)
 
+proc getFieldType(t: GpuType, field: GpuAst): GpuType =
+  ## Returns the type of the field. `t` must be an object or generic instantiation.
+  ## `field` must be an ident.
+  doAssert field.kind == gpuIdent, "Field is not an ident: " & $field
+  doAssert t.kind in [gtObject, gtGenericInst]
+  let flds = if t.kind == gtObject: t.oFields
+               else: t.gFields
+  result = GpuType(kind: gtInvalid)
+  for f in flds:
+    if f.name == field.ident():
+      return f.typ
+
+proc getType(ctx: var GpuContext, arg: GpuAst, typeOfIndex = true): GpuType =
+  ## Tries to determine the underlying type of the AST.
+  ##
+  ## If `typeOfIndex` is `true`, we return the type of the index we access. Otherwise
+  ## we return the type of the array / pointer.
+  ##
+  ## NOTE: Do *not* rely on this for `mutable` or `implicit` fields of pointer types!
+  template dfl(): untyped = GpuType(kind: gtInvalid)
+  case arg.kind
+  of gpuIdent: arg.iTyp
+  of gpuAddr: GpuType(kind: gtPtr, to: ctx.getType(arg.aOf))
+  of gpuDeref:
+    let argTyp = ctx.getType(arg.dOf)
+    doAssert argTyp.kind == gtPtr
+    argTyp.to
+  of gpuCall: dfl()
+  of gpuIndex:
+    let arrType = ctx.getType(arg.iArr)
+    if typeOfIndex:
+      case arrType.kind
+      of gtPtr:   arrType.to
+      of gtUA:    arrType.uaTo
+      of gtArray: arrType.aTyp
+      else: raiseAssert "`gpuIndex` cannot be of a non pointer / array type: " & $arrType
+    else:
+      arrType
+  of gpuDot:
+    let parentTyp = ctx.getType(arg.dParent)
+    parentTyp.getFieldType(arg.dField)
+  of gpuLit: arg.lType
+  of gpuBinOp: dfl() ## XXX: store resulting type of `gpuBinOp`!
+  #of gpuBlock: arg.statements[^1].getType()
+  of gpuPrefix: ctx.getType(arg.pVal)
+  of gpuConv: arg.convTo
+  of gpuCast: arg.cTo # ident of the thing we cast
+  else:
+    raiseAssert "Not implemented to determine type from node: " & $arg
+
 proc makeCodeValid(ctx: var GpuContext, n: var GpuAst) =
   ## Addresses other AST patterns that need to be rewritten on CUDA. Aspects
   ## that are rewritten include:
@@ -161,14 +211,11 @@ proc makeCodeValid(ctx: var GpuContext, n: var GpuAst) =
   ##   (unless the argument is a pointer to a static array)
   case n.kind
   of gpuIndex:
-    ## TODO: Assuming we have a more complicated expression instead of a `gpuIdent` in the deref
-    ## we won't perform replacement, but likely we should. Might use something like `determineIdent`
-    ## as used on WGSL in the future. Anyway, worts case this will lead to a NVRTC compile time error.
-    if n.iArr.kind == gpuDeref and
-       n.iArr.dOf.kind == gpuIdent and
-       n.iArr.dOf.iTyp.kind == gtPtr and    # identifier is a pointer?
-       n.iArr.dOf.iTyp.to.kind != gtArray:  # but not to an array
-      n = GpuAst(kind: gpuIndex, iArr: n.iArr.dOf, iIndex: n.iIndex)
+    if n.iArr.kind == gpuDeref:
+      # get type of deref'd node, but do not fold `gpuIndex` (i.e. get type of collection)
+      let typ = ctx.getType(n, typeOfIndex = false)
+      if typ.kind != gtArray:
+        n = GpuAst(kind: gpuIndex, iArr: n.iArr.dOf, iIndex: n.iIndex)
     else:
       for ch in mitems(n):
         ctx.makeCodeValid(ch)
