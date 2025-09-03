@@ -102,18 +102,18 @@ template testSqrtImpl(a: untyped): untyped {.dirty.} =
     bool(r == s)
     bool(r == a or r == na)
 
-proc randomSqrtCheck(Name: static Algebra) =
-  test "Random square root check for " & $Algebra(Name):
+proc randomSqrtCheck(Field: type FF) =
+  test "Random square root check for " & $Field:
     for _ in 0 ..< Iters:
-      let a = rng.random_unsafe(Fp[Name])
+      let a = rng.random_unsafe(Field)
       testSqrtImpl(a)
 
     for _ in 0 ..< Iters:
-      let a = rng.randomHighHammingWeight(Fp[Name])
+      let a = rng.randomHighHammingWeight(Field)
       testSqrtImpl(a)
 
     for _ in 0 ..< Iters:
-      let a = rng.random_long01Seq(Fp[Name])
+      let a = rng.random_long01Seq(Field)
       testSqrtImpl(a)
 
 template testSqrtRatioImpl(u, v: untyped): untyped {.dirty.} =
@@ -128,21 +128,21 @@ template testSqrtRatioImpl(u, v: untyped): untyped {.dirty.} =
     r.square()
     check: bool(r == u_over_v)
 
-proc randomSqrtRatioCheck(Name: static Algebra) =
-  test "Random square root check for " & $Algebra(Name):
+proc randomSqrtRatioCheck(Field: type FF) =
+  test "Random square root check for " & $Field:
     for _ in 0 ..< Iters:
-      let u = rng.random_unsafe(Fp[Name])
-      let v = rng.random_unsafe(Fp[Name])
+      let u = rng.random_unsafe(Field)
+      let v = rng.random_unsafe(Field)
       testSqrtRatioImpl(u, v)
 
     for _ in 0 ..< Iters:
-      let u = rng.randomHighHammingWeight(Fp[Name])
-      let v = rng.randomHighHammingWeight(Fp[Name])
+      let u = rng.randomHighHammingWeight(Field)
+      let v = rng.randomHighHammingWeight(Field)
       testSqrtRatioImpl(u, v)
 
     for _ in 0 ..< Iters:
-      let u = rng.random_long01Seq(Fp[Name])
-      let v = rng.random_long01Seq(Fp[Name])
+      let u = rng.random_long01Seq(Field)
+      let v = rng.random_long01Seq(Field)
       testSqrtRatioImpl(u, v)
 
 proc main() =
@@ -150,23 +150,27 @@ proc main() =
     exhaustiveCheck Fake103, 103
     # exhaustiveCheck Fake10007, 10007
     # exhaustiveCheck Fake65519, 65519
-    randomSqrtCheck BN254_Nogami
-    randomSqrtCheck BN254_Snarks
-    randomSqrtCheck BLS12_377 # p ≢ 3 (mod 4)
-    randomSqrtCheck BLS12_381
-    randomSqrtCheck BW6_761
-    randomSqrtCheck Edwards25519
-    randomSqrtCheck Jubjub
-    randomSqrtCheck Bandersnatch
-    randomSqrtCheck Pallas
-    randomSqrtCheck Vesta
+    randomSqrtCheck Fp[BN254_Nogami] # p ≡ 3 (mod 4)
+    # randomSqrtCheck Fr[BN254_Nogami] # r ≡ 5 (mod 8)
+    randomSqrtCheck Fp[BN254_Snarks] # p ≡ 3 (mod 4)
+    randomSqrtCheck Fp[BLS12_377]    # p ≢ 3 (mod 4) & p ≢ 5 (mod 8)
+    randomSqrtCheck Fp[BLS12_381]    # p ≡ 3 (mod 4)
+    randomSqrtCheck Fp[BW6_761]
+    # randomSqrtCheck Fr[BW6_761]      # r ≡ 3 (mod 4)
+    randomSqrtCheck Fp[Edwards25519]
+    # randomSqrtCheck Fr[Edwards25519] # r ≡ 5 (mod 8)
+    randomSqrtCheck Fp[Jubjub]
+    # randomSqrtCheck Fr[Jubjub]       # r ≡ 3 (mod 4)
+    randomSqrtCheck Fp[Bandersnatch]
+    randomSqrtCheck Fp[Pallas]
+    randomSqrtCheck Fp[Vesta]
 
   suite "Modular sqrt(u/v)" & " [" & $WordBitWidth & "-bit words]":
-    randomSqrtRatioCheck Edwards25519
-    randomSqrtRatioCheck Jubjub
-    randomSqrtRatioCheck Bandersnatch
-    randomSqrtRatioCheck Pallas
-    randomSqrtRatioCheck Vesta
+    randomSqrtRatioCheck Fp[Edwards25519]
+    randomSqrtRatioCheck Fp[Jubjub]
+    randomSqrtRatioCheck Fp[Bandersnatch]
+    randomSqrtRatioCheck Fp[Pallas]
+    randomSqrtRatioCheck Fp[Vesta]
 
   suite "Modular square root - 32-bit bugs highlighted by property-based testing " & " [" & $WordBitWidth & "-bit words]":
     # test "FKM12_447 - #30": - Deactivated, we don't support the curve as no one uses it.

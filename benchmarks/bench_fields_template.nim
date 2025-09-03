@@ -196,7 +196,7 @@ proc sqrtBench*(T: typedesc, iters: int) {.noinline.} =
     else:
       "Tonelli-Shanks"
   const addchain = block:
-    when T.Name.hasSqrtAddchain() or T.Name.hasTonelliShanksAddchain():
+    when T.hasSqrtAddchain() or T.Name.hasTonelliShanksAddchain():
       "+ addchain"
     else:
       "no addchain"
@@ -223,7 +223,7 @@ proc sqrtVartimeBench*(T: typedesc, iters: int) {.noinline.} =
     else:
       "Tonelli-Shanks"
   const addchain = block:
-    when T.Name.hasSqrtAddchain() or T.Name.hasTonelliShanksAddchain():
+    when T.hasSqrtAddchain() or T.Name.hasTonelliShanksAddchain():
       "+ addchain"
     else:
       "no addchain"

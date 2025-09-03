@@ -46,7 +46,7 @@ func invsqrt_p3mod4(r: var FF, a: FF) =
   # a^((p-3)/2))        ≡ 1/a  (mod p)
   # a^((p-3)/4))        ≡ 1/√a (mod p)      # Requires p ≡ 3 (mod 4)
   static: doAssert FF.Name.has_P_3mod4_primeModulus()
-  when FF.Name.hasSqrtAddchain():
+  when FF.hasSqrtAddchain():
     r.invsqrt_addchain(a)
   else:
     r = a
@@ -111,7 +111,7 @@ func invsqrt_p5mod8(r: var FF, a: FF) =
   # α = (2a)^((p-5)/8)
   alpha.double(a)
   beta = alpha
-  when FF.Name.hasSqrtAddchain():
+  when FF.hasSqrtAddchain():
     alpha.invsqrt_addchain_pminus5over8(alpha)
   else:
     alpha.pow_vartime(FF.getPrimeMinus5div8_BE())

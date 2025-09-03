@@ -34,10 +34,14 @@ export
   pallas_sqrt,
   vesta_sqrt
 
-func hasSqrtAddchain*(Name: static Algebra): static bool =
-  when Name in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761, Edwards25519}:
-    true
+func hasSqrtAddchain*(Field: type FF): static bool =
+  when Field is Fp:
+    when Field.Name in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761, Edwards25519}:
+      true
+    else:
+      false
   else:
+    # TODO, create addchain for Fr
     false
 
 {.experimental: "dynamicBindSym".}
