@@ -199,4 +199,18 @@ proc main() =
       a.fromHex"0x7ff7ffffffffffff1dfb7fafc0000000"
       testSqrtImpl(a)
 
+  suite "isSquare on 𝔽r" & " [" & $WordBitWidth & "-bit words]":
+    test "𝔽r[BW6_761] is consistent with 𝔽p[BLS12_381]":
+      block:
+        var a: Fr[BW6_761]
+        a.fromHex"0x184d02ce4f24d5e59b4150a57a31b202fd40a4b41d7518c22b84bee475fbcb7763100448ef6b17a6ea603cf062e5db51"
+        check:
+          bool(not a.isSquare())
+
+      block:
+        var a: Fr[BW6_761]
+        a.fromHex"0x0f16d7854229d8804bcadd889f70411d6a482bde840d238033bf868e89558d39d52f9df60b2d745e02584375f16c34a3"
+        check:
+          bool(not a.isSquare())
+
 main()
