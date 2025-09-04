@@ -189,10 +189,10 @@ func mulCranPartialReduce[N: static int](
         m: static int, c: static SecretWord) {.inline.} =
   when UseASM_X86_64 and a.len in {3..6}:
     # ADX implies BMI2
-    if ({.noSideEffect.}: hasAdx()):
+    # if ({.noSideEffect.}: hasAdx()):
       r.mulCranPartialReduce_asm_adx(a, b, m, c)
-    else:
-      r.mulCranPartialReduce_asm(a, b, m, c)
+    # else:
+    #   r.mulCranPartialReduce_asm(a, b, m, c)
   else:
     var r2 {.noInit.}: Limbs[2*N]
     r2.prod(a, b)
@@ -208,10 +208,10 @@ func mulCran*[N: static int](
     r.mulCranPartialReduce(a, b, m, c)
   elif UseASM_X86_64 and a.len in {3..6}:
     # ADX implies BMI2
-    if ({.noSideEffect.}: hasAdx()):
+    # if ({.noSideEffect.}: hasAdx()):
       r.mulCran_asm_adx(a, b, p, m, c)
-    else:
-      r.mulCran_asm(a, b, p, m, c)
+    # else:
+    #   r.mulCran_asm(a, b, p, m, c)
   else:
     var r2 {.noInit.}: Limbs[2*N]
     r2.prod(a, b)
@@ -224,10 +224,10 @@ func squareCranPartialReduce[N: static int](
         m: static int, c: static SecretWord) {.inline.} =
   when UseASM_X86_64 and a.len in {3..6}:
     # ADX implies BMI2
-    if ({.noSideEffect.}: hasAdx()):
+    # if ({.noSideEffect.}: hasAdx()):
       r.squareCranPartialReduce_asm_adx(a, m, c)
-    else:
-      r.squareCranPartialReduce_asm(a, m, c)
+    # else:
+    #   r.squareCranPartialReduce_asm(a, m, c)
   else:
     var r2 {.noInit.}: Limbs[2*N]
     r2.square(a)
@@ -243,10 +243,10 @@ func squareCran*[N: static int](
     r.squareCranPartialReduce(a, m, c)
   elif UseASM_X86_64 and a.len in {3..6}:
     # ADX implies BMI2
-    if ({.noSideEffect.}: hasAdx()):
+    # if ({.noSideEffect.}: hasAdx()):
       r.squareCran_asm_adx(a, p, m, c)
-    else:
-      r.squareCran_asm(a, p, m, c)
+    # else:
+    #   r.squareCran_asm(a, p, m, c)
   else:
     var r2 {.noInit.}: Limbs[2*N]
     r2.square(a)
