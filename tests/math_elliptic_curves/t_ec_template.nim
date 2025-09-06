@@ -1169,6 +1169,50 @@ proc run_EC_affine_conversion*(
       test(ec, gen = HighHammingWeight)
       test(ec, gen = Long01Sequence)
 
+    test "EC " & $ec.G & " batchAffine with infinite points":
+      proc test(EC: typedesc, gen: RandomGen) =
+        const batchSize = 10
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          for i in 0 ..< batchSize:
+            if rng.sample_unsafe([0, 1, 2]) != 0: # 33% chance of infinite point
+              Ps[i] = rng.random_point(EC, randZ = true, gen)
+            else:
+              Ps[i].setNeutral()
+
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Qs[i].affine(Ps[i])
+          Rs.batchAffine(Ps)
+
+          for i in countdown(batchSize-1, 0):
+            doAssert bool(Qs[i] == Rs[i]), block:
+              var s: string
+              s &= "Mismatch on iteration " & $i
+              s &= "\nFailing batch for " & $EC & " (" & $WordBitWidth & "-bit)"
+              s &= "\n  ["
+              for i in 0 ..< batchSize:
+                s &= "\n" & Ps[i].toHex(indent = 4)
+                if i != batchSize-1: s &= ","
+              s &= "\n  ]"
+              s &= "\nFailing inversions for " & $EC & " (" & $WordBitWidth & "-bit)"
+              s &= "\n  ["
+              for i in 0 ..< batchSize:
+                s &= "\n" & Rs[i].toHex(indent = 4)
+                if i != batchSize-1: s &= ","
+              s &= "\n  ]"
+              s &= "\nExpected inversions for " & $EC & " (" & $WordBitWidth & "-bit)"
+              s &= "\n  ["
+              for i in 0 ..< batchSize:
+                s &= "\n" & Qs[i].toHex(indent = 4)
+                if i != batchSize-1: s &= ","
+              s &= "\n  ]"
+              s
+
+      test(ec, gen = Uniform)
+      test(ec, gen = HighHammingWeight)
+      test(ec, gen = Long01Sequence)
+
 proc run_EC_conversion_failures*(
        moduleName: string
      ) =
