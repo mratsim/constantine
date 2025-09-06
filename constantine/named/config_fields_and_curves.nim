@@ -77,12 +77,10 @@ declareCurves:
   # -----------------------------------------------------------------------------
 
   curve BabyBear: # BabyBear field used in SNARKs and zkVMs
-    testingCurve: true
     bitwidth: 31
     modulus: "0x78000001" # `0b1111000000000000000000000000001 = 15·2²⁷ + 1 = 2³¹ - 2²⁷ + 1`
 
   curve KoalaBear: # KoalaBear field used in SNARKs and zkVMs
-    testingCurve: true
     bitwidth: 31
     modulus: "0x7f000001" # `0b11111111000000000000000000000001 = 255·2²⁴ + 1 = 2³¹ - 2²⁴ + 1`
 
