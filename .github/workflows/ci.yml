@@ -42,11 +42,14 @@ jobs:
             ctt_backend: ASM
             host: ubuntu-latest
 
-          # ASM code for ARM Linux is not available yet
           - os: linux
             cpu: arm64
             ctt_backend: NO_ASM
-            host: ubuntu-22.04-arm
+            host: ubuntu-24.04-arm
+          - os: linux
+            cpu: arm64
+            ctt_backend: ASM
+            host: ubuntu-24.04-arm
 
           - os: windows
             cpu: amd64
