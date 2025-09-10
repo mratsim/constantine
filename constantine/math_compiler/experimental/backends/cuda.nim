@@ -70,7 +70,7 @@ proc gpuTypeToString*(t: GpuType, ident: string = "", allowArrayToPtr = false,
       # so as our ident we pass `theIdent = (*<ident>)` and generate the type for the internal
       # array type, which yields e.g. `BigInt <theIdent>[4]`.
       let ptrStar = gpuTypeToString(t.kind)
-      result = gpuTypeToString(t.to, "(" & ptrStar & ident & ")")
+      result = gpuTypeToString(t.to, '(' & ptrStar & ident & ')')
       skipIdent = true
     else:
       let typ = gpuTypeToString(t.to, allowEmptyIdent = allowEmptyIdent)
@@ -87,30 +87,30 @@ proc gpuTypeToString*(t: GpuType, ident: string = "", allowArrayToPtr = false,
     of gtArray: # nested array
       let typ = getInnerArrayType(t)        # get inner most type
       let lengths = getInnerArrayLengths(t) # get lengths as `[X][Y][Z]...`
-      result = typ & " " & ident & lengths
+      result = typ & ' ' & ident & lengths
     else:
       # NOTE: Nested arrays don't have an inner identifier!
       if t.aLen == 0: ## XXX: for the moment for 0 length arrays we generate flexible arrays instead
-        result = gpuTypeToString(t.aTyp, allowEmptyIdent = allowEmptyIdent) & " " & ident & "[]"
+        result = gpuTypeToString(t.aTyp, allowEmptyIdent = allowEmptyIdent) & ' ' & ident & "[]"
       else:
-        result = gpuTypeToString(t.aTyp, allowEmptyIdent = allowEmptyIdent) & " " & ident & "[" & $t.aLen & "]"
+        result = gpuTypeToString(t.aTyp, allowEmptyIdent = allowEmptyIdent) & ' ' & ident & '[' & $t.aLen & ']'
     skipIdent = true
   of gtGenericInst:
     # NOTE: WGSL does not support actual custom generic types. And as we only anyway deal with generic instantiations
     # we simply turn e.g. `foo[float32, uint32]` into `foo_f32_u32`.
     result = t.gName
     if t.gArgs.len > 0:
-      result.add "_"
+      result.add '_'
     for i, g in t.gArgs:
       result.add gpuTypeToString(g)
       if i < t.gArgs.high:
-        result.add "_"
+        result.add '_'
   of gtObject: result = t.name
   of gtUA:     result = gpuTypeToString(t.uaTo, allowEmptyIdent = allowEmptyIdent) ## XXX: unchecked array just T?
   else:        result = gpuTypeToString(t.kind)
 
   if ident.len > 0 and not skipIdent: # still need to add ident
-    result.add " " & ident
+    result.add ' ' & ident
 
 proc genFunctionType*(typ: GpuType, fn: string, fnArgs: string): string =
   ## Returns the correct function with its return type
@@ -275,30 +275,30 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     let fnSig = genFunctionType(ast.pRetType, ast.pName.ident(), fnArgs)
 
     # extern "C" is needed to avoid name mangling
-    result = indentStr & "extern \"C\" " & attrs.join(" ") & " " &
+    result = indentStr & "extern \"C\" " & attrs.join(" ") & ' ' &
              fnSig
     if ast.forwardDeclare:
-      result.add ";"
+      result.add ';'
     else:
       result.add "{\n"
       result &= ctx.genCuda(ast.pBody, indent + 1)
-      result &= "\n" & indentStr & "}"
+      result &= '\n' & indentStr & '}'
 
   of gpuBlock:
     result = ""
     if ast.blockLabel.len > 0:
-      result.add "\n" & indentStr & "{ // " & ast.blockLabel & "\n"
+      result.add '\n' & indentStr & "{ // " & ast.blockLabel & '\n'
     for i, el in ast.statements:
       result.add ctx.genCuda(el, indent)
       if el.kind != gpuBlock and not ctx.skipSemicolon: # nested block ⇒ ; already added
-        result.add ";"
+        result.add ';'
       if i < ast.statements.high:
-        result.add "\n"
+        result.add '\n'
     if ast.blockLabel.len > 0:
-      result.add "\n" & indentStr & "} // " & ast.blockLabel & "\n"
+      result.add '\n' & indentStr & "} // " & ast.blockLabel & '\n'
 
   of gpuVar:
-    let attrs = if ast.vAttributes.len > 0: ast.vAttributes.join(" ") & " "
+    let attrs = if ast.vAttributes.len > 0: ast.vAttributes.join(" ") & ' '
                 else: ""
     result = indentStr & attrs & gpuTypeToString(ast.vType, ast.vName.ident())
     # If there is an initialization, the type might require a memcpy
@@ -320,35 +320,35 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     # skip semicolon in the condition. Otherwise can lead to problematic code
     ctx.withoutSemicolon: # skip semicolon for if bodies
       result = indentStr & "if (" & ctx.genCuda(ast.ifCond) & ") {\n"
-    result &= ctx.genCuda(ast.ifThen, indent + 1) & "\n"
-    result &= indentStr & "}"
+    result &= ctx.genCuda(ast.ifThen, indent + 1) & '\n'
+    result &= indentStr & '}'
     if ast.ifElse.kind != gpuVoid:
       result &= " else {\n"
-      result &= ctx.genCuda(ast.ifElse, indent + 1) & "\n"
-      result &= indentStr & "}"
+      result &= ctx.genCuda(ast.ifElse, indent + 1) & '\n'
+      result &= indentStr & '}'
 
   of gpuFor:
     result = indentStr & "for(int " & ast.fVar.ident() & " = " &
              ctx.genCuda(ast.fStart) & "; " &
              ast.fVar.ident() & " < " & ctx.genCuda(ast.fEnd) & "; " &
              ast.fVar.ident() & "++) {\n"
-    result &= ctx.genCuda(ast.fBody, indent + 1) & "\n"
-    result &= indentStr & "}"
+    result &= ctx.genCuda(ast.fBody, indent + 1) & '\n'
+    result &= indentStr & '}'
   of gpuWhile:
     ctx.withoutSemicolon:
       result = indentStr & "while (" & ctx.genCuda(ast.wCond) & "){\n"
-    result &= ctx.genCuda(ast.wBody, indent + 1) & "\n"
-    result &= indentStr & "}"
+    result &= ctx.genCuda(ast.wBody, indent + 1) & '\n'
+    result &= indentStr & '}'
 
   of gpuDot:
-    result = ctx.genCuda(ast.dParent) & "." & ctx.genCuda(ast.dField)
+    result = ctx.genCuda(ast.dParent) & '.' & ctx.genCuda(ast.dField)
 
   of gpuIndex:
-    result = ctx.genCuda(ast.iArr) & "[" & ctx.genCuda(ast.iIndex) & "]"
+    result = ctx.genCuda(ast.iArr) & '[' & ctx.genCuda(ast.iIndex) & ']'
 
   of gpuCall:
-    result = indentStr & ast.cName.ident() & "(" &
-             ast.cArgs.mapIt(ctx.genCuda(it)).join(", ") & ")"
+    result = indentStr & ast.cName.ident() & '(' &
+             ast.cArgs.mapIt(ctx.genCuda(it)).join(", ") & ')'
 
   of gpuTemplateCall:
     when nimvm:
@@ -370,25 +370,25 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     ctx.withoutSemicolon:
       let l = ctx.genCuda(ast.bLeft)
       let r = ctx.genCuda(ast.bRight)
-      result = indentStr & "(" & l & " " &
-               ctx.genCuda(ast.bOp) & " " &
-               r & ")"
+      result = indentStr & '(' & l & ' ' &
+               ctx.genCuda(ast.bOp) & ' ' &
+               r & ')'
 
   of gpuIdent:
     result = ast.ident()
 
   of gpuLit:
-    if ast.lType.kind == gtString: result = "\"" & ast.lValue & "\""
+    if ast.lType.kind == gtString: result = '"' & ast.lValue & '"'
     elif ast.lValue == "DEFAULT": result = "{}" # default initialization, `DEFAULT` placeholder
     else: result = ast.lValue
 
   of gpuArrayLit:
     result = "{"
     for i, el in ast.aValues:
-      result.add "(" & gpuTypeToString(ast.aLitType) & ")" & ctx.genCuda(el)
+      result.add '(' & gpuTypeToString(ast.aLitType) & ')' & ctx.genCuda(el)
       if i < ast.aValues.high:
         result.add ", "
-    result.add "}"
+    result.add '}'
 
   of gpuReturn:
     result = indentStr & "return " & ctx.genCuda(ast.rValue)
@@ -400,7 +400,7 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     result = "struct " & gpuTypeToString(ast.tTyp) & "{\n"
     for el in ast.tFields:
       result.add "  " & gpuTypeToString(el.typ, el.name) & ";\n"
-    result.add "}"
+    result.add '}'
 
   of gpuObjConstr:
     result = "{"
@@ -408,7 +408,7 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
       result.add ctx.genCuda(el.value)
       if i < ast.ocFields.len - 1:
         result.add ", "
-    result.add "}"
+    result.add '}'
 
   of gpuInlineAsm:
     result = indentStr & "asm(" & ast.stmt.strip & ");"
@@ -417,15 +417,15 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     result = indentStr & "/* " & ast.comment & " */"
 
   of gpuConv:
-    result = "(" & gpuTypeToString(ast.convTo, allowEmptyIdent = true) & ")" & ctx.genCuda(ast.convExpr)
+    result = '(' & gpuTypeToString(ast.convTo, allowEmptyIdent = true) & ')' & ctx.genCuda(ast.convExpr)
   of gpuCast:
-    result = "(" & gpuTypeToString(ast.cTo, allowEmptyIdent = true) & ")" & ctx.genCuda(ast.cExpr)
+    result = '(' & gpuTypeToString(ast.cTo, allowEmptyIdent = true) & ')' & ctx.genCuda(ast.cExpr)
 
   of gpuAddr:
-    result = "(&" & ctx.genCuda(ast.aOf) & ")"
+    result = "(&" & ctx.genCuda(ast.aOf) & ')'
 
   of gpuDeref:
-    result = "(*" & ctx.genCuda(ast.dOf) & ")"
+    result = "(*" & ctx.genCuda(ast.dOf) & ')'
 
   of gpuConstexpr:
     ## TODO: We need to change the code such that we emit `constexpr` inside of procs and
@@ -436,7 +436,7 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     if ast.cType.kind == gtArray:
       result = indentStr & "constexpr " & gpuTypeToString(ast.cType, ctx.genCuda(ast.cIdent)) & " = " & ctx.genCuda(ast.cValue)
     else:
-      result = indentStr & "constexpr " & gpuTypeToString(ast.cType, allowEmptyIdent = true) & " " & ctx.genCuda(ast.cIdent) & " = " & ctx.genCuda(ast.cValue)
+      result = indentStr & "constexpr " & gpuTypeToString(ast.cType, allowEmptyIdent = true) & ' ' & ctx.genCuda(ast.cIdent) & " = " & ctx.genCuda(ast.cValue)
 
   else:
     echo "Unhandled node kind in genCuda: ", ast.kind
@@ -454,7 +454,7 @@ proc codegen*(ctx: var GpuContext): string =
   for (fnIdent, fn) in fns:
     let fnC = fn.clone()
     fnC.forwardDeclare = true
-    result.add ctx.genCuda(fnC) & "\n"
+    result.add ctx.genCuda(fnC) & '\n'
   result.add "\n\n"
 
   for fnIdent, fn in ctx.fnTab:

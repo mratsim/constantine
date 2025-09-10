@@ -117,13 +117,13 @@ proc gpuTypeToString*(t: GpuType, id: GpuAst = newGpuIdent(), allowArrayToPtr = 
     # we simply turn e.g. `foo[float32, uint32]` into `foo_f32_u32`.
     result = t.gName
     if t.gArgs.len > 0:
-      result.add "_"
+      result.add '_'
     for i, g in t.gArgs:
       result.add gpuTypeToString(g)
       if i < t.gArgs.high:
-        result.add "_"
+        result.add '_'
   of gtObject: result = t.name
-  of gtUA:     result = gpuTypeToString(t.kind) & "<" & gpuTypeToString(t.uaTo, allowEmptyIdent = allowEmptyIdent) & ">"
+  of gtUA:     result = gpuTypeToString(t.kind) & '<' & gpuTypeToString(t.uaTo, allowEmptyIdent = allowEmptyIdent) & '>'
   else:        result = gpuTypeToString(t.kind)
 
   if ident.len > 0 and not skipIdent: # still need to add ident
@@ -295,7 +295,7 @@ proc genGenericName(n: GpuAst, params: seq[GpuParam], callerParams: Table[string
   ## the information we precisely want to extract (different symbol kind etc) would make
   ## it so that we cannot look up elements.
   doAssert n.kind == gpuCall, "Not a call, but: " & $n.kind
-  result = n.cName.ident() & "_"
+  result = n.cName.ident() & '_'
   for i, arg in n.cArgs:
     let p = params[i]
     var s: string
@@ -312,7 +312,7 @@ proc genGenericName(n: GpuAst, params: seq[GpuParam], callerParams: Table[string
       s = shortAddrSpace(addrSpace) & m
     result.add s
     if i < n.cArgs.high:
-      result.add "_"
+      result.add '_'
 
 proc makeFnGeneric(fn: GpuAst, gi: GenericInst): GpuAst =
   ## Returns a (shallow) copy of the input function (which is a clone of the
@@ -823,20 +823,20 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     result = indentStr & "fn " & fnSig & " {\n"
 
     result &= ctx.genWebGpu(ast.pBody, indent + 1)
-    result &= "\n" & indentStr & "}"
+    result &= '\n' & indentStr & '}'
 
   of gpuBlock:
     result = ""
     if ast.blockLabel.len > 0:
-      result.add "\n" & indentStr & "{ // " & ast.blockLabel & "\n"
+      result.add '\n' & indentStr & "{ // " & ast.blockLabel & '\n'
     for i, el in ast.statements:
       result.add ctx.genWebGpu(el, indent)
       if el.kind != gpuBlock and not ctx.skipSemicolon: # nested block ⇒ ; already added
-        result.add ";"
+        result.add ';'
       if i < ast.statements.high:
-        result.add "\n"
+        result.add '\n'
     if ast.blockLabel.len > 0:
-      result.add "\n" & indentStr & "} // " & ast.blockLabel & "\n"
+      result.add '\n' & indentStr & "} // " & ast.blockLabel & '\n'
 
   of gpuVar:
     let letOrVar = if ast.vMutable: "var" else: "let"
@@ -872,7 +872,7 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
         # If the LHS is `i32` then a conversion to `i32` is either a no-op, if the left always was
         # `i32` (and the Nim compiler type checked it for us) *OR* the RHS is a boolean expression and
         # we patched the `bool -> i32` and thus need to convert it.
-        result = indentStr & ctx.genWebGpu(ast.aLeft) & " = i32(" & ctx.genWebGpu(ast.aRight) & ")"
+        result = indentStr & ctx.genWebGpu(ast.aLeft) & " = i32(" & ctx.genWebGpu(ast.aRight) & ')'
       else:
         result = indentStr & ctx.genWebGpu(ast.aLeft) & " = " & ctx.genWebGpu(ast.aRight)
 
@@ -886,36 +886,36 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
         result = indentStr & "if (false) {\n"
       else:
         result = indentStr & "if (" & ctx.genWebGpu(ast.ifCond) & ") {\n"
-    result &= ctx.genWebGpu(ast.ifThen, indent + 1) & "\n"
-    result &= indentStr & "}"
+    result &= ctx.genWebGpu(ast.ifThen, indent + 1) & '\n'
+    result &= indentStr & '}'
     if ast.ifElse.kind != gpuVoid:
       result &= " else {\n"
-      result &= ctx.genWebGpu(ast.ifElse, indent + 1) & "\n"
-      result &= indentStr & "}"
+      result &= ctx.genWebGpu(ast.ifElse, indent + 1) & '\n'
+      result &= indentStr & '}'
 
   of gpuFor:
     result = indentStr & "for(var " & ast.fVar.ident() & ": i32 = " &
              ctx.genWebGpu(ast.fStart) & "; " &
              ast.fVar.ident() & " < " & ctx.genWebGpu(ast.fEnd) & "; " &
              ast.fVar.ident() & "++) {\n"
-    result &= ctx.genWebGpu(ast.fBody, indent + 1) & "\n"
-    result &= indentStr & "}"
+    result &= ctx.genWebGpu(ast.fBody, indent + 1) & '\n'
+    result &= indentStr & '}'
   of gpuWhile:
     ctx.withoutSemicolon:
       result = indentStr & "while (" & ctx.genWebGpu(ast.wCond) & "){\n"
-    result &= ctx.genWebGpu(ast.wBody, indent + 1) & "\n"
-    result &= indentStr & "}"
+    result &= ctx.genWebGpu(ast.wBody, indent + 1) & '\n'
+    result &= indentStr & '}'
 
   of gpuDot:
-    result = ctx.genWebGpu(ast.dParent) & "." & ctx.genWebGpu(ast.dField)
+    result = ctx.genWebGpu(ast.dParent) & '.' & ctx.genWebGpu(ast.dField)
 
   of gpuIndex:
-    result = ctx.genWebGpu(ast.iArr) & "[" & ctx.genWebGpu(ast.iIndex) & "]"
+    result = ctx.genWebGpu(ast.iArr) & '[' & ctx.genWebGpu(ast.iIndex) & ']'
 
   of gpuCall:
     ctx.withoutSemicolon:
-      result = indentStr & ast.cName.ident() & "(" &
-               ast.cArgs.mapIt(ctx.genWebGpu(it)).join(", ") & ")"
+      result = indentStr & ast.cName.ident() & '(' &
+               ast.cArgs.mapIt(ctx.genWebGpu(it)).join(", ") & ')'
 
   of gpuTemplateCall:
     when nimvm:
@@ -938,15 +938,15 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     ctx.withoutSemicolon:
       let l = ctx.genWebGpu(ast.bLeft)
       let r = ctx.genWebGpu(ast.bRight)
-      result = indentStr & "(" & l & " " &
-               ctx.genWebGpu(ast.bOp) & " " &
-               r & ")"
+      result = indentStr & '(' & l & ' ' &
+               ctx.genWebGpu(ast.bOp) & ' ' &
+               r & ')'
 
   of gpuIdent:
     result = ast.ident()
 
   of gpuLit:
-    if ast.lType.kind == gtString: result = "\"" & ast.lValue & "\""
+    if ast.lType.kind == gtString: result = '"' & ast.lValue & '"'
     elif ast.lValue == "DEFAULT":
       ## TODO: We could "manually" construct a zero version!
       ## NOTE: There *are* default initializations to zero. Just not for fields that
@@ -959,10 +959,10 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
   of gpuArrayLit:
     result = "array("
     for i, el in ast.aValues:
-      result.add gpuTypeToString(ast.aLitType) & "(" & ctx.genWebGpu(el) & ")"
+      result.add gpuTypeToString(ast.aLitType) & '(' & ctx.genWebGpu(el) & ')'
       if i < ast.aValues.high:
         result.add ", "
-    result.add ")"
+    result.add ')'
 
   of gpuReturn:
     result = indentStr & "return " & ctx.genWebGpu(ast.rValue)
@@ -974,16 +974,16 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     result = "struct " & gpuTypeToString(ast.tTyp) & " {\n"
     for el in ast.tFields:
       result.add "  " & gpuTypeToString(el.typ, newGpuIdent(el.name)) & ",\n"
-    result.add "}"
+    result.add '}'
 
   of gpuAlias:
     # Aliases come from `ctx.types` and due to implementation details currently are _not_ wrapped
     # in a `block` (as they are handled like regular `structs`). However, WebGPU requires semicolons
     # after alias definitions, but not after `struct`. Hence we add `;` manually here
-    result = "alias " & gpuTypeToString(ast.aTyp) & " = " & ctx.genWebGpu(ast.aTo) & ";"
+    result = "alias " & gpuTypeToString(ast.aTyp) & " = " & ctx.genWebGpu(ast.aTo) & ';'
 
   of gpuObjConstr:
-    result = gpuTypeToString(ast.ocType) & "("
+    result = gpuTypeToString(ast.ocType) & '('
     for i, el in ast.ocFields:
       if el.value.kind == gpuLit and el.value.lValue == "DEFAULT":
         # use type to construct a default value
@@ -993,7 +993,7 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
         result.add ctx.genWebGpu(el.value)
       if i < ast.ocFields.len - 1:
         result.add ", "
-    result.add ")"
+    result.add ')'
 
   of gpuInlineAsm:
     raiseAssert "Inline assembly not supported on the WebGPU target."
@@ -1002,16 +1002,16 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
     result = indentStr & "/* " & ast.comment & " */"
 
   of gpuConv:
-    result = gpuTypeToString(ast.convTo, allowEmptyIdent = true) & "(" & ctx.genWebGpu(ast.convExpr) & ")"
+    result = gpuTypeToString(ast.convTo, allowEmptyIdent = true) & '(' & ctx.genWebGpu(ast.convExpr) & ')'
 
   of gpuCast:
-    result = "bitcast<" & gpuTypeToString(ast.cTo, allowEmptyIdent = true) & ">(" & ctx.genWebGpu(ast.cExpr) & ")"
+    result = "bitcast<" & gpuTypeToString(ast.cTo, allowEmptyIdent = true) & ">(" & ctx.genWebGpu(ast.cExpr) & ')'
 
   of gpuAddr:
-    result = "(&" & ctx.genWebGpu(ast.aOf) & ")"
+    result = "(&" & ctx.genWebGpu(ast.aOf) & ')'
 
   of gpuDeref:
-    result = "(*" & ctx.genWebGpu(ast.dOf) & ")"
+    result = "(*" & ctx.genWebGpu(ast.dOf) & ')'
 
   of gpuConstexpr:
     result = indentStr & "const " & ctx.genWebGpu(ast.cIdent) & ": " & gpuTypeToString(ast.cType, allowEmptyIdent = true) & " = " & ctx.genWebGpu(ast.cValue)
@@ -1050,7 +1050,7 @@ proc codegen*(ctx: var GpuContext): string =
   # 1. Generate the header for all global variables
   for id, g in ctx.globals:
     result.add genGlobal(g)
-  result.add "\n"
+  result.add '\n'
 
   # 2. generate code for the global blocks (types, global vars etc)
   for blk in ctx.globalBlocks:
