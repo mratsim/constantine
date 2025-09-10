@@ -616,11 +616,21 @@ proc gpuTypeMaybeFromSymbol(t: NimNode, n: NimNode): GpuType =
     # `allowArrayIdent` triggered due to an ident in the type. Use symbol for type instead
     result = n.getTypeInst.nimToGpuType()
 
+proc stripPtrOrArrayType(t: GpuType): GpuType =
+  ## Strips any pointer or array type to return any struct / generic instantiation
+  ## it might contain
+  case t.kind
+  of gtPtr:    result = stripPtrOrArrayType t.to
+  of gtUA:     result = stripPtrOrArrayType t.uaTo
+  of gtArray:  result = stripPtrOrArrayType t.aTyp
+  else:        result = t
+
 proc maybeAddType*(ctx: var GpuContext, typ: GpuType) =
   ## Adds the given type to the table of known types, if it is some kind of
   ## object type.
   ##
   ## XXX: What about aliases and distincts?
+  let typ = typ.stripPtrOrArrayType() # get any underlying type
   if typ.kind in [gtObject, gtGenericInst] and typ notin ctx.types:
     ctx.types[typ] = toTypeDef(typ)
 
