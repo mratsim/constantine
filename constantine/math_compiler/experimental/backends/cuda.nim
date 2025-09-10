@@ -167,8 +167,14 @@ proc getFieldType(t: GpuType, field: GpuAst): GpuType =
 proc getType(ctx: var GpuContext, arg: GpuAst, typeOfIndex = true): GpuType =
   ## Tries to determine the underlying type of the AST.
   ##
-  ## If `typeOfIndex` is `true`, we return the type of the index we access. Otherwise
-  ## we return the type of the array / pointer.
+  ## If `typeOfIndex` is `true`, in case of a `gpuIndex` node, we return the type of the
+  ## element behind the index access `[]`. Otherwise we return the type of the array / pointer.
+  ##
+  ## Let `foo` be an array `let foo = [1'f32, 2, 3]`.
+  ## Let `n` be a `GpuAst` node of kind `gpuIndex` corresponding to `foo[1]`.
+  ## Then `ctx.getType(n, typeOfIndex = true)` returns `float32` while
+  ## `ctx.getType(n, typeOfIndex = false)` returns `array[3, float32]` (as
+  ## a `GpuType`).
   ##
   ## NOTE: Do *not* rely on this for `mutable` or `implicit` fields of pointer types!
   template dfl(): untyped = GpuType(kind: gtInvalid)
