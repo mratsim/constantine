@@ -14,97 +14,12 @@ import ./nim_to_gpu
 
 export gpu_types
 
-template nimonly*(): untyped {.pragma.}
-template cudaName*(s: string): untyped {.pragma.}
-
-## Dummy data for the typed nature of the `cuda` macro. These define commonly used
-## CUDA specific names so that they produce valid Nim code in the context of a typed macro.
-template global*() {.pragma.}
-template device*() {.pragma.}
-template forceinline*() {.pragma.}
-
-## If attached to a function, type or variable it will refer to a built in
-## in the target backend. This is used for all the functions, types and variables
-## defined below to indicate that we do not intend to generate code for them.
-template builtin*() {.pragma.}
-
-# If attached to a `var` it will be treated as a
-# `__constant__`! Only useful if you want to define a
-# constant without initializing it (and then use
-# `cudaMemcpyToSymbol` / `copyToSymbol` to initialize it
-# before executing the kernel)
-template constant*() {.pragma.}
-type
-  Dim* = cint ## dummy to have access to math
-  NvBlockIdx* = object
-    x*: Dim
-    y*: Dim
-    z*: Dim
-  NvBlockDim = object
-    x*: Dim
-    y*: Dim
-    z*: Dim
-  NvThreadIdx* = object
-    x*: Dim
-    y*: Dim
-    z*: Dim
-  NvGridDim = object
-    x*: Dim
-    y*: Dim
-    z*: Dim
-
-  DimWgsl = uint32
-  WgslGridDim = object
-    x*: DimWgsl
-    y*: DimWgsl
-    z*: DimWgsl
-
-## These are dummy elements to make CUDA block / thread index / dim
-## access possible in the *typed* `cuda` macro. It cannot be `const`,
-## because then the typed code would evaluate the values before we
-## can work with it from the typed macro.
-let blockIdx* {.builtin.} = NvBlockIdx()
-let blockDim* {.builtin.} = NvBlockDim()
-let gridDim* {.builtin.} = NvGridDim()
-let threadIdx* {.builtin.} = NvThreadIdx()
-
-## WebGPU specific
-let global_id* {.builtin.} = WgslGridDim()
-let num_workgroups* {.builtin.} = WgslGridDim()
-
-## Similar for procs. They don't need any implementation, as they won't ever be actually called.
-proc printf*(fmt: string) {.varargs, builtin.} = discard
-proc memcpy*(dst, src: pointer, size: int) {.builtin.} = discard
-
-## WebGPU select
-proc select*[T](f, t: T, cond: bool): T {.builtin.} =
-  # Implementation to run WebGPU code on CPU
-  if cond: t
-  else: f
-
-## `cuExtern` is mapped to `extern`, but has a different name, because Nim has its
-## own `extern` pragma (due to requiring an argument it cannot be reused):
-## https://nim-lang.org/docs/manual.html#foreign-function-interface-extern-pragma
-template cuExtern*(): untyped {.pragma.}
-template shared*(): untyped {.pragma.}
-template private*(): untyped {.pragma.}
-## You would typically use `cuExtern` and `shared` together:
-## `var x {.cuExtern, shared.}: array[N, Foo]`
-## for example to declare a constant array that is filled by the
-## host before kernel execution.
-
-## While you can use `malloc` on device with small sizes, it is usually not
-## recommended to do so.
-proc malloc*(size: csize_t): pointer {.builtin.}  = discard
-proc free*(p: pointer) {.builtin.} = discard
-proc syncthreads*() {.cudaName: "__syncthreads", builtin.} = discard
+import builtins/builtins # all the builtins for the backend to make the Nim compiler happy
+export builtins
 
 macro toGpuAst*(body: typed): (GpuGenericsInfo, GpuAst) =
-  ## WARNING: The following are *not* supported:
-  ## - UFCS: because this is a pure untyped DSL, there is no way to disambiguate between
-  ##         what is a field access and a function call. Hence we assume any `nnkDotExpr`
-  ##         is actually a field access!
-  ## - most regular Nim features :)
+  ## Converts the body of this macro into a `GpuAst` from where it can be converted
+  ## into CUDA or WGSL code at runtime.
   var ctx = GpuContext()
   let ast = ctx.toGpuAst(body)
   let genProcs = toSeq(ctx.genericInsts.values)
