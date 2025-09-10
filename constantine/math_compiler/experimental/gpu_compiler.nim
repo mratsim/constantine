@@ -28,11 +28,11 @@ macro toGpuAst*(body: typed): (GpuGenericsInfo, GpuAst) =
   newLit((g, ast))
 
 macro cuda*(body: typed): string =
-  ## WARNING: The following are *not* supported:
-  ## - UFCS: because this is a pure untyped DSL, there is no way to disambiguate between
-  ##         what is a field access and a function call. Hence we assume any `nnkDotExpr`
-  ##         is actually a field access!
-  ## - most regular Nim features :)
+  ## Converts the body of this macro into a `GpuAst` and from there into a string of
+  ## CUDA or WGSL code.
+  ##
+  ## TODO: make `cuda` choose CUDA backend, `wgsl` WGSL etc. Need to change code
+  ## that chooses backend etc.
   #echo body.treerepr
   var ctx = GpuContext()
   let gpuAst = ctx.toGpuAst(body)
