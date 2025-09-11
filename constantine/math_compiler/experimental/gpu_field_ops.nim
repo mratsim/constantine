@@ -189,52 +189,58 @@ template defWGSLHelpers*(): untyped {.dirty.} =
   ## Global variable to simulate carry flag. Private == one for each thread
   var carry_flag {.private.}: uint32 = 0'u32
 
-  # Add with carry out (sets carry flag)
   proc add_co(a: uint32, b: uint32): uint32 {.device.} =
+    # Add with carry out (sets carry flag)
     let result = a + b
     # Check for overflow: carry occurs if result < a (or result < b)
     carry_flag = select(0'u32, 1'u32, result < a)
     return result
 
-  # Add with carry in and carry out
   proc add_cio(a: uint32, b: uint32): uint32 {.device.} =
+    # Add with carry in and carry out
     let temp = a + b
     let result = temp + carry_flag
     # Carry out if: temp overflowed OR (temp + carry overflowed)
     carry_flag = select(0'u32, 1'u32, (temp < a) or (result < temp))
     return result
 
-  # Add with carry in only
   proc add_ci(a: uint32, b: uint32): uint32 {.device.} =
+    # Add with carry in only.
+    # NOTE: `carry_flag` is not reset, because the next call after
+    # an `add_ci` *must* be `add_co` or `sub_bo`, but never
+    # `add/sub_cio/ci`!
     let temp = a + b
     let result = temp + carry_flag
     # Don't update carry flag for this operation
     return result
 
-  # Subtract with borrow out (sets borrow flag)
   proc sub_bo(a: uint32, b: uint32): uint32 {.device.} =
+    # Subtract with borrow out (sets borrow flag)
     let result = a - b
     # Borrow occurs if a < b
     carry_flag = select(0'u32, 1'u32, a < b)
     return result
 
-  # Subtract with borrow in only
-  proc sub_bi(a: uint32, b: uint32): uint32 {.device.} =
-    let temp = a - b
-    let result = temp - carry_flag
-    # Don't update carry flag for this operation
-    return result
-
-  # Subtract with borrow in and borrow out
   proc sub_bio(a: uint32, b: uint32): uint32 {.device.} =
+    # Subtract with borrow in and borrow out
+    # NOTE: `carry_flag` is not reset, because the next call after
+    # an `add_ci` *must* be `add_co` or `sub_bo`, but never
+    # `add/sub_cio/ci`!
     let temp = a - b
     let result = temp - carry_flag
     # Borrow out if: a < b OR (temp - borrow underflowed)
     carry_flag = select(0'u32, 1'u32, (a < b) or (temp < carry_flag))
     return result
 
-  # Select based on condition (equivalent to PTX slct)
+  proc sub_bi(a: uint32, b: uint32): uint32 {.device.} =
+    # Subtract with borrow in only
+    let temp = a - b
+    let result = temp - carry_flag
+    # Don't update carry flag for this operation
+    return result
+
   proc slct(a: uint32, b: uint32, pred: int32): uint32 {.device.} =
+    # Select based on condition (equivalent to PTX slct)
     return select(b, a, pred >= 0)
 
   proc mul_lo(a, b: uint32): uint32 {.device, forceinline.} =
@@ -261,8 +267,8 @@ template defWGSLHelpers*(): untyped {.dirty.} =
 
     return p3 + (p1 shr 16) + (p2 shr 16) + carry
 
-  # r <- a * b + c (multiply-add low)
   proc mulloadd(a, b, c: uint32): uint32 {.device, forceinline.} =
+    # r <- a * b + c (multiply-add low)
     return mul_lo(a, b) + c
 
   proc mulloadd_co(a, b, c: uint32): uint32 {.device, forceinline.} =
@@ -280,8 +286,8 @@ template defWGSLHelpers*(): untyped {.dirty.} =
     let product = mul_lo(a, b)
     return add_cio(product, c)
 
-  # r <- (a * b) >> 32 + c (multiply-add high)
   proc mulhiadd(a, b, c: uint32): uint32 {.device, forceinline.} =
+    # r <- (a * b) >> 32 + c (multiply-add high)
     return mul_hi(a, b) + c
 
   proc mulhiadd_co(a, b, c: uint32): uint32 {.device, forceinline.} =
@@ -300,6 +306,113 @@ template defWGSLHelpers*(): untyped {.dirty.} =
     return add_cio(hi_product, c)
 
 
+template defBigIntCompare*(): untyped {.dirty.} =
+  ## This template adds a comparison operator for BigInts `<` (which is rewritten to
+  ## a function call `less`) as well as a `toCanonical` function to turn a Montgomery
+  ## representation into a canonical representation.
+  ## It is included in the `defCoreFieldOps` by default, so you need not manually use it.
+
+  proc less(a, b: BigInt): bool {.device.} =
+    ## Returns true if a < b for two big ints in *canonical*
+    ## representation.
+    ##
+    ## NOTE: The inputs are compared *as is*. That means if they are
+    ## in Montgomery representation the result will not reflect the
+    ## ordering relation of their associated canonical values!
+    ## Call `toCanonical` on field elements in Montgomery order before
+    ## comparing them.
+    ##
+    ## Comparison is constant-time
+    var borrow: uint32
+    # calculate sub with borrows for side effect. Use borrow flag
+    # at the end to determine if value was smaller
+    discard sub_bo(a[0], b[0])
+    staticFor i, 1, a.len:
+      discard sub_bio(a[i], b[i])
+    borrow = sub_bi(0'u32, 0'u32)
+    return borrow.bool
+
+  # template to rewrite `<` into a function call. Most backends don't allow custom operators
+  template `<`(b1, b2: BigInt): untyped = less(b1, b2)
+
+  proc muladd1_gpu(hi, lo: var uint32, a, b, c: uint32) {.device, forceinline.} =
+    ## Extended precision multiplication + addition
+    ## (hi, lo) <- a*b + c
+    ##
+    ## Note: 0xFFFFFFFF_FFFFFFFF² -> (hi: 0xFFFFFFFFFFFFFFFE, lo: 0x0000000000000001)
+    ##       so adding any c cannot overflow
+    ##
+    ## Note: `_gpu` prefix to not confuse Nim compiler with `precompute/muladd1`
+    lo = mulloadd_co(a, b, c)     # low part of a*b + c with carry out
+    hi = mulhiadd_ci(a, b, 0'u32) # high part of a*b with carry in
+
+  proc muladd2_gpu(hi, lo: var uint32, a, b, c1, c2: uint32) {.device, forceinline.} =
+    ## Extended precision multiplication + addition + addition
+    ## (hi, lo) <- a*b + c1 + c2
+    ##
+    ## Note: 0xFFFFFFFF_FFFFFFFF² -> (hi: 0xFFFFFFFFFFFFFFFE, lo: 0x0000000000000001)
+    ##       so adding 0xFFFFFFFFFFFFFFFF leads to (hi: 0xFFFFFFFFFFFFFFFF, lo: 0x0000000000000000)
+    ##       and we have enough space to add again 0xFFFFFFFFFFFFFFFF without overflowing
+    ##
+    ## Note: `_gpu` prefix to not confuse Nim compiler with `precompute/muladd2`
+    lo = mulloadd_co(a, b, c1)    # low part of a*b + c1 with carry out
+    hi = mulhiadd_ci(a, b, 0'u32) # high part of a*b with carry in
+    # Add c2 with carry propagation
+    lo = add_co(lo, c2)
+    hi = add_ci(hi, 0'u32)
+
+  proc sub_no_mod(a, b: BigInt): BigInt {.device.} =
+    ## Generate an optimized substraction kernel
+    ## with parameters `a, b, modulus: Limbs -> Limbs`
+    ## I.e. this does _not_ perform modular reduction.
+    var t = BigInt()
+    t[0] = sub_bo(a[0], b[0])
+    staticFor i, 1, a.len:
+      t[i] = sub_bio(a[i], b[i])
+    return t
+
+  proc sub_no_mod(r: var BigInt, a, b: BigInt) {.device.} =
+    ## Subtraction of two finite field elements stored in `a` and `b`
+    ## *without* modular reduction.
+    ## The result is stored in `r`.
+    r = sub_no_mod(a, b)
+
+  proc csub_no_mod(r: var BigInt, a: BigInt, condition: bool) {.device.} =
+    ## Conditionally subtract `a` from `r` in place *without* modular
+    ## reduction.
+    ##
+    ## Note: This is constant-time
+    var t = BigInt()
+    t.sub_no_mod(r, a)
+    r.ccopy(t, condition)
+
+  proc fromMont_CIOS(r: var BigInt, a, M: BigInt, m0ninv: uint32) {.device.} =
+    ## Convert from Montgomery form to canonical BigInt form
+    # for i in 0 .. n-1:
+    #   m <- t[0] * m0ninv mod 2ʷ (i.e. simple multiplication)
+    #   C, _ = t[0] + m * M[0]
+    #   for j in 1 ..n-1:
+    #     (C, t[j-1]) <- r[j] + m*M[j] + C
+    #   t[n-1] = C
+
+    var t = a # Ensure working in registers
+
+    staticFor i, 0, N:
+      let m = t[0] * m0ninv
+      var C, lo: uint32
+      muladd1_gpu(C, lo, m, M[0], t[0])
+      staticFor j, 1, N:
+        muladd2_gpu(C, t[j-1], m, M[j], C, t[j])
+      t[N-1] = C
+
+    t.csub_no_mod(M, not (t < M))
+    r = t
+
+  proc toCanonical(b: BigInt): BigInt {.device.} =
+    var canon: BigInt
+    canon.fromMont_CIOS(b, M, M0NInv)
+    return canon
+
 template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   # Need to get the limbs & spare bits data in a static context
   template getM0ninv(): untyped = static: T.getModulus().negInvModWord().uint32
@@ -314,7 +427,11 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   const PP1D2 = toBigInt(bigintToUint32Limbs(T.getPrimePlus1div2))
   const M0NInv = getM0ninv().uint32
 
-  proc finalSubMayOverflow(a, M: BigInt): BigInt {.device.} =
+  # `ccopy` needed for BigInt comparison logic
+  proc ccopy(a: var BigInt, b: BigInt, condition: bool) {.device.}
+  defBigIntCompare() # contains `toCanonical` and `<` comparison for canonical BigInts
+
+  proc finalSubMayOverflow(a, M: BigInt, overflowedLimbs: uint32): BigInt {.device.} =
     ## If a >= Modulus: r <- a-M
     ## else:            r <- a
     ##
@@ -325,9 +442,6 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
     var scratch: BigInt = BigInt()
 
-    # Contains 0x0001 (if overflowed limbs) or 0x0000
-    let overflowedLimbs = add_ci(0'u32, 0'u32)
-
     # Now substract the modulus, and test a < M with the last borrow
     scratch[0] = sub_bo(a[0], M[0])
     staticFor i, 1, N:
@@ -337,9 +451,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     # 2. if a >= M, underflowedModulus >= 0
     # if underflowedModulus >= 0: a-M else: a
     # TODO: predicated mov instead?
-    ## TODO: Fix this. `slct` needs a negative value for the else branch
     let underflowedModulus = sub_bi(overflowedLimbs, 0'u32)
-
     var r: BigInt = BigInt()
     staticFor i, 0, N:
       r[i] = slct(scratch[i], a[i], cast[int32](underflowedModulus))
@@ -362,9 +474,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
       scratch[i] = sub_bio(a[i], M[i])
 
     # If it underflows here, `a` was smaller than the modulus, which is what we want
-    ## TODO: Fix this. `slct` needs a negative value for the else branch
     let underflowedModulus = sub_bi(0'u32, 0'u32)
-
     var r: BigInt = BigInt()
     staticFor i, 0, N:
       r[i] = slct(scratch[i], a[i], cast[int32](underflowedModulus))
@@ -373,18 +483,21 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
   proc modadd(a, b, M: BigInt): BigInt {.device.} =
     ## Generate an optimized modular addition kernel
     ## with parameters `a, b, modulus: Limbs -> Limbs`
-    # try to add two bigints
     var t = BigInt() # temporary
 
     t[0] = add_co(a[0], b[0])
     staticFor i, 1, N:
       t[i] = add_cio(a[i], b[i])
 
-    # can use `when` of course!
-    when spareBits() >= 1: # if spareBits() >= 1: # would also work
+    when spareBits() >= 1:
       t = finalSubNoOverflow(t, M)
     else:
-      t = finalSubMayOverflow(t, M)
+      # Contains 0x0001 (if overflowed limbs) or 0x0000
+      # This _must_ be computed here and not inside of `finalSubMayOverflow`. In a
+      # debug build on CUDA the carry flag would (potentially) be reset going into
+      # the function.
+      let overflowedLimbs = add_ci(0'u32, 0'u32)
+      t = finalSubMayOverflow(t, M, overflowedLimbs)
 
     return t
 
@@ -398,7 +511,6 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
       t[i] = sub_bio(a[i], b[i])
 
     let underflowMask = sub_bi(0'u32, 0'u32)
-
     # If underflow
     # TODO: predicated mov instead?
     var maskedM: BigInt = BigInt()
@@ -410,7 +522,6 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
       t[i] = add_cio(t[i], maskedM[i])
     when N > 1:
       t[N-1] = add_ci(t[N-1], maskedM[N-1])
-
     return t
 
   proc mtymul_CIOS_sparebit(a, b, M: BigInt, finalReduce: bool): BigInt {.device.} =
@@ -576,13 +687,8 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     ## The result is stored in `r`.
     r = modsub(a, b, M)
 
-  proc mul(r: var BigInt, a, b: BigInt) {.device.} =
-    ## Multiplication of two finite field elements stored in `a` and `b`.
-    ## The result is stored in `r`.
-    r = mtymul_CIOS_sparebit(a, b, M, true)
-
   proc ccopy(a: var BigInt, b: BigInt, condition: bool) {.device.} =
-    ## Conditional copy in CUDA
+    ## Conditional copy.
     ## If condition is true: b is copied into a
     ## If condition is false: a is left unmodified
     ##
@@ -599,7 +705,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
       a[i] = slct(b[i], a[i], cond)
 
   proc csetZero(r: var BigInt, condition: bool) {.device.} =
-    ## Conditionally set `r` to zero in CUDA
+    ## Conditionally set `r` to zero.
     ##
     ## Note: This is constant-time
     var t = BigInt()
@@ -607,14 +713,14 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r.ccopy(t, condition)
 
   proc csetOne(r: var BigInt, condition: bool) {.device.} =
-    ## Conditionally set `r` to one in CUDA
+    ## Conditionally set `r` to one.
     ##
     ## Note: This is constant-time
     template mOne: untyped = MontyOne
     r.ccopy(mOne, condition)
 
   proc cadd(r: var BigInt, a: BigInt, condition: bool) {.device.} =
-    ## Conditionally add `a` to `r` in place in CUDA.
+    ## Conditionally add `a` to `r` in place..
     ##
     ## Note: This is constant-time
     var t = BigInt()
@@ -622,7 +728,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r.ccopy(t, condition)
 
   proc csub(r: var BigInt, a: BigInt, condition: bool) {.device.} =
-    ## Conditionally subtract `a` from `r` in place in CUDA.
+    ## Conditionally subtract `a` from `r` in place.
     ##
     ## Note: This is constant-time
     var t = BigInt()
@@ -630,14 +736,13 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r.ccopy(t, condition)
 
   proc doubleElement(r: var BigInt, a: BigInt) {.device.} =
-    ## Double `a` and store it in `r` in CUDA.
+    ## Double `a` and store it in `r`.
     ##
     ## Note: This is constant-time
     r.add(a, a)
 
   proc nsqr(r: var BigInt, a: BigInt, count: int) {.device.} =
-    ## Performs `nsqr`, that is multiple squarings of `a` and stores it in `r`
-    ## in CUDA.
+    ## Performs `nsqr`, that is multiple squarings of `a` and stores it in `r`.
     ##
     ## Note: This is constant-time
     ##
@@ -649,7 +754,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r = mtymul_CIOS_sparebit(r, r, M, finalReduce = true)
 
   proc isZero(r: var bool, a: BigInt) {.device.} =
-    ## Checks if `a` is zero in CUDA. Result is written to `r`.
+    ## Checks if `a` is zero. Result is written to `r`.
     ##
     ## Note: This is constant-time
     #r = true
@@ -660,8 +765,13 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
       isZero = isZero or a[i]
     r = isZero == 0'u32
 
+  proc isZero(a: BigInt): bool {.device, forceinline.} =
+    result.isZero(a)
+  proc isNonZero(a: BigInt): bool {.device, forceinline.} =
+    result = not isZero(a)
+
   proc isOdd(r: var bool, a: BigInt) {.device.} =
-    ## Checks if the Montgomery value of `a` is odd in CUDA. Result is written to `r`.
+    ## Checks if the Montgomery value of `a` is odd. Result is written to `r`.
     ##
     ## IMPORTANT: The canonical value may or may not be odd if the Montgomery
     ## representation is odd (and vice versa!).
@@ -671,7 +781,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r = (a[0] and 1'u32).bool
 
   proc neg(r: var BigInt, a: BigInt) {.device.} =
-    ## Computes the negation of `a` and stores it in `r` in CUDA.
+    ## Computes the negation of `a` and stores it in `r`.
     ##
     ## Note: This is constant-time
     # Check if input is zero
@@ -687,14 +797,14 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
 
   proc cneg(r: var BigInt, a: BigInt, condition: bool) {.device.} =
     ## Conditionally negate `a` and store it in `r` if `condition` is true, otherwise
-    ## copy over `a` into `r` in CUDA.
+    ## copy over `a` into `r`.
     ##
     ## Note: This is constant-time
     r.neg(a)
     r.ccopy(a, not condition)
 
   proc shiftRight(r: var BigInt, k: uint32) {.device.} =
-    ## Shift `r` right by `k` bits in-nplace in CUDA.
+    ## Shift `r` right by `k` bits in-nplace.
     ##
     ## k MUST be less than the base word size (2^31)
     ##
@@ -716,7 +826,7 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
     r[lastIdx] = r[lastIdx] shr k
 
   proc div2(r: var BigInt) {.device.} =
-    ## Divide `r` by 2 in-place in CUDA.
+    ## Divide `r` by 2 in-place.
     ##
     ## Note: This is constant-time
     # check if the input is odd
@@ -728,3 +838,71 @@ template defCoreFieldOps*(T: typed): untyped {.dirty.} =
 
     # if it was odd, add `M+1/2` to go 'half-way around'
     r.cadd(PP1D2, isO)
+
+  proc mul_lohi(hi, lo: var uint32, a, b: uint32) {.device, forceinline.} =
+    lo = mul_lo(a, b)
+    hi = mul_hi(a, b)
+
+  proc mulAcc(t, u, v: var uint32, a, b: uint32) {.device, forceinline.} =
+    ## (t, u, v) <- (t, u, v) + a * b
+    v = mulloadd_co(a, b, v)     # v = (a*b).low + v, with carry out
+    u = mulhiadd_cio(a, b, u)    # u = (a*b).high + u + carry, with carry out
+    t = add_ci(t, 0'u32)         # t = t + carry
+
+  proc mtymul_FIPS(a, b, M: BigInt, lazyReduce: static bool = false): BigInt {.device.} =
+    ## Montgomery Multiplication using Finely Integrated Product Scanning (FIPS).
+    ## This implementation can be used for fields that do not have any spare bits.
+    ##
+    ## This maps
+    ## - [0, 2p) -> [0, 2p) with lazyReduce
+    ## - [0, 2p) -> [0, p) without
+    ##
+    ## lazyReduce skips the final substraction step.
+    # - Architectural Enhancements for Montgomery
+    #   Multiplication on Embedded RISC Processors
+    #   Johann Großschädl and Guy-Armand Kamendje, 2003
+    #   https://pure.tugraz.at/ws/portalfiles/portal/2887154/ACNS2003_AEM.pdf
+    #
+    # - New Speed Records for Montgomery Modular
+    #   Multiplication on 8-bit AVR Microcontrollers
+    #   Zhe Liu and Johann Großschädl, 2013
+    #   https://eprint.iacr.org/2013/882.pdf
+    template m0ninv: untyped = M0NInv
+    var z = BigInt() # zero-init, ensure on stack and removes in-place problems in tower fields
+    const L = a.len
+    var t, u, v = 0'u32
+
+    staticFor i, 0, L:
+      staticFor j, 0, i:
+        mulAcc(t, u, v, a[j], b[i-j])
+        mulAcc(t, u, v, z[j], M[i-j])
+      mulAcc(t, u, v, a[i], b[0])
+      z[i] = v * m0ninv
+      mulAcc(t, u, v, z[i], M[0])
+      v = u
+      u = t
+      t = 0'u32
+
+    staticFor i, L, 2*L:
+      staticFor j, i-L+1, L:
+        mulAcc(t, u, v, a[j], b[i-j])
+        mulAcc(t, u, v, z[j], M[i-j])
+      z[i-L] = v
+      v = u
+      u = t
+      t = 0'u32
+
+    when not lazyReduce:
+      let cond = v != 0 or not(z < M)
+      # conditionally subtract using *non modular subtraction*. If `cond == true`,
+      # we are in `M <= z <= 2M` and can safely subtract `M`.
+      z.csub_no_mod(M, cond)
+    return z
+
+  proc mul(r: var BigInt, a, b: BigInt) {.device.} =
+    ## Multiplication of two finite field elements stored in `a` and `b`.
+    ## The result is stored in `r`.
+    when spareBits() >= 1:
+      r = mtymul_CIOS_sparebit(a, b, M, true)
+    else: # e.g. Goldilocks
+      r = mtymul_FIPS(a, b, M, false)

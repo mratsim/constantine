@@ -6,19 +6,21 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ./cuda, ./wgsl
-import ../gpu_types
+import ./common_builtins
 
-when defined(cuda):
-  const Backend* = bkCuda
-else:
-  const Backend* = bkWGSL
+type
+  DimWgsl = uint32
+  WgslGridDim = object
+    x*: DimWgsl
+    y*: DimWgsl
+    z*: DimWgsl
 
-proc codegen*(ctx: var GpuContext, ast: GpuAst, kernel: string = ""): string =
-  case Backend
-  of bkCuda:
-    cuda.preprocess(ctx, ast, kernel)
-    result = cuda.codegen(ctx)
-  of bkWGSL:
-    wgsl.preprocess(ctx, ast, kernel)
-    result = wgsl.codegen(ctx)
+## WebGPU specific
+let global_id* {.builtin.} = WgslGridDim()
+let num_workgroups* {.builtin.} = WgslGridDim()
+
+## WebGPU select
+proc select*[T](f, t: T, cond: bool): T {.builtin.} =
+  # Implementation to run WebGPU code on CPU
+  if cond: t
+  else: f

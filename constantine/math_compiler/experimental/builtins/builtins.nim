@@ -6,19 +6,14 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ./cuda, ./wgsl
-import ../gpu_types
+# NOTE: For the moment we import and export builtins here for all backends.
+# Once we change the code to make single backends importable on their own,
+# this will be changed and these builtins will be imported/exported in the
+# corresponding CUDA/WGSL etc module the user needs to import.
+import ./common_builtins
+import ./cuda_builtins
+import ./wgsl_builtins
 
-when defined(cuda):
-  const Backend* = bkCuda
-else:
-  const Backend* = bkWGSL
-
-proc codegen*(ctx: var GpuContext, ast: GpuAst, kernel: string = ""): string =
-  case Backend
-  of bkCuda:
-    cuda.preprocess(ctx, ast, kernel)
-    result = cuda.codegen(ctx)
-  of bkWGSL:
-    wgsl.preprocess(ctx, ast, kernel)
-    result = wgsl.codegen(ctx)
+export common_builtins
+export cuda_builtins
+export wgsl_builtins
