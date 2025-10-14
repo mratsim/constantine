@@ -613,7 +613,7 @@ func pow*(r: var FF, a: FF, exponent: BigInt or openArray[byte] or FF) =
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a finite field element or big integer
   r = a
-  a.pow(exponent)
+  r.pow(exponent)
 
 # Vartime exponentiation
 # -------------------------------------------------------------------
