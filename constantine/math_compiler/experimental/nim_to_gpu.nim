@@ -1127,14 +1127,18 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
     result = GpuAst(kind: gpuLit)
     result.lValue = $node.intVal
     result.lType = initGpuType(gtInt32)
-  of nnkUInt32Lit:
-    result = GpuAst(kind: gpuLit)
-    result.lValue = $node.intVal
-    result.lType = initGpuType(gtUInt32)
-  of nnkUIntLit:
+  of nnkUIntLit, nnkUint64Lit:
     result = GpuAst(kind: gpuLit)
     result.lValue = $node.intVal
     result.lType = initGpuType(gtUInt64) ## XXX: base on target platform!
+  of nnkUInt16Lit:
+    result = GpuAst(kind: gpuLit)
+    result.lValue = $node.intVal
+    result.lType = initGpuType(gtUInt16) ## XXX: base on target platform!
+  of nnkUInt32Lit:
+    result = GpuAst(kind: gpuLit)
+    result.lValue = $node.intVal
+    result.lType = initGpuType(gtUInt32) ## XXX: base on target platform!
   of nnkFloat64Lit, nnkFloatLit:
     result = GpuAst(kind: gpuLit)
     result.lValue = $node.floatVal & "f"
