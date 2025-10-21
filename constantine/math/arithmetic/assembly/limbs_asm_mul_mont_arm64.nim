@@ -52,21 +52,18 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
 
     aaSym = ident"aa"
     aa = asmArray(aaSym, N, ElemsInReg, asmInputOutput) # used as buffer for final substraction
-    mSym = ident"m"
-    m = asmValue(mSym, Reg, asmOutputEarlyClobber)
 
     uSym = ident"u"
-    vSym = ident"v"
 
-  var # Break dependencies chain
-    u = asmValue(uSym, Reg, asmOutputEarlyClobber)
-    v = asmValue(vSym, Reg, asmOutputEarlyClobber)
+  # Note: We might want to use an extra register to break dependency chains and expose more ILP
+  #       but then we run into GCC limitations https://github.com/mratsim/constantine/issues/582
+  var u = asmValue(uSym, Reg, asmOutputEarlyClobber)
 
   # Prologue
   result.add quote do:
     var `tSym`{.noinit, used.}: typeof(`r_PIR`)
-    var `aSym`{.noinit.}, `biSym`{.noInit.}, `mSym`{.noinit.}: BaseType
-    var `uSym`{.noinit.}, `vSym`{.noInit.}: BaseType
+    var `aSym`{.noinit.}, `biSym`{.noInit.}: BaseType
+    var `uSym`{.noinit.}: BaseType
 
     let `aaSym` {.noinit, used.} = `a_PIR`
 
@@ -111,24 +108,19 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
   template mulloadd_co(ctx, dst, lhs, rhs, addend) {.dirty.} =
     ctx.mul u, lhs, rhs
     ctx.adds dst, addend, u
-    swap(u, v)
   template mulloadd_cio(ctx, dst, lhs, rhs, addend) {.dirty.} =
     ctx.mul u, lhs, rhs
     ctx.adcs dst, addend, u
-    swap(u, v)
 
   template mulhiadd_co(ctx, dst, lhs, rhs, addend) {.dirty.} =
     ctx.umulh u, lhs, rhs
     ctx.adds dst, addend, u
-    swap(u, v)
   template mulhiadd_cio(ctx, dst, lhs, rhs, addend) {.dirty.} =
     ctx.umulh u, lhs, rhs
     ctx.adcs dst, addend, u
-    swap(u, v)
   template mulhiadd_ci(ctx, dst, lhs, rhs, addend) {.dirty.} =
     ctx.umulh u, lhs, rhs
     ctx.adc dst, addend, u
-    swap(u, v)
 
   doAssert N >= 2
 
@@ -200,11 +192,14 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
     #  t[1] = t[2] + (m*M[2]).lo + (m*M[1]).hi
     #  t[2] = t[3] + (m*M[2]).hi + (m*M[3]).lo
     #  t[3] = A + carry          + (m*M[3]).hi
+    
+    # Note: we might lose some cycles per iteration if we reuse bi here compared to perfect usage of ILP.
+    # but GCC limitation https://github.com/mratsim/constantine/issues/582
+    template m: untyped = bi 
 
     ctx.mul m, t[0], m0ninv
     ctx.mul u, m, M[0]
     ctx.cmn t[0], u         # TODO: bad latency chain, hopefully done parallel to prev loop
-    swap(u, v)
 
     for j in 1 ..< N:
       ctx.mulloadd_cio(t[j-1], m, M[j], t[j])
@@ -298,34 +293,29 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
     b = scratch[1].as2dArrayAddr(b_PIR, rows = K, cols = N, memIndirect = memRead) # Store the `b` operand
     tN = scratch[2]                                  # High part of extended precision multiplication
     A = scratch[3]                                   # Carry during mul step (A)
+    
+    # Same slot to save registers
     bi = scratch[4]                                  # Stores b[i] during mul and u during reduction
-    m = scratch[5]                                   # Red step: (t[0] * m0ninv) mod 2ʷ
+    m = scratch[4]                                   # Red step: (t[0] * m0ninv) mod 2ʷ
 
-  var # break dependency chains
-    u = scratch[6]
-    v = scratch[7]
+  var u = scratch[5]
 
   template mulloadd_co(ctx, dst, lhs, rhs, addend) {.dirty.} =
     ctx.mul u, lhs, rhs
     ctx.adds dst, addend, u
-    swap(u, v)
   template mulloadd_cio(ctx, dst, lhs, rhs, addend) {.dirty.} =
     ctx.mul u, lhs, rhs
     ctx.adcs dst, addend, u
-    swap(u, v)
 
   template mulhiadd_co(ctx, dst, lhs, rhs, addend) {.dirty.} =
     ctx.umulh u, lhs, rhs
     ctx.adds dst, addend, u
-    swap(u, v)
   template mulhiadd_cio(ctx, dst, lhs, rhs, addend) {.dirty.} =
     ctx.umulh u, lhs, rhs
     ctx.adcs dst, addend, u
-    swap(u, v)
   template mulhiadd_ci(ctx, dst, lhs, rhs, addend) {.dirty.} =
     ctx.umulh u, lhs, rhs
     ctx.adc dst, addend, u
-    swap(u, v)
 
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
@@ -392,12 +382,12 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
 
     # Reduction step
     # -------------------------------
+    # bi and m are aliasing
     ctx.comment "  Reduction step"
 
     ctx.mul m, t[0], m0ninv
     ctx.mul u, m, M[0]
     ctx.cmn t[0], u         # TODO: bad latency chain, hopefully done parallel to prev loop
-    swap(u, v)
 
     for j in 1 ..< N:
       ctx.mulloadd_cio(t[j-1], m, M[j], t[j])
