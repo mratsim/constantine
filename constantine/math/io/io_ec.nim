@@ -56,6 +56,31 @@ func toHex*[EC: EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_Aff or EC_ShortW_Jac
   result.appendHex(aff.y)
   result &= "\n" & sp & ")"
 
+func toDecimal*[EC: EC_ShortW_Prj or EC_ShortW_Jac or EC_ShortW_Aff or EC_ShortW_JacExt](P: EC, indent: static int = 0): string =
+  ## Stringify an elliptic curve point to Hex
+  ## Note. Leading zeros are not removed.
+  ## Output as decimal.
+  ##
+  ## WARNING: NOT constant time!
+  ##
+  ## This proc output may change format in the future
+
+  var aff {.noInit.}: EC_ShortW_Aff[EC.F, EC.G]
+  when EC isnot EC_ShortW_Aff:
+    aff.affine(P)
+  else:
+    aff = P
+
+  const sp = spaces(indent)
+
+  result = sp & $EC & "(\n" & sp & "  x: "
+  result.add toDecimal(aff.x)
+  result &= ",\n" & sp & "  y: "
+  result.add toDecimal(aff.y)
+  result &= "\n" & sp & ")"
+
+
+
 func toHex*[EC: EC_TwEdw_Aff or EC_TwEdw_Prj](P: EC, indent: static int = 0): string =
   ## Stringify an elliptic curve point to Hex for Twisted Edwards Curve
   ## Note, leading zeros are not removed.
