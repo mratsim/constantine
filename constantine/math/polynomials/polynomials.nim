@@ -7,7 +7,6 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/io/io_fields,
   constantine/platforms/[primitives, allocs, static_for]

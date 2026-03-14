@@ -173,21 +173,22 @@ testGen(compute_kzg_proof, testVector):
   else:
     doAssert testVector["output"].content == "null"
 
-testGen(verify_kzg_proof, testVector):
-  parseAssign(commitment, 48, testVector["input"]["commitment"].content)
-  parseAssign(z,          32, testVector["input"]["z"].content)
-  parseAssign(y,          32, testVector["input"]["y"].content)
-  parseAssign(proof,      48, testVector["input"]["proof"].content)
-
-  let status = ctx.verify_kzg_proof(commitment[], z[], y[], proof[])
-  stdout.write "[" & $status & "]\n"
-
-  if status == cttEthKzg_Success:
-    doAssert testVector["output"].content == "true"
-  elif status == cttEthKzg_VerificationFailure:
-    doAssert testVector["output"].content == "false"
-  else:
-    doAssert testVector["output"].content == "null"
+# Test is not parallel
+# testGen(verify_kzg_proof, testVector):
+#   parseAssign(commitment, 48, testVector["input"]["commitment"].content)
+#   parseAssign(z,          32, testVector["input"]["z"].content)
+#   parseAssign(y,          32, testVector["input"]["y"].content)
+#   parseAssign(proof,      48, testVector["input"]["proof"].content)
+#
+#   let status = ctx.verify_kzg_proof(commitment[], z[], y[], proof[])
+#   stdout.write "[" & $status & "]\n"
+#
+#   if status == cttEthKzg_Success:
+#     doAssert testVector["output"].content == "true"
+#   elif status == cttEthKzg_VerificationFailure:
+#     doAssert testVector["output"].content == "false"
+#   else:
+#     doAssert testVector["output"].content == "null"
 
 testGen(compute_blob_kzg_proof, testVector):
   parseAssign(blob,  32*4096, testVector["input"]["blob"].content)

@@ -169,7 +169,7 @@ func reduceCrandallFinal_impl[N: static int](
 
 func reduceCrandallFinal[N: static int](
         a: var Limbs[N],
-        p: Limbs[N]) {.inline.} =
+        p: Limbs[N]) {.inline, used.} =
   ## Final Reduction modulo p
   ## with p with special form 2ᵐ-c
   ## called "Crandall prime" or Pseudo-Mersenne Prime in the litterature

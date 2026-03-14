@@ -122,14 +122,17 @@ template `-`*[T: Ct](x: T): T =
 
 template isMsbSet*[T: Ct](x: T): CTBool[T] =
   ## Returns the most significant bit of an integer
+  bind CTBool
   const msb_pos = T.sizeof * 8 - 1
   (CTBool[T])(x shr msb_pos)
 
 template fmap[T: Ct](x: CTBool[T], op: untyped, y: CTBool[T]): CTBool[T] =
+  bind CTBool
   CTBool[T](op(T(x), T(y)))
 
 template `not`*[T: Ct](ctl: CTBool[T]): CTBool[T] =
   ## Negate a constant-time boolean
+  bind CTBool
   CTBool[T](T(ctl) xor T(1))
 
 template `and`*(x, y: CTBool): CTBool = fmap(x, `and`, y)

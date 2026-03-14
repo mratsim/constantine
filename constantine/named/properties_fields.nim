@@ -27,6 +27,7 @@ template matchingBigInt*(Name: static Algebra): untyped =
   # Workaround: https://github.com/nim-lang/Nim/issues/16774
   # as we cannot do array accesses in type section.
   # Due to generic sandwiches, it must be exported.
+  bind BigInt
   BigInt[CurveBitWidth[Name]]
 
 template matchingOrderBigInt*(Name: static Algebra): untyped =
@@ -34,6 +35,7 @@ template matchingOrderBigInt*(Name: static Algebra): untyped =
   # Workaround: https://github.com/nim-lang/Nim/issues/16774
   # as we cannot do array accesses in type section.
   # Due to generic sandwiches, it must be exported.
+  bind BigInt
   BigInt[CurveOrderBitWidth[Name]]
 
 type

@@ -323,7 +323,6 @@ proc msmAffine_vartime_parallel[bits: static int, EC, ECaff](
   # --------
   const numBuckets {.used.} = 1 shl (c-1)
   const numFullWindows = bits div c
-  const numWindows = numFullWindows + 1 # Even if `bits div c` is exact, the signed recoding needs to see an extra 0 after the MSB
 
   # Instead of storing the result in futures, risking them being scattered in memory
   # we store them in a contiguous array, and the synchronizing future just returns a bool.

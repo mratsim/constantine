@@ -6,11 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import constantine/zoo_exports
-
 import
-  constantine/platforms/[abstractions, views],
-  constantine/serialization/endians,
   ./ripemd160/ripemd160_generic
 
 
@@ -50,11 +46,11 @@ export Ripemd160Context
 
 template digestSize*(H: type ripemd160): int =
   ## Returns the output size in bytes
-  DigestSize
+  RMD160_DigestSize
 
 template internalBlockSize*(H: type ripemd160): int =
   ## Returns the byte size of the hash function ingested blocks
-  BlockSize
+  RMD160_BlockSize
 
 func init*(ctx: var Ripemd160Context) =
   ## Initialize or reinitialize a Ripemd160 context
@@ -71,7 +67,7 @@ func update*(ctx: var Ripemd160Context, message: openarray[byte]) =
   ## in memory considered secure for your threat model.
   ctx.write(message, message.len.uint64)
 
-func finish*(ctx: var Ripemd160Context, digest: var array[DigestSize, byte])  =
+func finish*(ctx: var Ripemd160Context, digest: var array[RMD160_DigestSize, byte])  =
   ## Finalize a Ripemd160 computation and output the
   ## message digest to the `digest` buffer.
   ##

@@ -58,7 +58,7 @@ macro redc2xMont_adx_gen[N: static int](
 
   # Prologue
   result.add quote do:
-    static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
+    static: doAssert: sizeof(SecretWord) == sizeof(uint)
     var `uSym`{.noinit, used.}: Limbs[`uSlots`]
     var `vSym` {.noInit.}: Limbs[`vSlots`]
     `vSym`[0] = cast[SecretWord](`r_PIR`[0].unsafeAddr)

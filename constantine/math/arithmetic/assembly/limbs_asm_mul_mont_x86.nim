@@ -86,7 +86,7 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
   # We might be able to save registers by having `r` and `M` be memory operand as well
 
   result.add quote do:
-    static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
+    static: doAssert: sizeof(SecretWord) == sizeof(uint)
 
     var `tSym`{.noInit, used.}: typeof(`r_PIR`)
     # Assumes 64-bit limbs on 64-bit arch (or you can't store an address)
@@ -258,7 +258,7 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
   # but this prevent reusing the same code for multiple curves like BLS12-377 and BLS12-381
   # We might be able to save registers by having `r` and `M` be memory operand as well
   result.add quote do:
-    static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
+    static: doAssert: sizeof(SecretWord) == sizeof(uint)
 
     var `tsym`{.noInit, used.}: typeof(`r_PIR`)
     # Assumes 64-bit limbs on 64-bit arch (or you can't store an address)

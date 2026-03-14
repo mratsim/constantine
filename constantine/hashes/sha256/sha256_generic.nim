@@ -27,18 +27,18 @@ import
 # ------------------------------------------------
 # The enforced alignment should help the compiler produce optimized code
 
-type Word* = uint32
+type Sha256_Word* = uint32
 
 const
-  DigestSize* = 32
-  BlockSize* = 64
-  HashSize* = DigestSize div sizeof(Word) # 8
+  Sha256_DigestSize* = 32
+  Sha256_BlockSize* = 64
+  Sha256_HashSize = Sha256_DigestSize div sizeof(Sha256_Word) # 8
 
 type Sha256_MessageSchedule* = object
-  w*{.align: 64.}: array[BlockSize div sizeof(Word), Word]
+  w*{.align: 64.}: array[Sha256_BlockSize div sizeof(Sha256_Word), Sha256_Word]
 
 type Sha256_state* = object
-  H*{.align: 64.}: array[HashSize, Word]
+  H*{.align: 64.}: array[Sha256_HashSize, Sha256_Word]
 
 const K256* = [
   0x428a2f98'u32, 0x71374491'u32, 0xb5c0fbcf'u32, 0xe9b5dba5'u32, 0x3956c25b'u32, 0x59f111f1'u32, 0x923f82a4'u32, 0xab1c5ed5'u32,
@@ -98,24 +98,24 @@ template copy*(dst: var Sha256_state, src: Sha256_state) =
   ## State copy
   # Should compile with a specialized aligned copy.
   # No bounds check
-  for i in 0 ..< HashSize:
+  for i in 0 ..< Sha256_HashSize:
     dst.H[i] = src.H[i]
 
 template accumulate*(dst: var Sha256_state, src: Sha256_state) =
   ## State accumulation
   # No bounds check
-  for i in 0 ..< HashSize:
+  for i in 0 ..< Sha256_HashSize:
     dst.H[i] += src.H[i]
 
-template sha256_round*(s: var Sha256_state, wt, kt: Word) =
-  template a: Word = s.H[0]
-  template b: Word = s.H[1]
-  template c: Word = s.H[2]
-  template d: Word = s.H[3]
-  template e: Word = s.H[4]
-  template f: Word = s.H[5]
-  template g: Word = s.H[6]
-  template h: Word = s.H[7]
+template sha256_round*(s: var Sha256_state, wt, kt: Sha256_Word) =
+  template a: Sha256_Word {.redefine.} = s.H[0]
+  template b: Sha256_Word {.redefine.} = s.H[1]
+  template c: Sha256_Word {.redefine.} = s.H[2]
+  template d: Sha256_Word {.redefine.} = s.H[3]
+  template e: Sha256_Word {.redefine.} = s.H[4]
+  template f: Sha256_Word {.redefine.} = s.H[5]
+  template g: Sha256_Word {.redefine.} = s.H[6]
+  template h: Sha256_Word {.redefine.} = s.H[7]
 
   let T1 = h + S1(e) + ch(e, f, g) + kt + wt
   let T2 = S0(a) + maj(a, b, c)
@@ -132,7 +132,7 @@ func sha256_rounds_0_15(
        ms: var Sha256_MessageSchedule,
        message: ptr UncheckedArray[byte]) {.inline.} =
   staticFor t, 0, 16:
-    ms.w[t] = uint32.fromBytes(message, t * sizeof(Word), bigEndian)
+    ms.w[t] = uint32.fromBytes(message, t * sizeof(Sha256_Word), bigEndian)
     sha256_round(s, ms.w[t], K256[t])
 
 func sha256_rounds_16_63(
@@ -162,7 +162,7 @@ func hashMessageBlocks_generic*(
 
   for _ in 0 ..< numBlocks:
     sha256_rounds_0_15(s, ms, msg)
-    msg +%= BlockSize
+    msg +%= Sha256_BlockSize
 
     sha256_rounds_16_63(s, ms)
 

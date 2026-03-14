@@ -14,16 +14,16 @@ import
   constantine/platforms/abstractions
 import std / macros
 
-type Word* = uint32
+type Word = uint32
 const
-  DigestSize* = 20
-  BlockSize* = 64
-  HashSize* = DigestSize div sizeof(Word) # 5 uint32 = 20 bytes = 160 bits
+  RMD160_DigestSize* = 20
+  RMD160_BlockSize* = 64
+  RMD160_HashSize = RMD160_DigestSize div sizeof(Word) # 5 uint32 = 20 bytes = 160 bits
 
 type
   Ripemd160Context* = object
-    s*: array[HashSize, uint32]
-    buf {.align: 64.}: array[BlockSize, byte]
+    s*: array[RMD160_HashSize, uint32]
+    buf {.align: 64.}: array[RMD160_BlockSize, byte]
     bytes: uint64
 
 template f1(x, y, z: uint32): untyped = x xor y xor z
@@ -32,16 +32,13 @@ template f3(x, y, z: uint32): untyped = (x or (not y)) xor z
 template f4(x, y, z: uint32): untyped = (x and z) or (y and (not z))
 template f5(x, y, z: uint32): untyped = x xor (y or (not z))
 
-proc initialize*(s: var array[HashSize, uint32]) =
+proc initialize*(s: var array[RMD160_HashSize, uint32]) =
   ## Initialize RIPEMD-160 state.
   s[0] = 0x67452301'u32
   s[1] = 0xEFCDAB89'u32
   s[2] = 0x98BADCFE'u32
   s[3] = 0x10325476'u32
   s[4] = 0xC3D2E1F0'u32
-
-proc initRipemdCtx(): Ripemd160Context =
-  result.s.initialize()
 
 template rol(x: uint32, i: int32): untyped = (x shl i) or (x shr (32 - i))
 
@@ -72,7 +69,7 @@ macro generateWs(): untyped =
     result.add quote do:
       var `wId` = ReadLE32(chunk, `idx`)
 
-proc transform(s: var array[HashSize, uint32], chunk: openArray[byte]) =
+proc transform(s: var array[RMD160_HashSize, uint32], chunk: openArray[byte]) =
   ## Perform a RIPEMD-160 transformation, processing a 64-byte chunk. */
   var
     a1 = s[0]
@@ -284,11 +281,9 @@ proc write*(ctx: var Ripemd160Context, data: openArray[byte], length: uint64) =
     copyMem(ctx.buf +! bufsize, data +! dataPos, length - dataPos)
     ctx.bytes += length - dataPos
 
-template ReadLE32(chunk: openArray[byte], offset: int): untyped = uint32.fromBytes(chunk, offset, littleEndian)
-
 proc arrayFirst(x: byte): array[64, byte] = result[0] = x
 
-proc finalize*(ctx: var Ripemd160Context, hash: var array[DigestSize, byte]) =
+proc finalize*(ctx: var Ripemd160Context, hash: var array[RMD160_DigestSize, byte]) =
   const pad: array[64, byte] = arrayFirst(0x80)
   var sizedesc: array[8, byte]
   sizedesc.blobFrom(ctx.bytes shl 3, 0, littleEndian)
