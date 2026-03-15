@@ -42,21 +42,21 @@ func batchAffine*[F, G](
 
   # To avoid temporaries, we store partial accumulations
   # in affs[i].x and affs[i].y will store if the input was 0
-  template zero(i: int): SecretBool =
+  template zero(i: int): SecretWord =
     when F is Fp:
-      SecretBool affs[i].y.mres.limbs[0]
+      affs[i].y.mres.limbs[0]
     else:
-      SecretBool affs[i].y.coords[0].mres.limbs[0]
+      affs[i].y.coords[0].mres.limbs[0]
 
   affs[0].x = projs[0].z
-  zero(0) = affs[0].x.isZero()
-  affs[0].x.csetOne(zero(0))
+  zero(0) = SecretWord affs[0].x.isZero()
+  affs[0].x.csetOne(SecretBool zero(0))
 
   for i in 1 ..< N:
     # Skip zero z-coordinates (infinity points)
     var z = projs[i].z
-    zero(i) = z.isZero()
-    z.csetOne(zero(i))
+    zero(i) = SecretWord z.isZero()
+    z.csetOne(SecretBool zero(i))
 
     if i != N-1:
       affs[i].x.prod(affs[i-1].x, z, lazyReduce = true)
@@ -70,11 +70,11 @@ func batchAffine*[F, G](
     # Extract 1/Pᵢ
     var invi {.noInit.}, invi_next {.noInit.}: F
     invi.prod(accInv, affs[i-1].x, lazyReduce = true)
-    invi.csetZero(zero(i))
+    invi.csetZero(SecretBool zero(i))
 
     # next iteration (zero and affs[i].y are aliasing)
     invi_next = projs[i].z
-    invi_next.csetOne(zero(i))
+    invi_next.csetOne(SecretBool zero(i))
     accInv.prod(accInv, invi_next, lazyReduce = true)
 
     # Now convert Pᵢ to affine
@@ -82,7 +82,7 @@ func batchAffine*[F, G](
     affs[i].y.prod(projs[i].y, invi)
 
   block: # tail
-    accInv.csetZero(zero(0))
+    accInv.csetZero(SecretBool zero(0))
     affs[0].x.prod(projs[0].x, accInv)
     affs[0].y.prod(projs[0].y, accInv)
 
@@ -107,21 +107,21 @@ func batchAffine*[F, G](
 
   # To avoid temporaries, we store partial accumulations
   # in affs[i].x and whether z == 0 in affs[i].y
-  template zero(i: int): SecretBool =
+  template zero(i: int): SecretWord =
     when F is Fp:
-      SecretBool affs[i].y.mres.limbs[0]
+      affs[i].y.mres.limbs[0]
     else:
-      SecretBool affs[i].y.coords[0].mres.limbs[0]
+      affs[i].y.coords[0].mres.limbs[0]
 
   affs[0].x  = jacs[0].z
-  zero(0) = affs[0].x.isZero()
-  affs[0].x.csetOne(zero(0))
+  zero(0) = SecretWord affs[0].x.isZero()
+  affs[0].x.csetOne(SecretBool zero(0))
 
   for i in 1 ..< N:
     # Skip zero z-coordinates (infinity points)
     var z = jacs[i].z
-    zero(i) = z.isZero()
-    z.csetOne(zero(i))
+    zero(i) = SecretWord z.isZero()
+    z.csetOne(SecretBool zero(i))
 
     if i != N-1:
       affs[i].x.prod(affs[i-1].x, z, lazyReduce = true)
@@ -135,11 +135,11 @@ func batchAffine*[F, G](
     # Extract 1/Pᵢ
     var invi {.noInit.}, invi_next {.noInit.}: F
     invi.prod(accInv, affs[i-1].x, lazyReduce = true)
-    invi.csetZero(zero(i))
+    invi.csetZero(SecretBool zero(i))
 
     # next iteration (zero and affs[i].y are aliasing)
     invi_next = jacs[i].z
-    invi_next.csetOne(zero(i))
+    invi_next.csetOne(SecretBool zero(i))
     accInv.prod(accInv, invi_next, lazyReduce = true)
 
     # Now convert Pᵢ to affine
@@ -152,7 +152,7 @@ func batchAffine*[F, G](
 
   block: # tail
     var invi2 {.noinit.}: F
-    accInv.csetZero(zero(0))
+    accInv.csetZero(SecretBool zero(0))
     invi2.square(accInv, lazyReduce = true)
     affs[0].x.prod(jacs[0].x, invi2)
     accInv.prod(accInv, invi2, lazyReduce = true)
