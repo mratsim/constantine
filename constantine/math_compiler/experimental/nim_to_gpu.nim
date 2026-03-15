@@ -6,10 +6,9 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import std / [macros, strutils, sequtils, options, sugar, tables, strformat, hashes, sets]
+import std / [macros, strutils, sequtils, options, tables, sets]
 
 import ./gpu_types
-import ./backends/backends
 
 proc nimToGpuType(ctx: var GpuContext, n: NimNode, allowToFail: bool = false, allowArrayIdent: bool = false): GpuType
 proc maybeAddType*(ctx: var GpuContext, typ: GpuType)
@@ -1191,7 +1190,6 @@ proc toGpuAst*(ctx: var GpuContext, node: NimNode): GpuAst =
       result.statements.add ctx.toGpuAst(el)
   of nnkTypeDef:
     doAssert node.len == 3, "TypeDef node does not have 3 children: " & $node.len
-    let name = ctx.toGpuAst(node[0])
     if node[1].kind == nnkGenericParams: # if this is a generic, only store existence of it
                                          # will store the instantiatons in `nnkObjConstr`
       result = GpuAst(kind: gpuVoid)

@@ -8,7 +8,7 @@
 
 import
   constantine/platforms/bithacks, # for log2_vartime
-  constantine/platforms/llvm/[llvm, asm_nvidia],
+  constantine/platforms/llvm/llvm,
   ./ir,
   ./impl_fields_globals,
   ./impl_fields_dispatch
@@ -31,14 +31,14 @@ template declFieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirt
 
   ## XXX: extend to include all ops
   # Boolean checks
-  template isZero(res, x: Field): untyped  = asy.isZero(fd, res, x.buf)
-  template isZero(x: Field): untyped =
+  template isZero(res, x: Field): untyped  {.used.} = asy.isZero(fd, res, x.buf)
+  template isZero(x: Field): untyped {.used.} =
     var res = asy.br.alloca(asy.ctx.int1_t())
     asy.isZero(fd, res, x.buf)
     res
 
   # Boolean logic
-  template `not`(x: ValueRef): untyped     = asy.br.`not`(x)
+  template `not`(x: ValueRef): untyped     {.used.} = asy.br.`not`(x)
 
   template checkIsBool(x: TypeRef): bool =
     x.getTypeKind == tkInteger and x.getIntTypeWidth == 1'u32
@@ -59,50 +59,50 @@ template declFieldOps*(asy: Assembler_LLVM, fd: FieldDescriptor): untyped {.dirt
       raiseIfNotBool(x, false)
       # will raise
 
-  template `and`(x, y): untyped            = asy.br.`and`(derefBool x, derefBool y) # returns `i1`
+  template `and`(x, y): untyped            {.used.} = asy.br.`and`(derefBool x, derefBool y) # returns `i1`
 
   # Mutators
-  template setZero(x: Field): untyped      = asy.setZero(fd, x.buf)
-  template setOne(x: Field): untyped       = asy.setOne(fd, x.buf)
-  template neg(res, y: Field): untyped     = asy.neg(fd, res.buf, y.buf)
-  template neg(x: Field): untyped          =
+  template setZero(x: Field): untyped      {.used.} = asy.setZero(fd, x.buf)
+  template setOne(x: Field): untyped       {.used.} = asy.setOne(fd, x.buf)
+  template neg(res, y: Field): untyped     {.used.} = asy.neg(fd, res.buf, y.buf)
+  template neg(x: Field): untyped          {.used.} =
     var res = asy.newField(fd)
     res.store(x)
     x.neg(res)
 
   # Conditional setters
-  template csetZero(x: Field, c): untyped  = asy.csetZero(fd, x.buf, derefBool c)
-  template csetOne(x: Field, c): untyped   = asy.csetOne(fd, x.buf, derefBool c)
+  template csetZero(x: Field, c): untyped  {.used.} = asy.csetZero(fd, x.buf, derefBool c)
+  template csetOne(x: Field, c): untyped   {.used.} = asy.csetOne(fd, x.buf, derefBool c)
 
   # Basic arithmetic
-  template sum(res, x, y: Field): untyped  = asy.add(fd, res.buf, x.buf, y.buf)
-  template add(res, x, y: Field): untyped  = res.sum(x, y)
-  template diff(res, x, y: Field): untyped = asy.sub(fd, res.buf, x.buf, y.buf)
-  template prod(res, x, y: Field, skipFinalSub: bool): untyped = asy.mul(fd, res.buf, x.buf, y.buf, skipFinalSub)
-  template prod(res, x, y: Field): untyped = res.prod(x, y, skipFinalSub = false)
+  template sum(res, x, y: Field): untyped  {.used.} = asy.add(fd, res.buf, x.buf, y.buf)
+  template add(res, x, y: Field): untyped  {.used.} = res.sum(x, y)
+  template diff(res, x, y: Field): untyped {.used.} = asy.sub(fd, res.buf, x.buf, y.buf)
+  template prod(res, x, y: Field, skipFinalSub: bool): untyped {.used.} = asy.mul(fd, res.buf, x.buf, y.buf, skipFinalSub)
+  template prod(res, x, y: Field): untyped {.used.} = res.prod(x, y, skipFinalSub = false)
 
   # Conditional arithmetic
-  template cadd(x, y: Field, c): untyped   = asy.cadd(fd, x.buf, y.buf, derefBool c)
-  template csub(x, y: Field, c): untyped   = asy.csub(fd, x.buf, y.buf, derefBool c)
-  template ccopy(x, y: Field, c): untyped  = asy.ccopy(fd, x.buf, y.buf, derefBool c)
+  template cadd(x, y: Field, c): untyped   {.used.} = asy.cadd(fd, x.buf, y.buf, derefBool c)
+  template csub(x, y: Field, c): untyped   {.used.} = asy.csub(fd, x.buf, y.buf, derefBool c)
+  template ccopy(x, y: Field, c): untyped  {.used.} = asy.ccopy(fd, x.buf, y.buf, derefBool c)
 
   # Extended arithmetic
-  template square(res, y: Field, skipFinalSub: bool): untyped = asy.nsqr(fd, res.buf, y.buf, count = 1, skipFinalSub)
-  template square(res, y: Field): untyped  = res.square(y, skipFinalSub = false)
-  template square(x: Field, skipFinalSub: bool): untyped = square(x, x, skipFinalSub)
-  template square(x: Field): untyped       = square(x, x, skipFinalSub = false)
-  template double(res, x: Field): untyped  = asy.double(fd, res.buf, x.buf)
-  template double(x: Field): untyped       = x.double(x)
-  template div2(x: Field): untyped         = asy.div2(fd, x.buf)
+  template square(res, y: Field, skipFinalSub: bool): untyped {.used.} = asy.nsqr(fd, res.buf, y.buf, count = 1, skipFinalSub)
+  template square(res, y: Field): untyped  {.used.} = res.square(y, skipFinalSub = false)
+  template square(x: Field, skipFinalSub: bool): untyped {.used.} = square(x, x, skipFinalSub)
+  template square(x: Field): untyped       {.used.} = square(x, x, skipFinalSub = false)
+  template double(res, x: Field): untyped  {.used.} = asy.double(fd, res.buf, x.buf)
+  template double(x: Field): untyped       {.used.} = x.double(x)
+  template div2(x: Field): untyped         {.used.} = asy.div2(fd, x.buf)
 
   # Mutating assignment ops
-  template `*=`(x, y: Field): untyped      = x.prod(x, y)
-  template `+=`(x, y: Field): untyped      = x.add(x, y)
-  template `-=`(x, y: Field): untyped      = x.diff(x, y)
-  template `*=`(x: Field, b: int): untyped = asy.scalarMul(fd, x.buf, b)
+  template `*=`(x, y: Field): untyped      {.used.} = x.prod(x, y)
+  template `+=`(x, y: Field): untyped      {.used.} = x.add(x, y)
+  template `-=`(x, y: Field): untyped      {.used.} = x.diff(x, y)
+  template `*=`(x: Field, b: int): untyped {.used.} = asy.scalarMul(fd, x.buf, b)
 
   # Other helpers that do not warrant a full LLVM internal/public proc
-  template mulCheckSparse(x: Field, y: int) =
+  template mulCheckSparse(x: Field, y: int) {.used.} =
     ## Multiplication with optimization for sparse inputs
     ## intended to be used with curve `coaf_a` as argument `y`.
     if y == 1:
@@ -127,7 +127,6 @@ proc setZero*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.used.} =
           asy.void_t, toTypes([r]),
           {kHot}):
     tagParameter(1, "sret")
-    let M = asy.getModulusPtr(fd)
 
     let ri = llvmParams
     let rA = asy.asField(fd, ri)
@@ -151,7 +150,6 @@ proc setOne*(asy: Assembler_LLVM, fd: FieldDescriptor, r: ValueRef) {.used.} =
           asy.void_t, toTypes([r]),
           {kHot}):
     tagParameter(1, "sret")
-    let M = asy.getModulusPtr(fd)
     let ri = llvmParams
     let rF = asy.asField(fd, ri)
 
@@ -253,7 +251,6 @@ proc csetOne*(asy: Assembler_LLVM, fd: FieldDescriptor, r, c: ValueRef) {.used.}
           asy.void_t, toTypes([r, c]),
           {kHot}):
     tagParameter(1, "sret")
-    let M = asy.getModulusPtr(fd)
     let mOne = asy.getMontyOnePtr(fd)
 
     let (ri, ci) = llvmParams
@@ -277,7 +274,6 @@ proc csetZero*(asy: Assembler_LLVM, fd: FieldDescriptor, r, c: ValueRef) {.used.
           asy.void_t, toTypes([r, c]),
           {kHot}):
     tagParameter(1, "sret")
-    let M = asy.getModulusPtr(fd)
 
     let (ri, ci) = llvmParams
 
@@ -318,11 +314,9 @@ proc cadd*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef) {.used.}
           asy.void_t, toTypes([r, a, c]),
           {kHot}):
     tagParameter(1, "sret")
-    let M = asy.getModulusPtr(fd)
 
     let (ri, ai, ci) = llvmParams
     let t = asy.newField(fd)          # temp field for `add`
-    let aA = asy.asField(fd, ai)
     asy.add(fd, t.buf, ri, ai)   # `t = r + b`
     asy.ccopy(fd, ai, t.buf, ci) # `a.ccopy(t, condition)`
 
@@ -364,7 +358,6 @@ proc csub*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef) {.used.}
           asy.void_t, toTypes([r, a, c]),
           {kHot}):
     tagParameter(1, "sret")
-    let M = asy.getModulusPtr(fd)
 
     let (ri, ai, ci) = llvmParams
     let t = asy.newField(fd)          # temp field for `sub`
@@ -444,7 +437,6 @@ proc isZero*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a: ValueRef) {.used.} 
           asy.void_t, toTypes([r, a]),
           {kHot}):
     tagParameter(1, "sret")
-    let M = asy.getModulusPtr(fd)
 
     let (ri, ai) = llvmParams
     let aA = asy.asArray(ai, fd.fieldTy)
@@ -547,7 +539,6 @@ proc cneg*(asy: Assembler_LLVM, fd: FieldDescriptor, r, a, c: ValueRef) {.used.}
 
     tagParameter(1, "sret")
     let (ri, ai, ci) = llvmParams
-    let M = asy.getModulusPtr(fd)
 
     # first call the regular negation
     asy.neg(fd, ri, ai)
@@ -742,7 +733,6 @@ proc getWindowAt*(asy: Assembler_LLVM, cd: CurveDescriptor, r, c, bI, wI: ValueR
     declNumberOps(asy, cd.fd)
 
     let (ri, ci, bitIndex, windowSize) = llvmParams
-    let rA = asy.asFieldScalar(cd, ri)
     let cA = asy.asFieldScalar(cd, ci)
     let fd = cd.fd
 

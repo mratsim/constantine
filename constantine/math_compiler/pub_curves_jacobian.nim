@@ -9,12 +9,8 @@
 # NOTE: We probably don't want the explicit `asm_nvidia` dependency here, I imagine? Currently it's
 # for direct usage of `slct` in `neg`.
 import
-  constantine/platforms/llvm/[llvm, asm_nvidia],
+  constantine/platforms/llvm/llvm,
   ./ir,
-  ./impl_fields_globals,
-  ./impl_fields_dispatch,
-  ./impl_fields_ops,
-  ./impl_curves_ops_affine,
   ./impl_curves_ops_jacobian,
   ./impl_msm_nvidia
 
@@ -61,7 +57,6 @@ proc genEcSetNeutral*(asy: Assembler_LLVM, cd: CurveDescriptor): string =
   ##
   ## It returns the corresponding name to call it
   let name = cd.name & "_setNeutral"
-  let ptrBool = pointer_t(asy.ctx.int1_t())
   asy.llvmPublicFnDef(name, "ctt." & cd.name, asy.void_t, [cd.curveTy]):
     let r = llvmParams
     asy.setNeutral(cd, r)
