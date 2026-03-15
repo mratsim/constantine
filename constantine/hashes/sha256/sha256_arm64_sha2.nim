@@ -134,6 +134,6 @@ func hashMessageBlocks_arm_sha*(
     abcd = vaddq_u32(abcd, state0)
     efgh = vaddq_u32(efgh, state1)
 
-    data +%= BlockSize
+    data +%= Sha256_BlockSize
 
   vst1q_u32_x2(H.H[0].addr, abcd_efgh)
