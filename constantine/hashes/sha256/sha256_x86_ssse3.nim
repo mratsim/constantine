@@ -46,8 +46,8 @@ import
 # Vectorized message scheduler
 # ------------------------------------------------
 
-const VecNum = BlockSize div 16      # BlockSize / sizeof(m128i)
-const VecWords = 16 div sizeof(Word) # sizeof(m128i) / sizeof(Word)
+const VecNum = Sha256_BlockSize div 16      # BlockSize / sizeof(m128i)
+const VecWords = 16 div sizeof(Sha256_Word) # sizeof(m128i) / sizeof(Word)
 
 func initMessageSchedule(
        msnext: var array[VecNum, m128i],
@@ -206,7 +206,7 @@ func hashMessageBlocks_ssse3*(
 
   for _ in 0 ..< numBlocks:
     initMessageSchedule(msnext, ms, msg)
-    msg +%= BlockSize
+    msg +%= Sha256_BlockSize
 
     sha256_rounds_0_47(s, ms, msnext)
     sha256_rounds_48_63(s, ms)

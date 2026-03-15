@@ -6,10 +6,8 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-# NOTE: We probably don't want the explicit `asm_nvidia` dependency here, I imagine? Currently it's
-# for direct usage of `slct` in `neg`.
 import
-  constantine/platforms/llvm/[llvm, asm_nvidia],
+  constantine/platforms/llvm/llvm,
   ./ir,
   ./impl_fields_globals,
   ./impl_fields_dispatch,
@@ -57,8 +55,6 @@ proc genFpAdd*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
 
   let name = fd.name & "_add"
   asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy]):
-    let M = asy.getModulusPtr(fd)
-
     let (r, a, b) = llvmParams
     asy.add(fd, r, a, b)
     asy.br.retVoid()
@@ -73,7 +69,6 @@ proc genFpMul*(asy: Assembler_LLVM, fd: FieldDescriptor): string =
   ## and return the corresponding name to call it
   let name = fd.name & "_mul"
   asy.llvmPublicFnDef(name, "ctt." & fd.name, asy.void_t, [fd.fieldTy, fd.fieldTy, fd.fieldTy]):
-    let M = asy.getModulusPtr(fd)
     let (r, a, b) = llvmParams
     asy.mul(fd, r, a, b)
     asy.br.retVoid()

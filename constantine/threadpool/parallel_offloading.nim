@@ -555,7 +555,7 @@ proc generateClosure(ld: LoopDescriptor): NimNode =
       proc `closureName`(env: pointer) {.nimcall, gcsafe, raises: [].} =
         let taskSelfReference = cast[ptr ptr Task](env)
         when bool(`withCaptures`):
-          let offset = cast[ByteAddress](env) +% sizeof((ptr Task, `retTy`))
+          let offset = cast[int](env) +% sizeof((ptr Task, `retTy`))
           let `env` = cast[ptr `capturedTypes`](offset)
         let res = `loopFnCall`
         readyWith(taskSelfReference[], res)

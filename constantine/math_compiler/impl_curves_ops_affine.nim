@@ -9,10 +9,8 @@
 # NOTE: We probably don't want the explicit `asm_nvidia` dependency here, I imagine? Currently it's
 # for direct usage of `slct` in `neg`.
 import
-  constantine/platforms/llvm/[llvm, asm_nvidia],
+  constantine/platforms/llvm/llvm,
   ./ir,
-  ./impl_fields_globals,
-  ./impl_fields_dispatch,
   ./impl_fields_ops,
   std / typetraits # for distinctBase
 
@@ -88,15 +86,15 @@ template declEllipticAffOps*(asy: Assembler_LLVM, cd: CurveDescriptor): untyped 
   ## more convenient.
   ## XXX: extend to include all ops
   # Boolean checks
-  template isNeutral(res, x: EcPointAff): untyped = asy.isNeutralAff(cd, res, x.buf)
-  template isNeutral(x: EcPointAff): untyped =
+  template isNeutral(res, x: EcPointAff): untyped {.used.} = asy.isNeutralAff(cd, res, x.buf)
+  template isNeutral(x: EcPointAff): untyped {.used.} =
     var res = asy.br.alloca(asy.ctx.int1_t())
     asy.isNeutralAff(cd, res, x.buf)
     res
 
   # Accessors
-  template x(ec: EcPointAff): Field = ec.getX()
-  template y(ec: EcPointAff): Field = ec.getY()
+  template x(ec: EcPointAff): Field {.used.} = ec.getX()
+  template y(ec: EcPointAff): Field {.used.} = ec.getY()
 
 
 proc isNeutralAff*(asy: Assembler_LLVM, cd: CurveDescriptor, r, a: ValueRef) {.used.} =

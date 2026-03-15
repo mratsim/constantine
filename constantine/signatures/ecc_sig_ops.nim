@@ -6,10 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import
-    constantine/math/[ec_shortweierstrass],
-    constantine/named/zoo_generators,
-    constantine/named/algebras
+import constantine/math/[ec_shortweierstrass]
 
 func derivePubkey*[Pubkey, SecKey](pubkey: var Pubkey, seckey: SecKey) =
   ## Generates the public key associated with the input secret key.
@@ -18,7 +15,6 @@ func derivePubkey*[Pubkey, SecKey](pubkey: var Pubkey, seckey: SecKey) =
   ## 0 is INVALID
   const Group = Pubkey.G
   type Field = Pubkey.F
-  const EC = Field.Name
 
   var pk {.noInit.}: EC_ShortW_Jac[Field, Group]
   pk.setGenerator()

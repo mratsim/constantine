@@ -218,11 +218,8 @@ proc execCudaImpl*(jitFn, numBlocks, threadsPerBlock, res, inputs, sharedMemSize
   result = newStmtList()
   result.add endianCheck()
 
-  # get the types of the inputs
-  let rTypes = getTypes(res)
-  let iTypes = getTypes(inputs)
-
   # determine all required `CUdeviceptr`
+  let iTypes = getTypes(inputs)
   let devPtrs = determineDevicePtrs(res, inputs, iTypes, passStructByPointer)
 
   # generate device pointers, allocate memory and copy data

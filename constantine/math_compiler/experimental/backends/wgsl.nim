@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import std / [macros, strformat, strutils, sugar, sequtils, tables, sets, options]
+import std / [macros, strformat, strutils, sugar, sequtils, tables, options]
 
 import ../gpu_types
 
@@ -1016,10 +1016,6 @@ proc genWebGpu*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
   of gpuConstexpr:
     result = indentStr & "const " & ctx.genWebGpu(ast.cIdent) & ": " & gpuTypeToString(ast.cType, allowEmptyIdent = true) & " = " & ctx.genWebGpu(ast.cValue)
 
-  else:
-    echo "Unhandled node kind in genWebGpu: ", ast.kind
-    raiseAssert "Unhandled node kind in genWebGpu: " & ast.repr
-    result = ""
 
 proc codegen*(ctx: var GpuContext): string =
   ## Generate the actual code for all pieces of the puzzle

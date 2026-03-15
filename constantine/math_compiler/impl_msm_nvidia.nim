@@ -7,11 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  constantine/platforms/llvm/[llvm, asm_nvidia],
-  constantine/platforms/[primitives],
+  constantine/platforms/llvm/llvm,
+  constantine/platforms/primitives,
   ./ir,
-  ./impl_fields_globals,
-  ./impl_fields_dispatch,
   ./impl_fields_ops,
   ./impl_curves_ops_affine,
   ./impl_curves_ops_jacobian,
@@ -58,7 +56,6 @@ proc msm*(asy: Assembler_LLVM, cd: CurveDescriptor, r, coefs, points: ValueRef,
 
     # Algorithm
     # ---------
-    var cNonZero = asy.initMutVal(cd.fd.wordTy)
     asy.llvmFor w, 0, numWindows - 1, true:
       # Place our points in a bucket corresponding to
       # how many times their bit pattern in the current window of size c

@@ -9,11 +9,10 @@
 import
   constantine/hashes,
   constantine/named/algebras,
-  constantine/math/io/[io_bigints, io_fields, io_ec],
+  constantine/math/io/[io_bigints, io_fields],
   constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul, ec_multi_scalar_mul],
   constantine/math/[arithmetic, ec_shortweierstrass],
   constantine/platforms/[abstractions, views],
-  constantine/serialization/codecs, # for fromHex and (in the future) base64 encoding
   constantine/mac/mac_hmac, # for deterministic nonce generation via RFC 6979
   constantine/named/zoo_generators, # for generator
   constantine/csprngs/sysrand,
@@ -348,7 +347,7 @@ proc recoverPubkeyImpl_vartime*[Name: static Algebra; Sig](
   var validSig = false
   while (not validSig) and bool(x1.toBig() <= rInit):
     # 1. Get base `R` point
-    var R {.noinit.}: EC_ShortW_Aff[Fp[Name], G1]
+    var R {.noinit.}: ECAff
     let valid = R.trySetFromCoordX(x1) # from `r = x1`
     if not bool(valid):
       x1 += M # add modulus of `Fr`. As long as we don't overflow in `Fp` we try again

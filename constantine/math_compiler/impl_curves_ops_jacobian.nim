@@ -9,10 +9,8 @@
 # NOTE: We probably don't want the explicit `asm_nvidia` dependency here, I imagine? Currently it's
 # for direct usage of `slct` in `neg`.
 import
-  constantine/platforms/llvm/[llvm, asm_nvidia],
+  constantine/platforms/llvm/llvm,
   ./ir,
-  ./impl_fields_globals,
-  ./impl_fields_dispatch,
   ./impl_fields_ops,
   ./impl_curves_ops_affine,
   std / typetraits # for distinctBase
@@ -90,32 +88,32 @@ template declEllipticJacOps*(asy: Assembler_LLVM, cd: CurveDescriptor): untyped 
   ## This template can be used to make operations on `Field` elements
   ## more convenient.
   # Setters
-  template setNeutral(x: EcPointJac): untyped = asy.setNeutral(cd, x.buf)
+  template setNeutral(x: EcPointJac): untyped {.used.} = asy.setNeutral(cd, x.buf)
 
   # Boolean checks
-  template isNeutral(res, x: EcPointJac): untyped = asy.isNeutral(cd, res, x.buf)
-  template isNeutral(x: EcPointJac): untyped =
+  template isNeutral(res, x: EcPointJac): untyped {.used.} = asy.isNeutral(cd, res, x.buf)
+  template isNeutral(x: EcPointJac): untyped {.used.} =
     var res = asy.br.alloca(asy.ctx.int1_t())
     asy.isNeutral(cd, res, x.buf)
     res
 
   # Mutating assignment ops
-  template sum(res, x, y: EcPointJac): untyped = asy.sum(cd, res.buf, x.buf, y.buf)
-  template `+=`(x, y: EcPointJac): untyped     = x.sum(x, y)
-  template mixedSum(res, x: EcPointJac, y: EcPointAff): untyped = asy.mixedSum(cd, res.buf, x.buf, y.buf)
-  template `+=`(x: EcPointJac, y: EcPointAff): untyped = x.mixedSum(x, y)
+  template sum(res, x, y: EcPointJac): untyped {.used.} = asy.sum(cd, res.buf, x.buf, y.buf)
+  template `+=`(x, y: EcPointJac): untyped     {.used.} = x.sum(x, y)
+  template mixedSum(res, x: EcPointJac, y: EcPointAff): untyped {.used.} = asy.mixedSum(cd, res.buf, x.buf, y.buf)
+  template `+=`(x: EcPointJac, y: EcPointAff): untyped {.used.} = x.mixedSum(x, y)
 
   # Arithmetic mutations
-  template double(res, x: EcPointJac): untyped = asy.double(cd, res.buf, x.buf)
-  template double(x: EcPointJac): untyped      = x.double(x)
+  template double(res, x: EcPointJac): untyped {.used.} = asy.double(cd, res.buf, x.buf)
+  template double(x: EcPointJac): untyped      {.used.} = x.double(x)
 
   # Conditional ops
-  template ccopy(x, y: EcPointJac, c): untyped = asy.ccopy(cd, x.buf, y.buf, derefBool c)
+  template ccopy(x, y: EcPointJac, c): untyped {.used.} = asy.ccopy(cd, x.buf, y.buf, derefBool c)
 
   # Accessors
-  template x(ec: EcPointJac): Field = ec.getX()
-  template y(ec: EcPointJac): Field = ec.getY()
-  template z(ec: EcPointJac): Field = ec.getZ()
+  template x(ec: EcPointJac): Field {.used.} = ec.getX()
+  template y(ec: EcPointJac): Field {.used.} = ec.getY()
+  template z(ec: EcPointJac): Field {.used.} = ec.getZ()
 
 proc fromAffine_impl*(asy: Assembler_LLVM, cd: CurveDescriptor, jac: var EcPointJac, aff: EcPointAff) =
   # Inject templates for convenient access

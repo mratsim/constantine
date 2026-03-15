@@ -14,9 +14,7 @@ import
   constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_multi_scalar_mul],
   constantine/platforms/abstractions,
   constantine/platforms/llvm/llvm,
-  constantine/math_compiler/[ir, pub_fields, pub_curves_jacobian, codegen_nvidia, impl_fields_globals],
-  # Test utilities
-  helpers/prng_unsafe
+  constantine/math_compiler/[ir, pub_curves_jacobian, codegen_nvidia]
 
 type
   EC = EC_ShortW_Jac[Fp[BN254_Snarks], G1]

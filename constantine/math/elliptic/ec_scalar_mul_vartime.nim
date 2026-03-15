@@ -351,13 +351,6 @@ func scalarMul_vartime*[scalBits; EC](P: var EC, scalar: BigInt[scalBits]) {.met
   ## - 0 <= scalar < curve order
   ## Those conditions will be assumed.
 
-  when P.F is Fp:
-    const M = 2
-  elif P.F is Fp2:
-    const M = 4
-  else:
-    {.error: "Unconfigured".}
-
   let usedBits = scalar.limbs.getBits_LE_vartime()
 
   when EC.getName().hasEndomorphismAcceleration():

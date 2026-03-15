@@ -38,7 +38,7 @@ type
   Sha256Context* = object
     # Align to 64 for cache line and SIMD friendliness
     s{.align: 64}: Sha256_state
-    buf{.align: 64}: array[BlockSize, byte]
+    buf{.align: 64}: array[Sha256_BlockSize, byte]
     msgLen: uint64
 
   sha256* = Sha256Context
@@ -68,7 +68,7 @@ func hashMessageBlocks(
     hashMessageBlocks_generic(s, message, numBlocks)
 
 func dumpHash(
-       digest: var array[DigestSize, byte],
+       digest: var array[Sha256_DigestSize, byte],
        s: Sha256_state) {.inline.} =
   ## Convert the internal hash into a message digest
   var dstIdx = 0
@@ -85,11 +85,11 @@ func hashBuffer(ctx: var Sha256Context) {.inline.} =
 
 template digestSize*(H: type sha256): int =
   ## Returns the output size in bytes
-  DigestSize
+  Sha256_DigestSize
 
 template internalBlockSize*(H: type sha256): int =
   ## Returns the byte size of the hash function ingested blocks
-  BlockSize
+  Sha256_BlockSize
 
 func init*(ctx: var Sha256Context) {.libPrefix: prefix_sha256.} =
   ## Initialize or reinitialize a Sha256 context
@@ -110,7 +110,7 @@ func initZeroPadded*(ctx: var Sha256Context) =
   ## Initialize a Sha256 context
   ## with the result of
   ## ctx.init()
-  ## ctx.update default(array[BlockSize, byte])
+  ## ctx.update default(array[Sha256_BlockSize, byte])
   #
   # This work arounds `toOpenArray`
   # not working in the Nim VM, preventing `sha256.update`
@@ -143,25 +143,25 @@ func update*(ctx: var Sha256Context, message: openarray[byte]) {.libPrefix: pref
   ## use a Key Derivation Function instead (KDF)
 
   # Message processing state machine
-  var bufIdx = uint(ctx.msgLen mod BlockSize)
+  var bufIdx = uint(ctx.msgLen mod Sha256_BlockSize)
   var cur = 0'u
   var bytesLeft = message.len.uint
 
-  if bufIdx != 0 and bufIdx+bytesLeft >= BlockSize:
+  if bufIdx != 0 and bufIdx+bytesLeft >= Sha256_BlockSize:
     # Previous partial update, fill the buffer and do one sha256 hash
-    let free = BlockSize - bufIdx
+    let free = Sha256_BlockSize - bufIdx
     ctx.buf.rawCopy(dStart = bufIdx, message, sStart = 0, len = free)
     ctx.hashBuffer()
     bufIdx = 0
     cur = free
     bytesLeft -= free
 
-  if bytesLeft >= BlockSize:
+  if bytesLeft >= Sha256_BlockSize:
     # Process n blocks (64 byte each)
-    let numBlocks = bytesLeft div BlockSize
+    let numBlocks = bytesLeft div Sha256_BlockSize
     ctx.s.hashMessageBlocks(message.asUnchecked +% cur, numBlocks)
-    cur += numBlocks * BlockSize
-    bytesLeft -= numBlocks * BlockSize
+    cur += numBlocks * Sha256_BlockSize
+    bytesLeft -= numBlocks * Sha256_BlockSize
 
   if bytesLeft != 0:
     # Store the tail in buffer
@@ -181,7 +181,7 @@ func finish*(ctx: var Sha256Context, digest: var array[32, byte]) {.libPrefix: p
   ## For passwords and secret keys, you MUST NOT use raw SHA-256
   ## use a Key Derivation Function instead (KDF)
 
-  let bufIdx = uint(ctx.msgLen mod BlockSize)
+  let bufIdx = uint(ctx.msgLen mod Sha256_BlockSize)
 
   # Add '1' bit at the end of the message (+7 zero bits)
   ctx.buf[bufIdx] = 0b1000_0000

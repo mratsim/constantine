@@ -122,7 +122,7 @@ func hashMessageBlocks_x86_sha*(
     abef = add_u32x4(abef, state0)
     cdgh = add_u32x4(cdgh, state1)
 
-    data +%= BlockSize
+    data +%= Sha256_BlockSize
 
   # The SHA state is stored in this order:
   #   D, C, B, A, H, G, F, E

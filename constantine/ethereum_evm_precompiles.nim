@@ -22,7 +22,6 @@ import
   ./hash_to_curve/hash_to_curve,
   # For KZG point precompile
   ./ethereum_eip4844_kzg,
-  ./serialization/codecs_status_codes,
   # ECDSA for ECRecover
   ./ethereum_ecdsa_signatures
 

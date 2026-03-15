@@ -17,7 +17,7 @@
 # - should allow parallelization, down to field -> raw bytes, before writing to file or inversely
 
 import
-  ../../serialization/[io_limbs, parsing],
+  ../../serialization/parsing,
   constantine/platforms/[fileio, abstractions]
 
 # We use `sortedByIt` to sort the different sections in the file by their
@@ -231,7 +231,6 @@ proc parseR1csFile*(path: string): R1csBin =
   result.sections = newSeq[Section](result.numberSections)
   # 1. determine the section kind, size & file position for each section in the file
   var pos = newSeq[(R1csSectionKind, uint64, int64)](result.numberSections)
-  let fp = f.getFilePosition()
   for i in 0 ..< result.numberSections:
     var kind: R1csSectionKind
     var size: uint64 # section size

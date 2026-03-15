@@ -145,8 +145,12 @@ macro defCountersType*(name: untyped, countersDesc: static seq[tuple[field, desc
     records.add newIdentDefs(ident(field), ident"int64")
 
   result = nnkTypeSection.newTree(
+    # type Counters {.used.} = object
     nnkTypeDef.newTree(
-      name,
+      nnkPragmaExpr.newTree(
+        name,
+        nnkPragma.newTree(ident"used")
+      ),
       newEmptyNode(),
       nnkObjectTy.newTree(
         newEmptyNode(),

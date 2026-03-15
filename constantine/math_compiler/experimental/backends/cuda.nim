@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import std / [macros, strformat, strutils, sugar, sequtils, tables, algorithm]
+import std / [macros, strformat, strutils, sugar, sequtils, tables]
 
 import ../gpu_types
 import ./common_utils
@@ -447,7 +447,6 @@ proc genCuda*(ctx: var GpuContext, ast: GpuAst, indent = 0): string =
   else:
     echo "Unhandled node kind in genCuda: ", ast.kind
     raiseAssert "Unhandled node kind in genCuda: " & ast.repr
-    result = ""
 
 proc codegen*(ctx: var GpuContext): string =
   ## Generate the actual code for all pieces of the puzzle

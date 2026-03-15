@@ -23,7 +23,7 @@ import constantine/zoo_exports
 
 import constantine/hashes
 
-func keccak256_hash(digest: var array[32, byte], message: openArray[byte], clearMem: bool) {.libPrefix: "ctt_".} =
+func keccak256_hash(digest: var array[32, byte], message: openArray[byte], clearMem: bool) {.used, libPrefix: "ctt_".} =
   ## Compute the Keccak256 hash of message
   ## and store the result in digest.
   ## Optionally, clear the memory buffer used.
@@ -35,7 +35,7 @@ func keccak256_hash(digest: var array[32, byte], message: openArray[byte], clear
   # - Can be LTO-optimized
   keccak256.hash(digest, message, clearMem)
 
-func sha256_hash(digest: var array[32, byte], message: openArray[byte], clearMem: bool) {.libPrefix: "ctt_".} =
+func sha256_hash(digest: var array[32, byte], message: openArray[byte], clearMem: bool) {.used, libPrefix: "ctt_".} =
   ## Compute the SHA-256 hash of message
   ## and store the result in digest.
   ## Optionally, clear the memory buffer used.

@@ -110,7 +110,7 @@ template checkReturn(evalExpr: CttCodecEccStatus): untyped {.dirty.} =
     of cttCodecEcc_PointNotInSubgroup:                  return cttEthVerkleIpa_EccPointNotInSubGroup
     of cttCodecEcc_PointAtInfinity:                     discard
 
-template check(Section: untyped, evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
+template check(Section: untyped, evalExpr: CttCodecScalarStatus): untyped {.dirty, used.} =
   # Translate codec status code to KZG status code
   # Exit current code block
   block:
@@ -120,7 +120,7 @@ template check(Section: untyped, evalExpr: CttCodecScalarStatus): untyped {.dirt
     of cttCodecScalar_Zero:                             discard
     of cttCodecScalar_ScalarLargerThanCurveOrder:       result = cttEthVerkleIpa_ScalarLargerThanCurveOrder; break Section
 
-template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.} =
+template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty, used.} =
   # Translate codec status code to KZG status code
   # Exit current code block
   block:

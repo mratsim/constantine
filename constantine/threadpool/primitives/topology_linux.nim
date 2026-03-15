@@ -27,7 +27,9 @@ proc queryNumPhysicalCoresLinux*(): cint =
   ##
   ## This can only handle up to 64 cores (logical or physical)
   ## CPU-based solutions using CPUID-like instructions should be preferred.
-  {.warning: "queryNumPhysicalCoresLinux: Only up to 64 cores can be handled on Linux at the moment.".}
+
+  # Currently parent function `getNumCoresPhysical()` is unused
+  # {.warning: "queryNumPhysicalCoresLinux: Only up to 64 cores can be handled on Linux at the moment.".}
   result = 0
 
   var logiCoresBitField = culonglong 0

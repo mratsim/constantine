@@ -331,7 +331,7 @@ func scalarMulEndo*[scalBits; EC](
   for i in countdown(L-2, 0):
     Q.double()
     tmp.secretLookup(lut, recoded.getRecodedIndex(i))
-    tmp.cneg(SecretBool recoded.getRecodedNegate(i))
+    tmp.cneg(recoded.getRecodedNegate(i))
     Q += tmp
 
   # Now we need to correct if the sign miniscalar was not odd

@@ -61,11 +61,11 @@ type
 # Note: If one is defined, the other destructors proc are not implictly create inline
 #       even if trivial
 
-proc `=`*(dst: var ScopedBarrier, src: ScopedBarrier) {.error: "A scoped barrier cannot be copied.".}
+proc `=copy`*(dst: var ScopedBarrier, src: ScopedBarrier) {.error: "A scoped barrier cannot be copied.".}
 
 proc `=sink`*(dst: var ScopedBarrier, src: ScopedBarrier) {.inline.} =
   # Nim doesn't respect noinit and tries to zeroMem then move the type
-  {.warning: "Moving a shared resource (an atomic type).".}
+  # {.warning: "Moving a shared resource (an atomic type).".}
   system.`=sink`(dst.descendants, src.descendants)
 
 proc `=destroy`*(sb: var ScopedBarrier) {.inline.}=

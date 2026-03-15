@@ -224,8 +224,8 @@ func finalVerify*[F, G](ctx: var BLSAggregateSigAccumulator, aggregateSignature:
   ## Returns false if nothing was accumulated
   ## Rteturns false on verification failure
 
-  type FF1 = BLSAggregateSigAccumulator.FF1
-  type FF2 = BLSAggregateSigAccumulator.FF2
+  type FF1 {.used.} = BLSAggregateSigAccumulator.FF1
+  type FF2 {.used.} = BLSAggregateSigAccumulator.FF2
   type Fpk = BLSAggregateSigAccumulator.Fpk
 
   when G == G2:
@@ -507,8 +507,8 @@ func finalVerify*(ctx: var BLSBatchSigAccumulator): bool =
   if not ctx.aggSigOnce:
     return false
 
-  type FF1 = BLSBatchSigAccumulator.FF1
-  type FF2 = BLSBatchSigAccumulator.FF2
+  type FF1 {.used.} = BLSBatchSigAccumulator.FF1
+  type FF2 {.used.} = BLSBatchSigAccumulator.FF2
   type Fpk = BLSBatchSigAccumulator.Fpk
 
   when BLSBatchSigAccumulator.SigAccum.G == G2:
