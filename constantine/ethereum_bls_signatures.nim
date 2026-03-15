@@ -60,7 +60,6 @@ export hashes # generic sandwich on sha256
 import
     ./platforms/[abstractions, views, allocs],
     ./named/algebras,
-    ./named/zoo_subgroups,
     ./math/[
       ec_shortweierstrass,
       extension_fields,

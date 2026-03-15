@@ -15,6 +15,8 @@
 # Implement functions that are automatically called at program/library load time.
 # Note: They cannot use {.global.} variables as {.global.} are initialized by Nim routines
 
+{.used.} # The compiler UnusedImport seems to misreports macro as pragma (Nim v2.2.8)
+
 import std/macros, ./config
 
 macro loadTime*(procAst: untyped): untyped =

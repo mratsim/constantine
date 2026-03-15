@@ -103,7 +103,6 @@ func expandMessageXMD*[len_in_bytes: static int](
   mixin digestSize
   type Hash = H # Otherwise the VM says "cannot evaluate at compiletime H"
   const DigestSize = Hash.digestSize()
-  const BlockSize = Hash.internalBlockSize()
 
   static:
     doAssert output.len mod 8 == 0  # By spec
