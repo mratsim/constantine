@@ -72,7 +72,7 @@ subroutines.
   - Extremely inefficient codegen in Constantine itself https://github.com/mratsim/constantine/issues/145
     with useless moves instead of in-place construction.
   - In other languages like Rust, users have seen a dramatic 20% increase in performance by moving from out-of-place to in-place mutation: https://www.reddit.com/r/rust/comments/kfs0oe/comment/ggc0dui/
-    - And they are struggling with GCE (Guarenteed Copy Elision) and NRVO/RVO(Named) Return Value Optimization
+    - And they are struggling with GCE (Guaranteed Copy Elision) and NRVO/RVO(Named) Return Value Optimization
       - https://github.com/rust-lang/rust/pull/76986
       - https://github.com/rust-lang/rfcs/pull/2884
 
@@ -93,7 +93,7 @@ the failure is communicated through a boolean.
 Similarly in Go, errors are used to communicate breaking protocol rules
 and the result of verification is communicated through a bool.
 
-We can use Nim's effect tracking `{.raises: [].}` to ensure no exceptions are raised in a function call stack.
+We can use Nim's effect tracking `{.raises:[].}` to ensure no exceptions are raised in a function call stack.
 
 ### Memory allocation
 
@@ -103,7 +103,7 @@ We actively avoid memory allocation for any protocol that:
 
 This includes encryption, hashing and signatures protocols.
 
-When memory allocation is necessary, for example for multithreading, GPU computing or succinct or zero-knowledge proof protocol, we use custom allocators from `constantine/platforms/allocs.nim`. Those are thin wrappers around the OS `malloc`/`free` with effect tracking `{.tags:[HeapAlloc].}` or `{.tags:[Alloca].}`. Then we can use Nim's effect tracking `{.tags: [].}` to ensure no *heap allocation* or *alloca* is used in the function call stack.
+When memory allocation is necessary, for example for multithreading, GPU computing or succinct or zero-knowledge proof protocol, we use custom allocators from `constantine/platforms/allocs.nim`. Those are thin wrappers around the OS `malloc`/`free` with effect tracking `{.tags:[HeapAlloc].}` or `{.tags:[Alloca].}`. Then we can use Nim's effect tracking `{.tags:[].}` to ensure no *heap allocation* or *alloca* is used in the function call stack.
 
 ### Constant-time and side-channel resistance
 
@@ -119,7 +119,7 @@ More information in the wiki: https://github.com/mratsim/constantine/wiki/Consta
 
 Some primitives may have a variable time optimization (for example field inversion or elliptic curve scalar multiplication) or may be variable-time only (for example multi-scalar multiplication), in that case they are suffixed `_vartime`.
 
-We use Nim's effect tracking `{.tags: [VarTime].}` so we can ensure that in protocols that handle secrets it is a compile-time error to have VarTime anywhere in the call stack via `{.tags:[].}`.
+We use Nim's effect tracking `{.tags:[VarTime].}` so we can ensure that in protocols that handle secrets it is a compile-time error to have VarTime anywhere in the call stack via `{.tags:[].}`.
 
 High-level protocols or subroutines for high-level protocols do not need this `_vartime` suffix hence this mostly concerns bigint, fields, elliptic curves and polynomial arithmetic.
 
