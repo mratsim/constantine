@@ -11,7 +11,7 @@ This also includes Nim standard library except:
 - std/atomics
 - Anything used at compile-time only
   - std/macros
-  - std/os and std/strutils to create compiletime paths relative to the currentSourcePath
+  - std/os and std/strutils to create compile-time paths relative to the currentSourcePath
 - Anything used for tests or debugging
   - json and yaml libraries are used in tests
   - sequences and strings can be used in tests
@@ -108,7 +108,7 @@ When memory allocation is necessary, for example for multithreading, GPU computi
 ### Constant-time and side-channel resistance
 
 Low-level operations that can handle secrets SHOULD be constant-time by default.
-Constantine assumes that addition, substraction (including carries/borrows), multiplication, bit operations, shifts are constant-time in hardware.
+Constantine assumes that addition, subtraction (including carries/borrows), multiplication, bit operations, shifts are constant-time in hardware.
 
 Constantine has `SecretWord` and `SecretBool` types that reimplements basic primitives
 with side-channel resistance in mind, though smart compilers may unravel them and reintroduce branches. Constantine provides primitives like `cadd`, `csub`, `cneg`, `ccopy` (conditional add, sub, neg, copy) and `isZero`, `isMsbSet` that allow simulating conditional execution without branches. Check `constantine/platforms/constant_time/ct_routines.nim`
@@ -119,9 +119,9 @@ More information in the wiki: https://github.com/mratsim/constantine/wiki/Consta
 
 Some primitives may have a variable time optimization (for example field inversion or elliptic curve scalar multiplication) or may be variable-time only (for example multi-scalar multiplication), in that case they are suffixed `_vartime`.
 
-We use Nim's effect tracking `{.tags[VarTime].}` so we can ensure that in protocols that handle secrets it is a compile-time error to have VarTime anywhere in the call stack via `{.tags:[].}`.
+We use Nim's effect tracking `{.tags: [VarTime].}` so we can ensure that in protocols that handle secrets it is a compile-time error to have VarTime anywhere in the call stack via `{.tags:[].}`.
 
-High-level protocols or subroutines for high-level protocols do not need this `_vartime` suffix hence this mostly concerns bigint, fields, elliptic curves adn polynomial arithmetic.
+High-level protocols or subroutines for high-level protocols do not need this `_vartime` suffix hence this mostly concerns bigint, fields, elliptic curves and polynomial arithmetic.
 
 Another source of side-channel attacks is table access. A non-uniform table access can be exploited by cache attacks like Colin Percival attack on Hyperthreading.
 A lookup table access can be simulated via `secretLookup` to ensure the whole table is uniformly accessed, or `ccopy` for non-trivial indexing patterns like for exponentiation.
