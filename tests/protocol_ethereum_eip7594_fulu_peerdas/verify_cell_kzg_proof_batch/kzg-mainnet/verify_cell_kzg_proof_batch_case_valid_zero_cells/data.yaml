@@ -1,0 +1,6 @@
+input:
+  commitments: []
+  cell_indices: []
+  cells: []
+  proofs: []
+output: true
