@@ -1,0 +1,7 @@
+input:
+  commitments: []
+  commitment_indices: []
+  cell_indices: []
+  cosets_evals: []
+  proofs: []
+output: '0x16689b8c7255c093a96a891e5f71da9b08f7865fc0c3aeb56d9a4851f5ec11c2'
