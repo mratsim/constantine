@@ -173,6 +173,30 @@ func batchAffine*[M, N: static int, F, G](
        projs: array[M, array[N, EC_ShortW_Jac[F, G]]]) {.inline.} =
   batchAffine(affs[0].asUnchecked(), projs[0].asUnchecked(), M*N)
 
+func batchFromAffine*[F, G](
+       jacs: ptr UncheckedArray[EC_ShortW_Jac[F, G]],
+       affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
+       N: int) {.inline.} =
+  for i in 0 ..< N:
+    jacs[i].fromAffine(affs[i])
+
+func batchFromAffine*[N: static int, F, G](
+       jacs: var array[N, EC_ShortW_Jac[F, G]],
+       affs: array[N, EC_ShortW_Aff[F, G]]) {.inline.} =
+  batchFromAffine(jacs.asUnchecked(), affs.asUnchecked(), N)
+
+func batchFromAffine*[F, G](
+       jacs: ptr UncheckedArray[EC_ShortW_Prj[F, G]],
+       affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
+       N: int) {.inline.} =
+  for i in 0 ..< N:
+    jacs[i].fromAffine(affs[i])
+
+func batchFromAffine*[N: static int, F, G](
+       jacs: var array[N, EC_ShortW_Prj[F, G]],
+       affs: array[N, EC_ShortW_Aff[F, G]]) {.inline.} =
+  batchFromAffine(jacs.asUnchecked(), affs.asUnchecked(), N)
+
 # ############################################################
 #
 #             Elliptic Curve in Short Weierstrass form

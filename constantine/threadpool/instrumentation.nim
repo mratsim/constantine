@@ -75,7 +75,7 @@ proc inspectInfix(node: NimNode): NimNode =
         when `node` is pointer or
              `node` is ptr or
              `node` is (proc):
-          toHex(cast[ByteAddress](`node`) and 0xffff_ffff)
+          toHex(cast[int](`node`) and 0xffff_ffff)
         else:
           $(`node`)
     of nnkPar:
@@ -110,7 +110,7 @@ macro assertContract(
       "N/A"
   let threadpoolID = quote do:
     when declared(workerContext):
-      cast[ByteAddress](workerContext.threadpool).toHex()
+      cast[int](workerContext.threadpool).toHex()
     else:
       "N/A"
 

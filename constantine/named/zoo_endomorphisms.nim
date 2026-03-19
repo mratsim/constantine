@@ -9,6 +9,7 @@
 import
   std/macros,
   constantine/platforms/abstractions,
+  constantine/math/arithmetic,
   constantine/math/extension_fields,
   constantine/math/endomorphisms/frobenius,
   constantine/math/elliptic/[

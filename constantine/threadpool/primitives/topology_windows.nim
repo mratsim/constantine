@@ -96,7 +96,7 @@ let ERROR_INSUFFICIENT_BUFFER {.importc, header: "<windows.h>".}: int32
 
 func `+%>`(p: ptr or pointer, offset: SomeInteger): type(p) {.inline, noInit.}=
   ## Pointer increment by `offset` *bytes* (not elements)
-  cast[typeof(p)](cast[ByteAddress](p) +% offset)
+  cast[typeof(p)](cast[int](p) +% offset)
 
 proc queryNumPhysicalCoresWindows*(): int32 {.inline.} =
 

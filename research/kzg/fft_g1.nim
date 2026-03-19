@@ -55,9 +55,9 @@ import
 
 type
   FFTStatus = enum
-    FFTS_Success
-    FFTS_TooManyValues = "Input length greater than the field 2-adicity (number of roots of unity)"
-    FFTS_SizeNotPowerOfTwo = "Input must be of a power of 2 length"
+    FFT_Success
+    FFT_TooManyValues = "Input length greater than the field 2-adicity (number of roots of unity)"
+    FFT_SizeNotPowerOfTwo = "Input must be of a power of 2 length"
 
   FFTDescriptor*[EC] = object
     ## Metadata for FFT on Elliptic Curve
@@ -146,9 +146,9 @@ func fft_vartime*[EC](
        output: var openarray[EC],
        vals: openarray[EC]): FFT_Status =
   if vals.len > desc.maxWidth:
-    return FFTS_TooManyValues
+    return FFT_TooManyValues
   if not vals.len.uint64.isPowerOf2_vartime():
-    return FFTS_SizeNotPowerOfTwo
+    return FFT_SizeNotPowerOfTwo
 
   let rootz = desc.expandedRootsOfUnity
                   .toView()
@@ -156,7 +156,7 @@ func fft_vartime*[EC](
 
   var voutput = output.toView()
   fft_internal(voutput, vals.toView(), rootz)
-  return FFTS_Success
+  return FFT_Success
 
 func ifft_vartime*[EC](
        desc: FFTDescriptor[EC],
@@ -164,9 +164,9 @@ func ifft_vartime*[EC](
        vals: openarray[EC]): FFT_Status =
   ## Inverse FFT
   if vals.len > desc.maxWidth:
-    return FFTS_TooManyValues
+    return FFT_TooManyValues
   if not vals.len.uint64.isPowerOf2_vartime():
-    return FFTS_SizeNotPowerOfTwo
+    return FFT_SizeNotPowerOfTwo
 
   let rootz = desc.expandedRootsOfUnity
                   .toView()
@@ -184,7 +184,7 @@ func ifft_vartime*[EC](
   for i in 0 ..< output.len:
     output[i].scalarMul_vartime(inv)
 
-  return FFTS_Success
+  return FFT_Success
 
 # FFT Descriptor
 # ----------------------------------------------------------------
@@ -224,12 +224,12 @@ when isMainModule:
 
     var coefs = newSeq[EC_G1](data.len)
     let fftOk = fft_vartime(fftDesc, coefs, data)
-    doAssert fftOk == FFTS_Success
+    doAssert fftOk == FFT_Success
     # display("coefs", 0, coefs)
 
     var res = newSeq[EC_G1](data.len)
     let ifftOk = ifft_vartime(fftDesc, res, coefs)
-    doAssert ifftOk == FFTS_Success
+    doAssert ifftOk == FFT_Success
     # display("res", 0, res)
 
     for i in 0 ..< res.len:
@@ -279,7 +279,7 @@ when isMainModule:
       let start = getMonotime()
       for i in 0 ..< NumIters:
         let status = desc.fft_vartime(coefsOut, data)
-        doAssert status == FFTS_Success
+        doAssert status == FFT_Success
       let stop = getMonotime()
 
       let ns = inNanoseconds((stop-start) div NumIters)

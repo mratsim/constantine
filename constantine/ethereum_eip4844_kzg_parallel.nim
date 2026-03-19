@@ -18,7 +18,10 @@ import
   ./serialization/[codecs_status_codes, codecs_bls12_381],
   ./math/io/io_fields,
   ./platforms/[abstractions, allocs],
-  ./threadpool/threadpool
+  ./threadpool/threadpool,
+  ./commitments_setups/ethereum_kzg_srs
+
+export FIELD_ELEMENTS_PER_BLOB
 
 ## ############################################################
 ##
@@ -150,7 +153,7 @@ proc blob_to_kzg_commitment_parallel*(
     check HappyPath, tp.blob_to_bigint_polynomial_parallel(poly, blob)
 
     var r {.noinit.}: EC_ShortW_Aff[Fp[BLS12_381], G1]
-    tp.kzg_commit_parallel(ctx.srs_lagrange_g1, r, poly[])
+    tp.kzg_commit_parallel(ctx.srs_lagrange_brp_g1, r, poly[])
     discard dst.serialize_g1_compressed(r)
 
     result = cttEthKzg_Success
@@ -194,8 +197,8 @@ proc compute_kzg_proof_parallel*(
     var proof {.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     tp.kzg_prove_parallel(
-      ctx.srs_lagrange_g1,
-      ctx.domain,
+      ctx.srs_lagrange_brp_g1,
+      ctx.domain_brp,
       y, proof,
       poly[],
       z)
@@ -238,8 +241,8 @@ proc compute_blob_kzg_proof_parallel*(
     var proof {.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     tp.kzg_prove_parallel(
-      ctx.srs_lagrange_g1,
-      ctx.domain,
+      ctx.srs_lagrange_brp_g1,
+      ctx.domain_brp,
       y, proof,
       poly[],
       opening_challenge)
@@ -282,7 +285,7 @@ proc verify_blob_kzg_proof_parallel*(
     # Technically we could interleavethe blob_to_field_polynomial_parallel_async
     # and the first part of evalPolyAt_parallel: inverseDifferenceArray
     # but performance cost should be minimal compared to readability.
-    tp.evalPolyAt_parallel(ctx.domain, eval_at_challenge, poly[], opening_challenge)
+    tp.evalPolyAt_parallel(ctx.domain_brp, eval_at_challenge, poly[], opening_challenge)
 
     # KZG verification
     let verif = kzg_verify(EC_ShortW_Aff[Fp[BLS12_381], G1](commitment),
@@ -355,7 +358,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
 
           var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
           tp.evalPolyAt_parallel(
-            ctx.domain,
+            ctx.domain_brp,
             eval_at_challenge_fr,
             polys[i], opening_challenges[i]
           )
