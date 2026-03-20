@@ -21,7 +21,7 @@ proc test_vanishing_single_root*() =
   type F = Fr[BLS12_381]
   let fftDesc = createFFTDescriptor(F, N)
 
-  var domain: PolyEvalRootsDomain[N, F]
+  var domain: PolyEvalRootsDomain[N, F, kNaturalOrder]
   for i in 0 ..< N:
     domain.rootsOfUnity[i] = fftDesc.rootsOfUnity[i]
   domain.invMaxDegree.setOne()
@@ -29,7 +29,6 @@ proc test_vanishing_single_root*() =
   invN.fromUint(uint64(N))
   invN.inv_vartime(invN)
   domain.invMaxDegree = invN
-  domain.isBitReversed = false
 
   let missing_indices = [uint64(0)]
   var roots: array[1, F]
@@ -38,7 +37,7 @@ proc test_vanishing_single_root*() =
   roots[0] = fftDesc.rootsOfUnity[int(rev_idx)]
 
   var zero_poly: PolynomialCoef[N, F]
-  vanishingPolynomial(zero_poly, roots, domain)
+  domain.vanishingPolynomial(zero_poly, roots)
 
   var eval_at_root: F
   evalPolyAt(eval_at_root, zero_poly, roots[0])
@@ -54,7 +53,7 @@ proc test_vanishing_two_roots*() =
   type F = Fr[BLS12_381]
   let fftDesc = createFFTDescriptor(F, N)
 
-  var domain: PolyEvalRootsDomain[N, F]
+  var domain: PolyEvalRootsDomain[N, F, kNaturalOrder]
   for i in 0 ..< N:
     domain.rootsOfUnity[i] = fftDesc.rootsOfUnity[i]
   domain.invMaxDegree.setOne()
@@ -62,7 +61,6 @@ proc test_vanishing_two_roots*() =
   invN.fromUint(uint64(N))
   invN.inv_vartime(invN)
   domain.invMaxDegree = invN
-  domain.isBitReversed = false
 
   let missing_indices = [uint64(0), uint64(1)]
   var roots: array[2, F]
@@ -72,7 +70,7 @@ proc test_vanishing_two_roots*() =
   echo "    root[1] = ", roots[1].toHex()
 
   var zero_poly: PolynomialCoef[N, F]
-  vanishingPolynomial(zero_poly, roots, domain)
+  domain.vanishingPolynomial(zero_poly, roots)
 
   echo "    coeffs after vanishingPolynomial:"
   for i in 0 ..< min(4, N):
@@ -96,7 +94,7 @@ proc test_vanishing_half_domain*() =
   type F = Fr[BLS12_381]
   let fftDesc = createFFTDescriptor(F, N)
 
-  var domain: PolyEvalRootsDomain[N, F]
+  var domain: PolyEvalRootsDomain[N, F, kNaturalOrder]
   for i in 0 ..< N:
     domain.rootsOfUnity[i] = fftDesc.rootsOfUnity[i]
   domain.invMaxDegree.setOne()
@@ -104,14 +102,13 @@ proc test_vanishing_half_domain*() =
   invN.fromUint(uint64(N))
   invN.inv_vartime(invN)
   domain.invMaxDegree = invN
-  domain.isBitReversed = false
 
   var missing_indices: array[64, uint64]
   for i in 0 ..< 64:
     missing_indices[i] = uint64(i)
 
   var zero_poly: PolynomialCoef[N, F]
-  vanishingPolynomialForIndices(zero_poly, missing_indices, domain)
+  domain.vanishingPolynomialForIndices(zero_poly, missing_indices)
 
   for i in 0 ..< 64:
     let root = fftDesc.rootsOfUnity[i]
@@ -129,7 +126,7 @@ proc test_vanishing_eval_at_present*() =
   type F = Fr[BLS12_381]
   let fftDesc = createFFTDescriptor(F, N)
 
-  var domain: PolyEvalRootsDomain[N, F]
+  var domain: PolyEvalRootsDomain[N, F, kNaturalOrder]
   for i in 0 ..< N:
     domain.rootsOfUnity[i] = fftDesc.rootsOfUnity[i]
   domain.invMaxDegree.setOne()
@@ -137,7 +134,6 @@ proc test_vanishing_eval_at_present*() =
   invN.fromUint(uint64(N))
   invN.inv_vartime(invN)
   domain.invMaxDegree = invN
-  domain.isBitReversed = false
 
   let missing_indices = [uint64(0), uint64(1)]
   var roots: array[2, F]
@@ -145,7 +141,7 @@ proc test_vanishing_eval_at_present*() =
   roots[1] = fftDesc.rootsOfUnity[1]
 
   var zero_poly: PolynomialCoef[N, F]
-  vanishingPolynomial(zero_poly, roots, domain)
+  domain.vanishingPolynomial(zero_poly, roots)
 
   for i in 2 ..< N:
     let root = fftDesc.rootsOfUnity[i]
@@ -164,11 +160,10 @@ proc test_bit_reversal_correctness*() =
   type F = Fr[BLS12_381]
   let fftDesc = createFFTDescriptor(F, N)
 
-  var domain: PolyEvalRootsDomain[N, F]
+  var domain: PolyEvalRootsDomain[N, F, kNaturalOrder]
   for i in 0 ..< N:
     domain.rootsOfUnity[i] = fftDesc.rootsOfUnity[i]
   domain.invMaxDegree.setOne()
-  domain.isBitReversed = false
 
   for idx in 0 ..< N:
     let rev_idx = reverseBits(uint64(idx), uint32(log2_N))
@@ -186,7 +181,7 @@ proc test_zero_poly_known*() =
   type F = Fr[BLS12_381]
   let fftDesc = createFFTDescriptor(F, N)
 
-  var domain: PolyEvalRootsDomain[N, F]
+  var domain: PolyEvalRootsDomain[N, F, kNaturalOrder]
   for i in 0 ..< N:
     domain.rootsOfUnity[i] = fftDesc.rootsOfUnity[i]
   domain.invMaxDegree.setOne()
@@ -194,7 +189,6 @@ proc test_zero_poly_known*() =
   invN.fromUint(uint64(N))
   invN.inv_vartime(invN)
   domain.invMaxDegree = invN
-  domain.isBitReversed = false
 
   let exists = [true, false, false, true, false, true, true, false,
                false, false, true, true, false, true, false, true]
@@ -212,7 +206,7 @@ proc test_zero_poly_known*() =
     missing_arr[i] = missing_indices[i]
 
   var zero_poly: PolynomialCoef[N, F]
-  vanishingPolynomialForIndicesRT(zero_poly, missing_arr.toOpenArray(0, missing_indices.len), domain)
+  domain.vanishingPolynomialForIndicesRT(zero_poly, missing_arr.toOpenArray(0, missing_indices.len - 1))
 
   for i in 0 ..< N:
     if not exists[i]:
@@ -227,7 +221,7 @@ proc testVanishingPolynomialForSize*(N: static int) =
   type F = Fr[BLS12_381]
   let fftDesc = createFFTDescriptor(F, N)
 
-  var domain: PolyEvalRootsDomain[N, F]
+  var domain: PolyEvalRootsDomain[N, F, kNaturalOrder]
   for i in 0 ..< N:
     domain.rootsOfUnity[i] = fftDesc.rootsOfUnity[i]
   domain.invMaxDegree.setOne()
@@ -235,7 +229,6 @@ proc testVanishingPolynomialForSize*(N: static int) =
   invN.fromUint(uint64(N))
   invN.inv_vartime(invN)
   domain.invMaxDegree = invN
-  domain.isBitReversed = false
 
   const numMissing = N div 2
   var missing_indices: array[numMissing, uint64]
@@ -243,7 +236,7 @@ proc testVanishingPolynomialForSize*(N: static int) =
     missing_indices[i] = uint64(i)
 
   var zero_poly: PolynomialCoef[N, F]
-  vanishingPolynomialForIndices(zero_poly, missing_indices, domain)
+  domain.vanishingPolynomialForIndices(zero_poly, missing_indices)
 
   for i in 0 ..< numMissing:
     var eval_at_root: F
@@ -267,7 +260,7 @@ proc test_zero_poly_all_but_one*() =
   type F = Fr[BLS12_381]
   let fftDesc = createFFTDescriptor(F, N)
 
-  var domain: PolyEvalRootsDomain[N, F]
+  var domain: PolyEvalRootsDomain[N, F, kNaturalOrder]
   for i in 0 ..< N:
     domain.rootsOfUnity[i] = fftDesc.rootsOfUnity[i]
   domain.invMaxDegree.setOne()
@@ -275,14 +268,13 @@ proc test_zero_poly_all_but_one*() =
   invN.fromUint(uint64(N))
   invN.inv_vartime(invN)
   domain.invMaxDegree = invN
-  domain.isBitReversed = false
 
   var missing_indices: array[255, uint64]
   for i in 0 ..< 255:
     missing_indices[i] = uint64(i + 1)
 
   var zero_poly: PolynomialCoef[N, F]
-  vanishingPolynomialForIndices(zero_poly, missing_indices, domain)
+  domain.vanishingPolynomialForIndices(zero_poly, missing_indices)
 
   for i in 1 ..< N:
     var eval_at_root: F
@@ -299,7 +291,7 @@ proc test_zero_poly_large*() =
   type F = Fr[BLS12_381]
   let fftDesc = createFFTDescriptor(F, N)
 
-  var domain: PolyEvalRootsDomain[N, F]
+  var domain: PolyEvalRootsDomain[N, F, kNaturalOrder]
   for i in 0 ..< N:
     domain.rootsOfUnity[i] = fftDesc.rootsOfUnity[i]
   domain.invMaxDegree.setOne()
@@ -307,14 +299,13 @@ proc test_zero_poly_large*() =
   invN.fromUint(uint64(N))
   invN.inv_vartime(invN)
   domain.invMaxDegree = invN
-  domain.isBitReversed = false
 
   var missing_indices: array[4096, uint64]
   for i in 0 ..< 4096:
     missing_indices[i] = uint64(i)
 
   var zero_poly: PolynomialCoef[N, F]
-  vanishingPolynomialForIndices(zero_poly, missing_indices, domain)
+  domain.vanishingPolynomialForIndices(zero_poly, missing_indices)
 
   for i in 0 ..< 4096:
     var eval_at_root: F
@@ -331,7 +322,7 @@ proc test_zero_poly_boundary*() =
   type F = Fr[BLS12_381]
   let fftDesc = createFFTDescriptor(F, N)
 
-  var domain: PolyEvalRootsDomain[N, F]
+  var domain: PolyEvalRootsDomain[N, F, kNaturalOrder]
   for i in 0 ..< N:
     domain.rootsOfUnity[i] = fftDesc.rootsOfUnity[i]
   domain.invMaxDegree.setOne()
@@ -339,11 +330,10 @@ proc test_zero_poly_boundary*() =
   invN.fromUint(uint64(N))
   invN.inv_vartime(invN)
   domain.invMaxDegree = invN
-  domain.isBitReversed = false
 
   let indices_3 = [uint64(0), uint64(1), uint64(2)]
   var zero_poly_3: PolynomialCoef[N, F]
-  vanishingPolynomialForIndices(zero_poly_3, indices_3, domain)
+  domain.vanishingPolynomialForIndices(zero_poly_3, indices_3)
 
   var eval_at_root: F
   evalPolyAt(eval_at_root, zero_poly_3, fftDesc.rootsOfUnity[0])

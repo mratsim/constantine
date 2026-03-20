@@ -15,6 +15,9 @@
 # Coset FFT shifts the domain so polynomials that vanish at certain points
 # don't cause issues during division operations.
 
+# Compile and run with:
+#   nim c -r -d:release --hints:off --warnings:off --outdir:build/tmp --nimcache:nimcache/tmp tests/math_polynomials/t_fft_coset.nim
+
 import
   ../../constantine/named/algebras,
   ../../constantine/math/[arithmetic, ec_shortweierstrass],
@@ -38,21 +41,18 @@ proc testCosetFFTRoundtrip*(F: typedesc[Fr]) =
         data[i].fromUint(uint64(i + 1))
 
       var coset_freq = newSeq[F](n)
-      let cosetDesc = CosetFFT_Descriptor[F].new(
-        order = n, generatorRootOfUnity = fftDesc.rootsOfUnity[1], shift = shift_factor)
-      let cosetFftOk = coset_fft_nr(cosetDesc, coset_freq, data)
+      let cosetDesc = FrFFT_Descriptor[F].new(
+        order = n, generatorRootOfUnity = fftDesc.rootsOfUnity[1])
+      let cosetFftOk = coset_fft_nr(cosetDesc, coset_freq, data, shift_factor)
       doAssert cosetFftOk == FFT_Success
 
       var recovered = newSeq[F](n)
-      let cosetIfftOk = coset_ifft_rn(cosetDesc, recovered, coset_freq)
+      let cosetIfftOk = coset_ifft_rn(cosetDesc, recovered, coset_freq, shift_factor)
       doAssert cosetIfftOk == FFT_Success
-      cosetDesc.delete()
 
       for i in 0 ..< n:
         doAssert (recovered[i] == data[i]).bool,
           "Coset roundtrip failed at size " & $n & " index " & $i
-
-    fftDesc.delete()
 
   echo "  ✓ All Coset FFT/IFFT roundtrip tests PASSED"
 
@@ -73,21 +73,18 @@ proc testCosetFFTSpecificSizes*(F: typedesc[Fr]) =
       data[i].fromUint(uint64(i + 1))
 
     var coset_freq = newSeq[F](n)
-    let cosetDesc = CosetFFT_Descriptor[F].new(
-      order = n, generatorRootOfUnity = fftDesc.rootsOfUnity[1], shift = shift_factor)
-    let cosetFftOk = coset_fft_nr(cosetDesc, coset_freq, data)
+    let cosetDesc = FrFFT_Descriptor[F].new(
+      order = n, generatorRootOfUnity = fftDesc.rootsOfUnity[1])
+    let cosetFftOk = coset_fft_nr(cosetDesc, coset_freq, data, shift_factor)
     doAssert cosetFftOk == FFT_Success
 
     var recovered = newSeq[F](n)
-    let cosetIfftOk = coset_ifft_rn(cosetDesc, recovered, coset_freq)
+    let cosetIfftOk = coset_ifft_rn(cosetDesc, recovered, coset_freq, shift_factor)
     doAssert cosetIfftOk == FFT_Success
-    cosetDesc.delete()
 
     for i in 0 ..< n:
       doAssert (recovered[i] == data[i]).bool,
         "Coset roundtrip failed at size " & $n & " index " & $i
-
-    fftDesc.delete()
 
   block:
     let n = 32
@@ -99,21 +96,18 @@ proc testCosetFFTSpecificSizes*(F: typedesc[Fr]) =
       data[i].fromUint(uint64(i + 1))
 
     var coset_freq = newSeq[F](n)
-    let cosetDesc = CosetFFT_Descriptor[F].new(
-      order = n, generatorRootOfUnity = fftDesc.rootsOfUnity[1], shift = coset_shift)
-    let cosetFftOk = coset_fft_nr(cosetDesc, coset_freq, data)
+    let cosetDesc = FrFFT_Descriptor[F].new(
+      order = n, generatorRootOfUnity = fftDesc.rootsOfUnity[1])
+    let cosetFftOk = coset_fft_nr(cosetDesc, coset_freq, data, coset_shift)
     doAssert cosetFftOk == FFT_Success
 
     var recovered = newSeq[F](n)
-    let cosetIfftOk = coset_ifft_rn(cosetDesc, recovered, coset_freq)
+    let cosetIfftOk = coset_ifft_rn(cosetDesc, recovered, coset_freq, coset_shift)
     doAssert cosetIfftOk == FFT_Success
-    cosetDesc.delete()
 
     for i in 0 ..< n:
       doAssert (recovered[i] == data[i]).bool,
         "Coset roundtrip failed at size " & $n & " index " & $i & " with PeerDAS coset shift"
-
-    fftDesc.delete()
 
   echo "  ✓ Coset FFT PeerDAS-specific tests PASSED"
 

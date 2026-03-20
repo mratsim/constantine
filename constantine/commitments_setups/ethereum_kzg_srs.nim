@@ -150,7 +150,7 @@ type
 
     # Trusted setup, see https://vitalik.ca/general/2022/03/14/trustedsetup.html
 
-    srs_lagrange_brp_g1*{.align: 64.}: PolynomialEval[FIELD_ELEMENTS_PER_BLOB, EC_ShortW_Aff[Fp[BLS12_381], G1]]
+    srs_lagrange_brp_g1*{.align: 64.}: PolynomialEval[FIELD_ELEMENTS_PER_BLOB, EC_ShortW_Aff[Fp[BLS12_381], G1], kBitReversed]
     # Part of the Structured Reference String (SRS) holding the 𝔾1 points
     # Stored in bit-reversed evaluation / Lagrange form
     #
@@ -190,7 +190,7 @@ type
     # For most schemes (Marlin, Plonk, Sonic, Ethereum's Deneb), only [τ]H is needed
     # but Ethereum's sharding will need 64 (65 with the generator H)
 
-    domain_brp*{.align: 64.}: PolyEvalRootsDomain[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]]
+    domain_brp*{.align: 64.}: PolyEvalRootsDomain[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed]
     # The domain field holds the roots of unity of the polynomial evaluation domain.
     # Important: for Ethereum, roots of unity are used in bit-reversed order
 
@@ -344,7 +344,6 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
     ctx.domain_brp.rootsOfUnity.bit_reversal_permutation()
     ctx.domain_brp.invMaxDegree.fromUint(ctx.domain_brp.rootsOfUnity.len.uint64)
     ctx.domain_brp.invMaxDegree.inv_vartime()
-    ctx.domain_brp.isBitReversed = true
 
   return tsSuccess
 

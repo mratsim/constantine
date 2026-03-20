@@ -6,6 +6,10 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+# Test with:
+#   nim c -r -d:release --hints:off --warnings:off --outdir:build/tmp --nimcache:nimcache/tmp tests/math_polynomials/t_fft.nim
+#   nim c -r -d:release --hints:off --warnings:off --outdir:build/tmp --nimcache:nimcache/tmp tests/math_polynomials/t_fft_coset.nim
+
 import
   constantine/named/algebras,
   constantine/math/arithmetic,
@@ -13,6 +17,8 @@ import
   constantine/math/ec_shortweierstrass,
   constantine/math/elliptic/ec_scalar_mul_vartime,
   constantine/platforms/[abstractions, allocs, views]
+
+{.push raises: [], checks: off.} # No exceptions
 
 # Forward declarations for bit_reversal_permutation (defined later in file)
 func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T])
@@ -37,19 +43,7 @@ type
     ## Metadata for FFT on field elements
     order*: int
     rootsOfUnity*: ptr UncheckedArray[F]
-      ## domain, starting and ending with 1, length is cardinality+1
-      ## This allows FFT and inverse FFT to use the same buffer for roots.
-
-  CosetFFT_Descriptor*[F] = object
-    ## Metadata for Coset FFT operations with explicit shift amount.
-    ## This clarifies the domain being used for FFT/Coset FFT operations.
-    order*: int
-    rootsOfUnity*: ptr UncheckedArray[F]
-      ## domain, starting and ending with 1, length is cardinality+1
-    shift*: F
-      ## Coset shift factor. For standard FFT (no shift), this is 1.
-      ## For coset operations, this is the generator of the coset.
-
+      ## domain, starting and ending with 1, length is cardinality+1  ## This allows FFT and inverse FFT to use the same buffer for roots.
   ECFFT_Descriptor*[EC] = object
     ## Metadata for FFT on Elliptic Curve
     order*: int
@@ -58,10 +52,6 @@ type
       ## This allows FFT and inverse FFT to use the same buffer for roots.
 
 proc `=destroy`*[F](ctx: FrFFT_Descriptor[F]) =
-  if not ctx.rootsOfUnity.isNil():
-    ctx.rootsOfUnity.freeHeapAligned()
-
-proc `=destroy`*[F](ctx: CosetFFT_Descriptor[F]) =
   if not ctx.rootsOfUnity.isNil():
     ctx.rootsOfUnity.freeHeapAligned()
 
@@ -100,23 +90,6 @@ func computeRootsOfUnity[F](ctx: var FrFFT_Descriptor[F], generatorRootOfUnity: 
 func new*(T: type FrFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
   result.order = order
   result.rootsOfUnity = allocHeapArrayAligned(T.F, order+1, alignment = 64)
-
-  result.computeRootsOfUnity(generatorRootOfUnity)
-
-func computeRootsOfUnity[F](ctx: var CosetFFT_Descriptor[F], generatorRootOfUnity: F) =
-  ctx.rootsOfUnity[0].setOne()
-
-  var cur = generatorRootOfUnity
-  for i in 1 .. ctx.order:
-    ctx.rootsOfUnity[i] = cur
-    cur *= generatorRootOfUnity
-
-  doAssert ctx.rootsOfUnity[ctx.order].isOne().bool()
-
-func new*(T: type CosetFFT_Descriptor, order: int, generatorRootOfUnity: auto, shift: auto): T =
-  result.order = order
-  result.rootsOfUnity = allocHeapArrayAligned(T.F, order+1, alignment = 64)
-  result.shift = shift
 
   result.computeRootsOfUnity(generatorRootOfUnity)
 
@@ -159,7 +132,7 @@ func fft_internal[F](
     output[i]      += y_times_root
 
 func fft_nr*[F](
-       desc: FrFFT_Descriptor[F] | CosetFFT_Descriptor[F],
+       desc: FrFFT_Descriptor[F],
        output{.noalias.}: var openarray[F],
        vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime].} =
   ## FFT from natural order to bit-reversed order.
@@ -188,14 +161,14 @@ func fft_nr*[F](
 
   let rootz = desc.rootsOfUnity
                   .toStridedView(desc.order)
-                  .slice(0, desc.order-1, desc.order div vals.len)
+                  .slice(0, desc.order-1, desc.order shr log2_vartime(uint vals.len))
 
   var voutput = output.toStridedView()
   fft_internal(voutput, vals.toStridedView(), rootz)
   return FFT_Success
 
 func fft_nn*[F](
-       desc: FrFFT_Descriptor[F] | CosetFFT_Descriptor[F],
+       desc: FrFFT_Descriptor[F],
        output{.noalias.}: var openarray[F],
        vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc].} =
   ## FFT from natural order to natural order.
@@ -221,7 +194,7 @@ func fft_nn*[F](
   return FFT_Success
 
 func ifft_rn*[F](
-       desc: FrFFT_Descriptor[F] | CosetFFT_Descriptor[F],
+       desc: FrFFT_Descriptor[F],
        output{.noalias.}: var openarray[F],
        vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime].} =
   ## IFFT from bit-reversed order to natural order.
@@ -244,7 +217,7 @@ func ifft_rn*[F](
   let rootz = desc.rootsOfUnity
                   .toStridedView(desc.order+1)
                   .reversed()
-                  .slice(0, desc.order-1, desc.order div vals.len)
+                  .slice(0, desc.order-1, desc.order shr log2_vartime(uint vals.len))
 
   var voutput = output.toStridedView()
   fft_internal(voutput, vals.toStridedView(), rootz)
@@ -259,7 +232,7 @@ func ifft_rn*[F](
   return FFT_Success
 
 func ifft_nn*[F](
-       desc: FrFFT_Descriptor[F] | CosetFFT_Descriptor[F],
+       desc: FrFFT_Descriptor[F],
        output{.noalias.}: var openarray[F],
        vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc].} =
   ## IFFT from natural order to natural order.
@@ -355,9 +328,10 @@ func unshift_vals*[F](
     inv_shift_pow *= inv_shift_factor
 
 func coset_fft_nr*[F](
-       desc: CosetFFT_Descriptor[F],
+       desc: FrFFT_Descriptor[F],
        output: var openarray[F],
-       vals: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc].} =
+       vals: openarray[F],
+       cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc].} =
   ## Compute FFT over a coset of the roots of unity (natural to bit-reversed order).
   ##
   ## This is used for polynomial operations where we need to avoid
@@ -368,41 +342,25 @@ func coset_fft_nr*[F](
   ##   1. Multiply vals[i] by shift_factor^i (shift into coset)
   ##   2. Apply standard FFT (natural to bit-reversed order)
   ##
-  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
-  ## The coset FFT algorithm is NOT in-place safe.
-  ##
   ## Parameters:
   ##   - desc: CosetFFT descriptor with roots of unity and shift factor
   ##   - output: output array (must have same length as vals)
   ##   - vals: input values in evaluation form
+  ##   - cosetShift, the coset shift
   ##
   ## Returns FFT_Success on success, error code otherwise
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
-
   let n = vals.len
-  let stride = desc.order div n
+  var shifted = allocHeapArrayAligned(F, n, alignment = 64)
+  shifted.toOpenArray(n).shift_vals(vals, cosetShift)
 
-  var shifted_vals = allocHeapArrayAligned(F, n, alignment = 64)
-  template shifted: untyped = shifted_vals.toOpenArray(0, n-1)
-  shifted.shift_vals(vals, desc.shift)
-
-  let rootz = desc.rootsOfUnity
-                  .toStridedView(desc.order)
-                  .slice(0, desc.order-1, stride)
-
-  var voutput = output.toStridedView()
-  fft_internal(voutput, shifted_vals.toStridedView(n), rootz)
-
-  freeHeapAligned(shifted_vals)
-  return FFT_Success
+  result = desc.fft_nr(output, shifted.toOpenArray(n))
+  freeHeapAligned(shifted)
 
 func coset_ifft_rn*[F](
-       desc: CosetFFT_Descriptor[F],
+       desc: FrFFT_Descriptor[F],
        output: var openarray[F],
-       vals: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc].} =
+       vals: openarray[F],
+       cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc].} =
   ## Compute inverse FFT over a coset of the roots of unity (bit-reversed to natural order).
   ##
   ## This is used after polynomial division in the coset domain
@@ -410,7 +368,7 @@ func coset_ifft_rn*[F](
   ##
   ## Algorithm:
   ##   1. Apply standard IFFT
-  ##   2. Multiply result[i] by shift_factor^(-i) (unshift from coset)
+  ##   2. Multiply result[i] by shift_factor⁻ⁱ (unshift from coset)
   ##
   ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
   ## The coset IFFT algorithm is NOT in-place safe.
@@ -419,34 +377,13 @@ func coset_ifft_rn*[F](
   ##   - desc: CosetFFT descriptor with roots of unity and shift factor
   ##   - output: output array (must have same length as vals)
   ##   - vals: input values in evaluation form over coset
+  ##   - cosetShift, the coset shift (which will be inverted)
   ##
   ## Returns FFT_Success on success, error code otherwise
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
-
-  let n = vals.len
-  let stride = desc.order div n
+  result = desc.ifft_rn(output, vals)
 
   var inv_shift_factor {.noInit.}: F
-  inv_shift_factor.inv_vartime(desc.shift)
-
-  let rootz = desc.rootsOfUnity
-                  .toStridedView(desc.order+1)
-                  .reversed()
-                  .slice(0, desc.order-1, stride)
-
-  var voutput = output.toStridedView()
-  fft_internal(voutput, vals.toStridedView(), rootz)
-
-  var invLen {.noInit.}: F
-  invLen.fromUint(n.uint64)
-  invLen.inv_vartime()
-
-  for i in 0 ..< n:
-    output[i] *= invLen
-
+  inv_shift_factor.inv_vartime(cosetShift)
   output.unshift_vals(output, inv_shift_factor)
 
   return FFT_Success
@@ -507,7 +444,7 @@ func ec_fft_nr*[EC](
 
   let rootz = desc.rootsOfUnity
                   .toStridedView(desc.order)
-                  .slice(0, desc.order-1, desc.order div vals.len)
+                  .slice(0, desc.order-1, desc.order shr log2_vartime(uint vals.len))
 
   var voutput = output.toStridedView()
   fft_internal(voutput, vals.toStridedView(), rootz)
@@ -526,7 +463,7 @@ func ec_ifft_rn*[EC](
   let rootz = desc.rootsOfUnity
                   .toStridedView(desc.order+1) # Extra 1 at the end so that when reversed the buffer starts with 1
                   .reversed()
-                  .slice(0, desc.order-1, desc.order div vals.len)
+                  .slice(0, desc.order-1, desc.order shr log2_vartime(uint vals.len))
 
   var voutput = output.toStridedView()
   fft_internal(voutput, vals.toStridedView(), rootz)
@@ -593,8 +530,7 @@ func deriveLogTileSize(T: type, logN: uint): uint =
 
   return q
 
-
-func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) =
+func bit_reversal_permutation_cobra[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) =
   ## Out-of-place bit reversal permutation using the COBRA algorithm
   ## (Cache Optimal BitReverse Algorithm from Carter & Gatlin, 1998)
   ##
@@ -643,7 +579,6 @@ func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias
     for a in 0'u ..< tileSize:
       let aRev = reverseBits(a, logTileSize)
       for c in 0'u ..< tileSize:
-        # T[a'c] = A[abc]
         let tIdx = (aRev shl logTileSize) or c
         let idx = (a shl (logBLen+logTileSize)) or
                   (b shl logTileSize) or c
@@ -652,7 +587,6 @@ func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias
     for c in 0'u ..< tileSize:
       let cRev = reverseBits(c, logTileSize)
       for aRev in 0'u ..< tileSize:
-        # B[c'b'a'] = T[a'c]
         let tIdx = (aRev shl logTileSize) or c
         let idx = (cRev shl (logBLen+logTileSize)) or
                   (bRev shl logTileSize) or aRev
@@ -660,8 +594,14 @@ func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias
 
   freeHeap(t)
 
-func bit_reversal_permutation*[T](buf: var openArray[T]) =
+func bit_reversal_permutation_cobra[T](buf: var openArray[T]) {.used.} =
   ## In-place bit reversal permutation using a cache-blocking algorithm
+  ## Only used for benchmarking.
+  ##   Whether for uint32 (4 bytes) to Fr[BLS12_381]
+  ##   the in-place algorithm is at least 2x slower than out-of-place
+  ##   AND tuning the naive vs cobra threshold is trickier
+  ##   and might severely depend on the memory bandwidth
+  ##   and be very different between Apple CPUs and Intel/AMD
   #
   # We adapt the following out-of-place algorithm to in-place.
   #
@@ -754,224 +694,68 @@ func bit_reversal_permutation*[T](buf: var openArray[T]) =
 
   freeHeap(t)
 
-# ############################################################
-#
-#                    Sanity checks
-#
-# ############################################################
+func bit_reversal_permutation_naive[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) {.inline.} =
+  ## Out-of-place bit reversal permutation using a naive algorithm.
+  ##
+  ## For each index i, places src[i] into dst[reverseBits(i)].
+  ##
+  ## **IMPORTANT**: `dst` and `src` must NOT alias (be the same array).
+  ## Use the in-place overload if you need to permute in-place.
 
-when isMainModule:
+  debug: doAssert src.len.uint.isPowerOf2_vartime()
+  debug: doAssert dst.len == src.len
 
-  import
-    std/[times, monotimes, strformat],
-    helpers/prng_unsafe,
-    constantine/named/zoo_generators,
-    constantine/math/io/[io_fields, io_ec],
-    constantine/platforms/static_for
+  let logN = log2_vartime(uint src.len)
+  for i in 0'u ..< src.len.uint:
+    dst[int reverseBits(i, logN)] = src[i]
 
-  const ctt_eth_kzg_fr_pow2_roots_of_unity = [
-    # primitive_root⁽ᵐᵒᵈᵘˡᵘˢ⁻¹⁾/⁽²^ⁱ⁾ for i in [0, 32)
-    # The primitive root chosen is 7
-    Fr[BLS12_381].fromHex"0x1",
-    Fr[BLS12_381].fromHex"0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000000",
-    Fr[BLS12_381].fromHex"0x8d51ccce760304d0ec030002760300000001000000000000",
-    Fr[BLS12_381].fromHex"0x345766f603fa66e78c0625cd70d77ce2b38b21c28713b7007228fd3397743f7a",
-    Fr[BLS12_381].fromHex"0x20b1ce9140267af9dd1c0af834cec32c17beb312f20b6f7653ea61d87742bcce",
-    Fr[BLS12_381].fromHex"0x50e0903a157988bab4bcd40e22f55448bf6e88fb4c38fb8a360c60997369df4e",
-    Fr[BLS12_381].fromHex"0x45af6345ec055e4d14a1e27164d8fdbd2d967f4be2f951558140d032f0a9ee53",
-    Fr[BLS12_381].fromHex"0x6898111413588742b7c68b4d7fdd60d098d0caac87f5713c5130c2c1660125be",
-    Fr[BLS12_381].fromHex"0x4f9b4098e2e9f12e6b368121ac0cf4ad0a0865a899e8deff4935bd2f817f694b",
-    Fr[BLS12_381].fromHex"0x95166525526a65439feec240d80689fd697168a3a6000fe4541b8ff2ee0434e",
-    Fr[BLS12_381].fromHex"0x325db5c3debf77a18f4de02c0f776af3ea437f9626fc085e3c28d666a5c2d854",
-    Fr[BLS12_381].fromHex"0x6d031f1b5c49c83409f1ca610a08f16655ea6811be9c622d4a838b5d59cd79e5",
-    Fr[BLS12_381].fromHex"0x564c0a11a0f704f4fc3e8acfe0f8245f0ad1347b378fbf96e206da11a5d36306",
-    Fr[BLS12_381].fromHex"0x485d512737b1da3d2ccddea2972e89ed146b58bc434906ac6fdd00bfc78c8967",
-    Fr[BLS12_381].fromHex"0x56624634b500a166dc86b01c0d477fa6ae4622f6a9152435034d2ff22a5ad9e1",
-    Fr[BLS12_381].fromHex"0x3291357ee558b50d483405417a0cbe39c8d5f51db3f32699fbd047e11279bb6e",
-    Fr[BLS12_381].fromHex"0x2155379d12180caa88f39a78f1aeb57867a665ae1fcadc91d7118f85cd96b8ad",
-    Fr[BLS12_381].fromHex"0x224262332d8acbf4473a2eef772c33d6cd7f2bd6d0711b7d08692405f3b70f10",
-    Fr[BLS12_381].fromHex"0x2d3056a530794f01652f717ae1c34bb0bb97a3bf30ce40fd6f421a7d8ef674fb",
-    Fr[BLS12_381].fromHex"0x520e587a724a6955df625e80d0adef90ad8e16e84419c750194e8c62ecb38d9d",
-    Fr[BLS12_381].fromHex"0x3e1c54bcb947035a57a6e07cb98de4a2f69e02d265e09d9fece7e0e39898d4b",
-    Fr[BLS12_381].fromHex"0x47c8b5817018af4fc70d0874b0691d4e46b3105f04db5844cd3979122d3ea03a",
-    Fr[BLS12_381].fromHex"0xabe6a5e5abcaa32f2d38f10fbb8d1bbe08fec7c86389beec6e7a6ffb08e3363",
-    Fr[BLS12_381].fromHex"0x73560252aa0655b25121af06a3b51e3cc631ffb2585a72db5616c57de0ec9eae",
-    Fr[BLS12_381].fromHex"0x291cf6d68823e6876e0bcd91ee76273072cf6a8029b7d7bc92cf4deb77bd779c",
-    Fr[BLS12_381].fromHex"0x19fe632fd3287390454dc1edc61a1a3c0ba12bb3da64ca5ce32ef844e11a51e",
-    Fr[BLS12_381].fromHex"0xa0a77a3b1980c0d116168bffbedc11d02c8118402867ddc531a11a0d2d75182",
-    Fr[BLS12_381].fromHex"0x23397a9300f8f98bece8ea224f31d25db94f1101b1d7a628e2d0a7869f0319ed",
-    Fr[BLS12_381].fromHex"0x52dd465e2f09425699e276b571905a7d6558e9e3f6ac7b41d7b688830a4f2089",
-    Fr[BLS12_381].fromHex"0xc83ea7744bf1bee8da40c1ef2bb459884d37b826214abc6474650359d8e211b",
-    Fr[BLS12_381].fromHex"0x2c6d4e4511657e1e1339a815da8b398fed3a181fabb30adc694341f608c9dd56",
-    Fr[BLS12_381].fromHex"0x4b5371495990693fad1715b02e5713b5f070bb00e28a193d63e7cb4906ffc93f"
-  ]
+func bit_reversal_permutation_naive[T](buf: var openArray[T]) {.inline, used.} =
+  ## In-place bit reversal permutation using a naive algorithm.
+  ##
+  ## This uses a swap-based approach where we traverse the array and
+  ## swap elements to their bit-reversed positions.
+  ## Only used for benchmarking.
+  ##   Whether for uint32 (4 bytes) to Fr[BLS12_381]
+  ##   the in-place algorithm is at least 2x slower than out-of-place
+  ##   AND tuning the naive vs cobra threshold is trickier
+  ##   and might severely depend on the memory bandwidth
+  ##   and be very different between Apple CPUs and Intel/AMD
 
-  type EC_G1 = EC_ShortW_Prj[Fp[BLS12_381], G1]
+  debug: doAssert buf.len.uint.isPowerOf2_vartime()
 
-  proc roundtrip() =
-    let fftDesc = ECFFT_Descriptor[EC_G1].new(order = 1 shl 4, ctt_eth_kzg_fr_pow2_roots_of_unity[4])
+  let logN = log2_vartime(uint buf.len)
+  for i in 0'u ..< buf.len.uint:
+    let rev_i = reverseBits(i, logN)
+    if i < rev_i:
+      swap(buf[i], buf[rev_i])
 
-    var data = newSeq[EC_G1](fftDesc.order)
-    data[0].setGenerator()
-    for i in 1 ..< fftDesc.order:
-      data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
+const bitReversalInPlaceThreshold {.used.} = 18
+  ## Threshold (as log2) above which the COBRA algorithm is used for in-place.
+  ## Below this threshold, the naive algorithm is faster on modern CPUs.
 
-    var coefs = newSeq[EC_G1](data.len)
-    let fftOk = ec_fft_nr(fftDesc, coefs, data)
-    doAssert fftOk == FFT_Success
-    # display("coefs", 0, coefs)
+const bitReversalOutOfPlaceThreshold = 7
+  ## Threshold (as log2) above which the COBRA algorithm is used for out-of-place.
+  ## Below this threshold, the naive algorithm is faster on modern CPUs.
 
-    var res = newSeq[EC_G1](data.len)
-    let ifftOk = ec_ifft_rn(fftDesc, res, coefs)
-    doAssert ifftOk == FFT_Success
-    # display("res", 0, res)
+func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) =
+  ## Out-of-place bit reversal permutation.
+  ##
+  ## Automatically selects between naive and COBRA algorithms based on size.
+  ## For small sizes (< 2^7 elements), the naive algorithm is faster.
+  ## For larger sizes, the COBRA cache-optimized algorithm is used.
 
-    for i in 0 ..< res.len:
-      if bool(res[i] != data[i]):
-        echo "Error: expected ", data[i].toHex(), " but got ", res[i].toHex()
-        quit 1
+  let logN = log2_vartime(uint src.len)
+  if logN >= bitReversalOutOfPlaceThreshold:
+    bit_reversal_permutation_cobra(dst, src)
+  else:
+    bit_reversal_permutation_naive(dst, src)
 
-    echo "FFT round-trip check SUCCESS"
-
-  proc warmup() =
-    # Warmup - make sure cpu is on max perf
-    let start = cpuTime()
-    var foo = 123
-    for i in 0 ..< 300_000_000:
-      foo += i*i mod 456
-      foo = foo mod 789
-
-    # Compiler shouldn't optimize away the results as cpuTime rely on sideeffects
-    let stop = cpuTime()
-    echo &"Warmup: {stop - start:>4.4f} s, result {foo} (displayed to avoid compiler optimizing warmup away)\n"
-
-
-  proc bench() =
-    echo "Starting benchmark ..."
-    const NumIters = 3
-
-    var rng: RngState
-    rng.seed 0x1234
-    # TODO: view types complain about mutable borrow
-    # in `random_unsafe` due to pseudo view type LimbsViewMut
-    # (which was views before Nim properly supported them)
-
-    warmup()
-
-    for scale in 4 ..< 10:
-      # Setup
-
-      let fftDesc = ECFFTDescriptor[EC_G1].new(order = 1 shl scale, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
-      var data = newSeq[EC_G1](fftDesc.order)
-      data[0].setGenerator()
-      for i in 1 ..< fftDesc.order:
-        data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
-
-      var coefsOut = newSeq[EC_G1](data.len)
-
-      # Bench
-      let start = getMonotime()
-      for i in 0 ..< NumIters:
-        let status = fftDesc.ec_fft_nr(coefsOut, data)
-        doAssert status == FFT_Success
-      let stop = getMonotime()
-
-      let ns = inNanoseconds((stop-start) div NumIters)
-      echo &"FFT scale {scale:>2}     {ns:>8} ns/op"
-
-
-  proc bit_reversal() =
-    let k = 28
-
-    echo "Bit-reversal permutation 2^", k, " = ", 1 shl k, " int64"
-
-    var a = newSeq[int64](1 shl k)
-    for i in 0'i64 ..< a.len:
-      a[i] = i
-
-    var b = newSeq[int64](1 shl k)
-
-    let startNaive = getMonotime()
-    for i in 0'i64 ..< a.len:
-      # It's better to make prefetching easy on the write side
-      b[i] = a[int reverseBits(uint64 i, uint64 k)]
-    let stopNaive = getMonotime()
-
-    echo "Naive bit-reversal: ", inMilliseconds(stopNaive-startNaive), " ms"
-
-    let startOpt = getMonotime()
-    a.bit_reversal_permutation()
-    let stopOpt = getMonotime()
-
-    echo "Optimized in-place bit-reversal: ", inMilliseconds(stopOpt-startOpt), " ms"
-
-    doAssert a == b
-    echo "SUCCESS in-place bit reversal permutation"
-
-    # Test out-of-place version
-    var src = newSeq[int64](1 shl 20)
-    for i in 0'i64 ..< src.len:
-      src[i] = i
-
-    var dst = newSeq[int64](src.len)
-    let startOutOfPlace = getMonotime()
-    bit_reversal_permutation(dst, src)
-    let stopOutOfPlace = getMonotime()
-
-    echo "Optimized out-of-place bit-reversal: ", inMilliseconds(stopOutOfPlace-startOutOfPlace), " ms"
-
-    # Verify out-of-place result matches expected
-    for i in 0'i64 ..< dst.len:
-      let expected = src[int reverseBits(uint64 i, uint64 20)]
-      doAssert dst[i] == expected, "Out-of-place mismatch at index " & $i
-
-    echo "SUCCESS out-of-place bit reversal permutation"
-
-    block:
-      let optTile = 1 shl optimalLogTileSize(uint64)
-      echo "optimal tile size for uint64: ", optTile, "x", optTile," (", sizeof(uint64) * optTile * optTile, " bytes)"
-
-    block:
-      let optTile = 1 shl optimalLogTileSize(EC_ShortW_Aff[Fp[BLS12_381], G1])
-      echo "optimal tile size for EC_ShortW_Aff[Fp[BLS12_381], G1]: ", optTile, "x", optTile," (", sizeof(EC_ShortW_Aff[Fp[BLS12_381], G1]) * optTile * optTile, " bytes)"
-
-  roundtrip()
-  warmup()
-  bench()
-  bit_reversal()
-
-  # Test FFT/IFFT roundtrip for all power-of-2 sizes from 2 to 32
-  # This is critical for FK20 multi-proof verification where L=2 uses ω=-1
-  proc roundtrip_all_sizes() =
-    echo "\n=== FFT/IFFT Roundtrip Tests (Fr, all sizes) ==="
-    for scale in 1 .. 5:  # sizes 2, 4, 8, 16, 32
-      let order = 1 shl scale
-      let root = ctt_eth_kzg_fr_pow2_roots_of_unity[scale]
-
-      let fftDesc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = order, root)
-
-      # Create test data: consecutive values
-      var data = newSeq[Fr[BLS12_381]](order)
-      for i in 0 ..< order:
-        data[i].fromUint(uint64(i + 1))
-
-      # Forward FFT
-      var freq = newSeq[Fr[BLS12_381]](order)
-      let fftOk = fft_nn(fftDesc, freq, data)
-      doAssert fftOk == FFT_Success, "FFT failed"
-
-      # Inverse FFT
-      var recovered = newSeq[Fr[BLS12_381]](order)
-      let ifftOk = ifft_nn(fftDesc, recovered, freq)
-      doAssert ifftOk == FFT_Success, "IFFT failed"
-
-      # Verify roundtrip
-      for i in 0 ..< order:
-        doAssert (recovered[i] == data[i]).bool,
-          "Roundtrip failed at size " & $order & " index " & $i
-
-      echo "  Size ", order, ": OK"
-
-    echo "=== All FFT/IFFT Roundtrip Tests PASSED ===\n"
-
-  roundtrip_all_sizes()
+func bit_reversal_permutation*[T](buf: var openArray[T]) =
+  ## In-place bit reversal permutation.
+  ##
+  ## Out-of-place is at least 2x faster than in-place so dispatch to out-of-place
+  debug: doAssert buf.len > 0
+  var tmp = allocHeapArrayAligned(T, buf.len, alignment = 64)
+  tmp.toOpenArray(buf.len).bit_reversal_permutation(buf)
+  buf[0].addr.copyMem(tmp[0].addr, buf.len * sizeof(buf[0]))
+  tmp.freeHeapAligned()

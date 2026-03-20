@@ -137,18 +137,18 @@ func innerProduct[F](r: var F, a, b: distinct(View[F] or MutableView[F])) =
     r += t
 
 func ipa_commit*[N: static int, EC, F](
-      crs: PolynomialEval[N, EC],
+      crs: PolynomialEval[N, EC, kNaturalOrder],
       r: var EC,
-      poly: PolynomialEval[N, F]) =
+      poly: PolynomialEval[N, F, kNaturalOrder]) =
   crs.pedersen_commit(r, poly)
 
 func ipa_prove*[N, logN: static int, EcAff, F](
-      crs: PolynomialEval[N, EcAff],
+      crs: PolynomialEval[N, EcAff, kNaturalOrder],
       domain: PolyEvalLinearDomain[N, F],
       transcript: var EthVerkleTranscript,
       eval_at_challenge: var F,
       proof: var IpaProof[logN, EcAff, F],
-      poly: PolynomialEval[N, F],
+      poly: PolynomialEval[N, F, kNaturalOrder],
       commitment: EcAff,
       opening_challenge: F) =
 
@@ -324,7 +324,7 @@ func computeChangeOfBasisFactors[F](
   s.computeChangeOfBasisFactors(u, one)
 
 func ipa_verify*[N, logN: static int, EcAff, F](
-      crs: PolynomialEval[N, EcAff],
+      crs: PolynomialEval[N, EcAff, kNaturalOrder],
       domain: PolyEvalLinearDomain[N, F],
       transcript: var EthVerkleTranscript,
       commitment: EcAff,
@@ -524,9 +524,9 @@ func sorterByChallenge[N: static int](
 
 func sumPolysByChallenge[N: static int, F](
       zs: ptr UncheckedArray[uint32],
-      fs: ptr UncheckedArray[PolynomialEval[N, F]],
+      fs: ptr UncheckedArray[PolynomialEval[N, F, kNaturalOrder]],
       challenges_counts: array[N, uint32],
-      ungrouped_polys: ptr UncheckedArray[PolynomialEval[N, F]],
+      ungrouped_polys: ptr UncheckedArray[PolynomialEval[N, F, kNaturalOrder]],
       sortingKeys: ptr UncheckedArray[tuple[z, idx: uint32]],
       num_queries: int) =
   ## Returns a sparse representation of:
@@ -655,11 +655,11 @@ func sumCommitmentsAndEvalsByChallenge[N: static int, F, ECaff](
   freeHeapAligned(idxmap)
 
 func ipa_multi_prove*[N, logN: static int, EcAff, F](
-      crs: PolynomialEval[N, EcAff],
+      crs: PolynomialEval[N, EcAff, kNaturalOrder],
       domain: PolyEvalLinearDomain[N, F],
       transcript: var EthVerkleTranscript,
       proof: var IpaMultiProof[logN, EcAff, F],
-      polys: openArray[PolynomialEval[N, F]],
+      polys: openArray[PolynomialEval[N, F, kNaturalOrder]],
       commitments: openArray[EcAff],
       opening_challenges_in_domain: openArray[SomeUnsignedInt]) =
   ## Create a combined proof that
@@ -694,7 +694,7 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
 
   # Sparse data by distinct challenges
   let sparse_challenges = allocHeapArrayAligned(uint32, num_distinct_challenges, alignment = 64)
-  let polys_by_challenges = allocHeapArrayAligned(PolynomialEval[N, F], num_distinct_challenges, alignment = 64)
+  let polys_by_challenges = allocHeapArrayAligned(PolynomialEval[N, F, kNaturalOrder], num_distinct_challenges, alignment = 64)
 
   # Compute the sparse challenges and the summed polys
   sparse_challenges.sumPolysByChallenge(
@@ -709,9 +709,9 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
   freeHeapAligned(sortingKeys)
   freeHeapAligned(challenges_counts)
 
-  let g2 = allocHeapAligned(PolynomialEval[N, F], alignment = 64)
-  let g1 = allocHeapAligned(PolynomialEval[N, F], alignment = 64)
-  let g = allocHeapAligned( PolynomialEval[N, F], alignment = 64)
+  let g2 = allocHeapAligned(PolynomialEval[N, F, kNaturalOrder], alignment = 64)
+  let g1 = allocHeapAligned(PolynomialEval[N, F, kNaturalOrder], alignment = 64)
+  let g = allocHeapAligned( PolynomialEval[N, F, kNaturalOrder], alignment = 64)
   let invTminusChallenges = allocHeapArrayAligned(F, num_distinct_challenges, alignment = 64)
   let rpowers = allocHeapArrayAligned(F, num_distinct_challenges, alignment = 64)
 
@@ -832,7 +832,7 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
   freeHeapAligned(g2)
 
 func ipa_multi_verify*[N, logN: static int, EcAff, F](
-      crs: PolynomialEval[N, EcAff],
+      crs: PolynomialEval[N, EcAff, kNaturalOrder],
       domain: PolyEvalLinearDomain[N, F],
       transcript: var EthVerkleTranscript,
       commitments: openArray[EcAff],

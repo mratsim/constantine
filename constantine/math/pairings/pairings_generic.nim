@@ -41,11 +41,20 @@ func pairing_check*[Name: static Algebra](
   var gt {.noInit.}: Name.getGT()
   var Ps {.noInit.}: array[2, EC_ShortW_Aff[Fp[Name], G1]]
   var Qs {.noInit.}: array[2, EC_ShortW_Aff[Fp2[Name], G2]]
-  Ps[0].affine(P0)
-  Ps[1].affine(P1)
-  Qs[0].affine(Q0)
-  Qs[1].affine(Q1)
+  Ps.batchAffine([P0, P1])
+  Qs.batchAffine([Q0, Q1])
   gt.pairing(Ps, Qs)
+  return gt.isOne().bool()
+
+func pairing_check*[Name: static Algebra](
+       P0: EC_ShortW_Jac[Fp[Name], G1],
+       Q0: EC_ShortW_Aff[Fp2[Name], G2],
+       P1: EC_ShortW_Jac[Fp[Name], G1],
+       Q1: EC_ShortW_Aff[Fp2[Name], G2]): bool {.inline.} =
+  var gt {.noInit.}: Name.getGT()
+  var Ps {.noInit.}: array[2, EC_ShortW_Aff[Fp[Name], G1]]
+  Ps.batchAffine([P0, P1])
+  gt.pairing(Ps, [Q0, Q1])
   return gt.isOne().bool()
 
 func pairing_check*[Name: static Algebra](

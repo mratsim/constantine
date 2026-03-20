@@ -21,11 +21,11 @@ import
 ##
 ## ############################################################
 
-proc evalPolyOffDomainAt_parallel*[N: static int, Field](
+proc evalPolyOffDomainAt_parallel*[N: static int, Field; Ord: static PolyOrdering](
        tp: Threadpool,
-       domain: ptr PolyEvalRootsDomain[N, Field],
+       domain: ptr PolyEvalRootsDomain[N, Field, Ord],
        r: var Field,
-       poly: ptr PolynomialEval[N, Field],
+       poly: ptr PolynomialEval[N, Field, Ord],
        z: ptr Field,
        invRootsMinusZ: ptr array[N, Field]) =
   ## Evaluate a polynomial in evaluation form
@@ -64,11 +64,11 @@ proc evalPolyOffDomainAt_parallel*[N: static int, Field](
   r.prod(t, domain.invMaxDegree)
   r *= sync(globalSum)
 
-proc evalPolyAt_parallel*[N: static int, Field](
+proc evalPolyAt_parallel*[N: static int, Field; Ord: static PolyOrdering](
        tp: Threadpool,
-       domain: PolyEvalRootsDomain[N, Field],
+       domain: PolyEvalRootsDomain[N, Field, Ord],
        r: var Field,
-       poly: PolynomialEval[N, Field],
+       poly: PolynomialEval[N, Field, Ord],
        z: Field) =
   ## Evaluate a polynomial in evaluation form
   ## at the point z

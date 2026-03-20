@@ -101,6 +101,10 @@ import
 
 {.push raises:[].}
 
+# NOTE: This module contains a GENERIC recovery implementation.
+# For PeerDAS-specific recovery, see constantine/data_availability_sampling/eth_peerdas.nim
+# These two implementations are similar but not identical - planned for consolidation.
+
 type
   RecoveryStatus* = enum
     Recovery_Success = 0,
@@ -149,10 +153,11 @@ func unscalePolyWithShift*[F](p: var openArray[F], shift: F) =
     p[i].prod(p[i], factorPower)
 
 func recoverPolyFromSamples*[
-       N: static int,
-       F: Fr,
-       Domain: PolyEvalRootsDomain[N, F]
-](dst: var PolynomialCoef[N, F], samples: openArray[Option[F]], domain: Domain): RecoveryStatus =
+        N: static int, F; Ord: static PolyOrdering,
+        Domain: PolyEvalRootsDomain[N, F, Ord]](
+          domain: Domain,
+          dst: var PolynomialCoef[N, F],
+          samples: openArray[Option[F]]): RecoveryStatus =
   ## Recover polynomial from samples.
   ##
   ## Given at least 50% of samples, reconstruct the original polynomial.
@@ -225,7 +230,6 @@ func recoverPolyFromSamples*[
     var coeffs: array[N, F]
     let ifft_status = ifft_rn(fft_desc, coeffs, all_samples)
     if ifft_status != FFT_Success:
-  
       return Recovery_FFT_Failure
 
     for i in 0 ..< N:
@@ -235,7 +239,7 @@ func recoverPolyFromSamples*[
     return Recovery_Success
 
   # Build list of missing indices
-  var missing_indices: array[256, uint64]
+  var missing_indices: array[256, uint64] # TODO: very suspicious
   if missing_count >= 256:
     return Recovery_TooManyMissing
 
@@ -261,11 +265,7 @@ func recoverPolyFromSamples*[
 
   # Compute vanishing polynomial Z(x) for missing indices
   var zero_poly: PolynomialCoef[N, F]
-  vanishingPolynomialForIndicesRT(
-    zero_poly,
-    missing_indices.toOpenArray(0, missing_count - 1),
-    domain
-  )
+  domain.vanishingPolynomialForIndicesRT(zero_poly, missing_indices.toOpenArray(0, missing_count - 1))
 
   let fft_desc = FrFFT_Descriptor[F].new(
     order = N,
@@ -281,7 +281,6 @@ func recoverPolyFromSamples*[
   )
   if fft_status != FFT_Success:
     freeHeapAligned(zero_poly_eval)
-
     return Recovery_FFT_Failure
 
   # Compute (E·Z)(x) in evaluation form
@@ -356,7 +355,6 @@ func recoverPolyFromSamples*[
       freeHeapAligned(eval_scaled_poly_with_zero)
       freeHeapAligned(eval_scaled_zero_poly)
       freeHeapAligned(eval_scaled_reconstructed_poly)
-  
       return Recovery_DivisionByZero
     var inv {.noInit.}: F
     inv.inv_vartime(eval_scaled_zero_poly[i])
@@ -389,10 +387,11 @@ func recoverPolyFromSamples*[
   return Recovery_Success
 
 func recoverEvalsFromSamples*[
-       N: static int,
-       F: Fr,
-       Domain: PolyEvalRootsDomain[N, F]
-](dst: var PolynomialEval[N, F], samples: openArray[Option[F]], domain: Domain): RecoveryStatus =
+      N: static int, F; Ord: static PolyOrdering,
+      Domain: PolyEvalRootsDomain[N, F, Ord]](
+        domain: Domain,
+        dst: var PolynomialEval[N, F, Ord],
+        samples: openArray[Option[F]]): RecoveryStatus =
   ## Recover polynomial evaluations from samples.
   ##
   ## Wrapper around recoverPolyFromSamples that returns evaluations
@@ -408,9 +407,8 @@ func recoverEvalsFromSamples*[
   ## =======
   ## - Recovery_Success on success
   ## - RecoveryStatus error code on failure
-
   var poly_coeff: PolynomialCoef[N, F]
-  let recover_status = recoverPolyFromSamples(poly_coeff, samples, domain)
+  let recover_status = domain.recoverPolyFromSamples(poly_coeff, samples)
   if recover_status != Recovery_Success:
     return recover_status
 

@@ -613,6 +613,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Polynomials
   # ----------------------------------------------------------
+  ("tests/math_polynomials/t_fft.nim", false),
+  ("tests/math_polynomials/t_fft_coset.nim", false),
   ("tests/math_polynomials/t_polynomials.nim", false),
 
   # Protocols
@@ -728,6 +730,7 @@ const benchDesc = [
   "bench_eth_evm_precompiles",
   "bench_multilinear_extensions",
   # "zkalc", # Already tested through make_zkalc
+  "bench_fft",
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI

@@ -49,7 +49,7 @@ import ./zoo_exports
 
 proc blob_to_bigint_polynomial_parallel(
        tp: Threadpool,
-       dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt()],
+       dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt(), kBitReversed],
        blob: Blob): CttCodecScalarStatus =
   ## Convert a blob to a polynomial in evaluation form
   mixin globalStatus
@@ -82,7 +82,7 @@ proc blob_to_bigint_polynomial_parallel(
 
 proc blob_to_field_polynomial_parallel_async(
        tp: Threadpool,
-       dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]],
+       dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed],
        blob: Blob): Flowvar[CttCodecScalarStatus] =
   ## Convert a blob to a polynomial in evaluation form
   ## The result is a `Flowvar` handle and MUST be awaited with `sync`
@@ -147,7 +147,7 @@ proc blob_to_kzg_commitment_parallel*(
   ##
   ##   with proof = [(p(τ) - p(z)) / (τ-z)]₁
 
-  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt()], 64)
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt(), kBitReversed], 64)
 
   block HappyPath:
     check HappyPath, tp.blob_to_bigint_polynomial_parallel(poly, blob)
@@ -186,7 +186,7 @@ proc compute_kzg_proof_parallel*(
   var z {.noInit.}: Fr[BLS12_381]
   checkReturn z.bytes_to_bls_field(z_bytes)
 
-  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], 64)
 
   block HappyPath:
     # Blob -> Polynomial
@@ -223,7 +223,7 @@ proc compute_blob_kzg_proof_parallel*(
   checkReturn commitment.bytes_to_kzg_commitment(commitment_bytes)
 
   # Blob -> Polynomial
-  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], 64)
 
   block HappyPath:
     # Blob -> Polynomial, spawn async on other threads
@@ -268,7 +268,7 @@ proc verify_blob_kzg_proof_parallel*(
   var proof {.noInit.}: KZGProof
   checkReturn proof.bytes_to_kzg_proof(proof_bytes)
 
-  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], 64)
 
   block HappyPath:
     # Blob -> Polynomial, spawn async on other threads
@@ -332,7 +332,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
   let opening_challenges = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
   let evals_at_challenges = allocHeapArrayAligned(Fr[BLS12_381].getBigInt(), n, alignment = 64)
   let proofs = allocHeapArrayAligned(KZGProof, n, alignment = 64)
-  let polys = allocHeapArrayAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], n, alignment = 64)
+  let polys = allocHeapArrayAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], n, alignment = 64)
 
   block HappyPath:
     tp.parallelFor i in 0 ..< n:

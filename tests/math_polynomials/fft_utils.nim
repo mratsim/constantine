@@ -12,7 +12,7 @@ import
   constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/io/io_fields,
-  constantine/math/polynomials/fft,
+  constantine/math/polynomials/[polynomials, fft],
   constantine/named/properties_fields
 
 const BLS12_381_Fr_primitive_root = 7
@@ -32,7 +32,7 @@ func buildRootLUT(F: type Fr): array[32, F] =
 
 let BLS12_381_Fr_ScaleToRootOfUnity = buildRootLUT(Fr[BLS12_381])
 
-template getRootOfUnityForScale(F: typedesc[Fr], scale: int): auto =
+template getRootOfUnityForScale*(F: typedesc[Fr], scale: int): auto =
   {.cast(noSideEffect).}:
     when F is Fr[BLS12_381]:
       BLS12_381_Fr_ScaleToRootOfUnity[scale]
@@ -44,6 +44,24 @@ func createFFTDescriptor*(F: typedesc[Fr], orderSize: int): FrFFT_Descriptor[F] 
   let root = getRootOfUnityForScale(F, scale)
   FrFFT_Descriptor[F].new(order = orderSize, generatorRootOfUnity = root)
 
+func computeRootsOfUnity*(
+      F: typedesc[Fr],
+      fullOrder: static int
+    ): PolyEvalRootsDomain[fullOrder, F, kNaturalOrder] =
+  ## Compute fullOrder-th roots of unity in bit-reversed order
+  ## Returns array of length fullOrder + 1 (includes ω^0 = 1 at start and end)
+  let scale = int(log2_vartime(fullOrder.uint))
+  let root = getRootOfUnityForScale(F, scale)
+
+  result.rootsOfUnity[0].setOne()
+  var cur = root
+  for i in 1 ..< fullOrder:
+    result.rootsOfUnity[i] = cur
+    cur *= root
+
+  result.invMaxDegree.fromUint(fullOrder)
+  result.invMaxDegree.inv_vartime()
+
 func createFFTDescriptor*(EC: typedesc, F: typedesc[Fr], orderSize: int): ECFFT_Descriptor[EC] =
   let scale = int(log2_vartime(orderSize.uint))
   let root = getRootOfUnityForScale(F, scale)
@@ -51,6 +69,8 @@ func createFFTDescriptor*(EC: typedesc, F: typedesc[Fr], orderSize: int): ECFFT_
 
 when isMainModule:
   const ctt_eth_kzg_fr_pow2_roots_of_unity = [
+    # primitive_root⁽ᵐᵒᵈᵘˡᵘˢ⁻¹⁾/⁽²^ⁱ⁾ for i in [0, 32)
+    # The primitive root chosen is 7
     Fr[BLS12_381].fromHex"0x1",
     Fr[BLS12_381].fromHex"0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000000",
     Fr[BLS12_381].fromHex"0x8d51ccce760304d0ec030002760300000001000000000000",
@@ -122,7 +142,6 @@ when isMainModule:
         let n = 1 shl scale
         let fftDesc = createFFTDescriptor(F, n)
         echo "  n=", n, " roots[0]=", fftDesc.rootsOfUnity[0].toHex(), " roots[1]=", fftDesc.rootsOfUnity[1].toHex()
-        fftDesc.delete()
 
     echo "\nRoot of unity generation tests PASSED"
 

@@ -18,7 +18,7 @@ import
 
 {.push raises:[].}
 
-proc createDomain*(F: typedesc[Fr], N: static int): PolyEvalRootsDomain[N, F] =
+proc createDomain*(F: typedesc[Fr], N: static int, Ord: static PolyOrdering): PolyEvalRootsDomain[N, F, Ord] =
   let fftDesc = createFFTDescriptor(F, N)
   for i in 0 ..< N:
     result.rootsOfUnity[i] = fftDesc.rootsOfUnity[i]
@@ -27,14 +27,13 @@ proc createDomain*(F: typedesc[Fr], N: static int): PolyEvalRootsDomain[N, F] =
   invN.fromUint(uint64(N))
   invN.inv_vartime(invN)
   result.invMaxDegree = invN
-  result.isBitReversed = false
 
 proc test_simple_4_elements*() =
   echo "Testing simple recovery with 4 elements (samples [0, None, None, 3])..."
 
   const N = 4
   type F = Fr[BLS12_381]
-  let domain = createDomain(F, N)
+  let domain = createDomain(F, N, kNaturalOrder)
 
   var poly: array[N, F]
   for i in 0 ..< N div 2:
@@ -55,7 +54,7 @@ proc test_simple_4_elements*() =
   samples[3] = some(data[3])
 
   var recovered_poly: PolynomialCoef[N, F]
-  let recover_status = recoverPolyFromSamples(recovered_poly, samples, domain)
+  let recover_status = domain.recoverPolyFromSamples(recovered_poly, samples)
   doAssert recover_status == Recovery_Success, "Recovery failed: " & $recover_status
 
   for i in 0 ..< N:
@@ -78,7 +77,7 @@ proc test_simple_half_missing*() =
 
   const N = 8
   type F = Fr[BLS12_381]
-  let domain = createDomain(F, N)
+  let domain = createDomain(F, N, kNaturalOrder)
 
   var poly: array[N, F]
   for i in 0 ..< N div 2:
@@ -99,8 +98,8 @@ proc test_simple_half_missing*() =
     else:
       samples[i] = none(F)
 
-  var recovered: PolynomialEval[N, F]
-  let recover_status = recoverEvalsFromSamples(recovered, samples, domain)
+  var recovered: PolynomialEval[N, F, kNaturalOrder]
+  let recover_status = domain.recoverEvalsFromSamples(recovered, samples)
   doAssert recover_status == Recovery_Success, "Recovery failed: " & $recover_status
 
   for i in 0 ..< N:
@@ -114,7 +113,7 @@ proc test_random_50_percent*() =
 
   const N = 16
   type F = Fr[BLS12_381]
-  let domain = createDomain(F, N)
+  let domain = createDomain(F, N, kNaturalOrder)
 
   var poly: array[N, F]
   for i in 0 ..< N div 2:
@@ -135,8 +134,8 @@ proc test_random_50_percent*() =
     else:
       samples[i] = none(F)
 
-  var recovered: PolynomialEval[N, F]
-  let recover_status = recoverEvalsFromSamples(recovered, samples, domain)
+  var recovered: PolynomialEval[N, F, kNaturalOrder]
+  let recover_status = domain.recoverEvalsFromSamples(recovered, samples)
   doAssert recover_status == Recovery_Success, "Recovery failed: " & $recover_status
 
   for i in 0 ..< N:
@@ -150,7 +149,7 @@ proc test_random_55_percent*() =
 
   const N = 16
   type F = Fr[BLS12_381]
-  let domain = createDomain(F, N)
+  let domain = createDomain(F, N, kNaturalOrder)
 
   var poly: array[N, F]
   for i in 0 ..< N div 2:
@@ -170,8 +169,8 @@ proc test_random_55_percent*() =
   for i in 9 ..< N:
     samples[i] = none(F)
 
-  var recovered: PolynomialEval[N, F]
-  let recover_status = recoverEvalsFromSamples(recovered, samples, domain)
+  var recovered: PolynomialEval[N, F, kNaturalOrder]
+  let recover_status = domain.recoverEvalsFromSamples(recovered, samples)
   doAssert recover_status == Recovery_Success, "Recovery failed: " & $recover_status
 
   for i in 0 ..< N:
@@ -185,7 +184,7 @@ proc test_random_60_percent*() =
 
   const N = 16
   type F = Fr[BLS12_381]
-  let domain = createDomain(F, N)
+  let domain = createDomain(F, N, kNaturalOrder)
 
   var poly: array[N, F]
   for i in 0 ..< N div 2:
@@ -205,8 +204,8 @@ proc test_random_60_percent*() =
   for i in 10 ..< N:
     samples[i] = none(F)
 
-  var recovered: PolynomialEval[N, F]
-  let recover_status = recoverEvalsFromSamples(recovered, samples, domain)
+  var recovered: PolynomialEval[N, F, kNaturalOrder]
+  let recover_status = domain.recoverEvalsFromSamples(recovered, samples)
   doAssert recover_status == Recovery_Success, "Recovery failed: " & $recover_status
 
   for i in 0 ..< N:
@@ -220,7 +219,7 @@ proc test_random_70_percent*() =
 
   const N = 16
   type F = Fr[BLS12_381]
-  let domain = createDomain(F, N)
+  let domain = createDomain(F, N, kNaturalOrder)
 
   var poly: array[N, F]
   for i in 0 ..< N div 2:
@@ -240,8 +239,8 @@ proc test_random_70_percent*() =
   for i in 12 ..< N:
     samples[i] = none(F)
 
-  var recovered: PolynomialEval[N, F]
-  let recover_status = recoverEvalsFromSamples(recovered, samples, domain)
+  var recovered: PolynomialEval[N, F, kNaturalOrder]
+  let recover_status = domain.recoverEvalsFromSamples(recovered, samples)
   doAssert recover_status == Recovery_Success, "Recovery failed: " & $recover_status
 
   for i in 0 ..< N:
@@ -255,7 +254,7 @@ proc test_random_80_percent*() =
 
   const N = 16
   type F = Fr[BLS12_381]
-  let domain = createDomain(F, N)
+  let domain = createDomain(F, N, kNaturalOrder)
 
   var poly: array[N, F]
   for i in 0 ..< N div 2:
@@ -275,8 +274,8 @@ proc test_random_80_percent*() =
   for i in 13 ..< N:
     samples[i] = none(F)
 
-  var recovered: PolynomialEval[N, F]
-  let recover_status = recoverEvalsFromSamples(recovered, samples, domain)
+  var recovered: PolynomialEval[N, F, kNaturalOrder]
+  let recover_status = domain.recoverEvalsFromSamples(recovered, samples)
   doAssert recover_status == Recovery_Success, "Recovery failed: " & $recover_status
 
   for i in 0 ..< N:
@@ -290,7 +289,7 @@ proc test_random_90_percent*() =
 
   const N = 16
   type F = Fr[BLS12_381]
-  let domain = createDomain(F, N)
+  let domain = createDomain(F, N, kNaturalOrder)
 
   var poly: array[N, F]
   for i in 0 ..< N div 2:
@@ -310,8 +309,8 @@ proc test_random_90_percent*() =
   for i in 15 ..< N:
     samples[i] = none(F)
 
-  var recovered: PolynomialEval[N, F]
-  let recover_status = recoverEvalsFromSamples(recovered, samples, domain)
+  var recovered: PolynomialEval[N, F, kNaturalOrder]
+  let recover_status = domain.recoverEvalsFromSamples(recovered, samples)
   doAssert recover_status == Recovery_Success, "Recovery failed: " & $recover_status
 
   for i in 0 ..< N:
@@ -325,7 +324,7 @@ proc test_random_100_percent*() =
 
   const N = 8
   type F = Fr[BLS12_381]
-  let domain = createDomain(F, N)
+  let domain = createDomain(F, N, kNaturalOrder)
 
   var poly: array[N, F]
   for i in 0 ..< N div 2:
@@ -343,8 +342,8 @@ proc test_random_100_percent*() =
   for i in 0 ..< N:
     samples[i] = some(data[i])
 
-  var recovered: PolynomialEval[N, F]
-  let recover_status = recoverEvalsFromSamples(recovered, samples, domain)
+  var recovered: PolynomialEval[N, F, kNaturalOrder]
+  let recover_status = domain.recoverEvalsFromSamples(recovered, samples)
   doAssert recover_status == Recovery_Success, "Recovery failed: " & $recover_status
 
   for i in 0 ..< N:
@@ -358,7 +357,7 @@ proc test_boundary_under_50*() =
 
   const N = 8
   type F = Fr[BLS12_381]
-  let domain = createDomain(F, N)
+  let domain = createDomain(F, N, kNaturalOrder)
 
   var poly: array[N, F]
   for i in 0 ..< N div 2:
@@ -379,8 +378,8 @@ proc test_boundary_under_50*() =
     samples[i] = none(F)
 
   # This should return Recovery_TooFewSamples
-  var recovered: PolynomialEval[N, F]
-  let recover_status = recoverEvalsFromSamples(recovered, samples, domain)
+  var recovered: PolynomialEval[N, F, kNaturalOrder]
+  let recover_status = domain.recoverEvalsFromSamples(recovered, samples)
   doAssert recover_status == Recovery_TooFewSamples,
     "Expected Recovery_TooFewSamples, got: " & $recover_status
   echo "  ✓ Correctly rejected under 50% samples"
@@ -390,7 +389,7 @@ proc test_boundary_single_sample*() =
 
   const N = 8
   type F = Fr[BLS12_381]
-  let domain = createDomain(F, N)
+  let domain = createDomain(F, N, kNaturalOrder)
 
   var poly: array[N, F]
   for i in 0 ..< N div 2:
@@ -410,8 +409,8 @@ proc test_boundary_single_sample*() =
     samples[i] = none(F)
 
   # This should return Recovery_TooFewSamples
-  var recovered: PolynomialEval[N, F]
-  let recover_status = recoverEvalsFromSamples(recovered, samples, domain)
+  var recovered: PolynomialEval[N, F, kNaturalOrder]
+  let recover_status = domain.recoverEvalsFromSamples(recovered, samples)
   doAssert recover_status == Recovery_TooFewSamples,
     "Expected Recovery_TooFewSamples, got: " & $recover_status
   echo "  ✓ Correctly rejected single sample"

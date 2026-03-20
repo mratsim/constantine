@@ -26,6 +26,10 @@ import
 ## This module deals ONLY with cosets operations.
 ## Cell<->coset conversions and serialization are in eth_eip7594_peerdas.nim.
 ##
+## NOTE: There is a similar but separate generic recovery implementation in
+##       constantine/erasure_codes/recovery.nim (recoverPolyFromSamples).
+##       These two implementations should be consolidated in future refactoring.
+##
 ## Nomenclature (following kzg_multiprove.nim conventions):
 ## - N: Polynomial size (4096 for blobs)
 ## - L: Coset size (64 field elements per cell)

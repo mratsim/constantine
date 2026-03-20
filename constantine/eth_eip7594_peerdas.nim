@@ -200,7 +200,7 @@ func compute_cells*(
   # ============================================================
   # Step 1: Deserialize blob to polynomial (evaluation form, bit-reversed)
   # ============================================================
-  var poly_eval_brp {.noInit.}: PolynomialEval[N, Fr[BLS12_381]] # TODO: static enum for bit-reversed
+  var poly_eval_brp {.noInit.}: PolynomialEval[N, Fr[BLS12_381], kBitReversed]
   let status = blob_to_field_polynomial(poly_eval_brp.addr, blob)
   case status
   of cttCodecScalar_Success:
@@ -267,7 +267,7 @@ func compute_cells_and_kzg_proofs*(
   ## 5. Serialize cells and proofs to bytes
 
   # Step 1: Deserialize blob to polynomial (Lagrange form)
-  var poly_lagrange {.noInit.}: PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]]
+  var poly_lagrange {.noInit.}: PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed]
   let status = blob_to_field_polynomial(poly_lagrange.addr, blob)
   case status
   of cttCodecScalar_Success:
@@ -296,20 +296,14 @@ func compute_cells_and_kzg_proofs*(
 
   # Compute tauExtFftArray (precomputed setup FFT for FK20 Phase 1)
   var tauExtFftArray: array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
-  # Domain root for CDS=128: get from extended FFT descriptor (no shift)
-  let domainRoot = ctx.fft_desc_ext.rootsOfUnity[CDS div 2]
 
-  getTauExtFftArray[N, L, CDS, BLS12_381](tauExtFftArray, ctx.srs_monomial_g1, domainRoot)
-
-  # Construct circulant domain for FK20 (CDS = 128 roots of unity)
-  var circulantDomain: PolyEvalRootsDomain[CDS, Fr[BLS12_381]]
-  circulantDomain.rootsOfUnity[0].fromUint(1)
-  for i in 1 ..< CDS:
-    circulantDomain.rootsOfUnity[i] = circulantDomain.rootsOfUnity[i-1] * domainRoot
+  getTauExtFftArray[N, L, CDS, BLS12_381](tauExtFftArray, ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
 
   # Compute FK20 proofs (Phase 1 + Phase 2)
   var proofsAff: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
-  kzg_coset_prove[N, L, CDS, BLS12_381](tauExtFftArray, circulantDomain, proofsAff, poly_monomial)
+  kzg_coset_prove[N, L, CDS, BLS12_381](
+    tauExtFftArray, proofsAff, poly_monomial,
+    ctx.fft_desc_ext, ctx.ecfft_desc_ext)
 
   # Bit-reverse permutation on proofs (FK20 convention, matching c-kzg-4844)
   proofsAff.bit_reversal_permutation()
@@ -415,18 +409,14 @@ func recover_cells_and_kzg_proofs*(
 
   # Compute tauExtFftArray (precomputed setup FFT for FK20 Phase 1)
   var tauExtFftArray: array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
-  let domainRoot = ctx.fft_desc_ext.rootsOfUnity[CDS div 2]
-  getTauExtFftArray[N, L, CDS, BLS12_381](tauExtFftArray, ctx.srs_monomial_g1, domainRoot)
 
-  # Construct circulant domain for FK20 (CDS = 128 roots of unity)
-  var circulantDomain: PolyEvalRootsDomain[CDS, Fr[BLS12_381]]
-  circulantDomain.rootsOfUnity[0].fromUint(1)
-  for i in 1 ..< CDS:
-    circulantDomain.rootsOfUnity[i] = circulantDomain.rootsOfUnity[i-1] * domainRoot
+  getTauExtFftArray[N, L, CDS, BLS12_381](tauExtFftArray, ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
 
   # Compute FK20 proofs
   var proofsAff: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
-  kzg_coset_prove[N, L, CDS, BLS12_381](tauExtFftArray, circulantDomain, proofsAff, poly_coeff_N)
+  kzg_coset_prove[N, L, CDS, BLS12_381](
+    tauExtFftArray, proofsAff, poly_coeff_N,
+    ctx.fft_desc_ext, ctx.ecfft_desc_ext)
 
   # Bit-reverse permutation on proofs
   proofsAff.bit_reversal_permutation()
