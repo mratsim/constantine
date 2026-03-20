@@ -687,7 +687,7 @@ func pow_vartime*(r: var FF, a: FF, exponent: BigInt or openArray[byte] or FF) =
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a finite field element or big integer
   r = a
-  a.pow_vartime(exponent)
+  r.pow_vartime(exponent)
 
 # Small vartime exponentiation
 # -------------------------------------------------------------------
@@ -1064,3 +1064,11 @@ func `~^`*(a: FF, b: FF or BigInt or openArray[byte]): FF {.noInit, inline.} =
   ## and our types might be large (Fp12 ...)
   ## See: https://github.com/mratsim/constantine/issues/145
   result.pow_vartime(a, b)
+
+func `~^`*(a: FF, b: SomeUnsignedInt): FF {.noInit, inline.} =
+  ## Finite Field vartime exponentiation with small unsigned integer exponent
+  ##
+  ## Uses addition chains for exponents ≤ 16, otherwise square-and-multiply.
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines.
+  result = a
+  result.pow_vartime(b)

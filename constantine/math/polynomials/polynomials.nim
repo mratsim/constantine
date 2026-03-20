@@ -7,8 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/io/io_fields,
+  constantine/math/polynomials/fft,
   constantine/platforms/[primitives, allocs, static_for]
 
 ## ############################################################
@@ -122,6 +124,52 @@ func formal_derivative*[N, M: static int, Field](
     var degree {.noinit.}: Field
     degree.fromInt(i)
     polyprime.coefs[i-1].prod(poly.coefs[i], degree)
+
+func polyDiv*[N, M: static int, Field](
+       quotient: var PolynomialCoef[N, Field],
+       dividend: PolynomialCoef[N, Field],
+       divisor: PolynomialCoef[M, Field]) =
+  ## Polynomial long division in coefficient form.
+  ##
+  ## Computes q(X) = dividend(X) / divisor(X)
+  ## such that dividend(X) = q(X) * divisor(X) + r(X)
+  ## where deg(r) < deg(divisor).
+  ##
+  ## This is the "schoolbook" O(n²) polynomial division algorithm.
+  ##
+  ## Parameters:
+  ##   - quotient: Output array for quotient polynomial (size N)
+  ##   - dividend: Input polynomial of degree N-1
+  ##   - divisor: Input polynomial of degree M-1 (must have non-zero leading coeff)
+  ##
+  ## Note: The quotient array must have size at least N-M+1 for the result,
+  ## but we use fixed size N for simplicity.
+  var working {.noInit.}: PolynomialCoef[N, Field]
+  for i in 0 ..< N:
+    working.coefs[i] = dividend.coefs[i]
+
+  let dividendDeg = N - 1
+  let divisorDeg = M - 1
+  var quotientDeg = dividendDeg - divisorDeg
+
+  if quotientDeg < 0:
+    quotientDeg = 0
+
+  var invDivisorLead {.noInit.}: Field
+  invDivisorLead.inv_vartime(divisor.coefs[divisorDeg])
+
+  for i in countdown(quotientDeg, 0):
+    var coef {.noInit.}: Field
+    coef.prod(working.coefs[i + divisorDeg], invDivisorLead)
+    quotient.coefs[i] = coef
+
+    for j in 0 ..< divisorDeg:
+      var subtrahend {.noInit.}: Field
+      subtrahend.prod(divisor.coefs[j], coef)
+      working.coefs[i + j] -= subtrahend
+
+  for i in (quotientDeg + 1) ..< N:
+    quotient.coefs[i].setZero()
 
 # Polynomials in evaluation/Lagrange form
 # ------------------------------------------------------
@@ -522,7 +570,7 @@ func computeLagrangeBasisPolysAt*[N: static int, Field](
   lindom.dom.computeLagrangeBasisPolysAt(lagrangePolys, z)
 
 func setupLinearEvaluationDomain*[N: static int, Field](
-      lindom: var PolyEvalLinearDomain[N, Field]) =
+       lindom: var PolyEvalLinearDomain[N, Field]) =
   ## Configure a linear evaluation domain [0, ..., n-1]
   ## for computation with polynomials in barycentric Lagrange form
 
@@ -540,3 +588,15 @@ func setupLinearEvaluationDomain*[N: static int, Field](
 
   lindom.dom.vanishing_deriv_poly_eval_inv.evals
     .batchInv_vartime(lindom.dom.vanishing_deriv_poly_eval.evals)
+
+func computeCoefPoly*[N: static int, Name: static Algebra](
+       dst: var PolynomialCoef[N, Fr[Name]],
+       polynomial: PolynomialEval[N, Fr[Name]],
+       fft_desc: FrFFT_Descriptor[Fr[Name]] | CosetFFT_Descriptor[Fr[Name]]) =
+  ## Convert polynomial from evaluation form to coefficient form.
+  ## Input:
+  ##   a polynomial in evaluation form, with evals stored in bit-reversed order.
+  ## Output:
+  ##   a polynomial in coefficient form, with coefficients stored in natural order
+  let status = ifft_nn(fft_desc, dst.coefs, polynomial.evals)
+  doAssert status == FFT_Success

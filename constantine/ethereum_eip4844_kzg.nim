@@ -21,7 +21,9 @@ import
   ./serialization/[codecs_status_codes, codecs_bls12_381, endians],
   ./commitments_setups/ethereum_kzg_srs
 
-export trusted_setup_load, trusted_setup_delete, TrustedSetupFormat, TrustedSetupStatus, EthereumKZGContext
+export
+  trusted_setup_load, trusted_setup_delete, TrustedSetupFormat, TrustedSetupStatus, EthereumKZGContext,
+  FIELD_ELEMENTS_PER_BLOB
 
 ## ############################################################
 ##
@@ -51,20 +53,19 @@ import ./zoo_exports
 # Spec "ENDIANNESS" for deserialization is little-endian
 # https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#misc
 
-const BYTES_PER_COMMITMENT = 48
-# const BYTES_PER_PROOF = 48
+const BYTES_PER_COMMITMENT* = 48
+const BYTES_PER_PROOF* = 48
 const BYTES_PER_FIELD_ELEMENT* = 32
 
 # Presets
 # ------------------------------------------------------------
 
-const FIELD_ELEMENTS_PER_BLOB* = 4096
 const FIAT_SHAMIR_PROTOCOL_DOMAIN = asBytes"FSBLOBVERIFY_V1_"
 const RANDOM_CHALLENGE_KZG_BATCH_DOMAIN = asBytes"RCKZGBATCH___V1_"
 
 # Derived
 # ------------------------------------------------------------
-const BYTES_PER_BLOB = BYTES_PER_FIELD_ELEMENT*FIELD_ELEMENTS_PER_BLOB
+const BYTES_PER_BLOB* = BYTES_PER_FIELD_ELEMENT*FIELD_ELEMENTS_PER_BLOB
 
 # Protocol Types
 # ------------------------------------------------------------
@@ -151,7 +152,7 @@ func bytes_to_bls_bigint(dst: var Fr[BLS12_381].getBigInt(), src: array[32, byte
     return status
   return cttCodecScalar_Success
 
-func bytes_to_bls_field(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus =
+func bytes_to_bls_field*(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus =
   ## Convert untrusted bytes to a trusted and validated BLS scalar field element.
   ## This function does not accept inputs greater than the BLS modulus.
   var scalar {.noInit.}: Fr[BLS12_381].getBigInt()
@@ -195,7 +196,7 @@ func blob_to_bigint_polynomial(
 
   return cttCodecScalar_Success
 
-func blob_to_field_polynomial(
+func blob_to_field_polynomial*(
        dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]],
        blob: Blob): CttCodecScalarStatus =
   ## Convert a blob to a polynomial in evaluation form
@@ -294,7 +295,7 @@ func blob_to_kzg_commitment*(
     check HappyPath, poly.blob_to_bigint_polynomial(blob)
 
     var r {.noinit.}: EC_ShortW_Aff[Fp[BLS12_381], G1]
-    kzg_commit(ctx.srs_lagrange_g1, r, poly[])
+    kzg_commit(ctx.srs_lagrange_brp_g1, r, poly[])
     discard dst.serialize_g1_compressed(r)
 
     result = cttEthKzg_Success
@@ -337,8 +338,8 @@ func compute_kzg_proof*(
     var proof {.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     kzg_prove(
-      ctx.srs_lagrange_g1,
-      ctx.domain,
+      ctx.srs_lagrange_brp_g1,
+      ctx.domain_brp,
       y, proof,
       poly[],
       z)
@@ -406,8 +407,8 @@ func compute_blob_kzg_proof*(
     var proof {.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     kzg_prove(
-      ctx.srs_lagrange_g1,
-      ctx.domain,
+      ctx.srs_lagrange_brp_g1,
+      ctx.domain_brp,
       y, proof,
       poly[],
       opening_challenge)
@@ -442,7 +443,7 @@ func verify_blob_kzg_proof*(
     var opening_challenge {.noInit.}: Fr[BLS12_381]
     var eval_at_challenge {.noInit.}: Fr[BLS12_381]
     opening_challenge.addr.fiatShamirChallenge(blob, commitment_bytes)
-    ctx.domain.evalPolyAt(eval_at_challenge, poly[], opening_challenge)
+    ctx.domain_brp.evalPolyAt(eval_at_challenge, poly[], opening_challenge)
 
     # KZG verification
     let verif = kzg_verify(EC_ShortW_Aff[Fp[BLS12_381], G1](commitment),
@@ -495,7 +496,7 @@ func verify_blob_kzg_proof_batch*(
       opening_challenges[i].addr.fiatShamirChallenge(blobs[i], commitments_bytes[i])
 
       var eval_at_challenge_fr {.noInit.}: Fr[BLS12_381]
-      ctx.domain.evalPolyAt(
+      ctx.domain_brp.evalPolyAt(
         eval_at_challenge_fr,
         poly[], opening_challenges[i]
       )

@@ -53,9 +53,9 @@ import
 
 type
   FFTStatus = enum
-    FFTS_Success
-    FFTS_TooManyValues = "Input length greater than the field 2-adicity (number of roots of unity)"
-    FFTS_SizeNotPowerOfTwo = "Input must be of a power of 2 length"
+    FFT_Success
+    FFT_TooManyValues = "Input length greater than the field 2-adicity (number of roots of unity)"
+    FFT_SizeNotPowerOfTwo = "Input must be of a power of 2 length"
 
   FFTDescriptor*[F] = object
     ## Metadata for FFT on field F
@@ -137,9 +137,9 @@ func fft*[F](
        output: var openarray[F],
        vals: openarray[F]): FFT_Status =
   if vals.len > desc.maxWidth:
-    return FFTS_TooManyValues
+    return FFT_TooManyValues
   if not vals.len.uint64.isPowerOf2_vartime():
-    return FFTS_SizeNotPowerOfTwo
+    return FFT_SizeNotPowerOfTwo
 
   let rootz = desc.expandedRootsOfUnity
                   .toView()
@@ -147,7 +147,7 @@ func fft*[F](
 
   var voutput = output.toView()
   fft_internal(voutput, vals.toView(), rootz)
-  return FFTS_Success
+  return FFT_Success
 
 func ifft*[F](
        desc: FFTDescriptor[F],
@@ -155,9 +155,9 @@ func ifft*[F](
        vals: openarray[F]): FFT_Status =
   ## Inverse FFT
   if vals.len > desc.maxWidth:
-    return FFTS_TooManyValues
+    return FFT_TooManyValues
   if not vals.len.uint64.isPowerOf2_vartime():
-    return FFTS_SizeNotPowerOfTwo
+    return FFT_SizeNotPowerOfTwo
 
   let rootz = desc.expandedRootsOfUnity
                   .toView()
@@ -174,7 +174,7 @@ func ifft*[F](
   for i in 0..< output.len:
     output[i] *= invLen
 
-  return FFTS_Success
+  return FFT_Success
 
 # FFT Descriptor
 # ----------------------------------------------------------------
@@ -192,80 +192,90 @@ proc init*(T: type FFTDescriptor, maxScale: uint8): T =
 #
 # ############################################################
 
-when isMainModule:
-  import
-    std/[times, monotimes, strformat],
-    helpers/prng_unsafe
+let fft4 = FFTDescriptor[Fr[BLS12_381]].init(maxScale = 4)
+for i in 0 ..< 4:
+  echo "fft4[" & $i & "] = " & fft4.expandedRootsOfUnity[i].toHex()
 
-  proc roundtrip() =
-    let fftDesc = FFTDescriptor[Fr[BLS12_381]].init(maxScale = 4)
-    var data = newSeq[Fr[BLS12_381]](fftDesc.maxWidth)
-    for i in 0 ..< fftDesc.maxWidth:
-      data[i].fromUint i.uint64
+echo "==================="
 
-    var coefs = newSeq[Fr[BLS12_381]](data.len)
-    let fftOk = fft(fftDesc, coefs, data)
-    doAssert fftOk == FFTS_Success
-    # display("coefs", 0, coefs)
+let fft8 = FFTDescriptor[Fr[BLS12_381]].init(maxScale = 8)
+for i in 0 ..< 8:
+  echo "fft8[" & $i & "] = " & fft8.expandedRootsOfUnity[i].toHex()
 
-    var res = newSeq[Fr[BLS12_381]](data.len)
-    let ifftOk = ifft(fftDesc, res, coefs)
-    doAssert ifftOk == FFTS_Success
-    # display("res", 0, coefs)
+# when isMainModule:
+#   import
+#     std/[times, monotimes, strformat],
+#     helpers/prng_unsafe
 
-    for i in 0 ..< res.len:
-      if bool(res[i] != data[i]):
-        echo "Error: expected ", data[i].toHex(), " but got ", res[i].toHex()
-        quit 1
+#   proc roundtrip() =
+#     let fftDesc = FFTDescriptor[Fr[BLS12_381]].init(maxScale = 4)
+#     var data = newSeq[Fr[BLS12_381]](fftDesc.maxWidth)
+#     for i in 0 ..< fftDesc.maxWidth:
+#       data[i].fromUint i.uint64
 
-    echo "FFT round-trip check SUCCESS"
+#     var coefs = newSeq[Fr[BLS12_381]](data.len)
+#     let fftOk = fft(fftDesc, coefs, data)
+#     doAssert fftOk == FFT_Success
+#     # display("coefs", 0, coefs)
 
-  proc warmup() =
-    # Warmup - make sure cpu is on max perf
-    let start = cpuTime()
-    var foo = 123
-    for i in 0 ..< 300_000_000:
-      foo += i*i mod 456
-      foo = foo mod 789
+#     var res = newSeq[Fr[BLS12_381]](data.len)
+#     let ifftOk = ifft(fftDesc, res, coefs)
+#     doAssert ifftOk == FFT_Success
+#     # display("res", 0, coefs)
 
-    # Compiler shouldn't optimize away the results as cpuTime rely on sideeffects
-    let stop = cpuTime()
-    echo &"Warmup: {stop - start:>4.4f} s, result {foo} (displayed to avoid compiler optimizing warmup away)\n"
+#     for i in 0 ..< res.len:
+#       if bool(res[i] != data[i]):
+#         echo "Error: expected ", data[i].toHex(), " but got ", res[i].toHex()
+#         quit 1
+
+#     echo "FFT round-trip check SUCCESS"
+
+#   proc warmup() =
+#     # Warmup - make sure cpu is on max perf
+#     let start = cpuTime()
+#     var foo = 123
+#     for i in 0 ..< 300_000_000:
+#       foo += i*i mod 456
+#       foo = foo mod 789
+
+#     # Compiler shouldn't optimize away the results as cpuTime rely on sideeffects
+#     let stop = cpuTime()
+#     echo &"Warmup: {stop - start:>4.4f} s, result {foo} (displayed to avoid compiler optimizing warmup away)\n"
 
 
-  proc bench() =
-    echo "Starting benchmark ..."
-    const NumIters = 100
+#   proc bench() =
+#     echo "Starting benchmark ..."
+#     const NumIters = 100
 
-    var rng: RngState
-    rng.seed 0x1234
-    # TODO: view types complain about mutable borrow
-    # in `random_unsafe` due to pseudo view type LimbsViewMut
-    # (which was views before Nim properly supported them)
+#     var rng: RngState
+#     rng.seed 0x1234
+#     # TODO: view types complain about mutable borrow
+#     # in `random_unsafe` due to pseudo view type LimbsViewMut
+#     # (which was views before Nim properly supported them)
 
-    warmup()
+#     warmup()
 
-    for scale in 4 ..< 16:
-      # Setup
+#     for scale in 4 ..< 16:
+#       # Setup
 
-      let desc = FFTDescriptor[Fr[BLS12_381]].init(uint8 scale)
-      var data = newSeq[Fr[BLS12_381]](desc.maxWidth)
-      for i in 0 ..< desc.maxWidth:
-        # data[i] = rng.random_unsafe(data[i].typeof())
-        data[i].fromUint i.uint64
+#       let desc = FFTDescriptor[Fr[BLS12_381]].init(uint8 scale)
+#       var data = newSeq[Fr[BLS12_381]](desc.maxWidth)
+#       for i in 0 ..< desc.maxWidth:
+#         # data[i] = rng.random_unsafe(data[i].typeof())
+#         data[i].fromUint i.uint64
 
-      var coefsOut = newSeq[Fr[BLS12_381]](data.len)
+#       var coefsOut = newSeq[Fr[BLS12_381]](data.len)
 
-      # Bench
-      let start = getMonotime()
-      for i in 0 ..< NumIters:
-        let status = desc.fft(coefsOut, data)
-        doAssert status == FFTS_Success
-      let stop = getMonotime()
+#       # Bench
+#       let start = getMonotime()
+#       for i in 0 ..< NumIters:
+#         let status = desc.fft(coefsOut, data)
+#         doAssert status == FFT_Success
+#       let stop = getMonotime()
 
-      let ns = inNanoseconds((stop-start) div NumIters)
-      echo &"FFT scale {scale:>2}     {ns:>8} ns/op"
+#       let ns = inNanoseconds((stop-start) div NumIters)
+#       echo &"FFT scale {scale:>2}     {ns:>8} ns/op"
 
-  roundtrip()
-  warmup()
-  bench()
+#   roundtrip()
+#   warmup()
+#   bench()

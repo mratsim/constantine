@@ -11,6 +11,9 @@ import
   ./cyclotomic_subgroups,
   ./pairings_bn, ./pairings_bls12,
   constantine/math/extension_fields,
+  constantine/math/elliptic/ec_shortweierstrass_affine,
+  constantine/math/elliptic/ec_shortweierstrass_jacobian,
+  constantine/math/elliptic/ec_shortweierstrass_projective,
   constantine/named/zoo_pairings
 
 func pairing*[Name: static Algebra](gt: var AnyFp12[Name], P, Q: auto) {.inline.} =
@@ -20,6 +23,75 @@ func pairing*[Name: static Algebra](gt: var AnyFp12[Name], P, Q: auto) {.inline.
     pairing_bls12(gt, P, Q)
   else:
     {.error: "Pairing not implemented for " & $Name.}
+
+func pairing_check*[Name: static Algebra](
+       P0: EC_ShortW_Aff[Fp[Name], G1],
+       Q0: EC_ShortW_Aff[Fp2[Name], G2],
+       P1: EC_ShortW_Aff[Fp[Name], G1],
+       Q1: EC_ShortW_Aff[Fp2[Name], G2]): bool {.inline.} =
+  var gt {.noInit.}: Name.getGT()
+  gt.pairing([P0, P1], [Q0, Q1])
+  return gt.isOne().bool()
+
+func pairing_check*[Name: static Algebra](
+       P0: EC_ShortW_Jac[Fp[Name], G1],
+       Q0: EC_ShortW_Jac[Fp2[Name], G2],
+       P1: EC_ShortW_Jac[Fp[Name], G1],
+       Q1: EC_ShortW_Jac[Fp2[Name], G2]): bool {.inline.} =
+  var gt {.noInit.}: Name.getGT()
+  var Ps {.noInit.}: array[2, EC_ShortW_Aff[Fp[Name], G1]]
+  var Qs {.noInit.}: array[2, EC_ShortW_Aff[Fp2[Name], G2]]
+  Ps[0].affine(P0)
+  Ps[1].affine(P1)
+  Qs[0].affine(Q0)
+  Qs[1].affine(Q1)
+  gt.pairing(Ps, Qs)
+  return gt.isOne().bool()
+
+func pairing_check*[Name: static Algebra](
+       P0: EC_ShortW_Jac[Fp[Name], G1],
+       Q0: EC_ShortW_Aff[Fp2[Name], G2],
+       P1: EC_ShortW_Aff[Fp[Name], G1],
+       Q1: EC_ShortW_Jac[Fp2[Name], G2]): bool {.inline.} =
+  var gt {.noInit.}: Name.getGT()
+  var Ps {.noInit.}: array[2, EC_ShortW_Aff[Fp[Name], G1]]
+  var Qs {.noInit.}: array[2, EC_ShortW_Aff[Fp2[Name], G2]]
+  Ps[0].affine(P0)
+  Ps[1] = P1
+  Qs[0] = Q0
+  Qs[1].affine(Q1)
+  gt.pairing(Ps, Qs)
+  return gt.isOne().bool()
+
+func pairing_check*[Name: static Algebra](
+       P0: EC_ShortW_Aff[Fp[Name], G1],
+       Q0: EC_ShortW_Jac[Fp2[Name], G2],
+       P1: EC_ShortW_Jac[Fp[Name], G1],
+       Q1: EC_ShortW_Aff[Fp2[Name], G2]): bool {.inline.} =
+  var gt {.noInit.}: Name.getGT()
+  var Ps {.noInit.}: array[2, EC_ShortW_Aff[Fp[Name], G1]]
+  var Qs {.noInit.}: array[2, EC_ShortW_Aff[Fp2[Name], G2]]
+  Ps[0] = P0
+  Ps[1].affine(P1)
+  Qs[0].affine(Q0)
+  Qs[1] = Q1
+  gt.pairing(Ps, Qs)
+  return gt.isOne().bool()
+
+func pairing_check*[Name: static Algebra](
+       P0: EC_ShortW_Jac[Fp[Name], G1],
+       Q0: EC_ShortW_Jac[Fp2[Name], G2],
+       P1: EC_ShortW_Aff[Fp[Name], G1],
+       Q1: EC_ShortW_Aff[Fp2[Name], G2]): bool {.inline.} =
+  var gt {.noInit.}: Name.getGT()
+  var Ps {.noInit.}: array[2, EC_ShortW_Aff[Fp[Name], G1]]
+  var Qs {.noInit.}: array[2, EC_ShortW_Aff[Fp2[Name], G2]]
+  Ps[0].affine(P0)
+  Ps[1] = P1
+  Qs[0].affine(Q0)
+  Qs[1] = Q1
+  gt.pairing(Ps, Qs)
+  return gt.isOne().bool()
 
 func millerLoop*[Name: static Algebra](gt: var AnyFp12[Name], Q, P: auto, n: int) {.inline.} =
   when Name == BN254_Snarks:
