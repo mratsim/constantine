@@ -3,7 +3,8 @@ import
   constantine/math/[ec_shortweierstrass, extension_fields],
   constantine/math/polynomials/polynomials,
   constantine/math/arithmetic/finite_fields,
-  constantine/math/io/io_fields
+  constantine/math/io/io_fields,
+  ../math_polynomials/fft_utils
 
 type
   EC_G1_Aff* = EC_ShortW_Aff[Fp[BLS12_381], G1]
@@ -17,8 +18,10 @@ type
     polyBig*{.align: 64.}: PolynomialCoef[N, BigInt[255]]
     powers_of_tau_G1*{.align: 64.}: PolynomialCoef[N, EC_G1_Aff]
     powers_of_tau_G2*{.align: 64.}: PolynomialCoef[L+1, EC_G2_Aff]
-    circulantDomain*{.align: 64.}: PolyEvalRootsDomain[2 * (N div L), Fr[BLS12_381], kNaturalOrder]
+    omegaForFFT*: Fr[BLS12_381]
+      ## Generator root for FFT descriptor (CDS-th root)
     omegaMax*: Fr[BLS12_381]
+      ## Generator root for verification (maxWidth-th root)
 
 func genPowersOfTauImpl(EC: typedesc, secret: auto, length: int): seq[EC] =
   result.setLen(length)
@@ -87,8 +90,8 @@ proc gen_setup*(N, L, maxWidth: static int; tauHex: string): TrustedSetup[N, L, 
   result.powers_of_tau_G1.coefs.computePowersOfTauG1(tau)
   result.powers_of_tau_G2.coefs.computePowersOfTauG2(tau)
 
-  # Domain setup
-  # - circulantDomain: CDS-th root for FFT during FK20 proof generation
+  # Domain setup using fft_utils for proper root computation
+  # - omegaForFFT: CDS-th root used for FFT descriptor creation
   # - omegaMax: maxWidth-th root used for x computation in verification
   #
   # Relationship between parameters:
@@ -102,25 +105,10 @@ proc gen_setup*(N, L, maxWidth: static int; tauHex: string): TrustedSetup[N, L, 
   # | 2 | 16 |     16      |    32    |
   # | 4 | 32 |     16      |    64    |
   #
-  # When CDS == maxWidth (L=1 case), omegaMax == omega_CDS
-  # When CDS < maxWidth (L>1 cases), need different root depending on maxWidth
+  # Roots are computed programmatically using fft_utils.getRootOfUnityForScale
 
-  result.circulantDomain.rootsOfUnity[0].fromUint(1)
-  case CDS
-  of 32:
-    const omega32 = Fr[BLS12_381].fromHex"0x50e0903a157988bab4bcd40e22f55448bf6e88fb4c38fb8a360c60997369df4e"
-    for i in 1 ..< CDS:
-      result.circulantDomain.rootsOfUnity[i] = result.circulantDomain.rootsOfUnity[i-1] * omega32
-    result.omegaMax = omega32
-  of 16:
-    const omega16 = Fr[BLS12_381].fromHex"0x20b1ce9140267af9dd1c0af834cec32c17beb312f20b6f7653ea61d87742bcce"
-    for i in 1 ..< CDS:
-      result.circulantDomain.rootsOfUnity[i] = result.circulantDomain.rootsOfUnity[i-1] * omega16
-    when maxWidth == 32:
-      let omega32 = Fr[BLS12_381].fromHex"0x50e0903a157988bab4bcd40e22f55448bf6e88fb4c38fb8a360c60997369df4e"
-      result.omegaMax = omega32
-    else:
-      let omega64 = Fr[BLS12_381].fromHex"0x45af6345ec055e4d14a1e27164d8fdbd2d967f4be2f951558140d032f0a9ee53"
-      result.omegaMax = omega64
-  else:
-    raiseAssert("Unsupported circulant domain size: " & $CDS)
+  let scaleCDS = int(log2_vartime(uint CDS))
+  result.omegaForFFT = getRootOfUnityForScale(Fr[BLS12_381], scaleCDS)
+
+  let scaleMax = int(log2_vartime(uint maxWidth))
+  result.omegaMax = getRootOfUnityForScale(Fr[BLS12_381], scaleMax)

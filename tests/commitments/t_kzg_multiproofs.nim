@@ -59,12 +59,13 @@ proc testFK20SingleProofs() =
 
   let setup = gen_setup(N, L, maxWidth, tauHex)
 
-  # Create FFT descriptors for CDS=32
-  let ecfft_desc = ECFFT_Descriptor[EC_G1_Jac].new(order = CDS, setup.circulantDomain.rootsOfUnity[1])
-  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.circulantDomain.rootsOfUnity[1])
+  # Create FFT descriptors using stride from maxWidth descriptor
+  # This matches production code which uses ctx.fft_desc_ext (8192-order) for all sizes
+  let ecfft_desc = ECFFT_Descriptor[EC_G1_Jac].new(order = maxWidth, setup.omegaMax)
+  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = maxWidth, setup.omegaMax)
 
   var tauExtFftArray: array[L, array[CDS, EC_G1_Jac]]
-  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, ecfft_desc, setup.circulantDomain.rootsOfUnity[1])
+  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, ecfft_desc)
 
   var fk20Proofs: array[CDS, EC_G1_Aff]
   kzg_coset_prove(tauExtFftArray, fk20Proofs, setup.poly, fr_fft_desc, ecfft_desc)
@@ -76,7 +77,7 @@ proc testFK20SingleProofs() =
   # Verify each proof using kzg_verify (single proof case)
   var verified = 0
   for i in 0 ..< CDS:
-    let z = setup.circulantDomain.rootsOfUnity[i]
+    let z = fr_fft_desc.rootsOfUnity[i]
     var y: Fr[BLS12_381]
     evalPolyAt(y, setup.poly, z)
 
@@ -112,11 +113,11 @@ proc testFK20MultiProofs(L: static int) =
   let setup = gen_setup(N, L, maxWidth, tauHex)
 
   # Create FFT descriptors for CDS=16
-  let ecfft_desc = ECFFT_Descriptor[EC_G1_Jac].new(order = CDS, setup.circulantDomain.rootsOfUnity[1])
-  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.circulantDomain.rootsOfUnity[1])
+  let ecfft_desc = ECFFT_Descriptor[EC_G1_Jac].new(order = CDS, setup.omegaForFFT)
+  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.omegaForFFT)
 
   var tauExtFftArray: array[L, array[CDS, EC_G1_Jac]]
-  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, ecfft_desc, setup.circulantDomain.rootsOfUnity[1])
+  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, ecfft_desc)
 
   var fk20Proofs: array[CDS, EC_G1_Aff]
   kzg_coset_prove(
@@ -127,7 +128,7 @@ proc testFK20MultiProofs(L: static int) =
   var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
   kzg_commit(setup.powers_of_tau_G1, commitmentAff, setup.polyBig)
 
-  let lthRoot = setup.circulantDomain.rootsOfUnity[1] ~^ uint64(CDS div L)
+  let lthRoot = setup.omegaMax ~^ uint64(maxWidth div L)
 
   const chunkCount = N div L  # 8
   const numProofs = 2 * chunkCount  # 16
@@ -201,11 +202,11 @@ proc testNonOptimizedCosetProofs*(L: static int) =
   let setup = gen_setup(N, L, maxWidth, tauHex)
 
   # Create FFT descriptors for CDS=16
-  let ecfft_desc = ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]].new(order = CDS, setup.circulantDomain.rootsOfUnity[1])
-  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.circulantDomain.rootsOfUnity[1])
+  let ecfft_desc = ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]].new(order = CDS, setup.omegaForFFT)
+  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.omegaForFFT)
 
   var tauExtFftArray: array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
-  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, ecfft_desc, setup.circulantDomain.rootsOfUnity[1])
+  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, ecfft_desc)
 
   var fk20Proofs: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
   kzg_coset_prove(
@@ -216,7 +217,7 @@ proc testNonOptimizedCosetProofs*(L: static int) =
   var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
   kzg_commit(setup.powers_of_tau_G1, commitmentAff, setup.polyBig)
 
-  let lthRoot = setup.circulantDomain.rootsOfUnity[1] ~^ uint64(CDS div L)
+  let lthRoot = setup.omegaMax ~^ uint64(maxWidth div L)
 
   const chunkCount = N div L
   const numProofs = 2 * chunkCount

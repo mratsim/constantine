@@ -32,7 +32,7 @@ func buildRootLUT(F: type Fr): array[32, F] =
 
 let BLS12_381_Fr_ScaleToRootOfUnity = buildRootLUT(Fr[BLS12_381])
 
-template getRootOfUnityForScale(F: typedesc[Fr], scale: int): auto =
+template getRootOfUnityForScale*(F: typedesc[Fr], scale: int): auto =
   {.cast(noSideEffect).}:
     when F is Fr[BLS12_381]:
       BLS12_381_Fr_ScaleToRootOfUnity[scale]
