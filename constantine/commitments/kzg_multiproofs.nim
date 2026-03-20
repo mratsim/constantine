@@ -49,7 +49,6 @@ func getTauExtFft[N, CDS: static int, Name: static Algebra](
        tauExtFft: var array[CDS, EC_ShortW_Jac[Fp[Name], G1]],
        powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
        ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
-       domainRoot: Fr[Name],
        offset: int = 0) {.tags:[Alloca, HeapAlloc, Vartime].} =
   ## Convert powers_of_tau (SRS coefficients) to tauExtFft (FFT of kernel sequence).
   ##
@@ -63,7 +62,6 @@ func getTauExtFft[N, CDS: static int, Name: static Algebra](
   ## @param tauExtFft: Output array for FFT of kernel sequence (length CDS)
   ## @param powers_of_tau: SRS in coefficient form [G, τG, τ²G, ...] (affine, length N)
   ## @param ecfft_desc: Precomputed EC FFT descriptor (order >= CDS, uses stride)
-  ## @param domainRoot: Primitive CDS-th root of unity for FFT
   ## @param offset: Offset for kernel extraction (default 0, range 0..L-1)
 
   const CDSdiv2 = CDS shr 1
@@ -96,8 +94,7 @@ func getTauExtFft[N, CDS: static int, Name: static Algebra](
 func getTauExtFftArray*[N, L, CDS: static int, Name: static Algebra](
        tauExtFftArray: var array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]],
        powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
-       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
-       domainRoot: Fr[Name]) {.tags:[Alloca, HeapAlloc, Vartime].} =
+       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]]) {.tags:[Alloca, HeapAlloc, Vartime].} =
   ## Compute tauExtFft for all L offsets.
   ##
   ## This is the complete FK20 preprocessing phase. It computes the FFT of
@@ -117,14 +114,13 @@ func getTauExtFftArray*[N, L, CDS: static int, Name: static Algebra](
   ## @param tauExtFftArray: Output array[L][CDS] for FFT of kernel sequences
   ## @param powers_of_tau: SRS in coefficient form [G, τG, τ²G, ..., τⁿ⁻¹G] (affine, length N)
   ## @param ecfft_desc: Precomputed EC FFT descriptor (order >= CDS, uses stride)
-  ## @param domainRoot: Primitive CDS-th root of unity for FFT
   ##
   ## @see getTauExtFft for computing a single offset
   static: doAssert CDS * L == 2 * N
   doAssert ecfft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
 
   for offset in 0 ..< L:
-    getTauExtFft(tauExtFftArray[offset], powers_of_tau, ecfft_desc, domainRoot, offset)
+    getTauExtFft(tauExtFftArray[offset], powers_of_tau, ecfft_desc, offset)
 
 func kzg_coset_prove*[N, L, CDS: static int, Name: static Algebra](
        tauExtFftArray: array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]],

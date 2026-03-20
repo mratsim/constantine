@@ -296,10 +296,8 @@ func compute_cells_and_kzg_proofs*(
 
   # Compute tauExtFftArray (precomputed setup FFT for FK20 Phase 1)
   var tauExtFftArray: array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
-  # Domain root for CDS=128: get from extended FFT descriptor (no shift)
-  let domainRoot = ctx.fft_desc_ext.rootsOfUnity[CDS div 2]
 
-  getTauExtFftArray[N, L, CDS, BLS12_381](tauExtFftArray, ctx.srs_monomial_g1, ctx.ecfft_desc_ext, domainRoot)
+  getTauExtFftArray[N, L, CDS, BLS12_381](tauExtFftArray, ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
 
   # Compute FK20 proofs (Phase 1 + Phase 2)
   var proofsAff: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
@@ -411,8 +409,8 @@ func recover_cells_and_kzg_proofs*(
 
   # Compute tauExtFftArray (precomputed setup FFT for FK20 Phase 1)
   var tauExtFftArray: array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
-  let domainRoot = ctx.fft_desc_ext.rootsOfUnity[CDS div 2]
-  getTauExtFftArray[N, L, CDS, BLS12_381](tauExtFftArray, ctx.srs_monomial_g1, ctx.ecfft_desc_ext, domainRoot)
+
+  getTauExtFftArray[N, L, CDS, BLS12_381](tauExtFftArray, ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
 
   # Compute FK20 proofs
   var proofsAff: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
