@@ -139,7 +139,7 @@ proc toeplitzMatVecMulPreFFT*[EC, F](
   output: var openArray[EC],
   circulant: openArray[F],
   vFft: openArray[EC],
-  frFftDesc: FrFFT_Descriptor[F],
+  frFftDesc: AnyFFT_Descriptor[F],
   ecFftDesc: ECFFT_Descriptor[EC],
   accumulate: bool = false
 ): FFTStatus =

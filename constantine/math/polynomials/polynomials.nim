@@ -29,7 +29,11 @@ type
     ## p(x) = a₀ + a₁ x + a₂ x² + ... + aₙ₋₁ xⁿ⁻¹
     coefs*{.align: 64.}: array[N, Group]
 
-  PolynomialEval*[N: static int, Group] = object
+  PolyOrdering* = enum
+    kNaturalOrder
+    kBitReversed
+
+  PolynomialEval*[N: static int, Group; Ord: static PolyOrdering] = object
     ## A polynomial in Lagrange basis (evaluation form)
     ##
     ## The evaluation points must be specified either with
@@ -47,7 +51,7 @@ type
     ##   for example [f(0), f(1), ..., f(n-1)]
     evals*{.align: 64.}: array[N, Group]
 
-  PolyEvalRootsDomain*[N: static int, Field] = object
+  PolyEvalRootsDomain*[N: static int, Field; Ord: static PolyOrdering] = object
     ## Metadata for polynomial in Lagrange basis (evaluation form)
     ## with evaluation points at roots of unity.
     ##
@@ -57,16 +61,17 @@ type
     ## This translates into rootsOfUnity[brp((N-brp(i)) and (N-1))] when bit-reversal permuted
     rootsOfUnity*{.align: 64.}: array[N, Field]
     invMaxDegree*: Field
-    isBitReversed*: bool
 
-  PolyEvalDomain*[N: static int, Field] = object
+  PolyEvalDomain*[N: static int, Field; Ord: static PolyOrdering] = object
     ## Metadata for polynomial in Lagrange basis (evaluation form)
     ## with generic evaluation points
 
     domain*{.align: 64.}: array[N, Field]     # Evaluation domain for a polynomial in Lagrange basis
 
-    vanishing_deriv_poly_eval*{.align: 64.}: PolynomialEval[N, Field]     # A'(X) evaluated on domain
-    vanishing_deriv_poly_eval_inv*{.align: 64.}: PolynomialEval[N, Field] # 1/A'(X) evaluated on domain
+    # A'(X) evaluated on domain
+    vanishing_deriv_poly_eval*{.align: 64.}: PolynomialEval[N, Field, Ord]
+    # 1/A'(X) evaluated on domain
+    vanishing_deriv_poly_eval_inv*{.align: 64.}: PolynomialEval[N, Field, Ord]
 
   PolyEvalLinearDomain*[N: static int, Field] = object
     ## Metadata for polynomial in Lagrange basis (evaluation form)
@@ -75,7 +80,7 @@ type
     # This allows more efficient polynomial division on the domain.
     # has we can precompute the inverses 1/(xᵢ-z) with xᵢ,z ∈ [0, ..., n-1]
     # The first element is 1/0 and unused.
-    dom*{.align: 64.}: PolyEvalDomain[N, Field]
+    dom*{.align: 64.}: PolyEvalDomain[N, Field, kNaturalOrder]
     domain_inverses*{.align: 64.}: array[N, Field]
 
 # Polynomials in coefficient form
@@ -210,17 +215,20 @@ func `-=`*(f: var PolynomialEval, g: PolynomialEval) =
   for i in 0 ..< f.evals.len:
     f.evals[i] -= g.evals[i]
 
-func prod*[N, F](r: var PolynomialEval[N, F], s: F, f: PolynomialEval[N, F]) =
+func prod*[N: static int, F, Ord](r: var PolynomialEval[N, F, Ord], s: F, f: PolynomialEval[N, F, Ord]) =
   ## Rescale a polynomial r(X) <- s.f(X)
   for i in 0 ..< N:
     r.evals[i].prod(s, f.evals[i])
 
-func `*=`*[N, F](f: var PolynomialEval[N, F], s: F) =
+func `*=`*[N: static int, F, Ord](f: var PolynomialEval[N, F, Ord], s: F) =
   ## Rescale a polynomial f(X) <- s.f(X)
   for i in 0 ..< N:
     f.evals[i] *= s
 
-func multiplyAccumulate*[N, F](f: var PolynomialEval[N, F], s: F, g: PolynomialEval[N, F]) =
+func multiplyAccumulate*[N: static int, F, Ord](
+      f: var PolynomialEval[N, F, Ord],
+      s: F,
+      g: PolynomialEval[N, F, Ord]) =
   ## Polynomial f(X) += s.g(X)
   for i in 0 ..< N:
     var t {.noInit.}: F
@@ -323,10 +331,10 @@ func inverseDifferenceArray*[N: static int, Field](
 #   Domain = roots of unity
 # ------------------------------------------------------
 
-func evalPolyOffDomainAt*[N: static int, Field](
-       domain: PolyEvalRootsDomain[N, Field],
+func evalPolyOffDomainAt*[N: static int, Field, Ord](
+       domain: PolyEvalRootsDomain[N, Field, Ord],
        r: var Field,
-       poly: PolynomialEval[N, Field],
+       poly: PolynomialEval[N, Field, Ord],
        z: Field,
        invRootsMinusZ: array[N, Field]) =
   ## Evaluate a polynomial in evaluation form
@@ -351,10 +359,10 @@ func evalPolyOffDomainAt*[N: static int, Field](
   r *= t
   r *= domain.invMaxDegree
 
-func evalPolyAt*[N: static int, Field](
-       domain: PolyEvalRootsDomain[N, Field],
+func evalPolyAt*[N: static int, Field, Ord](
+       domain: PolyEvalRootsDomain[N, Field, Ord],
        r: var Field,
-       poly: PolynomialEval[N, Field],
+       poly: PolynomialEval[N, Field, Ord],
        z: Field) =
   ## Evaluate a polynomial in evaluation form
   ## at the point z
@@ -441,10 +449,10 @@ func evalVanishingPolyDerivativeAtRoot*[N: static int, Field](
       t.diff(z, roots[i])
       r *= t
 
-func evalPolyAt*[N: static int, Field](
-       domain: PolyEvalDomain[N, Field],
+func evalPolyAt*[N: static int, Field, Ord](
+       domain: PolyEvalDomain[N, Field, Ord],
        r: var Field,
-       poly: PolynomialEval[N, Field],
+       poly: PolynomialEval[N, Field, Ord],
        z: Field) =
   ## Evaluate a polynomial p at z: r <- p(z)
   ##
@@ -490,8 +498,8 @@ func evalPolyAt*[N: static int, Field](
 
   freeHeapAligned(invZminusDomain)
 
-func computeLagrangeBasisPolysAt*[N: static int, Field](
-      domain: PolyEvalDomain[N, Field],
+func computeLagrangeBasisPolysAt*[N: static int, Field, Ord](
+      domain: PolyEvalDomain[N, Field, Ord],
       lagrangePolys: var array[N, Field],
       z: Field) =
   ## A polynomial p(X) in evaluation form
@@ -559,7 +567,7 @@ func computeLagrangeBasisPolysAt*[N: static int, Field](
 func evalPolyAt*[N: static int, Field](
        lindom: PolyEvalLinearDomain[N, Field],
        r: var Field,
-       poly: PolynomialEval[N, Field],
+       poly: PolynomialEval[N, Field, kNaturalOrder],
        z: Field) =
   lindom.dom.evalPolyAt(r, poly, z)
 
@@ -589,10 +597,10 @@ func setupLinearEvaluationDomain*[N: static int, Field](
   lindom.dom.vanishing_deriv_poly_eval_inv.evals
     .batchInv_vartime(lindom.dom.vanishing_deriv_poly_eval.evals)
 
-func computeCoefPoly*[N: static int, Name: static Algebra](
+func computeCoefPoly*[N: static int, Name: static Algebra, Ord](
        dst: var PolynomialCoef[N, Fr[Name]],
-       polynomial: PolynomialEval[N, Fr[Name]],
-       fft_desc: FrFFT_Descriptor[Fr[Name]] | CosetFFT_Descriptor[Fr[Name]]) =
+       polynomial: PolynomialEval[N, Fr[Name], Ord],
+       fft_desc: AnyFFT_Descriptor[Fr[Name]]) =
   ## Convert polynomial from evaluation form to coefficient form.
   ## Input:
   ##   a polynomial in evaluation form, with evals stored in bit-reversed order.

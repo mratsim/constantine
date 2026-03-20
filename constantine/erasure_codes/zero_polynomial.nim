@@ -8,10 +8,8 @@
 
 import
   std/options,
-  constantine/named/algebras,
   constantine/math/arithmetic,
-  constantine/math/polynomials/[polynomials, fft],
-  constantine/platforms/[allocs, views]
+  constantine/math/polynomials/[polynomials, fft]
 
 ## ############################################################
 ##
@@ -81,10 +79,11 @@ import
 {.push raises:[].}
 
 func vanishingPolynomial*[
-       N: static int,
-       F: Fr,
-       Domain: PolyEvalRootsDomain[N, F]
-](dst: var PolynomialCoef[N, F], roots: openArray[F], domain: Domain) =
+      N: static int, F; Ord: static PolyOrdering,
+      Domain: PolyEvalRootsDomain[N, F, Ord]](
+        domain: Domain,
+        dst: var PolynomialCoef[N, F],
+        roots: openArray[F]) =
   ## Construct the vanishing polynomial for a set of roots.
   ##
   ## Z(x) = ∏ (x - root_i)
@@ -139,10 +138,11 @@ func vanishingPolynomial*[
   dst.coefs[roots.len].setOne()
 
 func vanishingPolynomialForIndices*[
-       N, numIndices: static int,
-       F: Fr,
-       Domain: PolyEvalRootsDomain[N, F]
-](dst: var PolynomialCoef[N, F], indices: array[numIndices, uint64], domain: Domain) =
+      N, numIndices: static int, F; Ord: static PolyOrdering,
+      Domain: PolyEvalRootsDomain[N, F, Ord]](
+        domain: Domain,
+        dst: var PolynomialCoef[N, F],
+        indices: array[numIndices, uint64]) =
   ## Construct the vanishing polynomial for a set of indices.
   ##
   ## The polynomial evaluates to 0 at domain points corresponding
@@ -164,13 +164,14 @@ func vanishingPolynomialForIndices*[
   for i in 0 ..< numIndices:
     roots[i] = domain.rootsOfUnity[int(indices[i])]
 
-  vanishingPolynomial(dst, roots, domain)
+  domain.vanishingPolynomial(dst, roots.toOpenArray(0, indices.len - 1))
 
 func vanishingPolynomialForIndicesRT*[
-       N: static int,
-       F: Fr,
-       Domain: PolyEvalRootsDomain[N, F]
-](dst: var PolynomialCoef[N, F], indices: openArray[uint64], domain: Domain) =
+      N: static int, F; Ord: static PolyOrdering,
+      Domain: PolyEvalRootsDomain[N, F, Ord]](
+        domain: Domain,
+        dst: var PolynomialCoef[N, F],
+        indices: openArray[uint64]) =
   ## Construct the vanishing polynomial for a set of indices (runtime version).
   ##
   ## Parameters
@@ -200,13 +201,14 @@ func vanishingPolynomialForIndicesRT*[
   for i in 0 ..< indices.len:
     roots[i] = domain.rootsOfUnity[int(indices[i])]
 
-  vanishingPolynomial(dst, roots.toOpenArray(0, indices.len - 1), domain)
+  domain.vanishingPolynomial(dst, roots.toOpenArray(0, indices.len - 1))
 
 func evalVanishingPolynomial*[
-       N: static int,
-       F: Fr,
-       Domain: PolyEvalRootsDomain[N, F]
-](output: var openArray[F], indices: openArray[uint64], domain: Domain) =
+      N: static int, F; Ord: static PolyOrdering,
+      Domain: PolyEvalRootsDomain[N, F, Ord]](
+        domain: Domain,
+        output: var openArray[F],
+        indices: openArray[uint64]) =
   ## Evaluate the vanishing polynomial at all domain points.
   ##
   ## Parameters
@@ -220,7 +222,7 @@ func evalVanishingPolynomial*[
   ## 1. Compute Z(x) coefficients
   ## 2. Apply FFT to get evaluations over the domain
 
-  var indices_arr: array[256, uint64]
+  var indices_arr: array[256, uint64] # TODO: untested and very suspicious
   doAssert indices.len <= 256
   for i in 0 ..< indices.len:
     indices_arr[i] = indices[i]

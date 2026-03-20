@@ -12,18 +12,88 @@
 # The IFFT must correctly invert the FFT for ALL root orders, not just 4th roots
 # where negation happens to equal inversion (ω = i, -i = i^{-1}).
 
+# Compile and run with:
+#   nim c -r -d:release --hints:off --warnings:off --outdir:build/tmp --nimcache:nimcache/tmp tests/math_polynomials/t_fft.nim
+
 import
   ../../constantine/named/algebras,
   ../../constantine/named/zoo_generators,
   ../../constantine/math/[arithmetic, ec_shortweierstrass],
-  ../../constantine/math/polynomials/fft,
+  ../../constantine/math/polynomials/fft {.all.},
   ../../constantine/math/io/io_fields,
   ./fft_utils
 
-proc testBitReversal*(T: typedesc) =
-  echo "Testing bit-reversal permutation..."
+proc testBitReversalNaive(T: typedesc) =
+  echo "Testing bit-reversal permutation (naive)..."
 
-  # Test small sizes
+  for logN in 1 .. 10:
+    let N = 1 shl logN
+
+    var src = newSeq[T](N)
+    for i in 0 ..< N:
+      src[i] = T(i)
+
+    var dst = newSeq[T](N)
+    bit_reversal_permutation_naive(dst, src)
+
+    for i in 0 ..< N:
+      let rev_i = reverseBits(uint i, uint logN)
+      doAssert dst[i] == T(rev_i),
+        "Naive bit-reversal failed at logN=" & $logN & " index=" & $i
+
+  for logN in 1 .. 10:
+    let N = 1 shl logN
+
+    var buf = newSeq[T](N)
+    for i in 0 ..< N:
+      buf[i] = T(i)
+
+    buf.bit_reversal_permutation_naive()
+
+    for i in 0 ..< N:
+      let rev_i = reverseBits(uint i, uint logN)
+      doAssert buf[i] == T(rev_i),
+        "In-place naive bit-reversal failed at logN=" & $logN & " index=" & $i
+
+  echo "  ✓ Naive bit-reversal tests PASSED"
+
+proc testBitReversalCobra(T: typedesc) =
+  echo "Testing bit-reversal permutation (COBRA)..."
+
+  for logN in 1 .. 10:
+    let N = 1 shl logN
+
+    var src = newSeq[T](N)
+    for i in 0 ..< N:
+      src[i] = T(i)
+
+    var dst = newSeq[T](N)
+    bit_reversal_permutation_cobra(dst, src)
+
+    for i in 0 ..< N:
+      let rev_i = reverseBits(uint i, uint logN)
+      doAssert dst[i] == T(rev_i),
+        "COBRA bit-reversal failed at logN=" & $logN & " index=" & $i
+
+  for logN in 1 .. 10:
+    let N = 1 shl logN
+
+    var buf = newSeq[T](N)
+    for i in 0 ..< N:
+      buf[i] = T(i)
+
+    buf.bit_reversal_permutation_cobra()
+
+    for i in 0 ..< N:
+      let rev_i = reverseBits(uint i, uint logN)
+      doAssert buf[i] == T(rev_i),
+        "In-place COBRA bit-reversal failed at logN=" & $logN & " index=" & $i
+
+  echo "  ✓ COBRA bit-reversal tests PASSED"
+
+proc testBitReversalAuto(T: typedesc) =
+  echo "Testing bit-reversal permutation (auto-dispatch)..."
+
   for logN in 1 .. 10:
     let N = 1 shl logN
 
@@ -34,14 +104,11 @@ proc testBitReversal*(T: typedesc) =
     var dst = newSeq[T](N)
     bit_reversal_permutation(dst, src)
 
-    # Verify each element is in correct bit-reversed position
     for i in 0 ..< N:
       let rev_i = reverseBits(uint i, uint logN)
       doAssert dst[i] == T(rev_i),
-        "Bit-reversal failed at logN=" & $logN & " index=" & $i &
-        " (expected " & $rev_i & " but got " & $dst[i].int & ")"
+        "Auto bit-reversal failed at logN=" & $logN & " index=" & $i
 
-  # Test in-place version
   for logN in 1 .. 10:
     let N = 1 shl logN
 
@@ -54,44 +121,20 @@ proc testBitReversal*(T: typedesc) =
     for i in 0 ..< N:
       let rev_i = reverseBits(uint i, uint logN)
       doAssert buf[i] == T(rev_i),
-        "In-place bit-reversal failed at logN=" & $logN & " index=" & $i
+        "In-place auto bit-reversal failed at logN=" & $logN & " index=" & $i
 
-  # Test involution property: applying bit-reversal twice returns to original
-  echo "  Testing involution property (BRP(BRP(x)) = x)..."
-  for logN in 1 .. 12:
-    let N = 1 shl logN
+  echo "  ✓ Auto-dispatch bit-reversal tests PASSED"
 
-    # Test out-of-place version
-    var src = newSeq[T](N)
-    for i in 0 ..< N:
-      src[i] = T(i + 1)  # Use i+1 to avoid all zeros
+proc testBitReversal(T: typedesc) =
+  echo "Testing bit-reversal permutation..."
 
-    var pass1 = newSeq[T](N)
-    var pass2 = newSeq[T](N)
-
-    bit_reversal_permutation(pass1, src)
-    bit_reversal_permutation(pass2, pass1)
-
-    for i in 0 ..< N:
-      doAssert pass2[i] == src[i],
-        "Out-of-place involution failed at logN=" & $logN & " index=" & $i &
-        " (expected " & $src[i].int & " but got " & $pass2[i].int & ")"
-
-    # Test in-place version
-    var buf = newSeq[T](N)
-    for i in 0 ..< N:
-      buf[i] = T(i + 1)
-
-    buf.bit_reversal_permutation()
-    buf.bit_reversal_permutation()
-
-    for i in 0 ..< N:
-      doAssert buf[i] == T(i + 1),
-        "In-place involution failed at logN=" & $logN & " index=" & $i
+  testBitReversalNaive(T)
+  testBitReversalCobra(T)
+  testBitReversalAuto(T)
 
   echo "  ✓ All bit-reversal tests PASSED"
 
-proc testFrFFTRoundtrip*(F: typedesc[Fr]) =
+proc testFrFFTRoundtrip(F: typedesc[Fr]) =
   echo "Testing Fr FFT/IFFT roundtrip..."
 
   for scale in 1 .. 5:
@@ -120,11 +163,9 @@ proc testFrFFTRoundtrip*(F: typedesc[Fr]) =
         doAssert (recovered[i] == data[i]).bool,
           "Roundtrip failed at size " & $order & " index " & $i
 
-    fftDesc.delete()
-
   echo "  ✓ All Fr FFT/IFFT roundtrip tests PASSED"
 
-proc testECFFTRoundtrip*(EC: typedesc, F: typedesc[Fr]) =
+proc testECFFTRoundtrip(EC: typedesc, F: typedesc[Fr]) =
   echo "Testing EC FFT/IFFT roundtrip..."
 
   for scale in 2 .. 5:
@@ -139,7 +180,7 @@ proc testECFFTRoundtrip*(EC: typedesc, F: typedesc[Fr]) =
       data[i].mixedSum(data[i-1], gen)
 
     var freq = newSeq[EC](order)
-    let fftOk = fft_vartime(fftDesc, freq, data)
+    let fftOk = ec_fft_nr(fftDesc, freq, data)
     doAssert fftOk == FFT_Success
 
     var recovered = newSeq[EC](order)
@@ -150,11 +191,9 @@ proc testECFFTRoundtrip*(EC: typedesc, F: typedesc[Fr]) =
       doAssert (recovered[i] == data[i]).bool,
         "EC Roundtrip failed at size " & $order & " index " & $i
 
-    fftDesc.delete()
-
   echo "  ✓ All EC FFT/IFFT roundtrip tests PASSED"
 
-proc testIFFTInterpolation*(F: typedesc[Fr]) =
+proc testIFFTInterpolation(F: typedesc[Fr]) =
   echo "Testing IFFT interpolation correctness..."
 
   block:
@@ -186,7 +225,6 @@ proc testIFFTInterpolation*(F: typedesc[Fr]) =
 
     var coeffs: array[2, F]
     let status = ifft_rn(fftDesc, coeffs.toOpenArray(0, L-1), ys_bitrev.toOpenArray(0, L-1))
-    fftDesc.delete()
     doAssert status == FFT_Success
 
     doAssert (coeffs[0] == v0_expected).bool, "IFFT coefficient 0 mismatch for L=2"

@@ -51,6 +51,8 @@ func createFFTDescriptor*(EC: typedesc, F: typedesc[Fr], orderSize: int): ECFFT_
 
 when isMainModule:
   const ctt_eth_kzg_fr_pow2_roots_of_unity = [
+    # primitive_root⁽ᵐᵒᵈᵘˡᵘˢ⁻¹⁾/⁽²^ⁱ⁾ for i in [0, 32)
+    # The primitive root chosen is 7
     Fr[BLS12_381].fromHex"0x1",
     Fr[BLS12_381].fromHex"0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000000",
     Fr[BLS12_381].fromHex"0x8d51ccce760304d0ec030002760300000001000000000000",
@@ -122,7 +124,6 @@ when isMainModule:
         let n = 1 shl scale
         let fftDesc = createFFTDescriptor(F, n)
         echo "  n=", n, " roots[0]=", fftDesc.rootsOfUnity[0].toHex(), " roots[1]=", fftDesc.rootsOfUnity[1].toHex()
-        fftDesc.delete()
 
     echo "\nRoot of unity generation tests PASSED"
 

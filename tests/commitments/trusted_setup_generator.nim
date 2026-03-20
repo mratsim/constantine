@@ -17,7 +17,7 @@ type
     polyBig*{.align: 64.}: PolynomialCoef[N, BigInt[255]]
     powers_of_tau_G1*{.align: 64.}: PolynomialCoef[N, EC_G1_Aff]
     powers_of_tau_G2*{.align: 64.}: PolynomialCoef[L+1, EC_G2_Aff]
-    circulantDomain*{.align: 64.}: PolyEvalRootsDomain[2 * (N div L), Fr[BLS12_381]]
+    circulantDomain*{.align: 64.}: PolyEvalRootsDomain[2 * (N div L), Fr[BLS12_381], kNaturalOrder]
     omegaMax*: Fr[BLS12_381]
 
 func genPowersOfTauImpl(EC: typedesc, secret: auto, length: int): seq[EC] =

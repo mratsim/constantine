@@ -6,6 +6,9 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+# Compile and run with:
+#   nim c -r -d:release --hints:off --warnings:off --outdir:build/tmp --nimcache:nimcache/tmp tests/commitments/t_kzg_multiproofs.nim
+
 import
   constantine/named/algebras,
   constantine/math/[ec_shortweierstrass, extension_fields],
@@ -14,7 +17,8 @@ import
   constantine/commitments/kzg_multiproofs,
   constantine/commitments/kzg,
   constantine/math/io/io_fields,
-  ./trusted_setup_generator
+  ./trusted_setup_generator,
+  ./kzg_multiproofs_naive
 
 from trusted_setup_generator import
   EC_G1_Aff, EC_G1_Jac, EC_G2_Aff
@@ -27,7 +31,7 @@ func pow*(omegaMax: Fr[BLS12_381], domainPos: uint32): Fr[BLS12_381] =
   result = omegaMax
   result.pow(exp)
 
-func computeYsAtCoset*[L: static int](
+func computeYsAtCoset[L: static int](
        ys: var array[L, Fr[BLS12_381]],
        poly: PolynomialCoef,
        x, lthRoot: Fr[BLS12_381]) =
@@ -55,11 +59,15 @@ proc testFK20SingleProofs() =
 
   let setup = gen_setup(N, L, maxWidth, tauHex)
 
+  # Create FFT descriptors for CDS=32
+  let ecfft_desc = ECFFT_Descriptor[EC_G1_Jac].new(order = CDS, setup.circulantDomain.rootsOfUnity[1])
+  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.circulantDomain.rootsOfUnity[1])
+
   var tauExtFftArray: array[L, array[CDS, EC_G1_Jac]]
-  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, setup.circulantDomain.rootsOfUnity[1])
+  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, ecfft_desc, setup.circulantDomain.rootsOfUnity[1])
 
   var fk20Proofs: array[CDS, EC_G1_Aff]
-  kzg_coset_prove(tauExtFftArray, setup.circulantDomain, fk20Proofs, setup.poly)
+  kzg_coset_prove(tauExtFftArray, fk20Proofs, setup.poly, fr_fft_desc, ecfft_desc)
 
   # Compute commitment using pre-generated BigInt polynomial
   var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
@@ -85,7 +93,7 @@ proc testFK20SingleProofs() =
   doAssert verified == CDS, "Not all FK20 proofs verified"
   echo "✓ FK20 single proofs test PASSED"
 
-proc testFK20MultiProofs*(L: static int) =
+proc testFK20MultiProofs(L: static int) =
   ## Test FK20 multi-proof with L > 1 (EIP-7594 pattern)
   ## Uses c-kzg convention: domain of order 2*N for proof gen, bit-reversed proofs/ys
   ## Constraint: N == L * (CDS/2), so for given L we need appropriate N and CDS
@@ -103,12 +111,16 @@ proc testFK20MultiProofs*(L: static int) =
 
   let setup = gen_setup(N, L, maxWidth, tauHex)
 
+  # Create FFT descriptors for CDS=16
+  let ecfft_desc = ECFFT_Descriptor[EC_G1_Jac].new(order = CDS, setup.circulantDomain.rootsOfUnity[1])
+  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.circulantDomain.rootsOfUnity[1])
+
   var tauExtFftArray: array[L, array[CDS, EC_G1_Jac]]
-  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, setup.circulantDomain.rootsOfUnity[1])
+  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, ecfft_desc, setup.circulantDomain.rootsOfUnity[1])
 
   var fk20Proofs: array[CDS, EC_G1_Aff]
   kzg_coset_prove(
-    tauExtFftArray, setup.circulantDomain, fk20Proofs, setup.poly)
+    tauExtFftArray, fk20Proofs, setup.poly, fr_fft_desc, ecfft_desc)
 
   fk20Proofs.bit_reversal_permutation()
 
@@ -188,12 +200,16 @@ proc testNonOptimizedCosetProofs*(L: static int) =
 
   let setup = gen_setup(N, L, maxWidth, tauHex)
 
+  # Create FFT descriptors for CDS=16
+  let ecfft_desc = ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]].new(order = CDS, setup.circulantDomain.rootsOfUnity[1])
+  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.circulantDomain.rootsOfUnity[1])
+
   var tauExtFftArray: array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
-  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, setup.circulantDomain.rootsOfUnity[1])
+  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, ecfft_desc, setup.circulantDomain.rootsOfUnity[1])
 
   var fk20Proofs: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
   kzg_coset_prove(
-    tauExtFftArray, setup.circulantDomain, fk20Proofs, setup.poly)
+    tauExtFftArray, fk20Proofs, setup.poly, fr_fft_desc, ecfft_desc)
 
   fk20Proofs.bit_reversal_permutation()
 

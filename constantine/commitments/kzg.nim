@@ -174,10 +174,10 @@ import
 # For now we assume that the input polynomial always has the same degree
 # as the powers of τ
 
-func kzg_commit*[N, bits: static int, Name: static Algebra](
-       powers_of_tau: PolynomialEval[N, EC_ShortW_Aff[Fp[Name], G1]],
+func kzg_commit*[N, bits: static int, Name: static Algebra, Ord](
+       powers_of_tau: PolynomialEval[N, EC_ShortW_Aff[Fp[Name], G1], Ord],
        commitment: var EC_ShortW_Aff[Fp[Name], G1],
-       poly: PolynomialEval[N, BigInt[bits]]) {.tags:[Alloca, HeapAlloc, Vartime].} =
+       poly: PolynomialEval[N, BigInt[bits], Ord]) {.tags:[Alloca, HeapAlloc, Vartime].} =
   ## Compute KZG commitment to a polynomial in evaluation form (Lagrange basis).
   ##
   ## This is the standard Ethereum KZG commitment used in EIP-4844 blobs.
@@ -201,15 +201,15 @@ func kzg_commit*[N, bits: static int, Name: static Algebra](
   commitmentJac.multiScalarMul_vartime(poly.coefs, powers_of_tau.coefs)
   commitment.affine(commitmentJac)
 
-func kzg_prove*[N: static int, Name: static Algebra](
-       powers_of_tau: PolynomialEval[N, EC_ShortW_Aff[Fp[Name], G1]],
-       domain: PolyEvalRootsDomain[N, Fr[Name]],
+func kzg_prove*[N: static int, Name: static Algebra, Ord](
+       powers_of_tau: PolynomialEval[N, EC_ShortW_Aff[Fp[Name], G1], Ord],
+       domain: PolyEvalRootsDomain[N, Fr[Name], Ord],
        eval_at_challenge: var Fr[Name],
        proof: var EC_ShortW_Aff[Fp[Name], G1],
-       poly: PolynomialEval[N, Fr[Name]],
+       poly: PolynomialEval[N, Fr[Name], Ord],
        opening_challenge: Fr[Name]) {.tags:[Alloca, HeapAlloc, Vartime].} =
 
-  let quotientPoly = allocHeapAligned(PolynomialEval[N, Fr[Name]], alignment = 64)
+  let quotientPoly = allocHeapAligned(PolynomialEval[N, Fr[Name], Ord], alignment = 64)
 
   domain.getQuotientPoly(
     quotientPoly[], eval_at_challenge,
