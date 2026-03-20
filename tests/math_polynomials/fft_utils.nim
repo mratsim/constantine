@@ -37,6 +37,24 @@ template getRootOfUnityForScale*(F: typedesc[Fr], scale: int): auto =
     else:
       {.error: "Roots of unity computation is not implemented for " & $F.}
 
+func computeRootsOfUnity*(
+      F: typedesc[Fr],
+      fullOrder: static int
+    ): PolyEvalRootsDomain[fullOrder, F, kNaturalOrder] =
+  ## Compute fullOrder-th roots of unity in bit-reversed order
+  ## Returns array of length fullOrder + 1 (includes ω^0 = 1 at start and end)
+  let scale = int(log2_vartime(fullOrder.uint))
+  let root = getRootOfUnityForScale(F, scale)
+
+  result.rootsOfUnity[0].setOne()
+  var cur = root
+  for i in 1 ..< fullOrder:
+    result.rootsOfUnity[i] = cur
+    cur *= root
+
+  result.invMaxDegree.fromUint(fullOrder)
+  result.invMaxDegree.inv_vartime()
+
 func createFFTDescriptor*(F: typedesc[Fr], orderSize: int): FrFFT_Descriptor[F] =
   let scale = int(log2_vartime(orderSize.uint))
   let root = getRootOfUnityForScale(F, scale)

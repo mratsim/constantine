@@ -669,9 +669,6 @@ func coset_ifft_nn*[F](
   ##   1. Apply standard IFFT (natural to natural)
   ##   2. Multiply result[i] by shift_factor⁻ⁱ (unshift from coset)
   ##
-  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
-  ## The coset IFFT algorithm is NOT in-place safe.
-  ##
   ## Parameters:
   ##   - desc: FFT descriptor with roots of unity
   ##   - output: output array (must have same length as vals)
@@ -689,6 +686,36 @@ func coset_ifft_nn*[F](
 
   return FFT_Success
 
+
+func coset_fft_nr*[F](
+       desc: FrFFT_Descriptor[F],
+       output: var openarray[F],
+       vals: openarray[F],
+       cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+  ## Compute FFT over a coset of the roots of unity (natural to bit-reversed order).
+  ##
+  ## This is used for polynomial operations where we need to avoid
+  ## division by zero. By shifting the domain, polynomials that vanish
+  ## at certain points won't cause issues during division.
+  ##
+  ## Algorithm:
+  ##   1. Multiply vals[i] by shift_factor^i (shift into coset)
+  ##   2. Apply standard FFT (natural to bit-reversed order)
+  ##
+  ## Parameters:
+  ##   - desc: FFT descriptor with roots of unity
+  ##   - output: output array (must have same length as vals)
+  ##   - vals: input values in evaluation form
+  ##   - cosetShift, the coset shift
+  ##
+  ## Returns FFT_Success on success, error code otherwise
+  let n = vals.len
+  var shifted = allocHeapArrayAligned(F, n, alignment = 64)
+  shifted.toOpenArray(n).shift_vals(vals, cosetShift)
+
+  result = desc.fft_nr(output, shifted.toOpenArray(n))
+  freeHeapAligned(shifted)
+
 func coset_ifft_rn*[F](
        desc: FrFFT_Descriptor[F],
        output: var openarray[F],
@@ -701,9 +728,6 @@ func coset_ifft_rn*[F](
   ##   2. Apply standard IFFT (natural to natural)
   ##   3. Multiply result[i] by shift_factor⁻ⁱ (unshift from coset)
   ##
-  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
-  ## The coset IFFT algorithm is NOT in-place safe.
-  ##
   ## Parameters:
   ##   - desc: CosetFFT descriptor with roots of unity and shift factor
   ##   - output: output array (must have same length as vals)
@@ -711,12 +735,12 @@ func coset_ifft_rn*[F](
   ##   - cosetShift, the coset shift (which will be inverted)
   ##
   ## Returns FFT_Success on success, error code otherwise
-  checkSizesReturnEarly(desc, output, vals)
+  let status = desc.ifft_rn(output, vals)
+  if status != FFT_Success:
+    return status
 
-  let n = vals.len
-  var temp_buf = allocHeapArrayAligned(F, n, alignment = 64)
-  bit_reversal_permutation(temp_buf.toOpenArray(0, n-1), vals)
+  var inv_shift_factor {.noInit.}: F
+  inv_shift_factor.inv_vartime(cosetShift)
+  output.unshift_vals(output, inv_shift_factor)
 
-  let status = desc.coset_ifft_nn(output, temp_buf.toOpenArray(0, n-1), cosetShift)
-  freeHeapAligned(temp_buf)
-  return status
+  return FFT_Success

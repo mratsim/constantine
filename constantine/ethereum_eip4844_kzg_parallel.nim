@@ -396,7 +396,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
 
     # TODO: use parallel prefix product for parallel powers compute
     let linearIndepRandNumbers = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
-    linearIndepRandNumbers.computePowers(randomBlindingFr, n)
+    linearIndepRandNumbers.computePowers(randomBlindingFr, n, skipOne = true)
 
     type EcAffArray = ptr UncheckedArray[EC_ShortW_Aff[Fp[BLS12_381], G1]]
     let verif = tp.kzg_verify_batch_parallel(

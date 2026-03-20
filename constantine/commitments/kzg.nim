@@ -178,8 +178,27 @@ func kzg_commit*[N, bits: static int, Name: static Algebra; Ord](
        powers_of_tau: PolynomialEval[N, EC_ShortW_Aff[Fp[Name], G1], Ord],
        commitment: var EC_ShortW_Aff[Fp[Name], G1],
        poly: PolynomialEval[N, BigInt[bits], Ord]) {.tags:[Alloca, HeapAlloc, Vartime].} =
+  ## Compute KZG commitment to a polynomial in evaluation form (Lagrange basis).
+  ##
+  ## This is the standard Ethereum KZG commitment used in EIP-4844 blobs.
+  ## The polynomial is in evaluation form over the canonical domain.
   var commitmentJac {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
   commitmentJac.multiScalarMul_vartime(poly.evals, powers_of_tau.evals)
+  commitment.affine(commitmentJac)
+
+func kzg_commit*[N, bits: static int, Name: static Algebra](
+       powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
+       commitment: var EC_ShortW_Aff[Fp[Name], G1],
+       poly: PolynomialCoef[N, BigInt[bits]]) {.tags:[Alloca, HeapAlloc, Vartime].} =
+  ## Compute KZG commitment to a polynomial in coefficient form (monomial basis).
+  ##
+  ## The SRS (powers_of_tau) is in coefficient form [G, τG, τ²G, ...].
+  ## This is used for FK20 tests and other scenarios with coefficient form.
+  ##
+  ## IMPORTANT: Ethereum KZG protocol (EIP-4844) uses evaluation form (Lagrange basis)
+  ## for blobs with evaluation-form SRS.
+  var commitmentJac {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
+  commitmentJac.multiScalarMul_vartime(poly.coefs, powers_of_tau.coefs)
   commitment.affine(commitmentJac)
 
 func kzg_prove*[N: static int, Name: static Algebra; Ord](
@@ -255,6 +274,7 @@ func kzg_verify*[F2; Name: static Algebra](
   commitment_minus_eval_at_challenge_G1.scalarMul_vartime(eval_at_challenge)
   commitment_minus_eval_at_challenge_G1.diff(commitmentJac, commitment_minus_eval_at_challenge_G1)
 
+  # e([proof]₁, [τ]₂ - [opening_challenge]₂) * e([commitment]₁ - [eval_at_challenge]₁, [-1]₂)
   return pairing_check(
     proof, tau_minus_challenge_G2,
     commitment_minus_eval_at_challenge_G1, negG2)

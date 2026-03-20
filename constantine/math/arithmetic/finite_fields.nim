@@ -687,7 +687,7 @@ func pow_vartime*(r: var FF, a: FF, exponent: BigInt or openArray[byte] or FF) =
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a finite field element or big integer
   r = a
-  a.pow_vartime(exponent)
+  r.pow_vartime(exponent)
 
 # Small vartime exponentiation
 # -------------------------------------------------------------------
@@ -838,20 +838,29 @@ func computeSparsePowers_vartime*[Name](
     dst[i] = dst[i-1]
     dst[i].pow_vartime(sparsePowers[i]-sparsePowers[i-1])
 
-func computePowers*[Name](dst: ptr UncheckedArray[FF[Name]], base: FF[Name], len: int) =
+func computePowers*[Name](dst: ptr UncheckedArray[FF[Name]], base: FF[Name], len: int, skipOne: static bool = false) =
   ## We need linearly independent random numbers
   ## for batch proof sampling.
   ## Powers are linearly independent.
   ## It's also likely faster than calling a fast RNG + modular reduction
   ## to be in 0 < number < curve_order
   ## since modular reduction needs modular multiplication or a division anyway.
+  ##
+  ## IMPORTANT: Ensure powers from r¹ (not r⁰ == 1) for blinding.
   let N = len
-  if N >= 1:
-    dst[0].setOne()
-  if N >= 2:
-    dst[1] = base
-  for i in 2 ..< N:
-    dst[i].prod(dst[i-1], base)
+
+  when skipOne:
+    if N >= 1:
+      dst[0] = base
+    for i in 1 ..< N:
+      dst[i].prod(dst[i-1], base)
+  else:
+    if N >= 1:
+      dst[0].setOne()
+    if N >= 2:
+      dst[1] = base
+    for i in 2 ..< N:
+      dst[i].prod(dst[i-1], base)
 
 # ############################################################
 #
@@ -1064,3 +1073,11 @@ func `~^`*(a: FF, b: FF or BigInt or openArray[byte]): FF {.noInit, inline.} =
   ## and our types might be large (Fp12 ...)
   ## See: https://github.com/mratsim/constantine/issues/145
   result.pow_vartime(a, b)
+
+func `~^`*(a: FF, b: SomeUnsignedInt): FF {.noInit, inline.} =
+  ## Finite Field vartime exponentiation with small unsigned integer exponent
+  ##
+  ## Uses addition chains for exponents ≤ 16, otherwise square-and-multiply.
+  ## Out-of-place functions SHOULD NOT be used in performance-critical subroutines.
+  result = a
+  result.pow_vartime(b)

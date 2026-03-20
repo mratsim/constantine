@@ -202,6 +202,30 @@ func `-=`*(f: var PolynomialCoef, g: PolynomialCoef) =
   for i in 0 ..< f.coefs.len:
     f.coefs[i] -= g.coefs[i]
 
+func computeEvalsAtCoset*[L, R: static int, Name: static Algebra](
+       ys: var array[L, Fr[Name]],
+       poly: PolynomialCoef,
+       h: Fr[Name],
+       rootsOfUnity: PolyEvalRootsDomain[R, Fr[Name], kNaturalOrder]) =
+  ## Given polynomial p(X) and L coset points {hω⁰, hω¹, ..., hωᴸ⁻¹}:
+  ##
+  ## This computes evaluations: yⱼ = p(hωʲ) for j in 0..L-1
+  ## Output is in natural order.
+
+  static:
+    doAssert R > L, "The number of roots of unity must be bigger than the coset size"
+    doAssert L.isPowerOf2_vartime(), "Coset size L must be a power of 2"
+
+  let rootz = rootsOfUnity.rootsOfUnity
+                  .toStridedView()
+                  .slice(0, R-1, R shr log2_vartime(uint32 L))
+
+  # Todo: coset FFT for multi-eval?
+  for j in 0 ..< L:
+    var z {.noInit.}: Fr[Name]
+    z.prod(h, rootz[j])
+    evalPolyAt(ys[j], poly, z)
+
 # Polynomials in evaluation/Lagrange form
 # ------------------------------------------------------
 
@@ -623,7 +647,7 @@ func setupLinearEvaluationDomain*[N: static int, Field](
   lindom.dom.vanishing_deriv_poly_eval_inv.evals
     .batchInv_vartime(lindom.dom.vanishing_deriv_poly_eval.evals)
 
-func computeCoefPoly*[N: static int, Name: static Algebra](
+func lagrangeInterpolate*[N: static int, Name: static Algebra](
        dst: var PolynomialCoef[N, Fr[Name]],
        polynomial: PolynomialEval[N, Fr[Name], kBitReversed],
        fft_desc: FrFFT_Descriptor[Fr[Name]]) =

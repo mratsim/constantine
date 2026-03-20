@@ -628,11 +628,18 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_ethereum_eip2333_bls12381_key_derivation.nim", false),
   ("tests/t_ethereum_eip4844_deneb_kzg.nim", false),
   ("tests/t_ethereum_eip4844_deneb_kzg_parallel.nim", false),
+  ("tests/t_eth_eip7594_peerdas.nim", false),
   ("tests/t_ethereum_verkle_primitives.nim", false),
   ("tests/t_ethereum_verkle_ipa_primitives.nim", false),
 
+  # PeerDAS - low-level
+  # ----------------------------------------------------------
+  # ("tests/eth_eip7594_peerdas/t_cells_and_kzg_proofs_opt.nim", false),
+  # ("tests/eth_eip7594_peerdas/t_compute_cells_opt.nim", false),
+  # ("tests/eth_eip7594_peerdas/t_peerdas_recovery.nim", false),
+
   # Signatures
-  # NOTE: Requires OpenSSL version >=v3.3 for to Keccak256 support
+  # NOTE: Requires OpenSSL version >=v3.3 for Keccak256 support
   # ("tests/ecdsa/t_ecdsa_verify_openssl.nim", false),
 
   # Proof systems
@@ -727,8 +734,11 @@ const benchDesc = [
   "bench_gmp_modmul",
   "bench_eth_bls_signatures",
   "bench_eth_eip4844_kzg",
-  "bench_eth_evm_modexp_dos",
-  "bench_eth_eip2537_subgroup_checks_impact",
+  "bench_eth_eip7594_peerdas",
+  "eth_eip7594/perf_compute_cells",
+  "eth_eip7594/perf_compute_cells_and_kzg_proofs",
+  "eth_eip7594/perf_recover_cells_and_kzg_proofs",
+  "eth_eip7594/perf_verify_cell_kzg_proof_batch",
   "bench_verkle_primitives",
   "bench_eth_evm_precompiles",
   "bench_multilinear_extensions",
@@ -1184,10 +1194,31 @@ task bench_hash_to_curve, "Run Hash-to-Curve benchmarks":
 task bench_eth_bls_signatures, "Run Ethereum BLS signatures benchmarks - CC compiler":
   runBench("bench_eth_bls_signatures")
 
+
 # EIP 4844 - KZG Polynomial Commitments
 # ------------------------------------------
 task bench_eth_eip4844_kzg, "Run Ethereum EIP4844 KZG Polynomial commitment - CC compiler":
   runBench("bench_eth_eip4844_kzg")
+
+task bench_eth_eip7594_peerdas, "Run Ethereum EIP7594 PeerDAS (Data Availability Sampling) - CC compiler":
+  runBench("bench_eth_eip7594_peerdas")
+
+# EIP7594 PeerDAS - Individual perf benchmarks (for VTune/perf profiling)
+# ------------------------------------------
+task bench_eth_eip7594_generate_benchset, "Generate PeerDAS benchset.dat for perf benchmarks - CC compiler":
+  runBench("eth_eip7594/benchset_generation")
+
+task bench_eth_eip7594_perf_compute_cells, "Run PeerDAS compute_cells benchmark (serialized data) - CC compiler":
+  runBench("eth_eip7594/perf_compute_cells")
+
+task bench_eth_eip7594_perf_compute_cells_and_kzg_proofs, "Run PeerDAS compute_cells_and_kzg_proofs benchmark (FK20, serialized data) - CC compiler":
+  runBench("eth_eip7594/perf_compute_cells_and_kzg_proofs")
+
+task bench_eth_eip7594_perf_recover_cells_and_kzg_proofs, "Run PeerDAS recover_cells_and_kzg_proofs benchmark (serialized data) - CC compiler":
+  runBench("eth_eip7594/perf_recover_cells_and_kzg_proofs")
+
+task bench_eth_eip7594_perf_verify_cell_kzg_proof_batch, "Run PeerDAS verify_cell_kzg_proof_batch benchmark (64 blobs, serialized data) - CC compiler":
+  runBench("eth_eip7594/perf_verify_cell_kzg_proof_batch")
 
 task bench_verkle, "Run benchmarks for Banderwagon":
   runBench("bench_verkle_primitives")
@@ -1212,7 +1243,3 @@ task bench_fft_ec, "Run FFT / IFFT Benchmarks on Elliptic Curves (BLS12-381 G1) 
 
 task bench_fft_bit_reversal, "Run Bit-Reversal Permutation Benchmarks - CC compiler":
   runBench("bench_fft_bit_reversal")
-
-task bench_fft, "Run all FFT benchmarks (fields + EC)":
-  runBench("bench_fft_fields")
-  runBench("bench_fft_ec")

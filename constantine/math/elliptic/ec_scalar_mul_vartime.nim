@@ -262,11 +262,11 @@ func scalarMul_addchain_5bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarT
   of 30:
     var t {.noInit.}: EC
     t.double(P)                                        # t = [2]P
-    t ~+= P                                            # t = [1]P + [2]P = [3]P
-    t.double()                                         # t = [6]P
-    P.double(t)                                        # P = 2 * [6]P = [12]P
-    P.double()                                         # P = [24]P
-    P ~+= t                                            # P = [24]P + [6]P = [30]P
+    P.double(t)                                        # P = [4]P
+    P.double()                                         # P = [8]P
+    P.double()                                         # P = [16]P
+    P.double()                                         # P = [32]P
+    P ~-= t                                            # P = [32]P - [2]P = [30]P
   of 31:
     var t {.noInit.}: EC
     t.double(P)                                        # t = [2]P

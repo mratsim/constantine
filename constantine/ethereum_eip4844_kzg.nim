@@ -21,7 +21,9 @@ import
   ./serialization/[codecs_status_codes, codecs_bls12_381, endians],
   ./commitments_setups/ethereum_kzg_srs
 
-export trusted_setup_load, trusted_setup_delete, TrustedSetupFormat, TrustedSetupStatus, EthereumKZGContext
+export
+  trusted_setup_load, trusted_setup_delete, TrustedSetupFormat, TrustedSetupStatus, EthereumKZGContext,
+  FIELD_ELEMENTS_PER_BLOB
 
 ## ############################################################
 ##
@@ -48,23 +50,24 @@ import ./zoo_exports
 
 # Constants
 # ------------------------------------------------------------
-# Spec "ENDIANNESS" for deserialization is little-endian
-# https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#misc
+# Spec "ENDIANNESS" for deserialization is big-endian in v1.6.1
+#   https://github.com/ethereum/consensus-specs/blob/v1.6.1/specs/deneb/polynomial-commitments.md#constants
+# It used to be little-endian in v1.3.0 of the spec
+#   https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#misc
 
-const BYTES_PER_COMMITMENT = 48
-# const BYTES_PER_PROOF = 48
+const BYTES_PER_COMMITMENT* = 48
+const BYTES_PER_PROOF* = 48
 const BYTES_PER_FIELD_ELEMENT* = 32
 
 # Presets
 # ------------------------------------------------------------
 
-const FIELD_ELEMENTS_PER_BLOB* = 4096
 const FIAT_SHAMIR_PROTOCOL_DOMAIN = asBytes"FSBLOBVERIFY_V1_"
 const RANDOM_CHALLENGE_KZG_BATCH_DOMAIN = asBytes"RCKZGBATCH___V1_"
 
 # Derived
 # ------------------------------------------------------------
-const BYTES_PER_BLOB = BYTES_PER_FIELD_ELEMENT*FIELD_ELEMENTS_PER_BLOB
+const BYTES_PER_BLOB* = BYTES_PER_FIELD_ELEMENT*FIELD_ELEMENTS_PER_BLOB
 
 # Protocol Types
 # ------------------------------------------------------------
@@ -95,7 +98,7 @@ type
 # ------------------------------------------------------------
 # https://en.wikipedia.org/wiki/Fiat%E2%80%93Shamir_heuristic
 
-func fromDigest(dst: var Fr[BLS12_381], src: array[32, byte]) =
+func fromDigest*(dst: var Fr[BLS12_381], src: array[32, byte]) =
   ## Convert a SHA256 digest to an element in the scalar field Fr[BLS12-381]
   ## hash_to_bls_field: https://github.com/ethereum/consensus-specs/blob/v1.4.0-beta.1/specs/deneb/polynomial-commitments.md#hash_to_bls_field
   var scalar {.noInit.}: BigInt[256]
@@ -140,10 +143,24 @@ func fiatShamirChallenge(
   transcript.finish(opening_challenge)
   dst[].fromDigest(opening_challenge)
 
+func getBatchBlindingFactor*(
+       dst: var Fr[BLS12_381],
+       secureRandomBytes: array[32, byte]): bool =
+  ## Extract a blinding factor from secure random bytes.
+  ## Returns true if successful (non-zero bytes), false if all bytes are zero.
+  ##
+  ## TODO: If this returns false, compute challenge via Fiat-Shamir heuristic
+  ## by hashing all the batch inputs with domain separator.
+  for i in 0 ..< secureRandomBytes.len:
+    if secureRandomBytes[i] != byte 0:
+      dst.fromDigest(secureRandomBytes)
+      return true
+  return false
+
 # Conversion
 # ------------------------------------------------------------
 
-func bytes_to_bls_bigint(dst: var Fr[BLS12_381].getBigInt(), src: array[32, byte]): CttCodecScalarStatus =
+func bytes_to_bls_bigint(dst: var Fr[BLS12_381].getBigInt(), src: array[32, byte]): CttCodecScalarStatus {.inline.} =
   ## Convert untrusted bytes to a trusted and validated BLS scalar field element.
   ## This function does not accept inputs greater than the BLS modulus.
   let status = dst.deserialize_scalar(src)
@@ -151,7 +168,7 @@ func bytes_to_bls_bigint(dst: var Fr[BLS12_381].getBigInt(), src: array[32, byte
     return status
   return cttCodecScalar_Success
 
-func bytes_to_bls_field(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus =
+func bytes_to_bls_field*(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus {.inline.} =
   ## Convert untrusted bytes to a trusted and validated BLS scalar field element.
   ## This function does not accept inputs greater than the BLS modulus.
   var scalar {.noInit.}: Fr[BLS12_381].getBigInt()
@@ -161,7 +178,13 @@ func bytes_to_bls_field(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecS
   dst.fromBig(scalar)
   return cttCodecScalar_Success
 
-func bytes_to_kzg_commitment(dst: var KZGCommitment, src: array[48, byte]): CttCodecEccStatus =
+func bls_field_to_bytes*(dst: var array[32, byte], scalar: Fr[BLS12_381]): CttCodecScalarStatus {.inline.} =
+  ## Serialize a BLS scalar field element to bytes
+  ## Follows the spec: big-endian encoding
+  discard serialize_scalar(dst, scalar.toBig())
+  return cttCodecScalar_Success
+
+func bytes_to_kzg_commitment(dst: var KZGCommitment, src: array[48, byte]): CttCodecEccStatus {.inline.} =
   ## Convert untrusted bytes into a trusted and validated KZGCommitment.
   let status = dst.distinctBase().deserialize_g1_compressed(src)
   if status == cttCodecEcc_PointAtInfinity:
@@ -169,7 +192,7 @@ func bytes_to_kzg_commitment(dst: var KZGCommitment, src: array[48, byte]): CttC
     return cttCodecEcc_Success
   return status
 
-func bytes_to_kzg_proof(dst: var KZGProof, src: array[48, byte]): CttCodecEccStatus =
+func bytes_to_kzg_proof(dst: var KZGProof, src: array[48, byte]): CttCodecEccStatus {.inline.} =
   ## Convert untrusted bytes into a trusted and validated KZGProof.
   let status = dst.distinctBase().deserialize_g1_compressed(src)
   if status == cttCodecEcc_PointAtInfinity:
@@ -195,7 +218,7 @@ func blob_to_bigint_polynomial(
 
   return cttCodecScalar_Success
 
-func blob_to_field_polynomial(
+func blob_to_field_polynomial*(
        dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed],
        blob: Blob): CttCodecScalarStatus =
   ## Convert a blob to a polynomial in evaluation form
@@ -521,7 +544,7 @@ func verify_blob_kzg_proof_batch*(
       randomBlindingFr.fromDigest(blindingBytes)
 
     let linearIndepRandNumbers = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
-    linearIndepRandNumbers.computePowers(randomBlindingFr, n)
+    linearIndepRandNumbers.computePowers(randomBlindingFr, n, skipOne = true)
 
     type EcAffArray = ptr UncheckedArray[EC_ShortW_Aff[Fp[BLS12_381], G1]]
     let verif = kzg_verify_batch(
