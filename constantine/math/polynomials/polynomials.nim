@@ -597,9 +597,9 @@ func setupLinearEvaluationDomain*[N: static int, Field](
   lindom.dom.vanishing_deriv_poly_eval_inv.evals
     .batchInv_vartime(lindom.dom.vanishing_deriv_poly_eval.evals)
 
-func computeCoefPoly*[N: static int, Name: static Algebra, Ord](
+func computeCoefPoly*[N: static int, Name: static Algebra](
        dst: var PolynomialCoef[N, Fr[Name]],
-       polynomial: PolynomialEval[N, Fr[Name], Ord],
+       polynomial: PolynomialEval[N, Fr[Name], kBitReversed],
        fft_desc: AnyFFT_Descriptor[Fr[Name]]) =
   ## Convert polynomial from evaluation form to coefficient form.
   ## Input:
