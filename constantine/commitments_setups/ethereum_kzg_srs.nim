@@ -13,7 +13,8 @@ import
   ../platforms/[allocs, bithacks, fileio, views],
   ../serialization/[codecs, codecs_status_codes, codecs_bls12_381],
   ../math/polynomials/[polynomials, fft],
-  ../math/io/io_fields
+  ../math/io/io_fields,
+  ../commitments/kzg_multiproofs
 
 # Ensure all exceptions are converted to error codes
 {.push raises: [], checks: off.}
@@ -195,12 +196,22 @@ type
     # Important: for Ethereum, roots of unity are used in bit-reversed order
 
     ecfft_desc_ext*{.align: 64.}: ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]]
-    fft_desc_ext*{.align: 64.}: CosetFFT_Descriptor[Fr[BLS12_381]]
+    fft_desc_ext*{.align: 64.}: FrFFT_Descriptor[Fr[BLS12_381]]
     # FFT descriptors are precomputed
     # They hold rootsOfUnity stored in natural order.
     #
     # The extended domain roots are stored in fft_desc_ext.rootsOfUnity
     # and can be accessed when needed (e.g., in recover functions).
+
+    polyphaseSpectrumBank*{.align: 64.}: array[FIELD_ELEMENTS_PER_CELL, array[CELLS_PER_EXT_BLOB, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
+    # Precomputed polyphase decomposition of the SRS in the Fourier domain.
+    #
+    # This is computed once during trusted setup and reused for all KZG multiproofs.
+    # Size: L × CDS = 64 × 128 = 8192 EC points in Jacobian form
+    #
+    # References:
+    #   - FK23 Paper (Feist-Khovratovich 2023), Proposition 4: https://eprint.iacr.org/2023/033
+    #   - DSP: the SRS is seen as an input signal that undergoes multirate DSP
 
   TrustedSetupStatus* = enum
     tsSuccess
@@ -319,15 +330,14 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
     )
 
     # Domain: FIELD_ELEMENTS_PER_EXT_BLOB (8192) roots of unity
-    # Use CosetFFT_Descriptor with coset shift for PeerDAS recovery
-    # Coset shift = 5 (same as c-kzg-4844 and Ethereum spec, should we use 7?)
-    # Note: When using fft_nr with a CosetFFT_Descriptor, the shift is NOT applied (intentional).
-    # This allows us to use fft_desc_ext for both coset FFTs and regular FFTs.
-    ctx.fft_desc_ext = CosetFFT_Descriptor[Fr[BLS12_381]].new(
+    ctx.fft_desc_ext = FrFFT_Descriptor[Fr[BLS12_381]].new(
       order = FIELD_ELEMENTS_PER_EXT_BLOB,
-      generatorRootOfUnity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_EXT_BLOB),
-      shift = Fr[BLS12_381].fromUint(uint 5)
+      generatorRootOfUnity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_EXT_BLOB)
     )
+
+  block:
+
+    computePolyphaseDecompositionFourier(ctx.polyphaseSpectrumBank, ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
 
   block:
     # Powers of tau: [G, [τ]G, [τ²]G, ... [τ⁴⁰⁹⁶]G]

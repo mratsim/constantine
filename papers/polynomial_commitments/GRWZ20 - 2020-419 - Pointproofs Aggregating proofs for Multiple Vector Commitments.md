@@ -1,5 +1,8 @@
-source: https://aistudio.baidu.com/paddleocr/task/file/t-109dcec104b4
-TODO: images
+---
+title: Pointproofs - Aggregating Proofs for Multiple Vector Commitments
+source: https://eprint.iacr.org/2020/419
+author: Sergey Gorbunov, Leonid Reyzin, Hoeteck Wee, Zhenfei Zhang
+date: 2020
 ---
 
 # Pointproofs: Aggregating Proofs for Multiple Vector Commitments
@@ -582,7 +585,7 @@ Using Pointproofs in smart contracts. We can use Pointproofs to reduce validator
 
 • Each validator stores  $ (P_a, C_a) $ instead of  $ (P_a, m_a) $. Here we assume the predicate  $ P_a $ is small and can be stored on-chain or hardcoded in the blockchain platform and called by “reference”. (Alternatively, it may be included in the memory of the account  $ m_a $.)
 
-<div style="text-align: center;"><img src="https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//fa1ba7d4-b684-4990-bad2-45dd4165ee8a/markdown_4/imgs/img_in_image_box_402_144_820_579.jpg?authorization=bce-auth-v1%2FALTAKzReLNvew3ySINYJ0fuAMN%2F2026-04-05T16%3A11%3A06Z%2F-1%2F%2F6b1d07f1fc30ab00440296e1fe56b51cdc09a79e7c008d4d1b1d1bea2da8511b" alt="Image" width="34%" /></div>
+<div style="text-align: center;"><img src="images/GRWZ20 - Fig 1 - Comparison of subvector commitments.jpg" alt="Image" width="34%" /></div>
 
 
 <div style="text-align: center;"><div style="text-align: center;">Figure 1: Using Pointproofs for smart-contract-based transactions  $ tx_{a} $</div> </div>
@@ -642,25 +645,25 @@ Bandwidth. Figure 2 measures block bandwidth overheads for stateless blockchain 
 
 Pointproofs result in the smallest overheads since  $ \ell $ proofs across transactions can be aggregated into a single proof.
 
-<div style="text-align: center;"><img src="https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//24e4b446-86de-47ba-bb09-1167e25fbb00/markdown_1/imgs/img_in_chart_box_141_852_347_1056.jpg?authorization=bce-auth-v1%2FALTAKzReLNvew3ySINYJ0fuAMN%2F2026-04-05T16%3A11%3A03Z%2F-1%2F%2F23c04195843c5e7eea7dce7e64df3a0c3bb61c00bd581bc9559bdc68d6fa11ae" alt="Image" width="16%" /></div>
+<div style="text-align: center;"><img src="images/GRWZ20 - Table 2 - Concrete efficiency.jpg" alt="Image" width="16%" /></div>
 
 
 <div style="text-align: center;"><div style="text-align: center;">1000 Txs</div> </div>
 
 
-<div style="text-align: center;"><img src="https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//24e4b446-86de-47ba-bb09-1167e25fbb00/markdown_1/imgs/img_in_chart_box_390_851_580_1056.jpg?authorization=bce-auth-v1%2FALTAKzReLNvew3ySINYJ0fuAMN%2F2026-04-05T16%3A11%3A03Z%2F-1%2F%2Fbca25ad7d251830efb35d387f6d96ea354fd85d8546a1090ab90e08a69684428" alt="Image" width="15%" /></div>
+<div style="text-align: center;"><img src="images/GRWZ20 - Table 3 - Concrete parameters.jpg" alt="Image" width="15%" /></div>
 
 
 <div style="text-align: center;"><div style="text-align: center;">2000 Txs</div> </div>
 
 
-<div style="text-align: center;"><img src="https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//24e4b446-86de-47ba-bb09-1167e25fbb00/markdown_1/imgs/img_in_chart_box_639_852_831_1056.jpg?authorization=bce-auth-v1%2FALTAKzReLNvew3ySINYJ0fuAMN%2F2026-04-05T16%3A11%3A04Z%2F-1%2F%2Fe7deee61655930c35670222123eabab8f8876543cfdd560decfffc29b09f1541" alt="Image" width="15%" /></div>
+<div style="text-align: center;"><img src="images/GRWZ20 - Table 4 - Proof sizes.jpg" alt="Image" width="15%" /></div>
 
 
 <div style="text-align: center;"><div style="text-align: center;">3000 Txs</div> </div>
 
 
-<div style="text-align: center;"><img src="https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//24e4b446-86de-47ba-bb09-1167e25fbb00/markdown_1/imgs/img_in_chart_box_889_850_1078_1055.jpg?authorization=bce-auth-v1%2FALTAKzReLNvew3ySINYJ0fuAMN%2F2026-04-05T16%3A11%3A04Z%2F-1%2F%2Fbd17901ef2437d72398bfaf95ad682fbb4dd0d3ded9dfad5e7044a28ad67f19a" alt="Image" width="15%" /></div>
+<div style="text-align: center;"><img src="images/GRWZ20 - Table 5 - Updates.jpg" alt="Image" width="15%" /></div>
 
 
 <div style="text-align: center;"><div style="text-align: center;">4000 Txs</div> </div>
@@ -671,13 +674,13 @@ Pointproofs result in the smallest overheads since  $ \ell $ proofs across trans
 
 Computation. We now turn our attention to running times (as already mentioned, more recent implementations of the underlying algebra, such as [SL20], will likely provide a noticeable speed-up).
 
-<div style="text-align: center;"><img src="https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//24e4b446-86de-47ba-bb09-1167e25fbb00/markdown_2/imgs/img_in_chart_box_153_145_556_464.jpg?authorization=bce-auth-v1%2FALTAKzReLNvew3ySINYJ0fuAMN%2F2026-04-05T16%3A11%3A05Z%2F-1%2F%2Ffca1d13a93fcae15ee27644d21b1f18a5a02c5ed41a8540653bb1bff59a9172f" alt="Image" width="32%" /></div>
+<div style="text-align: center;"><img src="images/GRWZ20 - Fig 2 - Smart contract storage.jpg" alt="Image" width="32%" /></div>
 
 
 <div style="text-align: center;"><div style="text-align: center;">Figure 3: Total runtime for proving (separately followed by aggregation, or all at once) and verification algorithms with respect to a single commitment for various sizes of S. The runtime of the first and last algorithms grows roughly linearly with  $ |S| $, while for all-at-once proving it does not grow much.</div> </div>
 
 
-<div style="text-align: center;"><img src="https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//24e4b446-86de-47ba-bb09-1167e25fbb00/markdown_2/imgs/img_in_chart_box_706_145_1025_467.jpg?authorization=bce-auth-v1%2FALTAKzReLNvew3ySINYJ0fuAMN%2F2026-04-05T16%3A11%3A05Z%2F-1%2F%2Fdfcdd2eac6cbe32114f1f0cc05816c2f0d3416346cbb96b207a52f7ec1fec62d" alt="Image" width="26%" /></div>
+<div style="text-align: center;"><img src="images/GRWZ20 - Fig 3 - Bandwidth savings.jpg" alt="Image" width="26%" /></div>
 
 
 <div style="text-align: center;"><div style="text-align: center;">Figure 4: Total runtime of cross-commitment aggregation AggregateAcross and Verify algorithms for the various number of commitments  $ \ell $ (= # transactions in a block). The plots for AggregateAcross function for  $ |S| = 1 $ and  $ |S| = 8 $ overlap since its runtime is independent of the size of S.</div> </div>

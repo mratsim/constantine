@@ -18,8 +18,12 @@ import
   constantine/math/matrix/toeplitz,
   constantine/math/pairings/pairings_generic,
   constantine/math/io/io_bigints,
+  constantine/math/io/io_ec,
   constantine/platforms/[abstractions, allocs, bithacks, views, primitives],
   constantine/serialization/[codecs, codecs_bls12_381]
+
+
+# TODO: consistent indices i, j, k, c, b across all implementation and prover/verifier
 
 # #############################################################
 #                                                             #
@@ -142,18 +146,16 @@ func kzg_coset_verify*[L: static int, Name: static Algebra](
   ## Verify a KZG commitment to a polynomial p(X)
   ## at L evaluation points forming a coset
   ##
-  ## Given:
+  ## With:
   ##   - commitment C = [p(τ)]₁
   ##   - proof π = [q(τ)]₁ = [(p(τ)-I(τ))/Z(τ)]₁
   ##     with I(X) the Lagrange interpolation polynomial on the evaluation coset.
   ##     and Z(X) the vanishing polynomial on that coset
   ##   - ys: evaluation of p(X) at a coset
-  ##         in natural order [p(h·ω⁰), p(h·ω¹), ..., p(h·ωᴸ⁻¹)]
+  ##         in bit-reversed order
   ##   - h: coset representative (e.g., ωⁱ for i-th cell)
   ##   - powers of tau on G: [1]₂, [τ]₂, [τ²]₂, ..., [τᴸ]₂
   ##   - [τᴸ]₂
-  ##
-  ## Verify that C is a commitment to p(X)
   ##
   ## Verification equation:
   ##   e(commitment - [I(τ)]₁, [1]₂) = e(proof, [Z(τ)]₂)
@@ -171,10 +173,13 @@ func kzg_coset_verify*[L: static int, Name: static Algebra](
     hL_G2 {.noInit.}: EC_ShortW_Jac[Fp2[Name], G2]
     zTau {.noInit.}: EC_ShortW_Jac[Fp2[Name], G2]
     negG2 {.noInit.}: EC_ShortW_Aff[Fp2[Name], G2]
+    ys_nat {.noInit.}: array[L, Fr[Name]]
 
   # Step 1: Interpolate ys at roots of unity using coset IFFT
   #         The shift is needed to unshift from coset points back to coefficients
-  let status = domain.coset_ifft_rn(interpoly.coefs, ys, cosetShift)
+  # TODO: the rn is coset_ifft_rn applied on something in natural order is confusing
+  ys_nat.bit_reversal_permutation(ys)
+  let status = domain.coset_ifft_rn(interpoly.coefs, ys_nat, cosetShift)
   if status != FFT_Success:
     return false
 
@@ -224,12 +229,41 @@ func kzg_coset_verify*[L: static int, Name: static Algebra](
 #   N/L = CELLS_PER_BLOB, 64 blobs with each 64 cells
 #   CDS = 128
 
-func getTauExtFft[N, CDS: static int, Name: static Algebra](
-       tauExtFft: var array[CDS, EC_ShortW_Jac[Fp[Name], G1]],
+func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static Algebra](
+       polyphaseSpectrum: var array[CDS, EC_ShortW_Jac[Fp[Name], G1]],
        powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
        ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
        offset: int = 0) {.tags:[Alloca, HeapAlloc, Vartime].} =
-  ## Convert powers_of_tau (SRS coefficients) to tauExtFft (FFT of kernel sequence).
+  ## Compute FFT of one polyphase component of the SRS (Toeplitz input spectrum).
+  ##
+  ## DSP Terminology (Crypto ↔ Signal Processing Mapping)
+  ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ##
+  ## This function implements polyphase decomposition followed by FFT:
+  ##
+  ##   Crypto Name          DSP Equivalent              Mathematical Object
+  ##   ─────────────────────────────────────────────────────────────────────
+  ##   powers_of_tau        Input signal x[n]          [s^n] basis elements
+  ##   offset i             Polyphase phase index      decimation by L
+  ##   strided extraction   Polyphase component x_i[m] x[m·L + i]
+  ##   polyphaseSpectrum    Input spectrum X_i(ω)      FFT of polyphase component
+  ##   CDS                  FFT size / block length    circulant embedding size
+  ##
+  ## Algorithm (FK23 Proposition 4, Step 1 - Polyphase Decomposition)
+  ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ##
+  ## This implements Step 1 of Proposition 4's algorithm for multiproofs:
+  ##   1. Extract polyphase component: ŝ_i = {[s^{d-L-1-i}], [s^{d-2L-1-i}], ...} (stride L)
+  ##   2. Zero-pad to size CDS (circulant embedding for Toeplitz multiplication)
+  ##   3. Compute FFT → ŷ_i = DFT(ŝ_i) (frequency-domain representation)
+  ##
+  ## The complete Proposition 4 algorithm computes v = Σ_{i<L} Toeplitz_i · ŝ_i by:
+  ##   - Computing ŷ_i = DFT(ŝ_i) for each phase i (this function, L times)
+  ##   - Computing ŵ_i = DFT(ĉ_i) for polynomial coefficient phases
+  ##   - Summing Hadamard products: û = Σ_{i<L} ŵ_i ⊙ ŷ_i
+  ##   - Inverse FFT: v = iDFT(û)
+  ##
+  ## The result is one column of the polyphase filter bank (setup spectrum for phase i).
   ##
   ## For EIP-7594 PeerDAS:
   ##   N = FIELD_ELEMENTS_PER_BLOB = 4096
@@ -238,10 +272,16 @@ func getTauExtFft[N, CDS: static int, Name: static Algebra](
   ##
   ## Uses stride to handle smaller sizes from a larger descriptor (e.g., 8192 descriptor for 128-size FFT).
   ##
-  ## @param tauExtFft: Output array for FFT of kernel sequence (length CDS)
+  ## @param polyphaseSpectrum: Output array for FFT of polyphase component (length CDS)
   ## @param powers_of_tau: SRS in coefficient form [G, τG, τ²G, ...] (affine, length N)
   ## @param ecfft_desc: Precomputed EC FFT descriptor (order >= CDS, uses stride)
-  ## @param offset: Offset for kernel extraction (default 0, range 0..L-1)
+  ## @param offset: Polyphase phase index (default 0, range 0..L-1)
+  ##
+  ## References:
+  ##   - FK23 Paper (Feist-Khovratovich 2023), Proposition 4, Step 1: https://eprint.iacr.org/2023/033
+  ##     "The coefficients v can be computed using 2r log 2r scalar multiplications"
+  ##   - DSP: Polyphase decomposition + circulant embedding FFT
+  ##   - Toeplitz matrix-vector multiplication: http://www.netlib.org/utk/people/JackDongarra/etemplates/node384.html
 
   const CDSdiv2 = CDS shr 1
   const L = N div CDSdiv2
@@ -250,34 +290,54 @@ func getTauExtFft[N, CDS: static int, Name: static Algebra](
     doAssert CDS.isPowerOf2_vartime(), "CDS must be a power of two"
   doAssert ecfft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
 
-  let kernelSeq = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
+  let polyphaseComponent = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
 
-  # Extract kernel with stride L and given offset (convert affine to projective for FFT)
+  # Extract polyphase component with stride L and given offset (convert affine to projective for FFT)
+  # This is the polyphase decomposition: x_i[m] = x[m·L + offset] with reversal
   let start = if N >= L + 1 + offset: N - L - 1 - offset else: 0
   var j = start
   for i in 0 ..< CDSdiv2 - 1:
-    kernelSeq[i].fromAffine(powers_of_tau.coefs[j])
+    polyphaseComponent[i].fromAffine(powers_of_tau.coefs[j])
     j -= L
-  kernelSeq[CDSdiv2 - 1].setNeutral()
+  polyphaseComponent[CDSdiv2 - 1].setNeutral()
   for j in CDSdiv2 ..< CDS:
-    kernelSeq[j].setNeutral()
+    polyphaseComponent[j].setNeutral()
 
-  # FFT the kernel to get tauExtFft
-  let status = ec_fft_nr(ecFftDesc, tauExtFft, kernelSeq.toOpenArray(CDS))
+  # FFT the polyphase component to get its spectrum (frequency-domain representation)
+  let status = ec_fft_nr(ecFftDesc, polyphaseSpectrum, polyphaseComponent.toOpenArray(CDS))
   if status != FFT_Success:
-    freeHeapAligned(kernelSeq)
+    freeHeapAligned(polyphaseComponent)
     return
 
-  freeHeapAligned(kernelSeq)
+  freeHeapAligned(polyphaseComponent)
 
-func getTauExtFftArray*[N, L, CDS: static int, Name: static Algebra](
-       tauExtFftArray: var array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]],
+func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static Algebra](
+       polyphaseSpectrumBank: var array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]],
        powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
        ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]]) {.tags:[Alloca, HeapAlloc, Vartime].} =
-  ## Compute tauExtFft for all L offsets.
+  ## Compute polyphase decomposition Fourier transform for all L phases (complete polyphase filter bank).
   ##
-  ## This is the complete FK20 preprocessing phase. It computes the FFT of
-  ## the kernel sequence for each offset in 0..L-1.
+  ## DSP Terminology (Crypto ↔ Signal Processing Mapping)
+  ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ##
+  ## This is the complete FK20 preprocessing phase that builds a polyphase filter bank:
+  ##
+  ##   Crypto Name               DSP Equivalent                    Mathematical Object
+  ##   ─────────────────────────────────────────────────────────────────────────────────
+  ##   polyphaseSpectrumBank     Polyphase spectrum bank      {X_i(ω)} for i in 0..L-1
+  ##   L                         Number of phases             decimation factor
+  ##   CDS                       FFT size per phase           circulant embedding size
+  ##   powers_of_tau             Input signal (SRS)           x[n] = [s^n]
+  ##
+  ## Algorithm Overview
+  ## ~~~~~~~~~~~~~~~~~~
+  ##
+  ## For each phase (offset) i in 0..L-1:
+  ##   1. Extract polyphase component (stride L, offset i)
+  ##   2. Compute FFT → one column of polyphaseSpectrumBank
+  ##
+  ## The result is a bank of L precomputed spectra used for fast Toeplitz matrix-vector
+  ## multiplication. This corresponds to the "analysis filter bank" in multirate DSP.
   ##
   ## For EIP-7594 PeerDAS:
   ##   N = FIELD_ELEMENTS_PER_BLOB = 4096
@@ -290,27 +350,42 @@ func getTauExtFftArray*[N, L, CDS: static int, Name: static Algebra](
   ##
   ## The result can be cached and reused for multiple polynomials.
   ##
-  ## @param tauExtFftArray: Output array[L][CDS] for FFT of kernel sequences
+  ## @param polyphaseSpectrumBank: Output array[L][CDS] - bank of polyphase spectra
   ## @param powers_of_tau: SRS in coefficient form [G, τG, τ²G, ..., τⁿ⁻¹G] (affine, length N)
   ## @param ecfft_desc: Precomputed EC FFT descriptor (order >= CDS, uses stride)
   ##
-  ## @see getTauExtFft for computing a single offset
+  ## @see computePolyphaseDecompositionFourierOffset for computing a single phase
+  ##
+  ## References:
+  ##   - FK23 Paper (Feist-Khovratovich 2023), Proposition 4: https://eprint.iacr.org/2023/033
+  ##   - DSP: Polyphase filter banks, multirate signal processing
+  ##   - Toeplitz multiplication: http://www.netlib.org/utk/people/JackDongarra/etemplates/node384.html
   static: doAssert CDS * L == 2 * N
   doAssert ecfft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
 
   for offset in 0 ..< L:
-    getTauExtFft(tauExtFftArray[offset], powers_of_tau, ecfft_desc, offset)
+    computePolyphaseDecompositionFourierOffset(polyphaseSpectrumBank[offset], powers_of_tau, ecfft_desc, offset)
 
 func kzg_coset_prove*[N, L, CDS: static int, Name: static Algebra](
-       tauExtFftArray: array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]],
        proofs: var array[CDS, EC_ShortW_Aff[Fp[Name], G1]],
        poly: PolynomialCoef[N, Fr[Name]],
        fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
-       ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]]) {.tags:[Alloca, HeapAlloc, Vartime].} =
+       ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
+       polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]]
+      ) {.tags:[Alloca, HeapAlloc, Vartime].} =
   ## Compute KZG multi-proofs for EIP-7594 cell proofs using FK20 algorithm.
   ##
   ## This implements the FK20 amortized KZG proofs from c-kzg-4844.
   ## Uses Toeplitz matrix-vector multiplication with FFT for O(n log n) performance.
+  ##
+  ## DSP Terminology (Crypto ↔ Signal Processing Mapping)
+  ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ##
+  ##   Crypto Name               DSP Equivalent                    Role
+  ##   ─────────────────────────────────────────────────────────────────────────
+  ##   polyphaseSpectrumBank     Polyphase filter bank          Precomputed input spectra
+  ##   poly                      Filter coefficients            Toeplitz kernel f_i
+  ##   proofs                    Output evaluations             Convolution result
   ##
   ## For EIP-7594 PeerDAS:
   ##   N = FIELD_ELEMENTS_PER_BLOB = 4096 (polynomial size)
@@ -331,7 +406,7 @@ func kzg_coset_prove*[N, L, CDS: static int, Name: static Algebra](
   ##   - If L == 1 (single evaluation per coset): Use regular `kzg_verify`
   ##   - If L > 1 (multiple evaluations per coset): Use `kzg_coset_verify`
   ##
-  ## @param tauExtFft: Precomputed FFT of kernel sequence (length CDS)
+  ## @param polyphaseSpectrumBank: Precomputed polyphase spectra bank (L × CDS)
   ## @param proofs: Output array for CDS proofs (affine form)
   ## @param poly: Polynomial to prove (length N, coefficient/monomial form)
   ## @param fr_fft_desc: Precomputed Fr FFT descriptor (order >= CDS, uses stride)
@@ -360,7 +435,7 @@ func kzg_coset_prove*[N, L, CDS: static int, Name: static Algebra](
     let status = toeplitzMatVecMulPreFFT(
       u.toOpenArray(CDS),
       circulant.toOpenArray(CDS),
-      tauExtFftArray[offset],
+      polyphaseSpectrumBank[offset],
       fr_fft_desc,
       ec_fft_desc,
       accumulate = (offset > 0)
@@ -392,178 +467,249 @@ func kzg_coset_prove*[N, L, CDS: static int, Name: static Algebra](
 
 # ############################################################
 #
-#    EIP-7594 - Cell KZG Proof Batch Verification
+#  Multi-multi-proof batch verification for coset multiproofs
 #
 # ############################################################
+#
 # Universal verification equation from KDF22 (Kadianakis, Dietrichs, Feist):
 # https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
 #
-# e(∑ₖ rᵏ πₖ, [sᴰ]₂) = e(∑ᵢ(∑ₖ∈rowᵢ rᵏ)Cᵢ - [∑ₖ rᵏ Iₖ(s)] + ∑ₖ rᵏ hₖᴰπₖ, [1]₂)
+#     e(∑ₖrᵏ·πₖ, [τᴸ]₂) = e(∑ᵢ(∑ₖ∈rowᵢ rᵏ)·Cᵢ - [∑ₖrᵏIₖ(τ)]₁ + ∑ₖrᵏhₖᴸ·πₖ, [1]₂)
 #
-# Security: Randomizers prevent rogue key attacks (Bernstein 2012)
-# https://cr.yp.to/badbatch/badbatch-20120919.pdf (Section 3.2)
+# with
+#   k iterating over the samples being verified
+#   i iterating over rows of size the number of blobs B
+#   r a random number not under the control of a potentially malicious prover
+#     see https://cr.yp.to/badbatch/badbatch-20120919.pdf (Section 3.2)
+#     on the use of randomizers to prevent rogue key attacks.
+#     and analogue in BLS aggregate signatures: https://ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407/14
+#
+# Note: the Ethereum polynomial sampling spec notation
+#
+#   e(∑ₖrᵏ·πₖ, [τᴸ]₂) = e(∑ᵢ(∑ₖ∈rowᵢ rᵏ)·Cᵢ - [∑ₖrᵏIₖ(τ)]₁ + ∑ₖrᵏhₖᴸ·πₖ, [1]₂)
+#           e(LL, LR) = e(RLC - RLI + RLP, [1]₂)
+# seems to refer to Left-Left, Left-Right, Right-Left-Commitments/Interpolations/Proofs
+#
+# PeerDAS Layout: https://notes.ethereum.org/@dankrad/danksharding_encoding
+#
+# Protocol-wise PeerDAS is using 2D KZG with a matrix organization
+#
+#           S₀ͺ₀   S₁ͺ₀   S₂ͺ₀    …  S꜀ͺ₀   …  Sₙ/ℓ₋₁ͺ₀
+#           S₀ͺ₁   S₁ͺ₁   S₂ͺ₁    …  S꜀ͺ₁   …  Sₙ/ℓ₋₁ͺ₁
+#           S₀ͺ₂   S₁ͺ₂   S₂ͺ₂    …  S꜀ͺ₂   …  Sₙ/ℓ₋₁ͺ₂
+#             ⋮      ⋮      ⋮     ⋱    ⋮    ⋱    ⋮
+#           S₀ͺᵢ   S₁ͺᵢ   S₂ͺᵢ    ⋱  S꜀ͺᵢ   ⋱  Sₙ/ℓ₋₁ͺͺᵢ
+#             ⋮      ⋮      ⋮     ⋱    ⋮    ⋱    ⋮
+#           S₀ͺ𞁓₋₁ S₁ͺ𞁓₋₁ S₂ͺ𞁓₋₁  …  S꜀ͺ𞁓₋₁ …  Sₙ/ℓ₋₁ͺ𞁓₋₁
+#
+# Each row represents a polynomial being committed to
+# Each sample/cell Sₖͺᵢ corresponds to L evaluations of that polynomial over a coset.
+# i.e. each sample commits to a subset of the full row polynomial.
 
-func computeCommitmentToAggregatedInterpolationPoly*[Name: static Algebra, CosetSize: static int](
-       commitment: var EC_ShortW_Aff[Fp[Name], G1],
-       rPowers: ptr UncheckedArray[Fr[Name]],
-       cellIndices: ptr UncheckedArray[uint64],
-       cosetsEvals: ptr UncheckedArray[array[CosetSize, Fr[Name]]],
-       numCells: int,
-       omegaD: Fr[Name],  # D-th root of unity (precomputed)
-       rootsOfUnity: ptr UncheckedArray[Fr[Name]],  # Bit-reversed, length = CELLS_PER_EXT_BLOB * D + 1
-       rootsOfUnityLen: int,  # Length of rootsOfUnity array
-       srs_monomial_g1: ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]]): void {.tags:[Alloca, HeapAlloc, Vartime].} =
-  ## Compute RLI = [∑ₖ rᵏ Iₖ(s)]
-  ## Follows c-kzg-4844:eip7594.c:592-748
+func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
+      interpoly: var PolynomialCoef[L, Fr[Name]],
+      evals: openArray[array[L, Fr[Name]]],
+      evalsCols: openArray[int],
+      domain: FrFFT_Descriptor[Fr[Name]],
+      linearIndepRandNumbers: openArray[Fr[Name]],
+      N: static int) =
+  ## Compute ∑ₖrᵏIₖ(X)
+  ##
+  ## Input is a "sparse bunch of evals" and their corresponding column.
+  ## The row (blob) ID they come from is unnecessary as we commit
+  ## to a polynomial (i.e. evaluations and evaluation domain, so the coset)
+  ## and not metadata.
+  ##
+  ## The per-coset evaluations are expected in bit-reversed order
+  ##
+  ## N is the number of field elements per column
+  static:
+    doAssert N.isPowerOf2_vartime()
+    doAssert L.isPowerOf2_vartime()
 
-  const D = CosetSize
-  const CELLS_PER_EXT_BLOB = 128
+  debug:
+    doAssert evals.len == evalsCols.len
+    doAssert linearIndepRandNumbers.len >= evalsCols.len
 
-  # Step 1: Aggregate cells from same column (scale by r^k)
-  var aggregatedColumns = newSeq[array[D, Fr[Name]]](CELLS_PER_EXT_BLOB)
-  for k in 0 ..< numCells:
-    let colIdx = cellIndices[k].int
-    if aggregatedColumns[colIdx].len == 0:
-      for j in 0 ..< D: aggregatedColumns[colIdx][j].setZero()
-    for j in 0 ..< D:
-      var scaled: Fr[Name]
-      scaled.prod(rPowers[k], cosetsEvals[k][j])
-      aggregatedColumns[colIdx][j].sum(aggregatedColumns[colIdx][j], scaled)
+  const NumCols = N div L
+  const logNumCols = log2_vartime(uint32(NumCols))
 
-  # Step 2: Compute sum of interpolation polynomials
-  var sumInterpPolys = newSeq[Fr[Name]](D)
-  for j in 0 ..< D: sumInterpPolys[j].setZero()
+  # 1. Aggregate polynomials evaluated on the same coset (columns)
+  #    in Lagrange basis to bound the number of iFFT by N/L
+  # We scale each column by a random number not in control of a potentially malicious prover.
+  # The numbers themselves don't matter as long as they are linearly independent.
+  # and the scaling is consistently applied in all subfunctions of the verification routine.
+  # Using the powers of a source `r` crypto secure random number is a convenient solution.
 
-  for colIdx in 0 ..< CELLS_PER_EXT_BLOB:
-    if aggregatedColumns[colIdx].len == 0: continue
+  # agg_cols and agg_cols_used are already zeroed / initialized to false
+  # We assume the neutral element is zero (additive notation) so we use raw zeroMem.
+  let agg_cols = alloc0HeapArrayAligned(array[L, Fr[Name]], NumCols, alignment = 64)
+  let agg_cols_used = alloc0HeapArrayAligned(bool, NumCols, alignment = 64)
 
-    # Skip empty columns
-    var isEmpty = true
-    for j in 0 ..< D:
-      if not bool(aggregatedColumns[colIdx][j].isZero()):
-        isEmpty = false
-        break
-    if isEmpty: continue
+  for k in 0 ..< evalsCols.len:
+    let col = evalsCols[k]
+    for j in 0 ..< L:
+      var scaled {.noInit.}: Fr[Name]
+      scaled.prod(linearIndepRandNumbers[k], evals[k][j])
+      agg_cols[col][j] += scaled
+      agg_cols_used[col] = true
 
-    # Get coset shift h_k = ω^(reverseBits(colIdx, 7) * D)
-    let colIdxRbl = reverseBits(uint32(colIdx), 7u32)
-    let h_k = rootsOfUnity[(uint64(colIdxRbl) * uint64(D)) mod uint64(rootsOfUnityLen - 1)]
+  # 2. Each column is evaluated on a different coset so we can't add evaluations,
+  #    we move to coefficient form
+  zeroMem(interpoly.addr, sizeof(interpoly))
 
-    # Use coset IFFT: coset evaluations → coefficients
-    var columnEvals = newSeq[Fr[Name]](D)
-    for j in 0 ..< D: columnEvals[j] = aggregatedColumns[colIdx][j]
+  for c in 0 ..< NumCols:
+    if not agg_cols_used[c]:
+      continue
 
-    var columnInterpPoly = newSeq[Fr[Name]](D)
-    let cosetDesc = FrFFT_Descriptor[Fr[Name]].new(order = D, generatorRootOfUnity = omegaD)
-    discard cosetDesc.coset_ifft_rn(columnInterpPoly, columnEvals, h_k)
+    agg_cols[c].bit_reversal_permutation()
 
-    for j in 0 ..< D:
-      sumInterpPolys[j].sum(sumInterpPolys[j], columnInterpPoly[j])
+    # Compute the per-column interpolation polynomial
+    var col_interpoly {.noInit.}: PolynomialCoef[L, Fr[Name]]
+    let domainPos = reverseBits(uint32(c), logNumCols)
+    let hk = domain.rootsOfUnity[domainPos]
+    discard domain.coset_ifft_rn(col_interpoly.coefs, agg_cols[c], hk)
 
-  # Step 3: Commit via MSM
-  var commitmentJac {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
-  commitmentJac.multiScalarMul_vartime(sumInterpPolys.asUnchecked(), srs_monomial_g1, D)
-  commitment.affine(commitmentJac)
+    # Accumulate
+    interpoly += col_interpoly
 
-func kzg_coset_verify_batch*[Name: static Algebra, CosetSize: static int](
-       commitments: ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]],
-       numCommitments: int,
-       commitmentIndices: ptr UncheckedArray[uint64],
-       cellIndices: ptr UncheckedArray[uint64],
-       cosetsEvals: ptr UncheckedArray[array[CosetSize, Fr[Name]]],
-       proofs: ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]],
-       numCells: int,
-       linearIndepRandNumbers: ptr UncheckedArray[Fr[Name]],  # Precomputed r^0, r^1, ..., r^{numCells-1}
-       omegaD: Fr[Name],  # D-th root of unity (precomputed)
-       rootsOfUnity: ptr UncheckedArray[Fr[Name]],  # Bit-reversed, length = CELLS_PER_EXT_BLOB * D + 1
-       rootsOfUnityLen: int,  # Length of rootsOfUnity array
-       srs_monomial_g1: ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]],
-       srs_monomial_g2: ptr UncheckedArray[EC_ShortW_Aff[Fp2[Name], G2]]): bool {.tags:[Alloca, HeapAlloc, Vartime, WriteIOEffect].} =
-  ## Verify batch using universal equation: e(LL, LR) = e(RL, [1]₂)
-  ## Mirrors kzg_verify_batch API - accepts precomputed linearIndepRandNumbers
+  freeHeapAligned(agg_cols_used)
+  freeHeapAligned(agg_cols)
 
-  const D = CosetSize
-  if numCells == 0: return true
+func kzg_coset_verify_batch*[L: static int, Name: static Algebra](
+      uniqueCommitments: openArray[EC_ShortW_Aff[Fp[Name], G1]],
+      commitmentIdx: openArray[int],
+      proofs: openArray[EC_ShortW_Aff[Fp[Name], G1]],
+      evals: openArray[array[L, Fr[Name]]],
+      evalsCols: openArray[int],
+      domain: FrFFT_Descriptor[Fr[Name]],
+      linearIndepRandNumbers: openArray[Fr[Name]],
+      powers_of_tau: openArray[EC_ShortW_Aff[Fp[Name], G1]],
+      tau_pow_L_g2: EC_ShortW_Aff[Fp2[Name], G2], # TODO: for now we assume G2 on Fp2
+      N: static int
+    ): bool =
+  ## Verify multiple KZG multiproofs
+  ## organized in a 2D matrix of (commitments, (proof, evaluations)).
+  ##
+  ## S₀ͺ₀   S₁ͺ₀   S₂ͺ₀    …  S꜀ͺ₀   …  Sₙ/ℓ₋₁ͺ₀
+  ## S₀ͺ₁   S₁ͺ₁   S₂ͺ₁    …  S꜀ͺ₁   …  Sₙ/ℓ₋₁ͺ₁
+  ## S₀ͺ₂   S₁ͺ₂   S₂ͺ₂    …  S꜀ͺ₂   …  Sₙ/ℓ₋₁ͺ₂
+  ##   ⋮      ⋮      ⋮     ⋱    ⋮    ⋱    ⋮
+  ## S₀ͺᵢ   S₁ͺᵢ   S₂ͺᵢ    ⋱  S꜀ͺᵢ   ⋱  Sₙ/ℓ₋₁ͺͺᵢ
+  ##   ⋮      ⋮      ⋮     ⋱    ⋮    ⋱    ⋮
+  ## S₀ͺ𞁓₋₁ S₁ͺ𞁓₋₁ S₂ͺ𞁓₋₁  …  S꜀ͺ𞁓₋₁ …  Sₙ/ℓ₋₁ͺ𞁓₋₁
+  ##
+  ## Each sample/cell S꜀ͺᵢ corresponds to L evaluations of a polynomial over a coset.
+  ## Each row represents a polynomial being committed to.
+  ## A commitment is row-wide, every sample within a row maps to the same.
+  ##
+  ## We use a custom sparse representation of the matrix:
+  ## - It is compressed over the rows (commitments), iteration variable i
+  ## - We verify some columns of it, iteration variable c
+  ##
+  ## We verify K samples, iteration variable k.
+  ## - A sampleₖ has the following metadata and data:
+  ##   - `commitmentIdx` to map to the actual commitment
+  ##   - proof πₖ
+  ##   - L evaluations in bit-reversed order
+  ##   - `evalsCol`ₖ to map to the coset / evaluation domain
+  ##
+  ## For batch proving we need to prevent rogue key / batch forgeries attacks
+  ## when accumulating values with an additively homomorphic scheme like KZG
+  ## Hence we scale commitments and evals by a function f(linearIndepRandNumbers, row, col)
+  ## with linearIndepRandNumbers not in control of a potentially malicious prover.
+  ##
+  ## The single KZG multiproof verification equation
+  ## verifies the relationship between (commitment, proof, evals)
+  ## with `evals` made at a secret τ in the KZG trusted setup.
+  ##
+  ##    e(commitment - [I(τ)]₁, [1]₂) = e(proof, [Z(τ)]₂)
+  ##         e(C - [I(τ)]₁, [1]₂) = e(π, [τᴸ-hᴸ]₂)
+  ##
+  ## with commitment C = [p(τ)]₁
+  ##      proof π = [q(τ)]₁ = [(p(τ)-I(τ))/Z(τ)]₁
+  ##        with I(X) the Lagrange interpolation polynomial on the evaluation coset.
+  ##        and Z(X) the vanishing polynomial on that coset
+  ##      Z(X) = Xᴸ - hᴸ
+  ##        with h the coset representative
+  ##
+  ## Now for 2D multi KZG multiproof verification with random rescaling, the equation is
+  ##
+  ##   e(∑ₖrᵏ·πₖ, [τᴸ]₂) = e(∑ᵢ(∑ₖ∈rowᵢ rᵏ)·Cᵢ - [∑ₖrᵏIₖ(τ)]₁ + ∑ₖrᵏhₖᴸ·πₖ, [1]₂)
+  ##
+  ## with k iterating over our potentially sparse (commitment, proof, evals) input samples.
+  ## and  i iterating over rows/blobs
 
-  # LL = ∑ₖ rᵏ πₖ
-  let coefs = allocHeapArrayAligned(Fr[Name].getBigInt(), numCells, alignment = 64)
-  coefs.batchFromField(linearIndepRandNumbers, numCells)
-  var llJac {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
-  llJac.multiScalarMul_vartime(coefs, cast[ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]]](proofs), numCells)
-  freeHeapAligned(coefs)
+  debug:
+    doAssert powers_of_tau.len >= L
+    doAssert commitmentIdx.len == proofs.len
+    doAssert evals.len == proofs.len
+    doAssert evalsCols.len == proofs.len
+    doAssert linearIndepRandNumbers.len >= proofs.len
 
-  # LR = [sᴰ]₂
-  let lr = srs_monomial_g2[D]
+  let K = proofs.len
 
-  # RLC = ∑ᵢ weights[i] Cᵢ
-  var commitmentWeights = newSeq[Fr[Name]](numCommitments)
-  for i in 0 ..< numCommitments: commitmentWeights[i].setZero()
-  for k in 0 ..< numCells:
-    commitmentWeights[commitmentIndices[k].int].sum(commitmentWeights[commitmentIndices[k].int], linearIndepRandNumbers[k])
+  var
+    interpoly {.noInit.}: PolynomialCoef[L, Fr[Name]]
+    negG2 {.noInit.}: EC_ShortW_Aff[Fp2[Name], G2]
 
-  let commitCoefs = allocHeapArrayAligned(Fr[Name].getBigInt(), numCommitments, alignment = 64)
-  commitCoefs.batchFromField(commitmentWeights.asUnchecked(), numCommitments)
-  var rlcJac {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
-  rlcJac.multiScalarMul_vartime(commitCoefs, cast[ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]]](commitments), numCommitments)
-  freeHeapAligned(commitCoefs)
+    ll {.noInit.}, rl {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
+    rli {.noInit.}, rlp {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
 
-  # RLI = [∑ₖ rᵏ Iₖ(s)]
-  var rliAff {.noInit.}: EC_ShortW_Aff[Fp[Name], G1]
-  computeCommitmentToAggregatedInterpolationPoly[Name, CosetSize](
-    rliAff, linearIndepRandNumbers, cellIndices, cosetsEvals, numCells, omegaD, rootsOfUnity, rootsOfUnityLen, srs_monomial_g1)
-  var rliJac {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
-  rliJac.fromAffine(rliAff)
+  # Step 1: Aggregate commitments with random scaling
+  #            ∑ᵢ(∑ₖ∈rowᵢ rᵏ)·Cᵢ
+  # Concretely, each sampleₖ is scaled by a random factor rᵏ
+  # Given that multiple samples may commit to the same polynomial
+  # a Cᵢ will be scaled by rᵢ = ∑ₖ∈rowᵢ rᵏ
+  # for example if sample k and k+1 commit to the same polynomial
+  # rᵢ = rᵏ + rᵏ⁺¹
+  # it's significantly cheaper to precompute rᵢ contributions
+  # and then the linear combination ∑ᵢrᵢ·Cᵢ
+  # than just adding rᵏ·Cᵢ + rᵏ⁺¹·Cᵢ naively as:
+  # - Elliptic curve addition is about 15x slower than Field addition
+  # - EC scalar mul us about 4375x slower than Field multiplication
+  # - We can use multi-scalar multiplication which is sublinear O(n/log n)
+  #   with the input size.
+  let ri = alloc0HeapArrayAligned(Fr[Name], uniqueCommitments.len, alignment = 64)
+  for k in 0 ..< K:
+    let i = commitmentIdx[k]
+    ri[i] += linearIndepRandNumbers[k]
+  rl.multiScalarMul_vartime(ri, uniqueCommitments.asUnchecked(), uniqueCommitments.len)
+  ri.freeHeapAligned()
 
-  # RLP = ∑ₖ (rᵏ * hₖᴰ) πₖ
-  var weightedRPowers = newSeq[Fr[Name]](numCells)
-  for k in 0 ..< numCells:
-    let cellIdxRbl = reverseBits(uint32(cellIndices[k]), 7u32)
-    let h_k_pow = rootsOfUnity[(uint64(cellIdxRbl) * uint64(D)) mod uint64(rootsOfUnityLen - 1)]
-    weightedRPowers[k].prod(linearIndepRandNumbers[k], h_k_pow)
+  # Step 2: Compute an aggregate randomly scaled interpolation polynomial
+  #                  ∑ₖrᵏIₖ(X)
+  #         and evaluate it at trusted setup secret τ
+  #                 [∑ₖrᵏIₖ(τ)]₁
+  interpoly.computeAggRandScaledInterpoly(
+    evals,
+    evalsCols,
+    domain,
+    linearIndepRandNumbers,
+    N
+  )
+  rli.multiScalarMul_vartime(interpoly.coefs.asUnchecked(), powers_of_tau.asUnchecked(), L)
 
-  let weightedCoefs = allocHeapArrayAligned(Fr[Name].getBigInt(), numCells, alignment = 64)
-  weightedCoefs.batchFromField(weightedRPowers.asUnchecked(), numCells)
-  var rlpJac {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
-  rlpJac.multiScalarMul_vartime(weightedCoefs, cast[ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]]](proofs), numCells)
-  freeHeapAligned(weightedCoefs)
+  rl -= rli
 
-  # RL = RLC - RLI + RLP
-  var rlJac {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
-  rlJac.sum_vartime(rlcJac, rlpJac)
-  rlJac.diff_vartime(rlJac, rliJac)
+  # Step 3: Aggregate ∑ₖrᵏhₖᴸ·πₖ
+  let rhl = alloc0HeapArrayAligned(Fr[Name], K, alignment = 64)
+  const logCellsPerBlob = log2_vartime(uint32(N div L))
+  for k in 0 ..< K:
+    let c = uint32 evalsCols[k]
+    let hPos = reverseBits(c, logCellsPerBlob)
+    let idx = (uint64(hPos) * uint64(L)) mod uint64(domain.order)
+    let hL = domain.rootsOfUnity[idx]
+    rhl[k].prod(linearIndepRandNumbers[k], hL)
+  rlp.multiScalarMul_vartime(rhl, proofs.asUnchecked(), K)
+  rhl.freeHeapAligned()
 
-  # Pairing: e(LL, LR) = e(RL, [1]₂)
-  var llAff, rlAff {.noInit.}: EC_ShortW_Aff[Fp[Name], G1]
-  llAff.affine(llJac)
-  rlAff.affine(rlJac)
+  rl += rlp
 
-  # Debug output for comparison with Python (use debugEcho to avoid sideEffect)
-  if numCells > 1:
-    var llBytes, rlcBytes, rliBytes, rlpBytes, rlBytes: array[48, byte]
-    var lrBytes: array[96, byte]
-    var rlcAff, rlpAff {.noInit.}: EC_ShortW_Aff[Fp[Name], G1]
-    rlcAff.affine(rlcJac)
-    rlpAff.affine(rlpJac)
-    discard llBytes.serialize_g1_compressed(llAff)
-    discard rlcBytes.serialize_g1_compressed(rlcAff)
-    discard rliBytes.serialize_g1_compressed(rliAff)
-    discard rlpBytes.serialize_g1_compressed(rlpAff)
-    discard rlBytes.serialize_g1_compressed(rlAff)
-    discard lrBytes.serialize_g2_compressed(lr)
+  # Step 4: Aggregate ∑ₖrᵏ·πₖ
+  ll.multiScalarMul_vartime(linearIndepRandNumbers, proofs)
 
-    debugEcho "\n  [DEBUG from kzg_coset_verify_batch]"
-    debugEcho "    LL  = ", toHex(llBytes.toOpenArray(0, llBytes.high))
-    debugEcho "    RLC = ", toHex(rlcBytes.toOpenArray(0, rlcBytes.high))
-    debugEcho "    RLI = ", toHex(rliBytes.toOpenArray(0, rliBytes.high))
-    debugEcho "    RLP = ", toHex(rlpBytes.toOpenArray(0, rlpBytes.high))
-    debugEcho "    RL  = ", toHex(rlBytes.toOpenArray(0, rlBytes.high))
-    debugEcho "    LR (G2) = ", toHex(lrBytes.toOpenArray(0, lrBytes.high))
-
-  type F2 = Fp2[Name]
-  var negG2 {.noInit.}: EC_ShortW_Aff[F2, G2]
+  # Step 5: Verification
+  # e(∑ₖrᵏ·πₖ, [τᴸ]₂).e(∑ᵢ(∑ₖ∈rowᵢ rᵏ)·Cᵢ - [∑ₖrᵏIₖ(τ)]₁ + ∑ₖrᵏhₖᴸ·πₖ, [-1]₂) == 1
   negG2.neg(Name.getGenerator("G2"))
-
-  var gt {.noInit.}: Name.getGT()
-  gt.pairing([llAff, rlAff], [lr, negG2])
-
-  result = gt.isOne().bool()
+  return pairing_check(ll, tau_pow_L_g2, rl, negG2)

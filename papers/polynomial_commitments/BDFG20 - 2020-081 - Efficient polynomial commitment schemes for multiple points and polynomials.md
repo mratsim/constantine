@@ -1,6 +1,8 @@
-source: https://aistudio.baidu.com/paddleocr/task/file/t-109dd5bc2456
-TODOs: extract images
-
+---
+title: Efficient polynomial commitment schemes for multiple points and polynomials
+source: https://eprint.iacr.org/2020/081
+author: Dan Boneh, Justin Drake, Ben Fisch, Ariel Gabizon
+date: 2020
 ---
 
 # Efficient polynomial commitment schemes for multiple points and polynomials

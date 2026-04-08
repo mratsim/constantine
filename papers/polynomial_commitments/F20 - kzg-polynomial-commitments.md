@@ -1,7 +1,5 @@
 # KZG polynomial commitments
 
-中文版本: KZG多项式承诺
-
 ## Introduction
 
 I want to try and give an introduction to the commitment scheme introduced by Kate, Zaverucha and Goldberg 1. This post does not aim to be mathematically or cryptographically rigorous or complete – it is meant to be an introduction.

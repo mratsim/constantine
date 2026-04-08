@@ -1,5 +1,8 @@
-Source: https://aistudio.baidu.com/paddleocr/task/file/t-109dc2e928bc
-TODO: extract images
+---
+title: Foundations of Data Availability Sampling
+source: https://eprint.iacr.org/2023/1079
+author: Mathias Hall-Andersen, Mark Simkin, Benedict Wagner
+date: 2023
 ---
 
 # Foundations of Data Availability Sampling
@@ -139,7 +142,7 @@ Setting. We consider a scenario in which a proposer holds a large piece of data 
 
 Syntax. We give a schematic overview of our syntax in Figure 1. Suppose the proposer holds a piece of data data to be distributed. In our syntax, the proposer runs an algorithm Encode with input data to obtain a commitment com and an encoding  $ \pi $ of the data. We assume that every party downloads com. For example, we may think of com to be part of a block header. We do not explicitly model how  $ \pi $ is being stored. As our security notions treat  $ \pi $ as being fully controlled by the adversary. This means
 
-<div style="text-align: center;"><img src="https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//99ce094d-1adf-46b6-9c1c-e24e728fbaf8/markdown_1/imgs/img_in_image_box_149_151_1033_362.jpg?authorization=bce-auth-v1%2FALTAKzReLNvew3ySINYJ0fuAMN%2F2026-04-05T15%3A58%3A20Z%2F-1%2F%2Feb3da092ba2c0939f4885d7399ce83a7e550f3f829a5a2123df8c2f6a06458f2" alt="Image" width="74%" /></div>
+<div style="text-align: center;"><img src="images/HAS23 - Fig 1 - Overview of the syntax of a data availability sampling scheme.jpg" alt="Image" width="74%" /></div>
 
 
 <div style="text-align: center;"><div style="text-align: center;">Figure 1: Overview of the syntax of a data availability sampling scheme. All algorithms get system parameters par ← Setup(1^λ) as input. Algorithm Encode encodes data into an encoding π. Multiple clients (V₁, V₂) can then query this encoding. From enough transcripts, data can be reconstructed using algorithm Ext.</div> </div>
@@ -337,7 +340,7 @@ Further, we require that the following completeness property holds: For every  $
 
 Now that we have specified the syntax of erasure code commitment schemes, we turn to the security properties they should have. We define a variety of such properties, most importantly position-binding and code-binding. Later, we will see how these properties imply the security of the resulting data availability sampling scheme. We summarize the relations between these properties in Figure 2.
 
-<div style="text-align: center;"><img src="https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//faaa38da-2554-47ea-ab86-f736a357336b/markdown_0/imgs/img_in_image_box_184_144_1008_378.jpg?authorization=bce-auth-v1%2FALTAKzReLNvew3ySINYJ0fuAMN%2F2026-04-05T15%3A58%3A18Z%2F-1%2F%2F965b164f8cfb4679cb370f4808db58a09b910fc015ce58ebf4de37cae296fd9c" alt="Image" width="69%" /></div>
+<div style="text-align: center;"><img src="images/HAS23 - Fig 2 - Erasure code commitments.jpg" alt="Image" width="69%" /></div>
 
 
 <div style="text-align: center;"><div style="text-align: center;">Figure 2: Overview of the different security properties we define for erasure code commitments, how they relate to each other, and how they relate to the security of the resulting data availability sampling scheme. An arrow denotes an implication. A dashed arrow denotes an implication that holds if additionally position-binding is assumed. For the implication from computational uniqueness to code-binding (double dashed), we additionally assume position-binding and that the code is an MDS code.</div> </div>
@@ -948,7 +951,7 @@ Conclusion. Clearly, the schemes Naive and Merkle are far from being usable in p
 <div style="text-align: center;"><div style="text-align: center;">Table 3: Efficiency comparison of different data availability sampling schemes. Details of the schemes are given in Table 1. For given size of data, we compare the size of commitments  $ \text{com} $, encodings  $ \pi $, and communication complexity per query. Column “Samples” shows the total number of samples that clients need to query such that data can be reconstructed with probability at least  $ 1 - 2^{-40} $, and the final column denotes the total communication cost for this process.</div> </div>
 
 
-<div style="text-align: center;"><img src="https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//95c718f1-4edf-4653-9402-55073e6620dd/markdown_3/imgs/img_in_chart_box_202_765_1006_1296.jpg?authorization=bce-auth-v1%2FALTAKzReLNvew3ySINYJ0fuAMN%2F2026-04-05T15%3A58%3A20Z%2F-1%2F%2F35fa655e80568de2ed7636af4a0094933d65fb7c1c9362d0a9fb1356d2f2f556" alt="Image" width="67%" /></div>
+<div style="text-align: center;"><img src="images/HAS23 - Fig 3 - Index sampler quality.jpg" alt="Image" width="67%" /></div>
 
 
 <div style="text-align: center;"><div style="text-align: center;">Figure 3: Efficiency of data availability sampling schemes. The details of the schemes are given in Table 1. We compare the size of commitments, the size of the encoding, the communication complexity per query, and the total communication complexity when increasing the data size. Schemes Naive and Merkle are omitted.</div> </div>
@@ -1973,13 +1976,13 @@ Second, consider Figure 5. The figure shows how many samples we need to get the 
 
 Conclusion. Our simulation suggests that sampling without replacement does not perform significantly better than sampling with replacement. As sampling with replacement is much easier to implement efficiently, we may disregard sampling without replacement. Segment sampling with small segment sizes seems to lead only to a minimal loss in quality. Due to its reduced randomness complexity, the improved locality, and ease of implementation, it qualifies a good choice in practice.
 
-<div style="text-align: center;"><img src="https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//dd7a43cc-c02f-4017-b2fb-7d11e03c3dfc/markdown_4/imgs/img_in_chart_box_193_172_1004_671.jpg?authorization=bce-auth-v1%2FALTAKzReLNvew3ySINYJ0fuAMN%2F2026-04-05T15%3A58%3A25Z%2F-1%2F%2F2af4cba015ca3c894423b625220587e720f7d719f7bb581be5175a0610dc0f64" alt="Image" width="68%" /></div>
+<div style="text-align: center;"><img src="images/HAS23 - Fig 4 - Evaluation of different DAS constructions.jpg" alt="Image" width="68%" /></div>
 
 
 <div style="text-align: center;"><div style="text-align: center;">Figure 4: Simulation results for the failure probability p, i.e., the probability of having less than K non-empty bins out of N bins in total after  $ \ell $ players threw Q balls into the bins according to the given index sampler.</div> </div>
 
 
-<div style="text-align: center;"><img src="https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//dd7a43cc-c02f-4017-b2fb-7d11e03c3dfc/markdown_4/imgs/img_in_chart_box_177_849_1021_1353.jpg?authorization=bce-auth-v1%2FALTAKzReLNvew3ySINYJ0fuAMN%2F2026-04-05T15%3A58%3A25Z%2F-1%2F%2Fa7a2a1cc2fe7e78a65ff23b9e53ce6214b589673bd3c86e9397d54daa177035a" alt="Image" width="70%" /></div>
+<div style="text-align: center;"><img src="images/HAS23 - Fig 5 - DAS Evaluation continues.jpg" alt="Image" width="70%" /></div>
 
 
 <div style="text-align: center;"><div style="text-align: center;">Figure 5: Simulation results for the total number of samples  $ \ell \cdot Q $ needed to get  $ p \leq 0.001 $, where p is the failure probability, i.e., the probability of having less than K non-empty bins out of N bins in total after  $ \ell $ players threw Q balls into the bins according to the given index sampler.</div> </div>

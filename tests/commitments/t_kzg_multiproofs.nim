@@ -11,19 +11,20 @@
 
 import
   constantine/named/algebras,
+  constantine/named/zoo_generators,
   constantine/math/[ec_shortweierstrass, extension_fields],
   constantine/math/polynomials/[polynomials, fft],
   constantine/math/arithmetic/finite_fields,
   constantine/commitments/kzg_multiproofs,
   constantine/commitments/kzg,
-  constantine/math/io/io_fields,
-  constantine/platforms/[primitives, views], # For asUnchecked
+  constantine/math/io/[io_fields, io_bigints],
+  constantine/platforms/[primitives, views, bithacks], # For asUnchecked, reverseBits
   ./trusted_setup_generator
 
 from trusted_setup_generator import
   EC_G1_Aff, EC_G1_Jac, EC_G2_Aff
 
-type FK20TauExt[N, L, CDS: static int, Name: static Algebra] = array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]]
+type FK20PolyphaseSpectrumBank[N, L, CDS: static int, Name: static Algebra] = array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]]
 
 func pow*(omegaMax: Fr[BLS12_381], domainPos: uint32): Fr[BLS12_381] =
   var exp: Fr[BLS12_381]
@@ -49,11 +50,11 @@ proc testFK20SingleProofs() =
   let ecfft_desc = ECFFT_Descriptor[EC_G1_Jac].new(order = CDS, setup.omegaForFFT)
   let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.omegaForFFT)
 
-  var tauExtFftArray: array[L, array[CDS, EC_G1_Jac]]
-  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, ecfft_desc)
+  var polyphaseSpectrumBank: array[L, array[CDS, EC_G1_Jac]]
+  computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
 
   var fk20Proofs: array[CDS, EC_G1_Aff]
-  kzg_coset_prove(tauExtFftArray, fk20Proofs, setup.testPoly, fr_fft_desc, ecfft_desc)
+  kzg_coset_prove(fk20Proofs, setup.testPoly, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
 
   # Compute commitment using pre-generated BigInt polynomial
   var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
@@ -101,12 +102,12 @@ proc testFK20MultiProofs(L: static int) =
   let ecfft_desc = ECFFT_Descriptor[EC_G1_Jac].new(order = CDS, setup.omegaForFFT)
   let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.omegaForFFT)
 
-  var tauExtFftArray: array[L, array[CDS, EC_G1_Jac]]
-  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, ecfft_desc)
+  var polyphaseSpectrumBank: array[L, array[CDS, EC_G1_Jac]]
+  computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
 
   var fk20Proofs: array[CDS, EC_G1_Aff]
   kzg_coset_prove(
-    tauExtFftArray, fk20Proofs, setup.testPoly, fr_fft_desc, ecfft_desc)
+    fk20Proofs, setup.testPoly, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
 
   fk20Proofs.bit_reversal_permutation()
 
@@ -121,8 +122,11 @@ proc testFK20MultiProofs(L: static int) =
     let domainPos = reverseBits(pos, nBits)
     let h = setup.rootsOfUnity.rootsOfUnity[domainPos] # coset shift
 
+    doAssert bool(h ~^ uint32(L) == setup.rootsOfUnity.rootsOfUnity[domainPos*L])
+
     var ys: array[L, Fr[BLS12_381]]
     ys.computeEvalsAtCoset(setup.testPoly, h, setup.rootsOfUnity)
+    ys.bit_reversal_permutation() # EIP-7594 convention, blobs are bit-reversed evaluations
 
     let ok = fr_fft_desc.kzg_coset_verify(
       commitmentAff,
@@ -163,12 +167,12 @@ proc testNonOptimizedCosetProofs*(L: static int) =
   let ecfft_desc = ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]].new(order = CDS, setup.omegaForFFT)
   let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.omegaForFFT)
 
-  var tauExtFftArray: array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
-  getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, ecfft_desc)
+  var polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
+  computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
 
   var fk20Proofs: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
   kzg_coset_prove(
-    tauExtFftArray, fk20Proofs, setup.testPoly, fr_fft_desc, ecfft_desc)
+    fk20Proofs, setup.testPoly, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
 
   fk20Proofs.bit_reversal_permutation()
 
@@ -186,8 +190,11 @@ proc testNonOptimizedCosetProofs*(L: static int) =
     let domainPos = reverseBits(pos, nBits)
     let h = setup.rootsOfUnity.rootsOfUnity[domainPos] # coset shift
 
+    doAssert bool(h ~^ uint32(L) == setup.rootsOfUnity.rootsOfUnity[domainPos*L])
+
     var ys: array[L, Fr[BLS12_381]]
     ys.computeEvalsAtCoset(setup.testPoly, h, setup.rootsOfUnity)
+    ys.bit_reversal_permutation() # EIP-7594 convention, blobs are bit-reversed evaluations
 
     var fk20Proof: EC_ShortW_Aff[Fp[BLS12_381], G1]
     fk20Proof = fk20Proofs[pos]
@@ -229,105 +236,521 @@ proc testNonOptimizedCosetProofs*(L: static int) =
   doAssert fk20Verified == numProofs, "FK20 proofs don't verify"
   echo "✓ Non-optimized KZG coset proofs test PASSED"
 
-# proc testKzgCosetVerifyBatch(numTestCells: int) =
-#   ## Test kzg_coset_verify_batch with configurable number of cells
+proc testKzgCosetVerifyBatch*(numTestCells: int) =
+  ## Test kzg_coset_verify_batch with configurable number of cells
+  ## Uses the new API with openArray and FrFFT_Descriptor
+  ## Uses kzg_coset_prove_naive for simple proof generation (not FK20)
 
-#   const
-#     N = 4096  # FIELD_ELEMENTS_PER_BLOB
-#     L = 64    # FIELD_ELEMENTS_PER_CELL (coset size)
-#     CDS = 128 # CELLS_PER_EXT_BLOB
-#     maxWidth = 8192  # Full domain size = CDS * (N / L)
-#     nBits = 7  # log2(128)
+  const
+    N = 4096  # Polynomial size (coefficient count)
+    L = 64    # FIELD_ELEMENTS_PER_CELL (coset size)
+    maxWidth = 8192  # Full domain size = CDS * L = 2 * N
+    nBits = 7  # log2(128)
 
-#   const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
+  const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
 
-#   let setup = gen_setup(N, L, maxWidth, tauHex)
+  let setup = gen_setup(N, L, maxWidth, tauHex)
 
-#   let ecfft_desc = ECFFT_Descriptor[EC_G1_Jac].new(order = CDS, setup.omegaForFFT)
-#   let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.omegaForFFT)
+  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = maxWidth, setup.rootsOfUnity.rootsOfUnity[1])
 
-#   var tauExtFftArray: array[L, array[CDS, EC_G1_Jac]]
-#   getTauExtFftArray(tauExtFftArray, setup.powers_of_tau_G1, ecfft_desc)
+  var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
+  kzg_commit(setup.powers_of_tau_G1, commitmentAff, setup.testPolyBig)
 
-#   var fk20Proofs: array[CDS, EC_G1_Aff]
-#   kzg_coset_prove(tauExtFftArray, fk20Proofs, setup.testPoly, fr_fft_desc, ecfft_desc)
-#   fk20Proofs.bit_reversal_permutation()
+  var uniqueCommitments = newSeq[EC_ShortW_Aff[Fp[BLS12_381], G1]](1)
+  uniqueCommitments[0] = commitmentAff
 
-#   var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
-#   kzg_commit(setup.powers_of_tau_G1, commitmentAff, setup.testPolyBig)
+  var commitmentIdx = newSeq[int](numTestCells)
+  var evalsCols = newSeq[int](numTestCells)
+  var evals = newSeq[array[L, Fr[BLS12_381]]](numTestCells)
+  var proofs = newSeq[EC_ShortW_Aff[Fp[BLS12_381], G1]](numTestCells)
+  var cosetShifts = newSeq[Fr[BLS12_381]](numTestCells)
 
-#   # Compute roots of unity using fft_utils
-#   let rootsOfUnity = computeRootsOfUnityBitReversed(Fr[BLS12_381], 8192)
+  for i in 0 ..< numTestCells:
+    let cellIdx = uint64(i)
+    let domainPos = reverseBits(uint32(cellIdx), uint32(nBits)) * uint64(L)
+    let h = setup.rootsOfUnity.rootsOfUnity[domainPos]
+    let proofPos = reverseBits(uint32(cellIdx), uint32(nBits))
 
-#   # Get omegaD (D-th root of unity)
-#   let omegaD = getRootOfUnityForScale(Fr[BLS12_381], 6)  # 2^6 = 64
+    evalsCols[i] = int(cellIdx)
+    commitmentIdx[i] = 0  # index into uniqueCommitments
+    cosetShifts[i] = h
 
-#   let lthRoot = setup.omegaMax ~^ uint64(setup.maxWidth div L)
+    # Use computeEvalsAtCoset to match the working test's eval generation
+    evals[i].computeEvalsAtCoset(setup.testPoly, h, setup.rootsOfUnity)
+    evals[i].bit_reversal_permutation() # EIP-7594 convention, blobs are bit-reversed evaluations
 
-#   # Use seq for dynamic data
-#   var cellIndices = newSeq[uint64](numTestCells)
-#   var cosetsEvals = newSeq[array[L, Fr[BLS12_381]]](numTestCells)
-#   var proofs = newSeq[EC_ShortW_Aff[Fp[BLS12_381], G1]](numTestCells)
-#   var commitmentIndices = newSeq[uint64](numTestCells)
+    # Generate proof using naive polynomial division (not FK20)
+    kzg_coset_prove_naive(
+      proofs[i], setup.testPoly, h, L, setup.powers_of_tau_G1)
 
-#   for i in 0 ..< numTestCells:
-#     let cellIdx = uint64(i)
-#     let domainPos = cellIdx * uint64(L)
-#     let x = setup.omegaMax ~^ domainPos
-#     let proofPos = reverseBits(uint32(cellIdx), uint32(nBits))
+  # PRE-TEST: Verify each cell individually with kzg_coset_verify
+  echo "    Pre-testing individual cells with kzg_coset_verify..."
+  for i in 0 ..< numTestCells:
+    let ok = fr_fft_desc.kzg_coset_verify(
+      commitmentAff,
+      proofs[i],
+      evals[i],
+      cosetShifts[i],
+      setup.powers_of_tau_G1.coefs,
+      setup.powers_of_tau_G2.coefs[L]
+    )
+    if not ok:
+      echo "    ✗ FAILED individual verification for cell ", i
+      echo "      cosetShift = ", cosetShifts[i].toHex()
+    else:
+      echo "    ✓ Cell ", i, " verified individually"
+    doAssert ok, "Individual cell verification failed for cell " & $i
 
-#     cellIndices[i] = cellIdx
-#     commitmentIndices[i] = 0
+  var r: Fr[BLS12_381]
+  r.fromHex("0x0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829")
+  var linearIndepRandNumbers = newSeq[Fr[BLS12_381]](numTestCells)
+  linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells)
 
-#     computeYsAtCoset(cosetsEvals[i], setup.testPoly, x, lthRoot)
-#     proofs[i] = fk20Proofs[proofPos]
+  let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
 
-#   # Compute powers of random challenge r
-#   # FOR DEBUGGING: Hardcoded challenge (MUST MATCH PYTHON)
-#   var r: Fr[BLS12_381]
-#   r.fromHex("0x0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829")
-#   var rPowers = newSeq[Fr[BLS12_381]](numTestCells)
-#   rPowers.asUnchecked().computePowers(r, numTestCells)
+  let verified = kzg_coset_verify_batch[L, BLS12_381](
+    uniqueCommitments,
+    commitmentIdx,
+    proofs,
+    evals,
+    evalsCols,
+    fr_fft_desc,
+    linearIndepRandNumbers,
+    setup.powers_of_tau_G1.coefs,
+    tau_pow_L_g2,
+    N
+  )
 
-#   # Debug output
-#   if numTestCells > 1:
-#     echo "  [DEBUG] Challenge r = ", r.toHex()
+  doAssert verified, "Batch verification failed for " & $numTestCells & " cells"
+  echo "  ✓ Verified ", numTestCells, " cells"
 
-#   type G1AffArray = ptr UncheckedArray[EC_ShortW_Aff[Fp[BLS12_381], G1]]
-#   type G2AffArray = ptr UncheckedArray[EC_ShortW_Aff[Fp2[BLS12_381], G2]]
+proc testKzgCosetVerifyBatch*() =
+  ## Test kzg_coset_verify_batch with multiple cell counts
+  echo "Testing kzg_coset_verify_batch (EIP-7594)..."
 
-#   let srs_g1_ptr = cast[G1AffArray](unsafeAddr setup.powers_of_tau_G1.coefs[0])
-#   let srs_g2_ptr = cast[G2AffArray](unsafeAddr setup.powers_of_tau_G2.coefs[0])
+  const testCases = [1, 2, 3, 4, 5, 10, 16]
+  for numCells in testCases:
+    echo "  Testing with ", numCells, " cells..."
+    testKzgCosetVerifyBatch(numCells)
 
-#   let verified = kzg_coset_verify_batch[BLS12_381, L](
-#     cast[G1AffArray](commitmentAff.addr),
-#     1,
-#     commitmentIndices.asUnchecked(),
-#     cellIndices.asUnchecked(),
-#     cosetsEvals.asUnchecked(),
-#     proofs.asUnchecked(),
-#     numTestCells,
-#     rPowers.asUnchecked(),
-#     omegaD,
-#     rootsOfUnity.asUnchecked(),
-#     rootsOfUnity.len,
-#     srs_g1_ptr,
-#     srs_g2_ptr
-#   )
+  echo "✓ kzg_coset_verify_batch all tests PASSED"
 
-#   doAssert verified, "Batch verification failed for " & $numTestCells & " cells"
-#   echo "  ✓ Verified ", numTestCells, " cells"
+proc testKzgCosetVerifyBatchSmallSizes*(numTestCells: int) =
+  ## Test batch verification with small polynomial sizes to ensure generic behavior
+  ## Uses N=64, L=4 for faster testing while maintaining correctness
+  const
+    N = 64    # Small polynomial size
+    L = 4     # Small coset size
+    maxWidth = 128  # Extended domain
+    nBits = 5  # log2(32)
 
-# proc testKzgCosetVerifyBatch() =
-#   ## Test kzg_coset_verify_batch with multiple cell counts
-#   echo "Testing kzg_coset_verify_batch (EIP-7594)..."
+  const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
 
-#   const testCases = [1, 2, 3, 4, 5, 10, 16, 64]
-#   for numCells in testCases:
-#     echo "  Testing with ", numCells, " cells..."
-#     testKzgCosetVerifyBatch(numCells)
+  let setup = gen_setup(N, L, maxWidth, tauHex)
+  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = maxWidth, setup.rootsOfUnity.rootsOfUnity[1])
 
-#   echo "✓ kzg_coset_verify_batch all tests PASSED"
+  var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
+  kzg_commit(setup.powers_of_tau_G1, commitmentAff, setup.testPolyBig)
+
+  var uniqueCommitments = newSeq[EC_ShortW_Aff[Fp[BLS12_381], G1]](1)
+  uniqueCommitments[0] = commitmentAff
+
+  var commitmentIdx = newSeq[int](numTestCells)
+  var evalsCols = newSeq[int](numTestCells)
+  var evals = newSeq[array[L, Fr[BLS12_381]]](numTestCells)
+  var proofs = newSeq[EC_ShortW_Aff[Fp[BLS12_381], G1]](numTestCells)
+  var cosetShifts = newSeq[Fr[BLS12_381]](numTestCells)
+
+  for i in 0 ..< numTestCells:
+    let cellIdx = uint64(i)
+    let domainPos = reverseBits(uint32(cellIdx), uint32(nBits)) * uint64(L)
+    let h = setup.rootsOfUnity.rootsOfUnity[domainPos]
+    
+    evalsCols[i] = int(cellIdx)
+    commitmentIdx[i] = 0
+    cosetShifts[i] = h
+
+    evals[i].computeEvalsAtCoset(setup.testPoly, h, setup.rootsOfUnity)
+    evals[i].bit_reversal_permutation()
+
+    kzg_coset_prove_naive(
+      proofs[i], setup.testPoly, h, L, setup.powers_of_tau_G1)
+
+  var r: Fr[BLS12_381]
+  r.fromHex("0x0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829")
+  var linearIndepRandNumbers = newSeq[Fr[BLS12_381]](numTestCells)
+  linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells)
+
+  let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
+  let verified = kzg_coset_verify_batch[L, BLS12_381](
+    uniqueCommitments,
+    commitmentIdx,
+    proofs,
+    evals,
+    evalsCols,
+    fr_fft_desc,
+    linearIndepRandNumbers,
+    setup.powers_of_tau_G1.coefs,
+    tau_pow_L_g2,
+    N
+  )
+
+  doAssert verified, "Batch verification failed for " & $numTestCells & " cells (small sizes)"
+  echo "  ✓ Verified ", numTestCells, " cells (N=64, L=4)"
+
+proc testKzgCosetVerifyBatchSmallSizes*() =
+  ## Test batch verification with various small sizes
+  echo "Testing kzg_coset_verify_batch with small sizes..."
+
+  const testCases = [1, 2, 3, 4, 5, 8, 10, 16, 32]
+  for numCells in testCases:
+    echo "  Testing with ", numCells, " cells..."
+    testKzgCosetVerifyBatchSmallSizes(numCells)
+
+  echo "✓ kzg_coset_verify_batch small sizes all tests PASSED"
+
+proc testKzgCosetVerifyBatchNegative_SwitchProofs*(numTestCells: int) =
+  ## Negative test: corrupt one proof to verify batch verification catches it
+  ## This tests that batch verification detects invalid proofs
+  const
+    N = 64
+    L = 4
+    maxWidth = 128
+    nBits = 5
+
+  const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
+
+  let setup = gen_setup(N, L, maxWidth, tauHex)
+  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = maxWidth, setup.rootsOfUnity.rootsOfUnity[1])
+
+  var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
+  kzg_commit(setup.powers_of_tau_G1, commitmentAff, setup.testPolyBig)
+
+  var uniqueCommitments = newSeq[EC_ShortW_Aff[Fp[BLS12_381], G1]](1)
+  uniqueCommitments[0] = commitmentAff
+
+  var commitmentIdx = newSeq[int](numTestCells)
+  var evalsCols = newSeq[int](numTestCells)
+  var evals = newSeq[array[L, Fr[BLS12_381]]](numTestCells)
+  var proofs = newSeq[EC_ShortW_Aff[Fp[BLS12_381], G1]](numTestCells)
+  var cosetShifts = newSeq[Fr[BLS12_381]](numTestCells)
+
+  for i in 0 ..< numTestCells:
+    let cellIdx = uint64(i)
+    let domainPos = reverseBits(uint32(cellIdx), uint32(nBits)) * uint64(L)
+    let h = setup.rootsOfUnity.rootsOfUnity[domainPos]
+    
+    evalsCols[i] = int(cellIdx)
+    commitmentIdx[i] = 0
+    cosetShifts[i] = h
+
+    evals[i].computeEvalsAtCoset(setup.testPoly, h, setup.rootsOfUnity)
+    evals[i].bit_reversal_permutation()
+
+    kzg_coset_prove_naive(
+      proofs[i], setup.testPoly, h, L, setup.powers_of_tau_G1)
+
+  # NEGATIVE TEST: Corrupt one proof by using evals from a different cell
+  # This creates a provable mismatch that should be detected
+  if numTestCells >= 2:
+    # Use evals from cell 1 for proof 0 (mismatch!)
+    evals[0] = evals[1]
+    evalsCols[0] = evalsCols[1]
+    cosetShifts[0] = cosetShifts[1]
+
+  var r: Fr[BLS12_381]
+  r.fromHex("0x0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829")
+  var linearIndepRandNumbers = newSeq[Fr[BLS12_381]](numTestCells)
+  linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells)
+
+  let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
+  let verified = kzg_coset_verify_batch[L, BLS12_381](
+    uniqueCommitments,
+    commitmentIdx,
+    proofs,
+    evals,
+    evalsCols,
+    fr_fft_desc,
+    linearIndepRandNumbers,
+    setup.powers_of_tau_G1.coefs,
+    tau_pow_L_g2,
+    N
+  )
+
+  doAssert not verified, "Batch verification should FAIL with corrupted proof/eval mismatch but passed!"
+  echo "  ✓ Correctly detected corrupted proof/eval mismatch (", numTestCells, " cells)"
+
+proc testKzgCosetVerifyBatchNegative_SwitchProofs*() =
+  ## Test negative case with switched proofs for various sizes
+  echo "Testing batch verification with switched proofs (negative tests)..."
+
+  const testCases = [2, 3, 4, 5, 8, 10]
+  for numCells in testCases:
+    echo "  Testing with ", numCells, " cells..."
+    testKzgCosetVerifyBatchNegative_SwitchProofs(numCells)
+
+  echo "✓ Switched proofs negative tests all PASSED"
+
+proc testKzgCosetVerifyBatchNegative_SwitchEvals*(numTestCells: int) =
+  ## Negative test: switch evals around to verify batch catches mismatched evals
+  ## This tests that batch verification detects when evals don't match proofs
+  const
+    N = 64
+    L = 4
+    maxWidth = 128
+    nBits = 5
+
+  const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
+
+  let setup = gen_setup(N, L, maxWidth, tauHex)
+  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = maxWidth, setup.rootsOfUnity.rootsOfUnity[1])
+
+  var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
+  kzg_commit(setup.powers_of_tau_G1, commitmentAff, setup.testPolyBig)
+
+  var uniqueCommitments = newSeq[EC_ShortW_Aff[Fp[BLS12_381], G1]](1)
+  uniqueCommitments[0] = commitmentAff
+
+  var commitmentIdx = newSeq[int](numTestCells)
+  var evalsCols = newSeq[int](numTestCells)
+  var evals = newSeq[array[L, Fr[BLS12_381]]](numTestCells)
+  var proofs = newSeq[EC_ShortW_Aff[Fp[BLS12_381], G1]](numTestCells)
+  var cosetShifts = newSeq[Fr[BLS12_381]](numTestCells)
+
+  for i in 0 ..< numTestCells:
+    let cellIdx = uint64(i)
+    let domainPos = reverseBits(uint32(cellIdx), uint32(nBits)) * uint64(L)
+    let h = setup.rootsOfUnity.rootsOfUnity[domainPos]
+    
+    evalsCols[i] = int(cellIdx)
+    commitmentIdx[i] = 0
+    cosetShifts[i] = h
+
+    evals[i].computeEvalsAtCoset(setup.testPoly, h, setup.rootsOfUnity)
+    evals[i].bit_reversal_permutation()
+
+    kzg_coset_prove_naive(
+      proofs[i], setup.testPoly, h, L, setup.powers_of_tau_G1)
+
+  # NEGATIVE TEST: Switch evals AND their metadata (but not proofs)
+  # This creates a mismatch between proofs and evals
+  if numTestCells >= 2:
+    let tempEvals = evals[0]
+    evals[0] = evals[1]
+    evals[1] = tempEvals
+    let tempCol = evalsCols[0]
+    evalsCols[0] = evalsCols[1]
+    evalsCols[1] = tempCol
+    let tempShift = cosetShifts[0]
+    cosetShifts[0] = cosetShifts[1]
+    cosetShifts[1] = tempShift
+
+  var r: Fr[BLS12_381]
+  r.fromHex("0x0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829")
+  var linearIndepRandNumbers = newSeq[Fr[BLS12_381]](numTestCells)
+  linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells)
+
+  let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
+  let verified = kzg_coset_verify_batch[L, BLS12_381](
+    uniqueCommitments,
+    commitmentIdx,
+    proofs,
+    evals,
+    evalsCols,
+    fr_fft_desc,
+    linearIndepRandNumbers,
+    setup.powers_of_tau_G1.coefs,
+    tau_pow_L_g2,
+    N
+  )
+
+  doAssert not verified, "Batch verification should FAIL with switched evals but passed!"
+  echo "  ✓ Correctly detected switched evals (", numTestCells, " cells)"
+
+proc testKzgCosetVerifyBatchNegative_SwitchEvals*() =
+  ## Test negative case with switched evals for various sizes
+  echo "Testing batch verification with switched evals (negative tests)..."
+
+  const testCases = [2, 3, 4, 5, 8, 10]
+  for numCells in testCases:
+    echo "  Testing with ", numCells, " cells..."
+    testKzgCosetVerifyBatchNegative_SwitchEvals(numCells)
+
+  echo "✓ Switched evals negative tests all PASSED"
+
+proc testKzgCosetVerifyBatchNegative_FakeProof*(numTestCells: int) =
+  ## Negative test: create a fake proof by modifying a valid proof
+  ## This tests that batch verification catches invalid proofs
+  const
+    N = 64
+    L = 4
+    maxWidth = 128
+    nBits = 5
+
+  const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
+
+  let setup = gen_setup(N, L, maxWidth, tauHex)
+  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = maxWidth, setup.rootsOfUnity.rootsOfUnity[1])
+
+  var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
+  kzg_commit(setup.powers_of_tau_G1, commitmentAff, setup.testPolyBig)
+
+  var uniqueCommitments = newSeq[EC_ShortW_Aff[Fp[BLS12_381], G1]](1)
+  uniqueCommitments[0] = commitmentAff
+
+  var commitmentIdx = newSeq[int](numTestCells)
+  var evalsCols = newSeq[int](numTestCells)
+  var evals = newSeq[array[L, Fr[BLS12_381]]](numTestCells)
+  var proofs = newSeq[EC_ShortW_Aff[Fp[BLS12_381], G1]](numTestCells)
+  var cosetShifts = newSeq[Fr[BLS12_381]](numTestCells)
+
+  for i in 0 ..< numTestCells:
+    let cellIdx = uint64(i)
+    let domainPos = reverseBits(uint32(cellIdx), uint32(nBits)) * uint64(L)
+    let h = setup.rootsOfUnity.rootsOfUnity[domainPos]
+    
+    evalsCols[i] = int(cellIdx)
+    commitmentIdx[i] = 0
+    cosetShifts[i] = h
+
+    evals[i].computeEvalsAtCoset(setup.testPoly, h, setup.rootsOfUnity)
+    evals[i].bit_reversal_permutation()
+
+    kzg_coset_prove_naive(
+      proofs[i], setup.testPoly, h, L, setup.powers_of_tau_G1)
+
+  # NEGATIVE TEST: Create a fake proof by modifying the first proof
+  if numTestCells >= 1:
+    # Modify the proof by adding a random point to it
+    var fakeProofJac: EC_ShortW_Jac[Fp[BLS12_381], G1]
+    fakeProofJac.fromAffine(proofs[0])
+    
+    # Add generator to make it invalid
+    var generatorJac: EC_ShortW_Jac[Fp[BLS12_381], G1]
+    generatorJac.fromAffine(BLS12_381.getGenerator("G1"))
+    fakeProofJac += generatorJac
+    
+    var fakeProofAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
+    fakeProofAff.affine(fakeProofJac)
+    proofs[0] = fakeProofAff
+
+  var r: Fr[BLS12_381]
+  r.fromHex("0x0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829")
+  var linearIndepRandNumbers = newSeq[Fr[BLS12_381]](numTestCells)
+  linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells)
+
+  let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
+  let verified = kzg_coset_verify_batch[L, BLS12_381](
+    uniqueCommitments,
+    commitmentIdx,
+    proofs,
+    evals,
+    evalsCols,
+    fr_fft_desc,
+    linearIndepRandNumbers,
+    setup.powers_of_tau_G1.coefs,
+    tau_pow_L_g2,
+    N
+  )
+
+  doAssert not verified, "Batch verification should FAIL with fake proof but passed!"
+  echo "  ✓ Correctly detected fake proof (", numTestCells, " cells)"
+
+proc testKzgCosetVerifyBatchNegative_FakeProof*() =
+  ## Test negative case with fake proofs for various sizes
+  echo "Testing batch verification with fake proofs (negative tests)..."
+
+  const testCases = [1, 2, 3, 4, 5, 8]
+  for numCells in testCases:
+    echo "  Testing with ", numCells, " cells..."
+    testKzgCosetVerifyBatchNegative_FakeProof(numCells)
+
+  echo "✓ Fake proof negative tests all PASSED"
+
+proc testKzgCosetVerifyBatchMultipleCommitments*(numCommitments: int, cellsPerCommitment: int) =
+  ## Test batch verification with multiple different commitments
+  ## This tests the row aggregation logic with multiple polynomials
+  const
+    N = 64
+    L = 4
+    maxWidth = 128
+    nBits = 5
+
+  const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
+
+  let setup = gen_setup(N, L, maxWidth, tauHex)
+  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = maxWidth, setup.rootsOfUnity.rootsOfUnity[1])
+
+  # Create multiple commitments with different test polynomials
+  var uniqueCommitments = newSeq[EC_ShortW_Aff[Fp[BLS12_381], G1]](numCommitments)
+  var testPolys = newSeq[PolynomialCoef[N, Fr[BLS12_381]]](numCommitments)
+  var testPolysBig = newSeq[PolynomialCoef[N, BigInt[255]]](numCommitments)
+  
+  for i in 0 ..< numCommitments:
+    # Create a different polynomial for each commitment
+    for j in 0 ..< N:
+      testPolys[i].coefs[j].fromUint(uint64(i * N + j + 1))
+      testPolysBig[i].coefs[j].fromUint(uint64(i * N + j + 1))
+    
+    var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
+    kzg_commit(setup.powers_of_tau_G1, commitmentAff, testPolysBig[i])
+    uniqueCommitments[i] = commitmentAff
+
+  let totalCells = numCommitments * cellsPerCommitment
+  var commitmentIdx = newSeq[int](totalCells)
+  var evalsCols = newSeq[int](totalCells)
+  var evals = newSeq[array[L, Fr[BLS12_381]]](totalCells)
+  var proofs = newSeq[EC_ShortW_Aff[Fp[BLS12_381], G1]](totalCells)
+  var cosetShifts = newSeq[Fr[BLS12_381]](totalCells)
+
+  for i in 0 ..< totalCells:
+    let commitIdx = i div cellsPerCommitment
+    let cellIdx = uint64(i mod cellsPerCommitment)
+    let domainPos = reverseBits(uint32(cellIdx), uint32(nBits)) * uint64(L)
+    let h = setup.rootsOfUnity.rootsOfUnity[domainPos]
+    
+    evalsCols[i] = int(cellIdx)
+    commitmentIdx[i] = commitIdx
+    cosetShifts[i] = h
+
+    evals[i].computeEvalsAtCoset(testPolys[commitIdx], h, setup.rootsOfUnity)
+    evals[i].bit_reversal_permutation()
+
+    kzg_coset_prove_naive(
+      proofs[i], testPolys[commitIdx], h, L, setup.powers_of_tau_G1)
+
+  var r: Fr[BLS12_381]
+  r.fromHex("0x0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829")
+  var linearIndepRandNumbers = newSeq[Fr[BLS12_381]](totalCells)
+  linearIndepRandNumbers.asUnchecked().computePowers(r, totalCells)
+
+  let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
+  let verified = kzg_coset_verify_batch[L, BLS12_381](
+    uniqueCommitments,
+    commitmentIdx,
+    proofs,
+    evals,
+    evalsCols,
+    fr_fft_desc,
+    linearIndepRandNumbers,
+    setup.powers_of_tau_G1.coefs,
+    tau_pow_L_g2,
+    N
+  )
+
+  doAssert verified, "Batch verification failed for " & $numCommitments & " commitments with " & $cellsPerCommitment & " cells each"
+  echo "  ✓ Verified ", numCommitments, " commitments × ", cellsPerCommitment, " cells = ", totalCells, " total"
+
+proc testKzgCosetVerifyBatchMultipleCommitments*() =
+  ## Test batch verification with multiple commitments
+  echo "Testing batch verification with multiple commitments..."
+
+  const testCases = [(2, 2), (2, 4), (3, 3), (4, 2), (5, 3)]
+  for (numCommits, cellsPerCommit) in testCases:
+    echo "  Testing with ", numCommits, " commitments × ", cellsPerCommit, " cells..."
+    testKzgCosetVerifyBatchMultipleCommitments(numCommits, cellsPerCommit)
+
+  echo "✓ Multiple commitments tests all PASSED"
 
 when isMainModule:
   echo "========================================"
@@ -357,10 +780,35 @@ when isMainModule:
   echo "Non-optimized coset proofs (L=4) ... "
   testNonOptimizedCosetProofs(4)
 
-  # echo "---------------------------"
+  echo "---------------------------"
 
-  # echo "EIP-7594 batch verification ... "
-  # testKzgCosetVerifyBatch()
+  echo "EIP-7594 batch verification ... "
+  testKzgCosetVerifyBatch()
+
+  echo "---------------------------"
+
+  echo "EIP-7594 batch verification (small sizes) ... "
+  testKzgCosetVerifyBatchSmallSizes()
+
+  echo "---------------------------"
+
+  echo "EIP-7594 batch verification (multiple commitments) ... "
+  testKzgCosetVerifyBatchMultipleCommitments()
+
+  echo "---------------------------"
+
+  echo "Negative tests: switched proofs ... "
+  testKzgCosetVerifyBatchNegative_SwitchProofs()
+
+  echo "---------------------------"
+
+  echo "Negative tests: switched evals ... "
+  testKzgCosetVerifyBatchNegative_SwitchEvals()
+
+  echo "---------------------------"
+
+  echo "Negative tests: fake proofs ... "
+  testKzgCosetVerifyBatchNegative_FakeProof()
 
   echo "\n========================================"
   echo "    All KZG multiproofs tests PASSED ✓"

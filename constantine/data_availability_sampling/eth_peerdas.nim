@@ -51,7 +51,7 @@ import
 
 func cosetShiftForIndex*[L, CDS: static int, Name: static Algebra](
        cell_index: uint64,
-       fft_desc: CosetFFT_Descriptor[Fr[Name]]): Fr[Name] =
+       fft_desc: FrFFT_Descriptor[Fr[Name]]): Fr[Name] =
   ## Get the coset shift for a given cell index.
   ## Returns h_k = roots_of_unity_brp[L * cell_index]
   ## Domain: Extended domain of size CDS * L / 2
@@ -60,7 +60,7 @@ func cosetShiftForIndex*[L, CDS: static int, Name: static Algebra](
 
 func cosetForIndex*[L, CDS: static int, Name: static Algebra](
        cell_index: uint64,
-       fft_desc: CosetFFT_Descriptor[Fr[Name]]): array[L, Fr[Name]] =
+       fft_desc: FrFFT_Descriptor[Fr[Name]]): array[L, Fr[Name]] =
   ## Get the coset domain for a given cell index.
   ## Returns h_k * roots_of_unity[i] for i in 0..L-1
   ## Domain: Extended domain of size CDS * L / 2
@@ -77,7 +77,7 @@ func cosetForIndex*[L, CDS: static int, Name: static Algebra](
 func recoverPolynomialCoeff*[N, L, CDS: static int, Name: static Algebra](
        cell_indices: seq[uint64],
        cosets_evals: seq[array[L, Fr[Name]]],
-       fft_desc: CosetFFT_Descriptor[Fr[Name]]): PolynomialCoef[2 * N, Fr[Name]] =
+       fft_desc: FrFFT_Descriptor[Fr[Name]]): PolynomialCoef[2 * N, Fr[Name]] =
   ## Recover polynomial coefficient form from partial cell evaluations.
   ##
   ## Algorithm (FFT-based recovery):
@@ -184,12 +184,15 @@ func recoverPolynomialCoeff*[N, L, CDS: static int, Name: static Algebra](
   doAssert ifft_status == FFT_Success
 
   # Step 6: Evaluate on coset domain using coset FFT descriptor
+  # Coset shift = 5 (same as c-kzg-4844)
+  var cosetShift: Fr[Name]
+  cosetShift.fromUint(5)
   var ext_eval_over_coset = allocHeapArrayAligned(Fr[Name], ext_size, alignment = 64)
-  let coset_fft_status = coset_fft_nr(fft_desc, ext_eval_over_coset.toOpenArray(ext_size), ext_times_zero_coeffs.toOpenArray(ext_size))
+  let coset_fft_status = coset_fft_nr(fft_desc, ext_eval_over_coset.toOpenArray(ext_size), ext_times_zero_coeffs.toOpenArray(ext_size), cosetShift)
   doAssert coset_fft_status == FFT_Success
 
   var zero_poly_over_coset = allocHeapArrayAligned(Fr[Name], ext_size, alignment = 64)
-  let coset_fft_status2 = coset_fft_nr(fft_desc, zero_poly_over_coset.toOpenArray(ext_size), zero_poly_coeff.toOpenArray(ext_size))
+  let coset_fft_status2 = coset_fft_nr(fft_desc, zero_poly_over_coset.toOpenArray(ext_size), zero_poly_coeff.toOpenArray(ext_size), cosetShift)
   doAssert coset_fft_status2 == FFT_Success
 
   # Step 7: Pointwise divide P_eval = (E*Z)_coset / Z_coset
@@ -199,9 +202,9 @@ func recoverPolynomialCoeff*[N, L, CDS: static int, Name: static Algebra](
     inv.inv_vartime(zero_poly_over_coset[i])
     reconstructed_over_coset[i].prod(ext_eval_over_coset[i], inv)
 
-  # Step 8: Convert P to coefficient form via coset IFFT [Shift: from descriptor]
+  # Step 8: Convert P to coefficient form via coset IFFT
   var reconstructed_coeff = allocHeapArrayAligned(Fr[Name], ext_size, alignment = 64)
-  let coset_ifft_status = coset_ifft_rn(fft_desc, reconstructed_coeff.toOpenArray(ext_size), reconstructed_over_coset.toOpenArray(ext_size))
+  let coset_ifft_status = coset_ifft_rn(fft_desc, reconstructed_coeff.toOpenArray(ext_size), reconstructed_over_coset.toOpenArray(ext_size), cosetShift)
   doAssert coset_ifft_status == FFT_Success
 
   # Return coefficients

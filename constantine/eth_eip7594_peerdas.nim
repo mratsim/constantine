@@ -8,15 +8,16 @@
 
 import
   constantine/named/algebras,
-  constantine/math/[ec_shortweierstrass, polynomials/polynomials, polynomials/fft],
-  constantine/math/arithmetic/finite_fields,
-  constantine/math/io/io_fields,
-  constantine/platforms/[primitives, views],
+  constantine/math/[ec_shortweierstrass, extension_fields, polynomials/polynomials, polynomials/fft],
+  constantine/math/arithmetic/[finite_fields, limbs_montgomery],
+  constantine/math/io/[io_bigints, io_fields],
+  constantine/platforms/[primitives, views, allocs],
   constantine/commitments_setups/ethereum_kzg_srs,
   constantine/ethereum_eip4844_kzg,
-  constantine/serialization/[codecs_status_codes, codecs_bls12_381],
+  constantine/serialization/[codecs_status_codes, codecs_bls12_381, endians],
   constantine/data_availability_sampling/eth_peerdas,
-  constantine/commitments/kzg_multiproofs
+  constantine/commitments/kzg_multiproofs,
+  constantine/hashes
 
 ## ############################################################
 ##
@@ -31,7 +32,7 @@ import
 ## - compute_cells
 ## - compute_cells_and_kzg_proofs
 ## - recover_cells_and_kzg_proofs
-## - verify_cell_kzg_proof_batch (TODO)
+## - verify_cell_kzg_proof_batch
 ##
 ## Background on PeerDAS
 ## ~~~~~~~~~~~~~~~~~~~~~~
@@ -59,6 +60,9 @@ import
 ## - EIP-7594: https://eips.ethereum.org/EIPS/eip-7594
 ## - Spec: https://github.com/ethereum/consensus-specs/blob/v1.4.0-beta.1/specs/fulu/polynomial-commitments-sampling.md
 ## - FK20 Paper: https://eprint.iacr.org/2023/033
+
+{.push raises:[].}  # No exceptions for crypto
+{.push checks:off.} # We want unchecked int and array accesses
 
 const RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN* = asBytes"RCKZGCBATCH__V1_"
 
@@ -238,7 +242,7 @@ func compute_cells*(
 
   # Step 3d: FFT of shifted coefficients -> evaluations directly into cells 64-127
   # fft_nn: natural input -> natural output
-  let pHalfCells = cast[ptr UncheckedArray[Fr[BLS12_381]]](cells_evals[HALF_CDS][0].addr)
+  let pHalfCells = cells_evals[HALF_CDS].asUnchecked()
   var odd_evals: array[N, Fr[BLS12_381]]
   let fft_status = ctx.fft_desc_ext.fft_nn(pHalfCells.toOpenArray(N), poly_coef_nat.coefs)
   doAssert fft_status == FFT_Success
@@ -250,7 +254,6 @@ func compute_cells*(
     cosetEvalsToCell(cells_evals[i], cells[i])
 
   return cttEthKzg_Success
-
 
 func compute_cells_and_kzg_proofs*(
        ctx: ptr EthereumKZGContext,
@@ -287,23 +290,14 @@ func compute_cells_and_kzg_proofs*(
     return cells_status
 
   # Step 4: Compute FK20 proofs
-  # Precompute tauExtFftArray (X_ext FFT columns) for all offsets
-  # This corresponds to s->x_ext_fft_columns in c-kzg-4844
   const N = FIELD_ELEMENTS_PER_BLOB
   const L = FIELD_ELEMENTS_PER_CELL
   const CDS = CELLS_PER_EXT_BLOB
 
-
-  # Compute tauExtFftArray (precomputed setup FFT for FK20 Phase 1)
-  var tauExtFftArray: array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
-
-  getTauExtFftArray[N, L, CDS, BLS12_381](tauExtFftArray, ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
-
-  # Compute FK20 proofs (Phase 1 + Phase 2)
+  # Compute FK20 proofs (Phase 1 + Phase 2) using precomputed SRS polyphase spectrum bank
   var proofsAff: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
-  kzg_coset_prove[N, L, CDS, BLS12_381](
-    tauExtFftArray, proofsAff, poly_monomial,
-    ctx.fft_desc_ext, ctx.ecfft_desc_ext)
+  kzg_coset_prove(proofsAff, poly_monomial,
+    ctx.fft_desc_ext, ctx.ecfft_desc_ext, ctx.polyphaseSpectrumBank)
 
   # Bit-reverse permutation on proofs (FK20 convention, matching c-kzg-4844)
   proofsAff.bit_reversal_permutation()
@@ -313,6 +307,193 @@ func compute_cells_and_kzg_proofs*(
     proofs[i] = KZGProof(proofsAff[i])
 
   return cttEthKzg_Success
+
+func deduplicateCommitments*(
+       commitmentIdx: var openArray[int],
+       commitments: openArray[EC_ShortW_Aff[Fp[BLS12_381], G1]]): int =
+  ## Deduplicate commitments and return the number of unique commitments.
+  ## commitmentIdx[i] stores the index of the unique commitment for cell i.
+  ## This function will be optimized in a future refactoring.
+  debug:
+    doAssert commitmentIdx.len == commitments.len
+
+  var numUniqueCommitments = 0
+  for i in 0 ..< commitments.len:
+    var found = false
+    for j in 0 ..< numUniqueCommitments:
+      if bool(commitments[j] == commitments[i]):
+        commitmentIdx[i] = j
+        found = true
+        break
+
+    if not found:
+      commitmentIdx[i] = numUniqueCommitments
+      inc numUniqueCommitments
+
+  return numUniqueCommitments
+
+func compute_verify_cell_kzg_proof_batch_challenge*(
+       commitments: openArray[array[BYTES_PER_COMMITMENT, byte]],
+       commitment_indices: openArray[int],
+       cell_indices: openArray[int],
+       cosets_evals: openArray[array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]]],
+       proofs: openArray[array[BYTES_PER_PROOF, byte]]): Fr[BLS12_381] =
+  ## Compute the Fiat-Shamir challenge r for batch verification.
+  ## Follows the spec: hash all inputs with domain separator to get random field element.
+  var transcript {.noInit.}: sha256
+  transcript.init()
+
+  transcript.update(RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN)
+
+  let numCommitments = len(commitments)
+  let numCellIndices = len(cell_indices)
+
+  transcript.update(toBytes(uint64(FIELD_ELEMENTS_PER_BLOB), bigEndian))
+  transcript.update(toBytes(uint64(FIELD_ELEMENTS_PER_CELL), bigEndian))
+  transcript.update(toBytes(uint64(numCommitments), bigEndian))
+  transcript.update(toBytes(uint64(numCellIndices), bigEndian))
+
+  for commitment in commitments:
+    transcript.update(commitment)
+
+  for k in 0 ..< numCellIndices:
+    transcript.update(toBytes(uint64 commitment_indices[k], bigEndian))
+    transcript.update(toBytes(uint64 cell_indices[k], bigEndian))
+    for eval in cosets_evals[k]:
+      var evalBytes: array[32, byte]
+      discard bls_field_to_bytes(evalBytes, eval)
+      transcript.update(evalBytes)
+    transcript.update(proofs[k])
+
+  var hashTmp: array[32, byte]
+  transcript.finish(hashTmp)
+  result.fromDigest(hashTmp)
+
+func verify_cell_kzg_proof_batch*(
+       ctx: ptr EthereumKZGContext,
+       commitments_bytes: openArray[array[BYTES_PER_COMMITMENT, byte]],
+       cell_indices: openArray[int],
+       cells: openArray[Cell],
+       proofs_bytes: openArray[array[BYTES_PER_PROOF, byte]],
+       secureRandomBytes: array[32, byte]): bool =
+  ## Verify that a set of cells belong to their corresponding commitments.
+  ##
+  ## This implements the universal verification equation from:
+  ## https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
+  ##
+  ## Public method following the EIP-7594 spec.
+
+  # Validate input lengths
+  if len(commitments_bytes) != len(cells) or
+     len(commitments_bytes) != len(proofs_bytes) or
+     len(commitments_bytes) != len(cell_indices):
+    return false
+
+  # Validate cell indices are in bounds
+  for cell_idx in cell_indices:
+    if cell_idx >= CELLS_PER_EXT_BLOB:
+      return false
+
+  # Edge case: zero cells is trivially valid
+  if len(cell_indices) == 0:
+    return true
+
+  let numCells = len(cell_indices)
+
+  let cosets_evals = allocHeapArrayAligned(
+    array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]], numCells, alignment = 64)
+  let commitments = allocHeapArrayAligned(
+    EC_ShortW_Aff[Fp[BLS12_381], G1], numCells, alignment = 64)
+  let proofs = allocHeapArrayAligned(
+    EC_ShortW_Aff[Fp[BLS12_381], G1], numCells, alignment = 64)
+  let commitmentIdx = allocHeapArrayAligned(int, numCells, alignment = 64)
+  let evalsCols = allocHeapArrayAligned(int, numCells, alignment = 64)
+  let rPowers = allocHeapArrayAligned(Fr[BLS12_381], numCells, alignment = 64)
+
+  block HappyPath:
+    # Deserialize cells to coset evaluations
+    for i in 0 ..< numCells:
+      let status = cellToCosetEvals(cells[i], cosets_evals[i])
+      if status != cttEthKzg_Success:
+        result = false
+        break HappyPath
+      evalsCols[i] = int(cell_indices[i])
+
+    # Deserialize commitments
+    for i in 0 ..< numCells:
+      let status = commitments[i].deserialize_g1_compressed(commitments_bytes[i])
+      if status notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
+        result = false
+        break HappyPath
+
+    # Deserialize proofs
+    for i in 0 ..< numCells:
+      let status = proofs[i].deserialize_g1_compressed(proofs_bytes[i])
+      if status notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
+        result = false
+        break HappyPath
+
+    # Deduplicate commitments
+    let numUniqueCommitments = deduplicateCommitments(
+      commitmentIdx.toOpenArray(numCells),
+      commitments.toOpenArray(numCells)
+    )
+
+    # Create compacted unique commitments array
+    # commitmentIdx[i] gives the index into unique commitments for cell i
+    # Since deduplication preserves order, the first cell with each unique index
+    # contains the actual unique commitment
+    let uniqueCommitments = allocHeapArrayAligned(
+      EC_ShortW_Aff[Fp[BLS12_381], G1], numUniqueCommitments, alignment = 64)
+    for i in 0 ..< numCells:
+      uniqueCommitments[commitmentIdx[i]] = commitments[i]
+
+    var r: Fr[BLS12_381]
+    if not r.getBatchBlindingFactor(secureRandomBytes):
+      # Compute challenge r via Fiat-Shamir
+
+      # Allocate unique commitments bytes for Fiat-Shamir challenge
+      let uniqueCommitmentsBytes = allocHeapArrayAligned(
+        array[BYTES_PER_COMMITMENT, byte], numUniqueCommitments, alignment = 64)
+      for i in 0 ..< numCells:
+        uniqueCommitmentsBytes[commitmentIdx[i]] = commitments_bytes[i]
+
+      r = compute_verify_cell_kzg_proof_batch_challenge(
+        uniqueCommitmentsBytes.toOpenArray(numUniqueCommitments),
+        commitmentIdx.toOpenArray(numCells),
+        cell_indices,
+        cosets_evals.toOpenArray(numCells),
+        proofs_bytes)
+
+      freeHeapAligned(uniqueCommitmentsBytes)
+
+    # Compute powers of r: [r^1, r^2, ..., r^{numCells}]
+    rPowers.computePowers(r, numCells)
+
+    result = kzg_coset_verify_batch(
+      uniqueCommitments = uniqueCommitments.toOpenArray(numUniqueCommitments),
+      commitmentIdx = commitmentIdx.toOpenArray(numCells),
+      proofs = proofs.toOpenArray(numCells),
+      evals = cosets_evals.toOpenArray(numCells),
+      evalsCols = evalsCols.toOpenArray(numCells),
+      domain = ctx.fft_desc_ext,
+      linearIndepRandNumbers = rPowers.toOpenArray(numCells),
+      powers_of_tau = ctx.srs_monomial_g1.coefs,
+      tau_pow_L_g2 = ctx.srs_monomial_g2.coefs[FIELD_ELEMENTS_PER_CELL],
+      N = FIELD_ELEMENTS_PER_EXT_BLOB
+    )
+
+    freeHeapAligned(uniqueCommitments)
+
+
+  freeHeapAligned(rPowers)
+  freeHeapAligned(evalsCols)
+  freeHeapAligned(commitmentIdx)
+  freeHeapAligned(proofs)
+  freeHeapAligned(commitments)
+  freeHeapAligned(cosets_evals)
+
+  return result
 
 func recover_cells_and_kzg_proofs*(
        ctx: ptr EthereumKZGContext,
@@ -406,17 +587,11 @@ func recover_cells_and_kzg_proofs*(
   const L = FIELD_ELEMENTS_PER_CELL
   const CDS = CELLS_PER_EXT_BLOB
 
-
-  # Compute tauExtFftArray (precomputed setup FFT for FK20 Phase 1)
-  var tauExtFftArray: array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
-
-  getTauExtFftArray[N, L, CDS, BLS12_381](tauExtFftArray, ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
-
-  # Compute FK20 proofs
+  # Compute FK20 proofs using precomputed SRS polyphase spectrum bank
   var proofsAff: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
-  kzg_coset_prove[N, L, CDS, BLS12_381](
-    tauExtFftArray, proofsAff, poly_coeff_N,
-    ctx.fft_desc_ext, ctx.ecfft_desc_ext)
+  kzg_coset_prove(
+    proofsAff, poly_coeff_N,
+    ctx.fft_desc_ext, ctx.ecfft_desc_ext, ctx.polyphaseSpectrumBank)
 
   # Bit-reverse permutation on proofs
   proofsAff.bit_reversal_permutation()

@@ -16,6 +16,8 @@ import
   constantine/ethereum_eip4844_kzg,
   constantine/serialization/[codecs, codecs_bls12_381],
   constantine/math/[arithmetic, ec_shortweierstrass],
+  constantine/math/io/io_fields,
+  constantine/math/io/io_bigints,
   constantine/named/algebras,
   # Test utilities
   ./testutils/eth_consensus_utils
@@ -89,6 +91,79 @@ TestVectorsDir.testGen(recover_cells_and_kzg_proofs, "kzg-mainnet", testVector):
   else:
     doAssert testVector["output"].content == "null"
 
+TestVectorsDir.testGen(verify_cell_kzg_proof_batch, "kzg-mainnet", testVector):
+  # Parse inputs
+  parseAssignList(commitmentsBytes, BYTES_PER_COMMITMENT, testVector["input"]["commitments"])
+
+  var cellIndices: seq[int] = @[]
+  for idx in testVector["input"]["cell_indices"]:
+    cellIndices.add(parseInt(idx.content))
+
+  parseAssignList(cells, BYTES_PER_CELL, testVector["input"]["cells"])
+  parseAssignList(proofsBytes, BYTES_PER_PROOF, testVector["input"]["proofs"])
+
+  # Generate secure random bytes for batch verification
+  var secureRandomBytes: array[32, byte]
+  for i in 0..31:
+    secureRandomBytes[i] = byte(i + 1)  # Deterministic for testing
+
+  # Call verify_cell_kzg_proof_batch
+  let ok = verify_cell_kzg_proof_batch(
+    ctx,
+    commitmentsBytes,
+    cellIndices,
+    cells,
+    proofsBytes,
+    secureRandomBytes
+  )
+
+  stdout.write "[" & $ok & "]\n"
+
+  # Check output
+  let expectedOk = testVector["output"].content == "true"
+  doAssert ok == expectedOk, block:
+    "\nTest case: " & file &
+    "\nExpected: " & $expectedOk &
+    "\nActual:   " & $ok & "\n"
+
+TestVectorsDir.testGen(compute_verify_cell_kzg_proof_batch_challenge, "kzg-mainnet", testVector):
+  parseAssignList(commitments, BYTES_PER_COMMITMENT, testVector["input"]["commitments"])
+
+  var commitmentIndices: seq[int] = @[]
+  for idx in testVector["input"]["commitment_indices"]:
+    commitmentIndices.add(parseInt(idx.content))
+
+  var cellIndices: seq[int] = @[]
+  for idx in testVector["input"]["cell_indices"]:
+    cellIndices.add(parseInt(idx.content))
+
+  var cosetsEvals: seq[array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]]]
+  for cosetEvalsHex in testVector["input"]["cosets_evals"]:
+    var evals: array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]]
+    for idx in 0 ..< FIELD_ELEMENTS_PER_CELL:
+      evals[idx].fromHex(cosetEvalsHex[idx].content)
+    cosetsEvals.add(evals)
+
+  parseAssignList(proofs, BYTES_PER_PROOF, testVector["input"]["proofs"])
+
+  let challenge = compute_verify_cell_kzg_proof_batch_challenge(
+    commitments,
+    commitmentIndices,
+    cellIndices,
+    cosetsEvals,
+    proofs
+  )
+
+  stdout.write "[ok]\n"
+
+  var expectedChallenge: Fr[BLS12_381]
+  expectedChallenge.fromHex(testVector["output"].content)
+
+  doAssert (challenge == expectedChallenge).bool, block:
+    "\nTest case: " & file &
+    "\nExpected: " & testVector["output"].content &
+    "\nActual:   " & $challenge & "\n"
+
 block:
   suite "Ethereum Fulu Hardfork / EIP-7594 / PeerDAS / Data Availability Sampling":
     let ctx = getTrustedSetup()
@@ -101,5 +176,11 @@ block:
 
     test "recover_cells_and_kzg_proofs":
       ctx.test_recover_cells_and_kzg_proofs()
+
+    test "verify_cell_kzg_proof_batch":
+      ctx.test_verify_cell_kzg_proof_batch()
+
+    test "compute_verify_cell_kzg_proof_batch_challenge":
+      ctx.test_compute_verify_cell_kzg_proof_batch_challenge()
 
     ctx.trusted_setup_delete()

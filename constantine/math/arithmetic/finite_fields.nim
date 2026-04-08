@@ -845,12 +845,12 @@ func computePowers*[Name](dst: ptr UncheckedArray[FF[Name]], base: FF[Name], len
   ## It's also likely faster than calling a fast RNG + modular reduction
   ## to be in 0 < number < curve_order
   ## since modular reduction needs modular multiplication or a division anyway.
+  ##
+  ## IMPORTANT: Powers start from r¹ (not r⁰) to ensure blinding.
   let N = len
   if N >= 1:
-    dst[0].setOne()
-  if N >= 2:
-    dst[1] = base
-  for i in 2 ..< N:
+    dst[0] = base
+  for i in 1 ..< N:
     dst[i].prod(dst[i-1], base)
 
 # ############################################################

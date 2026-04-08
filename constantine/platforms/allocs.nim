@@ -112,6 +112,14 @@ proc allocHeapArrayAligned*(T: typedesc, len: int, alignment: static Natural): p
 
   cast[ptr UncheckedArray[T]](aligned_alloc(alignment, requiredMem))
 
+proc alloc0HeapArrayAligned*(T: typedesc, len: int, alignment: static Natural): ptr UncheckedArray[T] {.inline.} =
+  ## Aligned heap allocation with zero initialization
+  let
+    size = sizeof(T) * len
+    requiredMem = size.round_step_up(alignment)
+  result = cast[ptr UncheckedArray[T]](aligned_alloc(alignment, requiredMem))
+  zeroMem(result, requiredMem)
+
 proc allocHeapAlignedPtr*(T: typedesc[ptr], alignment: static Natural): T {.inline.} =
   allocHeapAligned(typeof(default(T)[]), alignment)
 

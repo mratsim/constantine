@@ -176,6 +176,26 @@ func polyDiv*[N, M: static int, Field](
   for i in (quotientDeg + 1) ..< N:
     quotient.coefs[i].setZero()
 
+func sum*(r: var PolynomialCoef, f, g: PolynomialCoef) =
+  ## Polynomial addition in coefficient form
+  for i in 0 ..< r.coefs.len:
+    r.coefs[i].sum(f.coefs[i], g.coefs[i])
+
+func `+=`*(f: var PolynomialCoef, g: PolynomialCoef) =
+  ## Polynomial addition in coefficient form
+  for i in 0 ..< f.coefs.len:
+    f.coefs[i] += g.coefs[i]
+
+func diff*(r: var PolynomialCoef, f, g: PolynomialCoef) =
+  ## Polynomial subtraction in coefficient form
+  for i in 0 ..< r.coefs.len:
+    r.coefs[i].diff(f.coefs[i], g.coefs[i])
+
+func `-=`*(f: var PolynomialCoef, g: PolynomialCoef) =
+  ## Polynomial subtraction in coefficient form
+  for i in 0 ..< f.coefs.len:
+    f.coefs[i] -= g.coefs[i]
+
 func computeEvalsAtCoset*[L, R: static int, Name: static Algebra](
        ys: var array[L, Fr[Name]],
        poly: PolynomialCoef,
@@ -184,6 +204,7 @@ func computeEvalsAtCoset*[L, R: static int, Name: static Algebra](
   ## Given polynomial p(X) and L coset points {hω⁰, hω¹, ..., hωᴸ⁻¹}:
   ##
   ## This computes evaluations: yⱼ = p(hωʲ) for j in 0..L-1
+  ## Output is in natural order.
 
   static:
     doAssert R > L, "The number of roots of unity must be bigger than the coset size"
