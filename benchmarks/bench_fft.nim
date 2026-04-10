@@ -109,6 +109,106 @@ proc bench_EC_FFT*() =
       let status = ec_fft_nr(fftDesc, coefsOut, data)
       doAssert status == FFT_Success
 
+proc bench_EC_IFFT*() =
+  echo "\n=== EC IFFT Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in 4 ..< 10:
+    let order = 1 shl scale
+    let fftDesc = ECFFT_Descriptor[EC_G1].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[EC_G1](order)
+    data[0].setGenerator()
+    for i in 1 ..< order:
+      data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
+
+    var coefsOut = newSeq[EC_G1](order)
+    discard ec_fft_nr(fftDesc, coefsOut, data)
+
+    var recovered = newSeq[EC_G1](order)
+
+    bench("EC IFFT (G1)", "EC_G1", order, NumIters):
+      let status = ec_ifft_rn(fftDesc, recovered, coefsOut)
+      doAssert status == FFT_Success
+
+proc countOneTwiddles*() =
+  echo "\n=== Twiddle Factor Analysis ==="
+  echo "Counting how many twiddle factors (scalars) are 1 in FFT - these can skip scalar mul"
+  separator()
+
+  # Test sizes relevant to PeerDAS
+  for scale in [7, 9, 11, 13]:  # 128, 512, 2048, 8192 points
+    let order = 1 shl scale
+    let fftDesc = ECFFT_Descriptor[EC_G1].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+    
+    var oneCount = 0
+    for i in 0 ..< order:
+      let limbs = fftDesc.rootsOfUnity[i].limbs
+      var isOne = uint(limbs[0]) == 1'u
+      for j in 1 ..< limbs.len:
+        isOne = isOne and (uint(limbs[j]) == 0'u)
+      if isOne:
+        inc oneCount
+    
+    echo &"FFT size {order:>5}: {oneCount:>4} twiddles are 1 ({float(oneCount)/float(order)*100:>5.1f}%)"
+
+proc bench_EC_FFT_TwiddleOptimization*() =
+  echo "\n=== EC FFT Benchmark - Twiddle Factor Optimization ==="
+  echo "Measuring benefit of checking isOne(twiddle) before scalarMul_vartime"
+  echo "Sizes chosen for PeerDAS: 128 (cells/blob), 512, 2048, 8192 (64 blobs)"
+  separator()
+
+  const NumIters = 3
+
+  # Test sizes relevant to PeerDAS
+  for scale in [7, 9, 11, 13]:  # 128, 512, 2048, 8192 points
+    let order = 1 shl scale
+    let fftDesc = ECFFT_Descriptor[EC_G1].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[EC_G1](order)
+    var coefsOut = newSeq[EC_G1](order)
+    
+    # Fill with random points
+    var accumulator: EC_G1
+    accumulator.setGenerator()
+    for i in 0 ..< order:
+      data[i] = accumulator
+      accumulator.mixedSum(accumulator, BLS12_381.getGenerator("G1"))
+
+    bench(&"EC FFT (with isOne check)", "EC_G1", order, NumIters):
+      let status = ec_fft_nr(fftDesc, coefsOut, data)
+      doAssert status == FFT_Success
+
+proc bench_EC_IFFT_TwiddleOptimization*() =
+  echo "\n=== EC IFFT Benchmark - Twiddle Factor Optimization ==="
+  echo "Sizes chosen for PeerDAS: 128, 512, 2048, 8192"
+  separator()
+
+  const NumIters = 3
+
+  for scale in [7, 9, 11, 13]:  # 128, 512, 2048, 8192 points
+    let order = 1 shl scale
+    let fftDesc = ECFFT_Descriptor[EC_G1].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[EC_G1](order)
+    var freq = newSeq[EC_G1](order)
+    var recovered = newSeq[EC_G1](order)
+    
+    # Fill with random points
+    var accumulator: EC_G1
+    accumulator.setGenerator()
+    for i in 0 ..< order:
+      data[i] = accumulator
+      accumulator.mixedSum(accumulator, BLS12_381.getGenerator("G1"))
+
+    discard ec_fft_nr(fftDesc, freq, data)
+
+    bench(&"EC IFFT (with isOne check)", "EC_G1", order, NumIters):
+      let status = ec_ifft_rn(fftDesc, recovered, freq)
+      doAssert status == FFT_Success
+
 proc bench_Fr_FFT*() =
   echo "\n=== Fr FFT Benchmark ==="
   separator()
@@ -217,9 +317,15 @@ when isMainModule:
 
   warmup()
   bench_EC_FFT()
+  bench_EC_IFFT()
   bench_Fr_FFT()
   bench_Fr_IFFT()
   bench_BitReversal(uint32)
   bench_BitReversal(Fr[BLS12_381])
+
+  countOneTwiddles()
+  echo ""
+  bench_EC_FFT_TwiddleOptimization()
+  bench_EC_IFFT_TwiddleOptimization()
 
   echo ""

@@ -134,7 +134,7 @@ func fft_internal[F](
 func fft_nr*[F](
        desc: FrFFT_Descriptor[F],
        output{.noalias.}: var openarray[F],
-       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime].} =
+       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime], meter.} =
   ## FFT from natural order to bit-reversed order.
   ## Input: natural order values
   ## Output: bit-reversed order values in Fourier domain
@@ -170,7 +170,7 @@ func fft_nr*[F](
 func fft_nn*[F](
        desc: FrFFT_Descriptor[F],
        output{.noalias.}: var openarray[F],
-       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc].} =
+       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
   ## FFT from natural order to natural order.
   ## Input: natural order values
   ## Output: natural order values in Fourier domain
@@ -196,7 +196,7 @@ func fft_nn*[F](
 func ifft_rn*[F](
        desc: FrFFT_Descriptor[F],
        output{.noalias.}: var openarray[F],
-       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime].} =
+       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime], meter.} =
   ## IFFT from bit-reversed order to natural order.
   ## Input: bit-reversed order values in Fourier domain
   ## Output: natural order values
@@ -234,7 +234,7 @@ func ifft_rn*[F](
 func ifft_nn*[F](
        desc: FrFFT_Descriptor[F],
        output{.noalias.}: var openarray[F],
-       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc].} =
+       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
   ## IFFT from natural order to natural order.
   ## Input: natural order values in Fourier domain
   ## Output: natural order values
@@ -331,7 +331,7 @@ func coset_fft_nr*[F](
        desc: FrFFT_Descriptor[F],
        output: var openarray[F],
        vals: openarray[F],
-       cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc].} =
+       cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
   ## Compute FFT over a coset of the roots of unity (natural to bit-reversed order).
   ##
   ## This is used for polynomial operations where we need to avoid
@@ -360,7 +360,7 @@ func coset_ifft_rn*[F](
        desc: FrFFT_Descriptor[F],
        output: var openarray[F],
        vals: openarray[F],
-       cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc].} =
+       cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
   ## Compute inverse FFT over a coset of the roots of unity (bit-reversed to natural order).
   ##
   ## This is used after polynomial division in the coset domain
@@ -436,7 +436,7 @@ func fft_internal[EC; bits: static int](
 func ec_fft_nr*[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca].} =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca], meter.} =
   if vals.len > desc.order:
     return FFT_TooManyValues
   if not vals.len.uint64.isPowerOf2_vartime():
@@ -453,7 +453,7 @@ func ec_fft_nr*[EC](
 func ec_ifft_rn*[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca].} =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca], meter.} =
   ## Inverse FFT
   if vals.len > desc.order:
     return FFT_TooManyValues
@@ -737,7 +737,7 @@ const bitReversalOutOfPlaceThreshold = 7
   ## Threshold (as log2) above which the COBRA algorithm is used for out-of-place.
   ## Below this threshold, the naive algorithm is faster on modern CPUs.
 
-func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) =
+func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) {.meter.} =
   ## Out-of-place bit reversal permutation.
   ##
   ## Automatically selects between naive and COBRA algorithms based on size.
@@ -750,7 +750,7 @@ func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias
   else:
     bit_reversal_permutation_naive(dst, src)
 
-func bit_reversal_permutation*[T](buf: var openArray[T]) =
+func bit_reversal_permutation*[T](buf: var openArray[T]) {.meter.} =
   ## In-place bit reversal permutation.
   ##
   ## Out-of-place is at least 2x faster than in-place so dispatch to out-of-place

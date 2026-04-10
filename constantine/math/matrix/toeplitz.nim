@@ -9,7 +9,7 @@
 import
   constantine/math/[arithmetic, ec_shortweierstrass],
   constantine/math/polynomials/fft,
-  constantine/platforms/[allocs, views]
+  constantine/platforms/[allocs, views, abstractions]
 
 # ############################################################
 #
@@ -87,7 +87,7 @@ proc makeCirculantMatrix*[F](
   poly: openArray[F],
   offset: int,
   stride: int
-) {.raises: [].} =
+) {.raises: [], meter.} =
   ## Build circulant matrix embedding for Toeplitz multiplication.
   ##
   ## This builds the circulant vector from polynomial coefficients
@@ -142,7 +142,7 @@ proc toeplitzMatVecMulPreFFT*[EC, F](
   frFftDesc: FrFFT_Descriptor[F],
   ecFftDesc: ECFFT_Descriptor[EC],
   accumulate: bool = false
-): FFTStatus =
+): FFTStatus {.meter.} =
 
   ## Multiply Toeplitz matrix (via circulant coefficients) by pre-FFT'd vector for FK20.
   ##
@@ -228,7 +228,7 @@ proc toeplitzMatVecMul*[EC, F](
   v: openArray[EC],
   frFftDesc: FrFFT_Descriptor[F],
   ecFftDesc: ECFFT_Descriptor[EC]
-): FFTStatus =
+): FFTStatus {.meter.} =
 
   ## Multiply a Toeplitz matrix by a vector using FFT-based O(n log n) algorithm.
   ##

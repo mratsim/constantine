@@ -724,8 +724,11 @@ const benchDesc = [
   "bench_gmp_modmul",
   "bench_eth_bls_signatures",
   "bench_eth_eip4844_kzg",
-  "bench_eth_evm_modexp_dos",
-  "bench_eth_eip2537_subgroup_checks_impact",
+  "bench_eth_eip7594_peerdas",
+  "eth_eip7594/perf_compute_cells",
+  "eth_eip7594/perf_compute_cells_and_kzg_proofs",
+  "eth_eip7594/perf_recover_cells_and_kzg_proofs",
+  "eth_eip7594/perf_verify_cell_kzg_proof_batch",
   "bench_verkle_primitives",
   "bench_eth_evm_precompiles",
   "bench_multilinear_extensions",
@@ -1175,10 +1178,35 @@ task bench_hash_to_curve, "Run Hash-to-Curve benchmarks":
 task bench_eth_bls_signatures, "Run Ethereum BLS signatures benchmarks - CC compiler":
   runBench("bench_eth_bls_signatures")
 
+# FFT / IFFT
+# ------------------------------------------
+task bench_fft, "Run FFT/IFFT/bit-reversal-permutation benchmarks":
+  runBench("bench_fft")
+
 # EIP 4844 - KZG Polynomial Commitments
 # ------------------------------------------
 task bench_eth_eip4844_kzg, "Run Ethereum EIP4844 KZG Polynomial commitment - CC compiler":
   runBench("bench_eth_eip4844_kzg")
+
+task bench_eth_eip7594_peerdas, "Run Ethereum EIP7594 PeerDAS (Data Availability Sampling) - CC compiler":
+  runBench("bench_eth_eip7594_peerdas")
+
+# EIP7594 PeerDAS - Individual perf benchmarks (for VTune/perf profiling)
+# ------------------------------------------
+task bench_eth_eip7594_generate_benchset, "Generate PeerDAS benchset.dat for perf benchmarks - CC compiler":
+  runBench("eth_eip7594/benchset_generation")
+
+task bench_eth_eip7594_perf_compute_cells, "Run PeerDAS compute_cells benchmark (serialized data) - CC compiler":
+  runBench("eth_eip7594/perf_compute_cells")
+
+task bench_eth_eip7594_perf_compute_cells_and_kzg_proofs, "Run PeerDAS compute_cells_and_kzg_proofs benchmark (FK20, serialized data) - CC compiler":
+  runBench("eth_eip7594/perf_compute_cells_and_kzg_proofs")
+
+task bench_eth_eip7594_perf_recover_cells_and_kzg_proofs, "Run PeerDAS recover_cells_and_kzg_proofs benchmark (serialized data) - CC compiler":
+  runBench("eth_eip7594/perf_recover_cells_and_kzg_proofs")
+
+task bench_eth_eip7594_perf_verify_cell_kzg_proof_batch, "Run PeerDAS verify_cell_kzg_proof_batch benchmark (64 blobs, serialized data) - CC compiler":
+  runBench("eth_eip7594/perf_verify_cell_kzg_proof_batch")
 
 task bench_verkle, "Run benchmarks for Banderwagon":
   runBench("bench_verkle_primitives")

@@ -17,10 +17,7 @@ import
   constantine/math/polynomials/[polynomials, fft],
   constantine/math/matrix/toeplitz,
   constantine/math/pairings/pairings_generic,
-  constantine/math/io/io_bigints,
-  constantine/math/io/io_ec,
-  constantine/platforms/[abstractions, allocs, bithacks, views, primitives],
-  constantine/serialization/[codecs, codecs_bls12_381]
+  constantine/platforms/[abstractions, allocs, bithacks, views, primitives]
 
 
 # TODO: consistent indices i, j, k, c, b across all implementation and prover/verifier
@@ -36,7 +33,7 @@ func kzg_coset_prove_naive*[N: static int, Name: static Algebra](
        proof: var EC_ShortW_Aff[Fp[Name], G1],
        poly: PolynomialCoef[N, Fr[Name]],
        cosetShift: Fr[Name], L: static int,
-       powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]]) {.tags:[Alloca, HeapAlloc, Vartime].} =
+       powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]]) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
   ## Compute a KZG multi-evaluation proof for a polynomial
   ##  at L points on a coset.
   ##
@@ -142,7 +139,7 @@ func kzg_coset_verify*[L: static int, Name: static Algebra](
        ys: array[L, Fr[Name]],
        cosetShift: Fr[Name],
        powers_of_tau: openArray[EC_ShortW_Aff[Fp[Name], G1]],
-       tau_pow_L_g2: EC_ShortW_Aff[Fp2[Name], G2]): bool = # TODO: for now we assume G2 on Fp2
+       tau_pow_L_g2: EC_ShortW_Aff[Fp2[Name], G2]): bool {.meter.} = # TODO: for now we assume G2 on Fp2
   ## Verify a KZG commitment to a polynomial p(X)
   ## at L evaluation points forming a coset
   ##
@@ -233,7 +230,7 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
        polyphaseSpectrum: var array[CDS, EC_ShortW_Jac[Fp[Name], G1]],
        powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
        ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
-       offset: int = 0) {.tags:[Alloca, HeapAlloc, Vartime].} =
+       offset: int = 0) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
   ## Compute FFT of one polyphase component of the SRS (Toeplitz input spectrum).
   ##
   ## DSP Terminology (Crypto ↔ Signal Processing Mapping)
@@ -314,7 +311,7 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
 func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static Algebra](
        polyphaseSpectrumBank: var array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]],
        powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
-       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]]) {.tags:[Alloca, HeapAlloc, Vartime].} =
+       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]]) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
   ## Compute polyphase decomposition Fourier transform for all L phases (complete polyphase filter bank).
   ##
   ## DSP Terminology (Crypto ↔ Signal Processing Mapping)
@@ -372,7 +369,7 @@ func kzg_coset_prove*[N, L, CDS: static int, Name: static Algebra](
        fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
        ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
        polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]]
-      ) {.tags:[Alloca, HeapAlloc, Vartime].} =
+      ) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
   ## Compute KZG multi-proofs for EIP-7594 cell proofs using FK20 algorithm.
   ##
   ## This implements the FK20 amortized KZG proofs from c-kzg-4844.
@@ -512,7 +509,7 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
       evalsCols: openArray[int],
       domain: FrFFT_Descriptor[Fr[Name]],
       linearIndepRandNumbers: openArray[Fr[Name]],
-      N: static int) =
+      N: static int) {.meter.} =
   ## Compute ∑ₖrᵏIₖ(X)
   ##
   ## Input is a "sparse bunch of evals" and their corresponding column.
@@ -587,7 +584,7 @@ func kzg_coset_verify_batch*[L: static int, Name: static Algebra](
       powers_of_tau: openArray[EC_ShortW_Aff[Fp[Name], G1]],
       tau_pow_L_g2: EC_ShortW_Aff[Fp2[Name], G2], # TODO: for now we assume G2 on Fp2
       N: static int
-    ): bool =
+    ): bool {.meter.} =
   ## Verify multiple KZG multiproofs
   ## organized in a 2D matrix of (commitments, (proof, evaluations)).
   ##

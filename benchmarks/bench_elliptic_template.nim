@@ -234,6 +234,30 @@ proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iter
     r = P
     r.scalarMulEndo_wNAF_vartime(exponent, window)
 
+proc scalarMulBench*(T: typedesc, bits: static int, iters: int) =
+  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
+
+  var r {.noInit.}: T
+  let P = rng.random_unsafe(T) # TODO: clear cofactor
+  let exponent = rng.random_unsafe(BigInt[bits])
+
+  block:
+    bench("EC ScalarMul         " & $bits & "-bit " & G1_or_G2, T, iters):
+      r = P
+      r.scalarMul(exponent)
+
+proc scalarMulVartimeBench*(T: typedesc, bits: static int, iters: int) =
+  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
+
+  var r {.noInit.}: T
+  let P = rng.random_unsafe(T) # TODO: clear cofactor
+  let exponent = rng.random_unsafe(BigInt[bits])
+
+  block:
+    bench("EC ScalarMul vartime " & $bits & "-bit " & G1_or_G2, T, iters):
+      r = P
+      r.scalarMul_vartime(exponent)
+
 proc subgroupCheckBench*(EC: typedesc, iters: int) {.noinline.} =
   var P = rng.random_unsafe(EC)
   P.clearCofactor()

@@ -336,7 +336,6 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
     )
 
   block:
-
     computePolyphaseDecompositionFourier(ctx.polyphaseSpectrumBank, ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
 
   block:
