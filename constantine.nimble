@@ -1075,6 +1075,8 @@ task bench_ec_msm_bls12_381_g2, "Run benchmark: Multi-Scalar-Mul for BLS12-381 �
 task bench_ec_msm_bandersnatch, "Run benchmark: Multi-Scalar-Mul for Bandersnatch - CC compiler":
   runBench("bench_ec_msm_bandersnatch")
 
+task bench_ec_msm_edwards25519, "Run benchmark: Multi-Scalar-Mul for Edwards25519 - CC compiler":
+  runBench("bench_ec_msm_edwards25519")
 
 # Elliptic curve 𝔾₂
 # ------------------------------------------

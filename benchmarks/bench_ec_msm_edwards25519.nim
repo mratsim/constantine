@@ -26,7 +26,7 @@ import
 
 const Iters = 10_000
 const AvailableCurves = [
-  Bandersnatch
+  Edwards25519
 ]
 
 # const testNumPoints = [10, 100, 1000, 10000, 100000]

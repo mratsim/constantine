@@ -35,5 +35,9 @@ func clearCofactor*[EC](P: var EC) {.inline.} =
   ## From a point on the curve, returns a point on the subgroup of order r
   when EC.F.Name in {BN254_Nogami, BN254_Snarks, BLS12_377, BLS12_381}:
     P.clearCofactorFast()
+  elif EC.F.Name == Edwards25519:
+    P.double()
+    P.double()
+    P.double()
   else:
     P.clearCofactorReference()

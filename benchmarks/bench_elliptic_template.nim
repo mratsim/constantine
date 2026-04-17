@@ -24,6 +24,8 @@ import
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_batch_ops,
+    ec_twistededwards_affine,
+    ec_twistededwards_projective,
     ec_scalar_mul],
     constantine/named/zoo_subgroups,
   # Helpers
@@ -80,37 +82,59 @@ proc addBench*(EC: typedesc, iters: int) {.noinline.} =
   when EC is EC_ShortW_JacExt:
     bench("EC Add vartime " & $EC.G, EC, iters):
       r.sum_vartime(P, Q)
-  else:
+  elif EC isnot EC_TwEdw_Prj:
     block:
       bench("EC Add " & $EC.G, EC, iters):
         r.sum(P, Q)
     block:
       bench("EC Add vartime " & $EC.G, EC, iters):
         r.sum_vartime(P, Q)
+  else:
+    block:
+      bench("EC Add ", EC, iters):
+        r.sum(P, Q)
+    block:
+      bench("EC Add vartime ", EC, iters):
+        r.sum_vartime(P, Q)
 
 proc mixedAddBench*(EC: typedesc, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   let P = rng.random_unsafe(EC)
   let Q = rng.random_unsafe(EC)
-  var Qaff: EC_ShortW_Aff[EC.F, EC.G]
-  Qaff.affine(Q)
 
   when EC is EC_ShortW_JacExt:
+    var Qaff: EC_ShortW_Aff[EC.F, EC.G]
+    Qaff.affine(Q)
     bench("EC Mixed Addition vartime " & $EC.G, EC, iters):
       r.mixedSum_vartime(P, Qaff)
-  else:
+  elif EC isnot EC_TwEdw_Prj:
+    var Qaff: EC_ShortW_Aff[EC.F, EC.G]
+    Qaff.affine(Q)
     block:
       bench("EC Mixed Addition " & $EC.G, EC, iters):
         r.mixedSum(P, Qaff)
     block:
       bench("EC Mixed Addition vartime " & $EC.G, EC, iters):
         r.mixedSum_vartime(P, Qaff)
+  else:
+    var Qaff: EC_TwEdw_Aff[EC.F]
+    Qaff.affine(Q)
+    block:
+      bench("EC Mixed Addition ", EC, iters):
+        r.mixedSum(P, Qaff)
+    block:
+      bench("EC Mixed Addition vartime ", EC, iters):
+        r.mixedSum_vartime(P, Qaff)
 
 proc doublingBench*(EC: typedesc, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   let P = rng.random_unsafe(EC)
-  bench("EC Double " & $EC.G, EC, iters):
-    r.double(P)
+  when EC isnot EC_TwEdw_Prj:
+    bench("EC Double " & $EC.G, EC, iters):
+      r.double(P)
+  else:
+    bench("EC Double ", EC, iters):
+      r.double(P)
 
 proc affFromProjBench*(EC: typedesc, iters: int) {.noinline.} =
   var r {.noInit.}: EC_ShortW_Aff[EC.F, EC.G]
