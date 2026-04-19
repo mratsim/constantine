@@ -416,32 +416,38 @@ func kzg_coset_prove*[N, L, CDS: static int, Name: static Algebra](
   doAssert fr_fft_desc.order >= CDS, "Fr FFT descriptor order must be >= CDS"
   doAssert ec_fft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
 
-  let u = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
+  # Accumulate in Fourier domain (matching Python/C-kzg/Go-kzg)
+  let hext_fft = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
   for i in 0 ..< CDS:
-    u[i].setNeutral()
+    hext_fft[i].setNeutral()
 
   let circulant = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
 
   for offset in 0 ..< L:
     makeCirculantMatrix(circulant.toOpenArray(CDS), poly.coefs, offset, L)
 
-    # Use toeplitzMatVecMulPreFFT with accumulate=true
-    # This does: FFT(toeplitzCoeffs) ⊙ kernelFft, then IFFT → result
-    # Results are accumulated in time domain
-    let status = toeplitzMatVecMulPreFFT(
-      u.toOpenArray(CDS),
+    # Accumulate Hadamard product in Fourier domain (NO IFFT yet!)
+    let status = toeplitzHadamardProductPreFFT(
+      hext_fft.toOpenArray(CDS),
       circulant.toOpenArray(CDS),
       polyphaseSpectrumBank[offset],
       fr_fft_desc,
-      ec_fft_desc,
       accumulate = (offset > 0)
     )
     if status != FFT_Success:
       freeHeapAligned(circulant)
-      freeHeapAligned(u)
+      freeHeapAligned(hext_fft)
       return
 
-  # u is already in time domain (toeplitzMatVecMulPreFFT did IFFT)
+  # ONE IFFT at the end (matching Python/C-kzg/Go-kzg)
+  let u = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
+  let status2 = ec_ifft_rn(ec_fft_desc, u.toOpenArray(CDS), hext_fft.toOpenArray(CDS))
+  freeHeapAligned(hext_fft)
+  freeHeapAligned(circulant)
+  if status2 != FFT_Success:
+    freeHeapAligned(u)
+    return
+
   # Zero upper half, degree is CDS/2 - 1
   for i in CDSdiv2 ..< CDS:
     u[i].setNeutral()
@@ -449,17 +455,14 @@ func kzg_coset_prove*[N, L, CDS: static int, Name: static Algebra](
   # FFT to get proofs
   let proofsJac = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
   let status3 = ec_fft_desc.ec_fft_nr(proofsJac.toOpenArray(CDS), u.toOpenArray(CDS))
+  freeHeapAligned(u)
   if status3 != FFT_Success:
     freeHeapAligned(proofsJac)
-    freeHeapAligned(circulant)
-    freeHeapAligned(u)
     return
 
   proofs.asUnchecked().batchAffine(proofsJac, proofs.len)
 
   freeHeapAligned(proofsJac)
-  freeHeapAligned(circulant)
-  freeHeapAligned(u)
 
 # ############################################################
 #

@@ -1,5 +1,6 @@
 import
   constantine/named/algebras,
+  constantine/named/zoo_generators,
   constantine/math/[ec_shortweierstrass, extension_fields],
   constantine/math/polynomials/polynomials,
   constantine/math/arithmetic/finite_fields,
@@ -46,7 +47,7 @@ func computePowersOfTauG1[N: static int](powers_of_tau: var array[N, EC_G1_Aff],
 
 func computePowersOfTauG2[N: static int](powers_of_tau: var array[N, EC_G2_Aff], secret: Fr[BLS12_381]) =
   var prev {.noInit.}: EC_G2_Jac
-  prev.setGenerator()
+  prev.fromAffine(BLS12_381.getGenerator("G2"))
   powers_of_tau[0].affine(prev)
   let secretBig = secret.toBig()
   for i in 1 ..< N:

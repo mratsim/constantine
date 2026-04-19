@@ -135,6 +135,65 @@ proc makeCirculantMatrix*[F](
 
 # Note: deriveCirculant was removed - use computeFK20TauExt in kzg_multiprove.nim instead
 
+proc toeplitzHadamardProductPreFFT*[EC, F](
+  output: var openArray[EC],
+  circulant: openArray[F],
+  vFft: openArray[EC],
+  frFftDesc: FrFFT_Descriptor[F],
+  accumulate: bool = false
+): FFTStatus {.meter.} =
+
+  ## Compute Hadamard product for FK20 Toeplitz multiplication (Fourier domain only).
+  ##
+  ## This is the core FK20 multiplication routine where the setup FFT is already precomputed.
+  ## Unlike toeplitzMatVecMulPreFFT, this does NOT do the inverse FFT, allowing accumulation
+  ## in Fourier domain for better performance (matching Python/C-kzg/Go-kzg implementations).
+  ##
+  ## Algorithm:
+  ## 1. FFT of circulant coefficients (field elements)
+  ## 2. Hadamard product: output[i] += vFft[i] * circulantFft[i]
+  ##
+  ## Call ec_ifft_rn ONCE after accumulating all L iterations.
+  ##
+  ## @param output: result vector in Fourier domain (EC points), accumulated if accumulate=true
+  ## @param circulant: Circulant matrix coefficients
+  ## @param vFft: Precomputed vector FFT (EC points)
+  ## @param frFftDesc: Field element FFT descriptor
+  ## @param accumulate: If true, accumulate into output; otherwise overwrite
+  ## @return: FFTStatus indicating success or failure
+
+  let n = circulant.len
+
+  if vFft.len != n:
+    return FFT_SizeNotPowerOfTwo
+  if n > frFftDesc.order + 1:
+    return FFT_TooManyValues
+
+  let coeffsFft = allocHeapArrayAligned(F, n, 64)
+  let coeffsFftBig = allocHeapArrayAligned(F.getBigInt(), n, 64)
+
+  let status1 = fft_nr(frFftDesc, coeffsFft.toOpenArray(n), circulant)
+  if status1 != FFT_Success:
+    freeHeapAligned(coeffsFft)
+    freeHeapAligned(coeffsFftBig)
+    return status1
+
+  coeffsFftBig.batchFromField(coeffsFft, n)
+
+  # Hadamard product: output[i] += vFft[i] * circulantFft[i]
+  for i in 0 ..< n:
+    var product: EC
+    product.scalarMul_vartime(coeffsFftBig[i], vFft[i])
+    if accumulate:
+      output[i].sum_vartime(output[i], product)
+    else:
+      output[i] = product
+
+  freeHeapAligned(coeffsFft)
+  freeHeapAligned(coeffsFftBig)
+
+  return FFT_Success
+
 proc toeplitzMatVecMulPreFFT*[EC, F](
   output: var openArray[EC],
   circulant: openArray[F],
@@ -182,29 +241,25 @@ proc toeplitzMatVecMulPreFFT*[EC, F](
   if n > ecFftDesc.order + 1:
     return FFT_TooManyValues
 
-  let coeffsFft = allocHeapArrayAligned(F, n, 64)
-  let coeffsFftBig = allocHeapArrayAligned(F.getBigInt(), n, 64)
+  # Compute Hadamard product in Fourier domain (reuses toeplitzHadamardProductPreFFT)
   let product = allocHeapArrayAligned(EC, n, 64)
-
-  let status1 = fft_nr(frFftDesc, coeffsFft.toOpenArray(n), circulant)
+  let status1 = toeplitzHadamardProductPreFFT(
+    product.toOpenArray(n),
+    circulant,
+    vFft,
+    frFftDesc,
+    accumulate = false
+  )
   if status1 != FFT_Success:
-    freeHeapAligned(coeffsFft)
     freeHeapAligned(product)
-    freeHeapAligned(coeffsFftBig)
     return status1
 
-  coeffsFftBig.batchFromField(coeffsFft, n)
-
-  for i in 0 ..< n:
-    product[i].scalarMul_vartime(coeffsFftBig[i], vFft[i])
-
+  # Inverse FFT
   let ifftResultSeq = allocHeapArrayAligned(EC, n, 64)
   let status2 = ec_ifft_rn(ecFftDesc, ifftResultSeq.toOpenArray(n), product.toOpenArray(n))
+  freeHeapAligned(product)
   if status2 != FFT_Success:
     freeHeapAligned(ifftResultSeq)
-    freeHeapAligned(coeffsFft)
-    freeHeapAligned(product)
-    freeHeapAligned(coeffsFftBig)
     return status2
 
   # Copy first outputSize elements to output
@@ -216,9 +271,6 @@ proc toeplitzMatVecMulPreFFT*[EC, F](
       output[i] = ifftResultSeq[i]
 
   freeHeapAligned(ifftResultSeq)
-  freeHeapAligned(coeffsFft)
-  freeHeapAligned(product)
-  freeHeapAligned(coeffsFftBig)
 
   return FFT_Success
 
