@@ -307,7 +307,7 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
   freeHeapAligned(polyphaseComponent)
 
 func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static Algebra](
-       polyphaseSpectrumBank: var array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]],
+       polyphaseSpectrumBank: var array[L, array[CDS, EC_ShortW_Aff[Fp[Name], G1]]],
        powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
        ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]]) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
   ## Compute polyphase decomposition Fourier transform for all L phases (complete polyphase filter bank).
@@ -330,6 +330,7 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
   ## For each phase (offset) i in 0..L-1:
   ##   1. Extract polyphase component (stride L, offset i)
   ##   2. Compute FFT → one column of polyphaseSpectrumBank
+  ##   3. Batch convert Jacobian to affine (single batch inversion for all L×CDS points)
   ##
   ## The result is a bank of L precomputed spectra used for fast Toeplitz matrix-vector
   ## multiplication. This corresponds to the "analysis filter bank" in multirate DSP.
@@ -345,7 +346,7 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
   ##
   ## The result can be cached and reused for multiple polynomials.
   ##
-  ## @param polyphaseSpectrumBank: Output array[L][CDS] - bank of polyphase spectra
+  ## @param polyphaseSpectrumBank: Output array[L][CDS] - bank of polyphase spectra (affine form)
   ## @param powers_of_tau: SRS in coefficient form [G, τG, τ²G, ..., τⁿ⁻¹G] (affine, length N)
   ## @param ecfft_desc: Precomputed EC FFT descriptor (order >= CDS, uses stride)
   ##
@@ -358,16 +359,28 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
   static: doAssert CDS * L == 2 * N
   doAssert ecfft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
 
+  # Compute all phases in Jacobian form first
+  let polyphaseSpectrumBankJac = allocHeapArrayAligned(array[CDS, EC_ShortW_Jac[Fp[Name], G1]], L, alignment = 64)
+
   for offset in 0 ..< L:
-    let status = computePolyphaseDecompositionFourierOffset(polyphaseSpectrumBank[offset], powers_of_tau, ecfft_desc, offset)
+    let status = computePolyphaseDecompositionFourierOffset(polyphaseSpectrumBankJac[offset], powers_of_tau, ecfft_desc, offset)
     doAssert status == FFT_Success, "Polyphase decomposition FFT failed at offset " & $offset
+
+  # Batch convert Jacobian to affine reinterpreting 2D array as 1D using pointer API
+  batchAffine(
+    polyphaseSpectrumBank[0].asUnchecked(),
+    polyphaseSpectrumBankJac[0].asUnchecked(),
+    L * CDS
+  )
+
+  freeHeapAligned(polyphaseSpectrumBankJac)
 
 func kzg_coset_prove*[N, L, CDS: static int, Name: static Algebra](
        proofs: var array[CDS, EC_ShortW_Aff[Fp[Name], G1]],
        poly: PolynomialCoef[N, Fr[Name]],
        fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
        ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
-       polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]]
+       polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Aff[Fp[Name], G1]]]
       ) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
   ## Compute KZG multi-proofs for EIP-7594 cell proofs using FK20 algorithm.
   ##
@@ -416,65 +429,46 @@ func kzg_coset_prove*[N, L, CDS: static int, Name: static Algebra](
   doAssert fr_fft_desc.order >= CDS, "Fr FFT descriptor order must be >= CDS"
   doAssert ec_fft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
 
-  # Collect all circulant FFTs across L iterations (matching c-kzg-4844)
-  # coeffs[i][offset] = circulant_fft[offset][i] (transposed for MSM)
-  let coeffs = allocHeapArrayAligned(Fr[Name], CDS * L, alignment = 64)
+  # Use Toeplitz accumulator with MSM for FK20
+  var accum: ToeplitzAccumulator[EC_ShortW_Jac[Fp[Name], G1], EC_ShortW_Aff[Fp[Name], G1], Fr[Name]]
+  let status = accum.init(fr_fft_desc, ec_fft_desc, CDS, L)
+  if status != Toeplitz_Success:
+    return
+
+  defer: accum.`=destroy`()
+
   let circulant = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
-  let circulantFft = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
 
   for offset in 0 ..< L:
     makeCirculantMatrix(circulant.toOpenArray(CDS), poly.coefs, offset, L)
-    let status = fft_nr(fr_fft_desc, circulantFft.toOpenArray(CDS), circulant.toOpenArray(CDS))
-    if status != FFT_Success:
-      freeHeapAligned(coeffs)
+
+    # Accumulate FFT of circulant coefficients with affine points (already affine from setup)
+    # Offset is tracked automatically inside accumulator
+    let status = accum.accumulate(
+      circulant.toOpenArray(CDS),
+      polyphaseSpectrumBank[offset]
+    )
+    if status != Toeplitz_Success:
       freeHeapAligned(circulant)
-      freeHeapAligned(circulantFft)
       return
-    
-    # Store transposed: coeffs[i*L + offset] = circulantFft[i]
-    for i in 0 ..< CDS:
-      coeffs[i * L + offset] = circulantFft[i]
 
   freeHeapAligned(circulant)
-  freeHeapAligned(circulantFft)
 
-  # MSM per output position (matching c-kzg-4844 compute_fk20_cell_proofs)
+  # MSM per position + one amortized IFFT at the end
   let u = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
-  let scalarsBig = allocHeapArrayAligned(Fr[Name].getBigInt(), L, alignment = 64)
-  let pointsAff = allocHeapArrayAligned(EC_ShortW_Aff[Fp[Name], G1], L, alignment = 64)
-
-  for i in 0 ..< CDS:
-    # Collect L scalars for position i
-    for offset in 0 ..< L:
-      scalarsBig[offset].fromField(coeffs[i * L + offset])
-    
-    # Collect L points for position i from polyphase spectrum bank
-    for offset in 0 ..< L:
-      pointsAff[offset].affine(polyphaseSpectrumBank[offset][i])
-    
-    # MSM: u[i] = Σ scalars[offset] * points[offset]
-    u[i].multiScalarMul_vartime(scalarsBig.toOpenArray(L), pointsAff.toOpenArray(L))
-
-  freeHeapAligned(coeffs)
-  freeHeapAligned(scalarsBig)
-  freeHeapAligned(pointsAff)
-
-  # ONE IFFT at the end (matching Python/C-kzg/Go-kzg)
-  let v = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
-  let status2 = ec_ifft_rn(ec_fft_desc, v.toOpenArray(CDS), u.toOpenArray(CDS))
-  freeHeapAligned(u)
-  if status2 != FFT_Success:
-    freeHeapAligned(v)
+  let status2 = accum.finish(u.toOpenArray(CDS))
+  if status2 != Toeplitz_Success:
+    freeHeapAligned(u)
     return
 
   # Zero upper half, degree is CDS/2 - 1
   for i in CDSdiv2 ..< CDS:
-    v[i].setNeutral()
+    u[i].setNeutral()
 
   # FFT to get proofs
   let proofsJac = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
-  let status3 = ec_fft_desc.ec_fft_nr(proofsJac.toOpenArray(CDS), v.toOpenArray(CDS))
-  freeHeapAligned(v)
+  let status3 = ec_fft_desc.ec_fft_nr(proofsJac.toOpenArray(CDS), u.toOpenArray(CDS))
+  freeHeapAligned(u)
   if status3 != FFT_Success:
     freeHeapAligned(proofsJac)
     return

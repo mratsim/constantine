@@ -8,6 +8,7 @@
 
 import
   constantine/math/[arithmetic, ec_shortweierstrass],
+  constantine/math/elliptic/ec_multi_scalar_mul,
   constantine/math/polynomials/fft,
   constantine/platforms/[allocs, views, abstractions]
 
@@ -124,155 +125,153 @@ proc makeCirculantMatrix*[F](
 
   output[0] = poly[d - offset]
 
-  # Fill non-zero elements matching c-kzg and rust-kzg:
+  # Fill non-zero elements:
   #   output[2r-j] = poly[d - offset - j*stride] for j = 1..r-2
   # This puts non-zero values at indices 2r-1 down to r+2
-  # Total: r-2 non-zero elements (matches rust's loop: i from k+2 to k2-1)
+  # Total: r-2 non-zero elements
   for j in 1 ..< r - 1:
     output[2 * r - j] = poly[d - offset - j * stride]
 
-  debug: doAssert checkCirculant(output, poly, offset, stride), "Invalid circulant matrix"
+  debug: doAssert checkCirculant(output, poly, offset, stride)
 
-# Note: deriveCirculant was removed - use computeFK20TauExt in kzg_multiprove.nim instead
 
-proc toeplitzHadamardProductPreFFT*[EC, F](
-  output: var openArray[EC],
-  circulant: openArray[F],
-  vFft: openArray[EC],
-  frFftDesc: FrFFT_Descriptor[F],
-  accumulate: bool = false
-): FFTStatus {.meter.} =
+type
+  ToeplitzStatus* = enum
+    Toeplitz_Success
+    Toeplitz_SizeNotPowerOfTwo
+    Toeplitz_TooManyValues
+    Toeplitz_MismatchedSizes
 
-  ## Compute Hadamard product for FK20 Toeplitz multiplication (Fourier domain only).
-  ##
-  ## This is the core FK20 multiplication routine where the setup FFT is already precomputed.
-  ## Unlike toeplitzMatVecMulPreFFT, this does NOT do the inverse FFT, allowing accumulation
-  ## in Fourier domain for better performance (matching Python/C-kzg/Go-kzg implementations).
-  ##
-  ## Algorithm:
-  ## 1. FFT of circulant coefficients (field elements)
-  ## 2. Hadamard product: output[i] += vFft[i] * circulantFft[i]
-  ##
-  ## Call ec_ifft_rn ONCE after accumulating all L iterations.
-  ##
-  ## @param output: result vector in Fourier domain (EC points), accumulated if accumulate=true
-  ## @param circulant: Circulant matrix coefficients
-  ## @param vFft: Precomputed vector FFT (EC points)
-  ## @param frFftDesc: Field element FFT descriptor
-  ## @param accumulate: If true, accumulate into output; otherwise overwrite
-  ## @return: FFTStatus indicating success or failure
+type
+  ToeplitzAccumulator*[EC, ECaff, F] = object
+    ## Accumulator for Toeplitz matrix-vector multiplication with MSM
+    ## Following c-kzg-4844 fk20.c algorithm
+    frFftDesc: FrFFT_Descriptor[F]
+    ecFftDesc: ECFFT_Descriptor[EC]
+    coeffs: ptr UncheckedArray[F]           # [size*L] transposed coeffs
+    points: ptr UncheckedArray[ECaff]       # [size*L] points for each position
+    scalarsBig: ptr UncheckedArray[F.getBigInt()]  # [L] temporary scalars for MSM
+    size: int
+    offset: int
+    L: int
 
-  let n = circulant.len
-
-  if vFft.len != n:
-    return FFT_SizeNotPowerOfTwo
-  if n > frFftDesc.order + 1:
-    return FFT_TooManyValues
-
-  let coeffsFft = allocHeapArrayAligned(F, n, 64)
-  let coeffsFftBig = allocHeapArrayAligned(F.getBigInt(), n, 64)
-
-  let status1 = fft_nr(frFftDesc, coeffsFft.toOpenArray(n), circulant)
-  if status1 != FFT_Success:
-    freeHeapAligned(coeffsFft)
-    freeHeapAligned(coeffsFftBig)
-    return status1
-
-  coeffsFftBig.batchFromField(coeffsFft, n)
-
-  # Hadamard product: output[i] += vFft[i] * circulantFft[i]
-  for i in 0 ..< n:
-    var product: EC
-    product.scalarMul_vartime(coeffsFftBig[i], vFft[i])
-    if accumulate:
-      output[i].sum_vartime(output[i], product)
-    else:
-      output[i] = product
-
-  freeHeapAligned(coeffsFft)
-  freeHeapAligned(coeffsFftBig)
-
-  return FFT_Success
-
-proc toeplitzMatVecMulPreFFT*[EC, F](
-  output: var openArray[EC],
-  circulant: openArray[F],
-  vFft: openArray[EC],
+proc init*[EC, ECaff, F](
+  ctx: var ToeplitzAccumulator[EC, ECaff, F],
   frFftDesc: FrFFT_Descriptor[F],
   ecFftDesc: ECFFT_Descriptor[EC],
-  accumulate: bool = false
-): FFTStatus {.meter.} =
+  size: int,
+  L: int
+): ToeplitzStatus {.raises: [], meter.} =
+  ctx.size = 0
+  ctx.offset = 0
+  ctx.L = 0
+  ctx.coeffs = nil
+  ctx.points = nil
+  ctx.scalarsBig = nil
+  ctx.frFftDesc = frFftDesc
+  ctx.ecFftDesc = ecFftDesc
 
-  ## Multiply Toeplitz matrix (via circulant coefficients) by pre-FFT'd vector for FK20.
-  ##
-  ## This is the core FK20 multiplication routine where the setup FFT is already precomputed.
-  ##
-  ## Algorithm:
-  ## 1. FFT of circulant coefficients (field elements)
-  ## 2. Hadamard product: vFft[i] * circulantFft[i]
-  ## 3. Inverse FFT (EC points)
-  ## 4. Optionally accumulate into output
-  ##
-  ## For general Toeplitz multiplication:
-  ##   - circulant has length 2n (zero-padded embedding)
-  ##   - vFft has length 2n (zero-extended vector FFT)
-  ##   - output has length n (first n elements of IFFT result)
-  ##
-  ## For FK20 (same-size multiplication):
-  ##   - circulant has length K2
-  ##   - vFft has length K2 (precomputed setup FFT)
-  ##   - output has length K2
-  ##
-  ## @param output: result vector (EC points)
-  ## @param circulant: Circulant matrix coefficients
-  ## @param vFft: Precomputed vector FFT (EC points)
-  ## @param frFftDesc: Field element FFT descriptor
-  ## @param ecFftDesc: EC FFT descriptor
-  ## @param accumulate: If true, accumulate into output; otherwise overwrite
-  ## @return: FFTStatus indicating success or failure
+  if size <= 0 or L <= 0 or not size.isPowerOf2_vartime():
+    return Toeplitz_SizeNotPowerOfTwo
 
-  let n = circulant.len
-  let outputSize = if output.len < n: output.len else: n
+  ctx.size = size
+  ctx.L = L
+  ctx.offset = 0
+  # Allocate transposed buffers: [size*L]
+  ctx.coeffs = allocHeapArrayAligned(F, size * L, alignment = 64)
+  ctx.points = allocHeapArrayAligned(ECaff, size * L, alignment = 64)
+  ctx.scalarsBig = allocHeapArrayAligned(F.getBigInt(), L, alignment = 64)
 
-  if vFft.len != n:
-    return FFT_SizeNotPowerOfTwo
-  if n > frFftDesc.order + 1:
-    return FFT_TooManyValues
-  if n > ecFftDesc.order + 1:
-    return FFT_TooManyValues
+  return Toeplitz_Success
 
-  # Compute Hadamard product in Fourier domain (reuses toeplitzHadamardProductPreFFT)
-  let product = allocHeapArrayAligned(EC, n, 64)
-  let status1 = toeplitzHadamardProductPreFFT(
-    product.toOpenArray(n),
-    circulant,
-    vFft,
-    frFftDesc,
-    accumulate = false
-  )
+proc accumulate*[EC, ECaff, F](
+  ctx: var ToeplitzAccumulator[EC, ECaff, F],
+  circulant: openArray[F],
+  vFft: openArray[ECaff]
+): ToeplitzStatus {.raises: [], meter.} =
+  ## Accumulate FFT(circulant) and vFft for position ctx.offset
+  let n = ctx.size
+  if n == 0 or circulant.len != n or vFft.len != n or ctx.offset >= ctx.L:
+    return Toeplitz_MismatchedSizes
+
+  let coeffsFft = allocHeapArrayAligned(F, n, 64)
+  let status1 = fft_nr(ctx.frFftDesc, coeffsFft.toOpenArray(n), circulant)
   if status1 != FFT_Success:
-    freeHeapAligned(product)
-    return status1
+    freeHeapAligned(coeffsFft)
+    return case status1
+      of FFT_SizeNotPowerOfTwo: Toeplitz_SizeNotPowerOfTwo
+      of FFT_TooManyValues: Toeplitz_TooManyValues
+      else: Toeplitz_MismatchedSizes
 
-  # Inverse FFT
-  let ifftResultSeq = allocHeapArrayAligned(EC, n, 64)
-  let status2 = ec_ifft_rn(ecFftDesc, ifftResultSeq.toOpenArray(n), product.toOpenArray(n))
-  freeHeapAligned(product)
-  if status2 != FFT_Success:
-    freeHeapAligned(ifftResultSeq)
-    return status2
+  # Store transposed: coeffs[i*L + offset] and points[i*L + offset]
+  for i in 0 ..< n:
+    ctx.coeffs[i * ctx.L + ctx.offset] = coeffsFft[i]
+    ctx.points[i * ctx.L + ctx.offset] = vFft[i]
 
-  # Copy first outputSize elements to output
-  if accumulate:
-    for i in 0 ..< outputSize:
-      output[i].sum_vartime(output[i], ifftResultSeq[i])
-  else:
-    for i in 0 ..< outputSize:
-      output[i] = ifftResultSeq[i]
+  freeHeapAligned(coeffsFft)
+  ctx.offset += 1
+  return Toeplitz_Success
 
-  freeHeapAligned(ifftResultSeq)
+proc finish*[EC, ECaff, F](
+  ctx: var ToeplitzAccumulator[EC, ECaff, F],
+  output: var openArray[EC]
+): ToeplitzStatus {.raises: [], meter.} =
+  ## MSM per position, then IFFT
+  let n = ctx.size
+  if n == 0 or output.len < n or ctx.offset != ctx.L:
+    return Toeplitz_MismatchedSizes
 
-  return FFT_Success
+  # MSM for each output position i
+  for i in 0 ..< n:
+    # Load L scalars for position i
+    for offset in 0 ..< ctx.L:
+      ctx.scalarsBig[offset].fromField(ctx.coeffs[i * ctx.L + offset])
+
+    # Load L points for position i
+    let pointsPtr = cast[ptr UncheckedArray[ECaff]](addr ctx.points[i * ctx.L])
+
+    # MSM: fourierResult[i] = Σ scalars[offset] * points[offset]
+    output[i].multiScalarMul_vartime(
+      ctx.scalarsBig.toOpenArray(ctx.L),
+      pointsPtr.toOpenArray(ctx.L)
+    )
+
+  # IFFT: output = iDFT(fourierResult)
+  let ifftInput = allocHeapArrayAligned(EC, n, 64)
+  for i in 0 ..< n:
+    ifftInput[i] = output[i]
+
+  let status = ec_ifft_rn(ctx.ecFftDesc, output, ifftInput.toOpenArray(0, n - 1))
+  freeHeapAligned(ifftInput)
+
+  if status != FFT_Success:
+    return case status
+      of FFT_SizeNotPowerOfTwo: Toeplitz_SizeNotPowerOfTwo
+      of FFT_TooManyValues: Toeplitz_TooManyValues
+      else: Toeplitz_MismatchedSizes
+
+  return Toeplitz_Success
+
+proc `=destroy`*[EC, ECaff, F](
+  ctx: var ToeplitzAccumulator[EC, ECaff, F]
+) {.raises: [], meter.} =
+  if ctx.coeffs == nil:
+    return
+  freeHeapAligned(ctx.coeffs)
+  freeHeapAligned(ctx.points)
+  freeHeapAligned(ctx.scalarsBig)
+  ctx.coeffs = nil
+  ctx.points = nil
+  ctx.scalarsBig = nil
+  ctx.size = 0
+  ctx.offset = 0
+  ctx.L = 0
+
+# ############################################################
+#
+#           High-level Toeplitz API (for tests)
+#
+# ############################################################
 
 proc toeplitzMatVecMul*[EC, F](
   output: var openArray[EC],
@@ -281,16 +280,13 @@ proc toeplitzMatVecMul*[EC, F](
   frFftDesc: FrFFT_Descriptor[F],
   ecFftDesc: ECFFT_Descriptor[EC]
 ): FFTStatus {.meter.} =
-
   ## Multiply a Toeplitz matrix by a vector using FFT-based O(n log n) algorithm.
   ##
-  ## This implements the circulant embedding method:
+  ## This implements the circulant embedding method using the ToeplitzAccumulator API:
   ## 1. FFT of zero-extended vector (EC points)
   ## 2. FFT of circulant coefficients (field elements)
-  ## 3. Hadamard product: EC_point[i] * Fr_scalar[i]
-  ## 4. Inverse FFT (EC) and truncate to first n entries
-  ##
-  ## This calls toeplitzMatVecMulPreFFT after FFT'ing the vector.
+  ## 3. Accumulate into ToeplitzAccumulator (stores FFT results transposed)
+  ## 4. MSM per output position, then IFFT
   ##
   ## @param output: result vector of length n (EC points)
   ## @param circulant: Circulant coefficients of length 2n
@@ -312,30 +308,65 @@ proc toeplitzMatVecMul*[EC, F](
     return FFT_TooManyValues
 
   let vExt = allocHeapArrayAligned(EC, n2, 64)
-
   for i in 0 ..< n:
     vExt[i] = v[i]
   for i in n ..< n2:
     vExt[i].setNeutral()
 
-  let vExtFftSeq = allocHeapArrayAligned(EC, n2, 64)
-  let status1 = ec_fft_nr(ecFftDesc, vExtFftSeq.toOpenArray(n2), vExt.toOpenArray(n2))
+  let vExtFft = allocHeapArrayAligned(EC, n2, 64)
+  let status1 = ec_fft_nr(ecFftDesc, vExtFft.toOpenArray(n2), vExt.toOpenArray(n2))
   if status1 != FFT_Success:
-    freeHeapAligned(vExtFftSeq)
+    freeHeapAligned(vExtFft)
     freeHeapAligned(vExt)
     return status1
 
-  # Call PreFFT version
-  let status2 = toeplitzMatVecMulPreFFT(
-    output,
-    circulant,
-    vExtFftSeq.toOpenArray(n2),
-    frFftDesc,
-    ecFftDesc,
-    accumulate = false
-  )
+  # Convert to affine for accumulator
+  type ECaff = EC.affine
+  let vExtFftAff = allocHeapArrayAligned(ECaff, n2, 64)
+  for i in 0 ..< n2:
+    vExtFftAff[i].affine(vExtFft[i])
 
-  freeHeapAligned(vExtFftSeq)
+  # Use accumulator API (single iteration for general Toeplitz)
+  # accumulate will FFT the circulant coefficients internally
+  var acc: ToeplitzAccumulator[EC, ECaff, F]
+  let initStatus = acc.init(frFftDesc, ecFftDesc, n2, L = 1)
+  if initStatus != Toeplitz_Success:
+    freeHeapAligned(vExtFftAff)
+    freeHeapAligned(vExtFft)
+    freeHeapAligned(vExt)
+    return case initStatus
+      of Toeplitz_SizeNotPowerOfTwo: FFT_SizeNotPowerOfTwo
+      of Toeplitz_TooManyValues: FFT_TooManyValues
+      else: FFT_SizeNotPowerOfTwo
+
+  let accumStatus = acc.accumulate(circulant, vExtFftAff.toOpenArray(n2))
+  if accumStatus != Toeplitz_Success:
+    acc.`=destroy`()
+    freeHeapAligned(vExtFftAff)
+    freeHeapAligned(vExtFft)
+    freeHeapAligned(vExt)
+    return case accumStatus
+      of Toeplitz_SizeNotPowerOfTwo: FFT_SizeNotPowerOfTwo
+      of Toeplitz_TooManyValues: FFT_TooManyValues
+      else: FFT_SizeNotPowerOfTwo
+
+  # Allocate temporary buffer for full IFFT result (size n2)
+  let ifftResult = allocHeapArrayAligned(EC, n2, 64)
+  let finishStatus = acc.finish(ifftResult.toOpenArray(n2))
+  acc.`=destroy`()
+
+  # Copy only first n elements (truncate the circulant embedding result)
+  for i in 0 ..< n:
+    output[i] = ifftResult[i]
+
+  freeHeapAligned(ifftResult)
+  freeHeapAligned(vExtFftAff)
+  freeHeapAligned(vExtFft)
   freeHeapAligned(vExt)
+  if finishStatus != Toeplitz_Success:
+    return case finishStatus
+      of Toeplitz_SizeNotPowerOfTwo: FFT_SizeNotPowerOfTwo
+      of Toeplitz_TooManyValues: FFT_TooManyValues
+      else: FFT_SizeNotPowerOfTwo
 
-  return status2
+  return FFT_Success
