@@ -66,10 +66,11 @@ import
 
 const RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN* = asBytes"RCKZGCBATCH__V1_"
 
-const FIELD_ELEMENTS_PER_CELL* = 64
-const CELLS_PER_EXT_BLOB* = FIELD_ELEMENTS_PER_EXT_BLOB div FIELD_ELEMENTS_PER_CELL
-const BYTES_PER_CELL* = FIELD_ELEMENTS_PER_CELL * 32
-const CELLS_PER_BLOB* = FIELD_ELEMENTS_PER_BLOB div FIELD_ELEMENTS_PER_CELL
+# Re-export PeerDAS constants from canonical source (ethereum_kzg_srs.nim)
+export ethereum_kzg_srs.FIELD_ELEMENTS_PER_CELL
+export ethereum_kzg_srs.CELLS_PER_EXT_BLOB
+export ethereum_kzg_srs.BYTES_PER_CELL
+export ethereum_kzg_srs.CELLS_PER_BLOB
 
 type
   Cell* = array[BYTES_PER_CELL, byte]
@@ -262,7 +263,7 @@ func compute_cells_and_kzg_proofs*(
        proofs: var array[CELLS_PER_EXT_BLOB, KZGProof]): cttEthKzgStatus {.raises: [].} =
   ## Compute all cells and proofs for an extended blob using FK20 algorithm.
   ##
-  ## Algorithm (following c-kzg-4844):
+  ## Algorithm:
   ## 1. Convert blob to polynomial (Lagrange form) [Serialization]
   ## 2. Convert to monomial form via IFFT [4096 roots of unity] (for FK20 proofs)
   ## 3. Compute cells via zero-padding (no FFT!) [stays in evaluation form]
@@ -305,7 +306,7 @@ func compute_cells_and_kzg_proofs*(
   kzg_coset_prove(proofsAff[], poly_monomial[],
     ctx.fft_desc_ext, ctx.ecfft_desc_ext, ctx.polyphaseSpectrumBank)
 
-  # Bit-reverse permutation on proofs (FK20 convention, matching c-kzg-4844)
+  # Bit-reverse permutation on proofs (Ethereum PeerDAS convention)
   proofsAff[].bit_reversal_permutation()
 
   # Convert proofs to KZGProof format

@@ -216,7 +216,7 @@ func computeEvalsAtCoset*[L, R: static int, Name: static Algebra](
 
   # Todo: coset FFT for multi-eval?
   for j in 0 ..< L:
-    var z {.noInit.}: Fr[BLS12_381]
+    var z {.noInit.}: Fr[Name]
     z.prod(h, rootz[j])
     evalPolyAt(ys[j], poly, z)
 

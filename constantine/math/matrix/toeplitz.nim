@@ -260,7 +260,6 @@ proc toeplitzMatVecMul*[EC, F](
     return FFT_TooManyValues
 
   let vExt = allocHeapArrayAligned(EC, n2, 64)
-  let vExtFft = allocHeapArrayAligned(EC, n2, 64)
 
   for i in 0 ..< n:
     vExt[i] = v[i]

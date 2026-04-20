@@ -230,7 +230,7 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
        polyphaseSpectrum: var array[CDS, EC_ShortW_Jac[Fp[Name], G1]],
        powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
        ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
-       offset: int = 0) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
+       offset: int = 0): FFT_Status {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
   ## Compute FFT of one polyphase component of the SRS (Toeplitz input spectrum).
   ##
   ## DSP Terminology (Crypto ↔ Signal Processing Mapping)
@@ -285,13 +285,15 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
 
   static:
     doAssert CDS.isPowerOf2_vartime(), "CDS must be a power of two"
+    doAssert CDS >= 4, "CDS must be >= 4 for the polyphase stride to stay in range"
   doAssert ecfft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
+  doAssert N >= L + 1 + offset, "N must be >= L + 1 + offset for valid polyphase extraction"
 
   let polyphaseComponent = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
 
   # Extract polyphase component with stride L and given offset (convert affine to projective for FFT)
   # This is the polyphase decomposition: x_i[m] = x[m·L + offset] with reversal
-  let start = if N >= L + 1 + offset: N - L - 1 - offset else: 0
+  let start = N - L - 1 - offset
   var j = start
   for i in 0 ..< CDSdiv2 - 1:
     polyphaseComponent[i].fromAffine(powers_of_tau.coefs[j])
@@ -301,11 +303,7 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
     polyphaseComponent[j].setNeutral()
 
   # FFT the polyphase component to get its spectrum (frequency-domain representation)
-  let status = ec_fft_nr(ecFftDesc, polyphaseSpectrum, polyphaseComponent.toOpenArray(CDS))
-  if status != FFT_Success:
-    freeHeapAligned(polyphaseComponent)
-    return
-
+  result = ec_fft_nr(ecfft_desc, polyphaseSpectrum, polyphaseComponent.toOpenArray(CDS))
   freeHeapAligned(polyphaseComponent)
 
 func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static Algebra](
@@ -361,7 +359,8 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
   doAssert ecfft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
 
   for offset in 0 ..< L:
-    computePolyphaseDecompositionFourierOffset(polyphaseSpectrumBank[offset], powers_of_tau, ecfft_desc, offset)
+    let status = computePolyphaseDecompositionFourierOffset(polyphaseSpectrumBank[offset], powers_of_tau, ecfft_desc, offset)
+    doAssert status == FFT_Success, "Polyphase decomposition FFT failed at offset " & $offset
 
 func kzg_coset_prove*[N, L, CDS: static int, Name: static Algebra](
        proofs: var array[CDS, EC_ShortW_Aff[Fp[Name], G1]],

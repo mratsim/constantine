@@ -1,16 +1,23 @@
 # This file shows that
 # the roots of unity for the 4096 domain
-# are the first half of the roots of the 80192 domain
+# are the first half of the roots of the 8192 domain
 # if stored bit-reverse
+#
+# All operations are in the BLS12-381 scalar field Fr (not base field Fp)
 
-MODULUS = int('0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab', 16)
+# BLS12-381 scalar field (Fr) modulus
+MODULUS = int("0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001", 16)
+
+# Primitive 2^32-root-of-unity in Fr (research uses 7; production uses 5)
 PRIMITIVE_ROOT_OF_UNITY = 7
+
 
 def is_power_of_two(value: int) -> bool:
     """
     Check if ``value`` is a power of two integer.
     """
     return (value > 0) and (value & (value - 1) == 0)
+
 
 def reverse_bits(n: int, order: int) -> int:
     """
@@ -20,6 +27,7 @@ def reverse_bits(n: int, order: int) -> int:
     # Convert n to binary with the same number of bits as "order" - 1, then reverse its bit order
     return int(("{:0" + str(order.bit_length() - 1) + "b}").format(n)[::-1], 2)
 
+
 def bit_reversal_permutation(sequence):
     """
     Return a copy with bit-reversed permutation. The permutation is an involution (inverts itself).
@@ -27,6 +35,7 @@ def bit_reversal_permutation(sequence):
     The input and output are a sequence of generic type ``T`` objects.
     """
     return [sequence[reverse_bits(i, len(sequence))] for i in range(len(sequence))]
+
 
 for N in [4, 8, 4096, 8192]:
     MULT_GENERATOR = pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // N, MODULUS)

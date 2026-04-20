@@ -60,10 +60,10 @@ proc new*(T: type BenchSet, ctx: ptr EthereumKZGContext): T =
   let numThreads = tp.numThreads
   echo &"  Using {numThreads} threads for parallel initialization"
 
-  var threadRngs = newSeq[RngState](numThreads)
-  for t in 0 ..< numThreads:
-    let seed = uint32(getTime().toUnix() + t * 1000000)
-    threadRngs[t].seed(seed)
+  var blobRngs = newSeq[RngState](NumBlobs)
+  let baseSeed = uint32(getTime().toUnix())
+  for i in 0 ..< NumBlobs:
+    blobRngs[i].seed(baseSeed +% uint32(i))
 
   let tempBlobs = allocHeapArrayAligned(Blob, NumBlobs, 64)
   let tempCommitments = allocHeapArrayAligned(array[48, byte], NumBlobs, 64)
@@ -72,9 +72,8 @@ proc new*(T: type BenchSet, ctx: ptr EthereumKZGContext): T =
 
   echo "  Computing cells and proofs in parallel..."
   for i in 0 ..< NumBlobs:
-    let threadId = i mod numThreads
-    let threadRng = threadRngs[threadId].addr
     let blobIdx = i
+    let blobRng = blobRngs[blobIdx].addr
 
     discard tp.spawnAwaitable(
       computeBlobParallel(
@@ -83,7 +82,7 @@ proc new*(T: type BenchSet, ctx: ptr EthereumKZGContext): T =
         tempCommitments[blobIdx].addr,
         tempCells[blobIdx].addr,
         tempProofs[blobIdx].addr,
-        threadRng
+        blobRng
       )
     )
 

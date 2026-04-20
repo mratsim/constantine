@@ -260,13 +260,14 @@ func scalarMul_addchain_5bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarT
     t.double()                                         # t = [28]P
     P ~+= t                                            # P = [1]P + [28]P = [29]P
   of 30:
-    var t {.noInit.}: EC
-    t.double(P)                                        # t = [2]P
-    t ~+= P                                            # t = [1]P + [2]P = [3]P
-    t.double()                                         # t = [6]P
-    t.double()                                         # t = [12]P
-    P.double(t)                                        # P = 2 * [12]P = [24]P
-    P ~+= t                                            # P = [24]P + [6]P = [30]P
+    var t1 {.noInit.}, t2 {.noInit.}: EC
+    t1.double(P)                                       # t1 = [2]P
+    t2.double(P)                                       # t2 = [2]P
+    t2.double()                                        # t2 = [4]P
+    t2.double()                                        # t2 = [8]P
+    t2.double()                                        # t2 = [16]P
+    t2.double()                                        # t2 = [32]P
+    P.diff_vartime(t2, t1)                             # P = [32]P - [2]P = [30]P
   of 31:
     var t {.noInit.}: EC
     t.double(P)                                        # t = [2]P
@@ -490,13 +491,13 @@ func scalarMul_vartime*[scalBits; EC](P: var EC, scalar: BigInt[scalBits]) {.met
   if usedBits > 64:
     # With a window of 4, we precompute 2^4 = 4 points
     P.scalarMul_wNAF_vartime(scalar, window = 4)
-  elif usedBits > 20:
+  elif usedBits > 31:
     # With a window of 3, we precompute 2^1 = 2 points
     P.scalarMul_wNAF_vartime(scalar, window = 3)
-  elif usedBits >= 5:
-    P.scalarMul_doubleAdd_vartime(scalar)
-  else:
+  elif usedBits <= 5:
     P.scalarMul_addchain_5bit_vartime(scalar)
+  else:
+    P.scalarMul_doubleAdd_vartime(scalar)
 
 func scalarMul_vartime*[EC](P: var EC, scalar: Fr) {.inline.} =
   ## Elliptic Curve Scalar Multiplication

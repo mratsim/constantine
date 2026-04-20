@@ -100,7 +100,7 @@ func recoverPolynomialCoeff*[N, L, CDS: static int](
   let ext_size = 2 * N
 
   # Step 1: Build extended evaluation array in bit-reversed order
-  var extended_evaluation_rbo: array[2 * N, Fr[BLS12_381]]
+  var extended_evaluation_rbo = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
   for i in 0 ..< ext_size:
     extended_evaluation_rbo[i].setZero()
 
@@ -113,6 +113,7 @@ func recoverPolynomialCoeff*[N, L, CDS: static int](
   # Step 2: Bit-reverse into extended_evaluation
   var extended_evaluation = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
   bit_reversal_permutation(extended_evaluation.toOpenArray(0, ext_size-1), extended_evaluation_rbo.toOpenArray(0, ext_size-1))
+  freeHeapAligned(extended_evaluation_rbo)
 
   # Compute missing cell indices and vanishing polynomial
   var missing_cell_indices: seq[uint64]

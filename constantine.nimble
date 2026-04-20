@@ -466,6 +466,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mixed_add.nim", false),
 
   ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_add_double.nim", false),
+  ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_addchain_5bit.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_sanity.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_distri.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),

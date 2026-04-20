@@ -467,6 +467,35 @@ proc run_EC_addition_vartime_tests*(
       test(ec, randZ = false, gen = Long01Sequence)
       test(ec, randZ = true, gen = Long01Sequence)
 
+proc run_EC_mul_addchain_5bit_tests*(
+       ec: typedesc,
+       moduleName: string) =
+  # Random seed for reproducibility
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo moduleName, " xoshiro512** seed: ", seed
+
+  const testSuiteDesc = "Elliptic curve in " & $ec.getName().getEquationForm() & " form"
+
+  suite testSuiteDesc & " - 5-bit addition chain (scalars 1..31) - [" & $WordBitWidth & "-bit mode]":
+    test "Verify all scalars 1..31 against double-and-add reference":
+      let P = rng.random_unsafe(ec)
+
+      for scalar in 1..31:
+        var
+          impl = P
+          reference = P
+
+        var scalarBig {.noInit.}: ec.F.getBigInt()
+        scalarBig.setUint(uint64(scalar))
+
+        impl.scalarMul_vartime(scalarBig)
+        reference.scalarMul_doubleAdd_vartime(scalarBig)
+
+        doAssert bool(impl == reference), "Mismatch at scalar=" & $scalar
+
 proc run_EC_mul_sanity_tests*(
        ec: typedesc,
        ItersMul: static int,

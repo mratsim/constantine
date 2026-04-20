@@ -18,7 +18,7 @@ import
   std/[os, strutils, monotimes]
 
 func proofToBytes(proof: KZGProof): array[48, byte] =
-  discard result.serialize_g1_compressed(EC_ShortW_Aff[Fp[BLS12_381], G1](proof))
+  doAssert result.serialize_g1_compressed(EC_ShortW_Aff[Fp[BLS12_381], G1](proof)) == rOk
 
 proc report(op: string, startTime, stopTime: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stopTime-startTime) div iters)
@@ -37,7 +37,7 @@ proc benchVerifyCellKZGProofBatch_64Blobs(b: BenchSet, ctx: ptr EthereumKZGConte
   ## This is the main scaling benchmark for batch verification
   
   var secureRandomBytes {.noInit.}: array[32, byte]
-  discard sysrand(secureRandomBytes)
+  doAssert sysrand(secureRandomBytes) == rOk
 
   const MaxTotal = NumBlobs * CELLS_PER_EXT_BLOB  # 8192
   
@@ -51,7 +51,7 @@ proc benchVerifyCellKZGProofBatch_64Blobs(b: BenchSet, ctx: ptr EthereumKZGConte
   new(proofs_bytes)
 
   var idx = 0
-  for blobIdx in 0 ..< 64:
+  for blobIdx in 0 ..< NumBlobs:
     for cellIdx in 0 ..< CELLS_PER_EXT_BLOB:
       commitments_bytes[][idx] = b.commitments[blobIdx]
       cell_indices[][idx] = cellIdx
@@ -59,13 +59,18 @@ proc benchVerifyCellKZGProofBatch_64Blobs(b: BenchSet, ctx: ptr EthereumKZGConte
       proofs_bytes[][idx] = proofToBytes(b.proofs[blobIdx][cellIdx])
       inc idx
 
-  bench("verify_cell_kzg_proof_batch (64 blobs, 8192 cells)", iters):
+  let commitments_view = commitments_bytes[].toOpenArray(0, MaxTotal - 1)
+  let cell_indices_view = cell_indices[].toOpenArray(0, MaxTotal - 1)
+  let cells_view = cells_array[].toOpenArray(0, MaxTotal - 1)
+  let proofs_view = proofs_bytes[].toOpenArray(0, MaxTotal - 1)
+
+  bench("verify_cell_kzg_proof_batch (" & $NumBlobs & " blobs, " & $MaxTotal & " cells)", iters):
     discard verify_cell_kzg_proof_batch(
       ctx,
-      commitments_bytes[][0 ..< MaxTotal],
-      cell_indices[][0 ..< MaxTotal],
-      cells_array[][0 ..< MaxTotal],
-      proofs_bytes[][0 ..< MaxTotal],
+      commitments_view,
+      cell_indices_view,
+      cells_view,
+      proofs_view,
       secureRandomBytes
     )
 
