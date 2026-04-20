@@ -102,7 +102,7 @@ proc getEnvVars(): tuple[useAsmIfAble, force32, forceLto, useLtoDefault: bool] =
     result.useLtoDefault = false
   else:
     result.forceLto = false
-    result.useLtoDefault = true
+    result.useLtoDefault = false # GCC 15 LTO bug - https://github.com/mratsim/constantine/issues/588
 
 # Library compilation
 # ----------------------------------------------------------------
