@@ -117,7 +117,7 @@ proc testToeplitz4x4() =
   toeplitzMatVecMulNaive(outputNaive, coeffs, input)
 
   let status = toeplitzMatVecMul[EC_G1, F](outputFft, coeffs, input, frFftDesc, ecFftDesc)
-  doAssert status == FFT_Success, "FFT-based multiplication failed: " & $status
+  doAssert status == Toeplitz_Success, "FFT-based multiplication failed: " & $status
 
   for i in 0 ..< n:
     if bool(outputNaive[i] != outputFft[i]):
@@ -154,7 +154,7 @@ proc testToeplitz8x8() =
   toeplitzMatVecMulNaive(outputNaive, coeffs, input)
 
   let status = toeplitzMatVecMul[EC_G1, F](outputFft, coeffs, input, frFftDesc, ecFftDesc)
-  doAssert status == FFT_Success, "FFT-based multiplication failed: " & $status
+  doAssert status == Toeplitz_Success, "FFT-based multiplication failed: " & $status
 
   for i in 0 ..< n:
     if bool(outputNaive[i] != outputFft[i]):
