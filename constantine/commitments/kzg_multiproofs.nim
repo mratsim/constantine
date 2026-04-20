@@ -416,46 +416,65 @@ func kzg_coset_prove*[N, L, CDS: static int, Name: static Algebra](
   doAssert fr_fft_desc.order >= CDS, "Fr FFT descriptor order must be >= CDS"
   doAssert ec_fft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
 
-  # Accumulate in Fourier domain (matching Python/C-kzg/Go-kzg)
-  let hext_fft = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
-  for i in 0 ..< CDS:
-    hext_fft[i].setNeutral()
-
+  # Collect all circulant FFTs across L iterations (matching c-kzg-4844)
+  # coeffs[i][offset] = circulant_fft[offset][i] (transposed for MSM)
+  let coeffs = allocHeapArrayAligned(Fr[Name], CDS * L, alignment = 64)
   let circulant = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
+  let circulantFft = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
 
   for offset in 0 ..< L:
     makeCirculantMatrix(circulant.toOpenArray(CDS), poly.coefs, offset, L)
-
-    # Accumulate Hadamard product in Fourier domain (NO IFFT yet!)
-    let status = toeplitzHadamardProductPreFFT(
-      hext_fft.toOpenArray(CDS),
-      circulant.toOpenArray(CDS),
-      polyphaseSpectrumBank[offset],
-      fr_fft_desc,
-      accumulate = (offset > 0)
-    )
+    let status = fft_nr(fr_fft_desc, circulantFft.toOpenArray(CDS), circulant.toOpenArray(CDS))
     if status != FFT_Success:
+      freeHeapAligned(coeffs)
       freeHeapAligned(circulant)
-      freeHeapAligned(hext_fft)
+      freeHeapAligned(circulantFft)
       return
+    
+    # Store transposed: coeffs[i*L + offset] = circulantFft[i]
+    for i in 0 ..< CDS:
+      coeffs[i * L + offset] = circulantFft[i]
+
+  freeHeapAligned(circulant)
+  freeHeapAligned(circulantFft)
+
+  # MSM per output position (matching c-kzg-4844 compute_fk20_cell_proofs)
+  let u = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
+  let scalarsBig = allocHeapArrayAligned(Fr[Name].getBigInt(), L, alignment = 64)
+  let pointsAff = allocHeapArrayAligned(EC_ShortW_Aff[Fp[Name], G1], L, alignment = 64)
+
+  for i in 0 ..< CDS:
+    # Collect L scalars for position i
+    for offset in 0 ..< L:
+      scalarsBig[offset].fromField(coeffs[i * L + offset])
+    
+    # Collect L points for position i from polyphase spectrum bank
+    for offset in 0 ..< L:
+      pointsAff[offset].affine(polyphaseSpectrumBank[offset][i])
+    
+    # MSM: u[i] = Σ scalars[offset] * points[offset]
+    u[i].multiScalarMul_vartime(scalarsBig.toOpenArray(L), pointsAff.toOpenArray(L))
+
+  freeHeapAligned(coeffs)
+  freeHeapAligned(scalarsBig)
+  freeHeapAligned(pointsAff)
 
   # ONE IFFT at the end (matching Python/C-kzg/Go-kzg)
-  let u = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
-  let status2 = ec_ifft_rn(ec_fft_desc, u.toOpenArray(CDS), hext_fft.toOpenArray(CDS))
-  freeHeapAligned(hext_fft)
-  freeHeapAligned(circulant)
+  let v = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
+  let status2 = ec_ifft_rn(ec_fft_desc, v.toOpenArray(CDS), u.toOpenArray(CDS))
+  freeHeapAligned(u)
   if status2 != FFT_Success:
-    freeHeapAligned(u)
+    freeHeapAligned(v)
     return
 
   # Zero upper half, degree is CDS/2 - 1
   for i in CDSdiv2 ..< CDS:
-    u[i].setNeutral()
+    v[i].setNeutral()
 
   # FFT to get proofs
   let proofsJac = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
-  let status3 = ec_fft_desc.ec_fft_nr(proofsJac.toOpenArray(CDS), u.toOpenArray(CDS))
-  freeHeapAligned(u)
+  let status3 = ec_fft_desc.ec_fft_nr(proofsJac.toOpenArray(CDS), v.toOpenArray(CDS))
+  freeHeapAligned(v)
   if status3 != FFT_Success:
     freeHeapAligned(proofsJac)
     return

@@ -39,9 +39,8 @@ const
   # FK20 research parameters (matching ethereum-research/kzg_data_availability/fk20_multi.py)
   N = 512                                            # Polynomial size (matches Python N_POINTS)
   L = 16                                             # Coset size (matches Python l=16)
-  N_half = N div 2                                   # Half polynomial size (DA optimization)
-  k = N_half div L                                   # Number of chunks = 16
-  CDS = 2 * k                                        # Extended domain size = 32 (matches Python!)
+  # CDS = 2 * N / L to satisfy: CDS * L == 2 * N (from computePolyphaseDecompositionFourier assertion)
+  CDS = (2 * N) div L                                # Extended domain size = 64
   maxWidth = N                                       # Full domain size = 512
 
 type
@@ -51,6 +50,44 @@ type
     omegaForFFT: Fr[BLS12_381]
   
   FK20PolyphaseSpectrumBankResearch = array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
+
+# Metered FK20 Phase 1 - Toeplitz accumulation loop (FIXED: accumulate in Fourier domain)
+proc fk20Phase1Meter*[Name: static Algebra](
+  u: var array[CDS, EC_ShortW_Jac[Fp[Name], G1]],
+  poly: PolynomialCoef[N, Fr[Name]],
+  fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
+  ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
+  polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]]
+) {.meter.} =
+  let circulant = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
+  
+  # Accumulate in Fourier domain (matching Python/C-kzg/Go-kzg)
+  let hext_fft = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
+  for i in 0 ..< CDS:
+    hext_fft[i].setNeutral()
+  
+  for offset in 0 ..< L:
+    makeCirculantMatrix(circulant.toOpenArray(0, CDS - 1), poly.coefs, offset, L)
+    
+    # Accumulate Hadamard product in Fourier domain (NO IFFT yet!)
+    let status = toeplitzHadamardProductPreFFT(
+      hext_fft.toOpenArray(0, CDS - 1),
+      circulant.toOpenArray(0, CDS - 1),
+      polyphaseSpectrumBank[offset],
+      fr_fft_desc,
+      accumulate = (offset > 0)
+    )
+    if status != FFT_Success:
+      freeHeapAligned(circulant)
+      freeHeapAligned(hext_fft)
+      return
+  
+  # ONE IFFT at the end (matching Python/C-kzg/Go-kzg)
+  let status2 = ec_ifft_rn(ec_fft_desc, u.toOpenArray(0, CDS - 1), hext_fft.toOpenArray(0, CDS - 1))
+  freeHeapAligned(hext_fft)
+  freeHeapAligned(circulant)
+  if status2 != FFT_Success:
+    return
 
 # Minimal setup generation without fft_utils dependency
 func computePowersOfTauG1(powers_of_tau: var array[N, EC_ShortW_Aff[Fp[BLS12_381], G1]], secret: Fr[BLS12_381]) =
@@ -95,33 +132,6 @@ echo "metering FK20 research xoshiro512** seed: ", seed
 proc randomPoly(rng: var RngState): PolynomialCoef[N, Fr[BLS12_381]] =
   for i in 0 ..< N:
     result.coefs[i] = rng.random_unsafe(Fr[BLS12_381])
-
-# Metered FK20 Phase 1 - Toeplitz accumulation loop
-proc fk20Phase1Meter*[Name: static Algebra](
-  u: var array[CDS, EC_ShortW_Jac[Fp[Name], G1]],
-  poly: PolynomialCoef[N, Fr[Name]],
-  fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
-  ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
-  polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]]
-) {.meter.} =
-  let circulant = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
-  
-  for offset in 0 ..< L:
-    makeCirculantMatrix(circulant.toOpenArray(0, CDS - 1), poly.coefs, offset, L)
-    
-    let status = toeplitzMatVecMulPreFFT(
-      u.toOpenArray(0, CDS - 1),
-      circulant.toOpenArray(0, CDS - 1),
-      polyphaseSpectrumBank[offset],
-      fr_fft_desc,
-      ec_fft_desc,
-      accumulate = (offset > 0)
-    )
-    if status != FFT_Success:
-      freeHeapAligned(circulant)
-      return
-    
-  freeHeapAligned(circulant)
 
 # Metered FK20 Phase 2 - Final FFT
 proc fk20Phase2Meter*[Name: static Algebra](

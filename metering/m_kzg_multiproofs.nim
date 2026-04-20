@@ -56,7 +56,7 @@ proc randomPoly(rng: var RngState): PolynomialCoef[N, Fr[BLS12_381]] =
   for i in 0 ..< N:
     result.coefs[i] = rng.random_unsafe(Fr[BLS12_381])
 
-# Metered FK20 Phase 1 - Toeplitz accumulation loop
+# Metered FK20 Phase 1 - Toeplitz accumulation loop (FIXED: accumulate in Fourier domain)
 proc fk20Phase1Meter*[Name: static Algebra](
   u: var array[CDS, EC_ShortW_Jac[Fp[Name], G1]],
   poly: PolynomialCoef[N, Fr[Name]],
@@ -66,22 +66,33 @@ proc fk20Phase1Meter*[Name: static Algebra](
 ) {.meter.} =
   let circulant = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
   
+  # Accumulate in Fourier domain (matching Python/C-kzg/Go-kzg)
+  let hext_fft = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
+  for i in 0 ..< CDS:
+    hext_fft[i].setNeutral()
+  
   for offset in 0 ..< L:
     makeCirculantMatrix(circulant.toOpenArray(0, CDS - 1), poly.coefs, offset, L)
     
-    let status = toeplitzMatVecMulPreFFT(
-      u.toOpenArray(0, CDS - 1),
+    # Accumulate Hadamard product in Fourier domain (NO IFFT yet!)
+    let status = toeplitzHadamardProductPreFFT(
+      hext_fft.toOpenArray(0, CDS - 1),
       circulant.toOpenArray(0, CDS - 1),
       polyphaseSpectrumBank[offset],
       fr_fft_desc,
-      ec_fft_desc,
       accumulate = (offset > 0)
     )
     if status != FFT_Success:
       freeHeapAligned(circulant)
+      freeHeapAligned(hext_fft)
       return
   
+  # ONE IFFT at the end (matching Python/C-kzg/Go-kzg)
+  let status2 = ec_ifft_rn(ec_fft_desc, u.toOpenArray(0, CDS - 1), hext_fft.toOpenArray(0, CDS - 1))
+  freeHeapAligned(hext_fft)
   freeHeapAligned(circulant)
+  if status2 != FFT_Success:
+    return
 
 # Metered FK20 Phase 2 - Final FFT
 proc fk20Phase2Meter*[Name: static Algebra](
