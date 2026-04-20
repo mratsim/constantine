@@ -435,8 +435,6 @@ func kzg_coset_prove*[N, L, CDS: static int, Name: static Algebra](
   if status != Toeplitz_Success:
     return
 
-  defer: accum.`=destroy`()
-
   let circulant = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
 
   for offset in 0 ..< L:

@@ -24,8 +24,6 @@ import
 from trusted_setup_generator import
   EC_G1_Aff, EC_G1_Jac, EC_G2_Aff
 
-type FK20PolyphaseSpectrumBank[N, L, CDS: static int, Name: static Algebra] = array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]]
-
 func pow*(omegaMax: Fr[BLS12_381], domainPos: uint32): Fr[BLS12_381] =
   var exp: Fr[BLS12_381]
   exp.fromUint(uint64(domainPos))
@@ -390,7 +388,7 @@ proc testKzgCosetVerifyBatchSmallSizes*(numTestCells: int) =
   linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells)
 
   let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
-  let verified = kzg_coset_verify_batch[L, BLS12_381](
+  let verified = kzg_coset_verify_batch(
     uniqueCommitments,
     commitmentIdx,
     proofs,
@@ -472,7 +470,7 @@ proc testKzgCosetVerifyBatchNegative_SwitchProofs*(numTestCells: int) =
   linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells)
 
   let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
-  let verified = kzg_coset_verify_batch[L, BLS12_381](
+  let verified = kzg_coset_verify_batch(
     uniqueCommitments,
     commitmentIdx,
     proofs,
@@ -559,7 +557,7 @@ proc testKzgCosetVerifyBatchNegative_SwitchEvals*(numTestCells: int) =
   linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells)
 
   let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
-  let verified = kzg_coset_verify_batch[L, BLS12_381](
+  let verified = kzg_coset_verify_batch(
     uniqueCommitments,
     commitmentIdx,
     proofs,
@@ -648,7 +646,7 @@ proc testKzgCosetVerifyBatchNegative_FakeProof*(numTestCells: int) =
   linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells)
 
   let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
-  let verified = kzg_coset_verify_batch[L, BLS12_381](
+  let verified = kzg_coset_verify_batch(
     uniqueCommitments,
     commitmentIdx,
     proofs,
@@ -734,7 +732,7 @@ proc testKzgCosetVerifyBatchMultipleCommitments*(numCommitments: int, cellsPerCo
   linearIndepRandNumbers.asUnchecked().computePowers(r, totalCells)
 
   let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
-  let verified = kzg_coset_verify_batch[L, BLS12_381](
+  let verified = kzg_coset_verify_batch(
     uniqueCommitments,
     commitmentIdx,
     proofs,

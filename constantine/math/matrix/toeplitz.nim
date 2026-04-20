@@ -214,7 +214,9 @@ proc init*[EC, ECaff, F](
   ctx.frFftDesc = frFftDesc
   ctx.ecFftDesc = ecFftDesc
 
-  if size <= 0 or L <= 0 or not size.isPowerOf2_vartime():
+  if size <= 0 or L <= 0:
+    return Toeplitz_MismatchedSizes
+  if not size.isPowerOf2_vartime():
     return Toeplitz_SizeNotPowerOfTwo
 
   ctx.size = size
@@ -344,7 +346,6 @@ proc toeplitzMatVecMul*[EC, F](
 
     ifftResult = allocHeapArrayAligned(EC, n2, 64)
     check HappyPath, acc.finish(ifftResult.toOpenArray(n2))
-    acc.`=destroy`()
 
     for i in 0 ..< n:
       output[i] = ifftResult[i]

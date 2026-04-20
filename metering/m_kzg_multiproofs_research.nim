@@ -26,7 +26,8 @@ import
   constantine/commitments/kzg_multiproofs,
   constantine/platforms/[abstractions, allocs, bithacks, views],
   constantine/platforms/metering/[reports, tracer],
-  helpers/prng_unsafe
+  helpers/prng_unsafe,
+  ../tests/math_polynomials/fft_utils
 
 const
   # FK20 research parameters (matching ethereum-research/kzg_data_availability/fk20_multi.py)
@@ -67,7 +68,7 @@ func gen_setup_research(): TrustedSetupResearch =
   tau.fromHex(tauHex)
   result.powers_of_tau_G1.coefs.computePowersOfTauG1(tau)
 
-  result.omegaForFFT = Fr[BLS12_381].fromHex("0x45af6345ec055e4d14a1e27164d8fdbd2d967f4be2f951558140d032f0a9ee53")
+  result.omegaForFFT = getRootOfUnityForScale(Fr[BLS12_381], int(log2_vartime(uint CDS)))
 
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1))
