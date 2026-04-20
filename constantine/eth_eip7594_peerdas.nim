@@ -272,7 +272,7 @@ func compute_cells_and_kzg_proofs*(
   # Step 1: Deserialize blob to polynomial (Lagrange form)
   let poly_lagrange = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], 64)
   defer: freeHeapAligned(poly_lagrange)
-  
+
   let status = blob_to_field_polynomial(poly_lagrange, blob)
   case status
   of cttCodecScalar_Success:
@@ -285,7 +285,7 @@ func compute_cells_and_kzg_proofs*(
   # Step 2: Convert to monomial form via IFFT (needed for FK20 proofs)
   let poly_monomial = allocHeapAligned(PolynomialCoef[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
   defer: freeHeapAligned(poly_monomial)
-  
+
   poly_monomial[].computeCoefPoly(poly_lagrange[], ctx.fft_desc_ext)
 
   # Step 3: Compute cells using the optimized half-FFT algorithm
@@ -301,7 +301,7 @@ func compute_cells_and_kzg_proofs*(
   # Compute FK20 proofs (Phase 1 + Phase 2) using precomputed SRS polyphase spectrum bank
   let proofsAff = allocHeapAligned(array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]], 64)
   defer: freeHeapAligned(proofsAff)
-  
+
   kzg_coset_prove(proofsAff[], poly_monomial[],
     ctx.fft_desc_ext, ctx.ecfft_desc_ext, ctx.polyphaseSpectrumBank)
 
@@ -310,7 +310,7 @@ func compute_cells_and_kzg_proofs*(
 
   # Convert proofs to KZGProof format
   for i in 0 ..< CELLS_PER_EXT_BLOB:
-    proofs[i] = KZGProof(proofsAff[][i])
+    proofs[i] = KZGProof(proofsAff[i])
 
   return cttEthKzg_Success
 
@@ -551,7 +551,7 @@ func recover_cells_and_kzg_proofs*(
 
   # Step 3: Recover polynomial coefficient form
   let poly_coeff = recoverPolynomialCoeff[
-    FIELD_ELEMENTS_PER_BLOB, FIELD_ELEMENTS_PER_CELL, CELLS_PER_EXT_BLOB, BLS12_381
+    FIELD_ELEMENTS_PER_BLOB, FIELD_ELEMENTS_PER_CELL, CELLS_PER_EXT_BLOB
   ](indices_uint, cosets_evals, ctx.fft_desc_ext)
 
   # Step 4: Recompute all cells from recovered polynomial
@@ -562,7 +562,7 @@ func recover_cells_and_kzg_proofs*(
   # FFT: coefficient form -> evaluation form (bit-reversed order)
   let poly_evals_brp = allocHeapAligned(array[FIELD_ELEMENTS_PER_EXT_BLOB, Fr[BLS12_381]], 64)
   defer: freeHeapAligned(poly_evals_brp)
-  
+
   let fft_status = fft_nr(
     ctx.fft_desc_ext,
     poly_evals_brp[].toOpenArray(0, FIELD_ELEMENTS_PER_EXT_BLOB-1),
@@ -573,7 +573,7 @@ func recover_cells_and_kzg_proofs*(
   # Bit-reverse to match cell ordering
   let poly_evals = allocHeapAligned(array[FIELD_ELEMENTS_PER_EXT_BLOB, Fr[BLS12_381]], 64)
   defer: freeHeapAligned(poly_evals)
-  
+
   bit_reversal_permutation(
     poly_evals[].toOpenArray(0, FIELD_ELEMENTS_PER_EXT_BLOB-1),
     poly_evals_brp[].toOpenArray(0, FIELD_ELEMENTS_PER_EXT_BLOB-1)
@@ -582,17 +582,17 @@ func recover_cells_and_kzg_proofs*(
   # Slice into cells
   for i in 0 ..< CELLS_PER_EXT_BLOB:
     for j in 0 ..< FIELD_ELEMENTS_PER_CELL:
-      cells_evals[][i][j] = poly_evals[][i * FIELD_ELEMENTS_PER_CELL + j]
+      cells_evals[i][j] = poly_evals[i * FIELD_ELEMENTS_PER_CELL + j]
 
   # Step 5: Convert cells to bytes [Serialization]
   for i in 0 ..< CELLS_PER_EXT_BLOB:
-    cosetEvalsToCell(cells_evals[][i], recovered_cells[i])
+    cosetEvalsToCell(cells_evals[i], recovered_cells[i])
 
   # Step 6: Compute FK20 proofs
   # Truncate recovered polynomial (8192 coeffs) to original size (4096 coeffs)
   let poly_coeff_N = allocHeapAligned(PolynomialCoef[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
   defer: freeHeapAligned(poly_coeff_N)
-  
+
   for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
     poly_coeff_N[].coefs[i] = poly_coeff.coefs[i]
 
@@ -603,7 +603,7 @@ func recover_cells_and_kzg_proofs*(
   # Compute FK20 proofs using precomputed SRS polyphase spectrum bank
   let proofsAff = allocHeapAligned(array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]], 64)
   defer: freeHeapAligned(proofsAff)
-  
+
   kzg_coset_prove(
     proofsAff[], poly_coeff_N[],
     ctx.fft_desc_ext, ctx.ecfft_desc_ext, ctx.polyphaseSpectrumBank)

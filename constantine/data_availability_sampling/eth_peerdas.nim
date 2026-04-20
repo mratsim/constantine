@@ -49,18 +49,18 @@ import
 #
 # ============================================================
 
-func cosetShiftForIndex*[L, CDS: static int, Name: static Algebra](
+func cosetShiftForIndex*[L, CDS: static int](
        cell_index: uint64,
-       fft_desc: FrFFT_Descriptor[Fr[Name]]): Fr[Name] =
+       fft_desc: FrFFT_Descriptor[Fr[BLS12_381]]): Fr[BLS12_381] =
   ## Get the coset shift for a given cell index.
   ## Returns h_k = roots_of_unity_brp[L * cell_index]
   ## Domain: Extended domain of size CDS * L / 2
   let idx = int(cell_index) * L
   result = fft_desc.rootsOfUnity[idx]
 
-func cosetForIndex*[L, CDS: static int, Name: static Algebra](
+func cosetForIndex*[L, CDS: static int](
        cell_index: uint64,
-       fft_desc: FrFFT_Descriptor[Fr[Name]]): array[L, Fr[Name]] =
+       fft_desc: FrFFT_Descriptor[Fr[BLS12_381]]): array[L, Fr[BLS12_381]] =
   ## Get the coset domain for a given cell index.
   ## Returns h_k * roots_of_unity[i] for i in 0..L-1
   ## Domain: Extended domain of size CDS * L / 2
@@ -74,10 +74,10 @@ func cosetForIndex*[L, CDS: static int, Name: static Algebra](
 #
 # ============================================================
 
-func recoverPolynomialCoeff*[N, L, CDS: static int, Name: static Algebra](
+func recoverPolynomialCoeff*[N, L, CDS: static int](
        cell_indices: seq[uint64],
-       cosets_evals: seq[array[L, Fr[Name]]],
-       fft_desc: FrFFT_Descriptor[Fr[Name]]): PolynomialCoef[2 * N, Fr[Name]] =
+       cosets_evals: seq[array[L, Fr[BLS12_381]]],
+       fft_desc: FrFFT_Descriptor[Fr[BLS12_381]]): PolynomialCoef[2 * N, Fr[BLS12_381]] =
   ## Recover polynomial coefficient form from partial cell evaluations.
   ##
   ## Algorithm (FFT-based recovery):
@@ -100,7 +100,7 @@ func recoverPolynomialCoeff*[N, L, CDS: static int, Name: static Algebra](
   let ext_size = 2 * N
 
   # Step 1: Build extended evaluation array in bit-reversed order
-  var extended_evaluation_rbo: array[2 * N, Fr[Name]]
+  var extended_evaluation_rbo: array[2 * N, Fr[BLS12_381]]
   for i in 0 ..< ext_size:
     extended_evaluation_rbo[i].setZero()
 
@@ -111,7 +111,7 @@ func recoverPolynomialCoeff*[N, L, CDS: static int, Name: static Algebra](
       extended_evaluation_rbo[start + j] = cosets_evals[k][j]
 
   # Step 2: Bit-reverse into extended_evaluation
-  var extended_evaluation = allocHeapArrayAligned(Fr[Name], ext_size, alignment = 64)
+  var extended_evaluation = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
   bit_reversal_permutation(extended_evaluation.toOpenArray(0, ext_size-1), extended_evaluation_rbo.toOpenArray(0, ext_size-1))
 
   # Compute missing cell indices and vanishing polynomial
@@ -129,18 +129,18 @@ func recoverPolynomialCoeff*[N, L, CDS: static int, Name: static Algebra](
       missing_cell_indices.add(brp_i)
 
   # Compute vanishing polynomial on small domain (CELLS_PER_EXT_BLOB points)
-  var short_roots = allocHeapArrayAligned(Fr[Name], missing_cell_indices.len, alignment = 64)
+  var short_roots = allocHeapArrayAligned(Fr[BLS12_381], missing_cell_indices.len, alignment = 64)
   let stride = ext_size div num_cells_total
 
   for i in 0 ..< missing_cell_indices.len:
     let root_idx = missing_cell_indices[i] * uint64(stride)
     short_roots[i] = fft_desc.rootsOfUnity[root_idx]
 
-  var short_vanishing_poly = allocHeapArrayAligned(Fr[Name], missing_cell_indices.len + 1, alignment = 64)
+  var short_vanishing_poly = allocHeapArrayAligned(Fr[BLS12_381], missing_cell_indices.len + 1, alignment = 64)
   if missing_cell_indices.len > 0:
     short_vanishing_poly[0].neg(short_roots[0])
     for i in 1 ..< missing_cell_indices.len:
-      var neg_root {.noInit.}: Fr[Name]
+      var neg_root {.noInit.}: Fr[BLS12_381]
       neg_root.neg(short_roots[i])
       short_vanishing_poly[i] = neg_root
       short_vanishing_poly[i] += short_vanishing_poly[i-1]
@@ -151,7 +151,7 @@ func recoverPolynomialCoeff*[N, L, CDS: static int, Name: static Algebra](
   short_vanishing_poly[missing_cell_indices.len].setOne()
 
   # Extend vanishing polynomial to full domain
-  var zero_poly_coeff = allocHeapArrayAligned(Fr[Name], ext_size, alignment = 64)
+  var zero_poly_coeff = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
   for i in 0 ..< ext_size:
     zero_poly_coeff[i].setZero()
   for i in 0 .. missing_cell_indices.len:
@@ -161,17 +161,17 @@ func recoverPolynomialCoeff*[N, L, CDS: static int, Name: static Algebra](
   freeHeapAligned(short_vanishing_poly)
 
   # Step 3: Convert Z(x) to evaluation form [Domain: 2*N roots of unity, natural to bit-reversed]
-  var zero_poly_eval = allocHeapArrayAligned(Fr[Name], ext_size, alignment = 64)
+  var zero_poly_eval = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
   for i in 0 ..< ext_size:
     zero_poly_eval[i] = zero_poly_coeff[i]
 
-  var zero_poly_eval_fft = allocHeapArrayAligned(Fr[Name], ext_size, alignment = 64)
+  var zero_poly_eval_fft = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
   let fft_status = fft_nr(fft_desc, zero_poly_eval_fft.toOpenArray(ext_size), zero_poly_eval.toOpenArray(ext_size))
   doAssert fft_status == FFT_Success
   freeHeapAligned(zero_poly_eval)
 
   # Step 4: Compute (E*Z)(x) in evaluation form
-  var extended_times_zero = allocHeapArrayAligned(Fr[Name], ext_size, alignment = 64)
+  var extended_times_zero = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
   for i in 0 ..< ext_size:
     extended_times_zero[i].prod(extended_evaluation[i], zero_poly_eval_fft[i])
 
@@ -179,31 +179,31 @@ func recoverPolynomialCoeff*[N, L, CDS: static int, Name: static Algebra](
   freeHeapAligned(zero_poly_eval_fft)
 
   # Step 5: Convert (E*Z) to coefficient form via IFFT [Domain: 2*N roots of unity, bit-reversed to natural]
-  var ext_times_zero_coeffs = allocHeapArrayAligned(Fr[Name], ext_size, alignment = 64)
+  var ext_times_zero_coeffs = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
   let ifft_status = ifft_rn(fft_desc, ext_times_zero_coeffs.toOpenArray(ext_size), extended_times_zero.toOpenArray(ext_size))
   doAssert ifft_status == FFT_Success
 
   # Step 6: Evaluate on coset domain using coset FFT descriptor
   # Coset shift = 5 (same as c-kzg-4844)
-  var cosetShift: Fr[Name]
+  var cosetShift: Fr[BLS12_381]
   cosetShift.fromUint(5)
-  var ext_eval_over_coset = allocHeapArrayAligned(Fr[Name], ext_size, alignment = 64)
+  var ext_eval_over_coset = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
   let coset_fft_status = coset_fft_nr(fft_desc, ext_eval_over_coset.toOpenArray(ext_size), ext_times_zero_coeffs.toOpenArray(ext_size), cosetShift)
   doAssert coset_fft_status == FFT_Success
 
-  var zero_poly_over_coset = allocHeapArrayAligned(Fr[Name], ext_size, alignment = 64)
+  var zero_poly_over_coset = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
   let coset_fft_status2 = coset_fft_nr(fft_desc, zero_poly_over_coset.toOpenArray(ext_size), zero_poly_coeff.toOpenArray(ext_size), cosetShift)
   doAssert coset_fft_status2 == FFT_Success
 
   # Step 7: Pointwise divide P_eval = (E*Z)_coset / Z_coset
-  var reconstructed_over_coset = allocHeapArrayAligned(Fr[Name], ext_size, alignment = 64)
+  var reconstructed_over_coset = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
   for i in 0 ..< ext_size:
-    var inv {.noInit.}: Fr[Name]
+    var inv {.noInit.}: Fr[BLS12_381]
     inv.inv_vartime(zero_poly_over_coset[i])
     reconstructed_over_coset[i].prod(ext_eval_over_coset[i], inv)
 
   # Step 8: Convert P to coefficient form via coset IFFT
-  var reconstructed_coeff = allocHeapArrayAligned(Fr[Name], ext_size, alignment = 64)
+  var reconstructed_coeff = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
   let coset_ifft_status = coset_ifft_rn(fft_desc, reconstructed_coeff.toOpenArray(ext_size), reconstructed_over_coset.toOpenArray(ext_size), cosetShift)
   doAssert coset_ifft_status == FFT_Success
 
