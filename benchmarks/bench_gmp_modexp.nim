@@ -83,10 +83,10 @@ for i in 0 ..< 5:
     mpz_init(mm)
     mpz_init(rr)
 
-    aa.mpz_import(a.limbs.len, GMP_LeastSignificantWordFirst, sizeof(SecretWord), GMP_WordNativeEndian, 0, a.limbs[0].unsafeAddr)
+    aa.mpz_import(a.limbs.len.csize_t, GMP_LeastSignificantWordFirst.cint, sizeof(SecretWord).csize_t, GMP_WordNativeEndian.cint, 0.csize_t, a.limbs[0].unsafeAddr)
     let e = BigInt[expBits].unmarshal(exponent, bigEndian)
-    ee.mpz_import(e.limbs.len, GMP_LeastSignificantWordFirst, sizeof(SecretWord), GMP_WordNativeEndian, 0, e.limbs[0].unsafeAddr)
-    mm.mpz_import(M.limbs.len, GMP_LeastSignificantWordFirst, sizeof(SecretWord), GMP_WordNativeEndian, 0, M.limbs[0].unsafeAddr)
+    ee.mpz_import(e.limbs.len.csize_t, GMP_LeastSignificantWordFirst.cint, sizeof(SecretWord).csize_t, GMP_WordNativeEndian.cint, 0.csize_t, e.limbs[0].unsafeAddr)
+    mm.mpz_import(M.limbs.len.csize_t, GMP_LeastSignificantWordFirst.cint, sizeof(SecretWord).csize_t, GMP_WordNativeEndian.cint, 0.csize_t, M.limbs[0].unsafeAddr)
 
     let start = getMonotime()
     rr.mpz_powm(aa, ee, mm)
@@ -95,16 +95,19 @@ for i in 0 ..< 5:
     elapsedGMP = inNanoSeconds(stop-start)
 
     var r: BigInt[bits]
-    var rWritten: csize
-    discard r.limbs[0].addr.mpz_export(rWritten.addr, GMP_LeastSignificantWordFirst, sizeof(SecretWord), GMP_WordNativeEndian, 0, rr)
+    var rWritten: csize_t
+    discard r.limbs[0].addr.mpz_export(rWritten.addr, GMP_LeastSignificantWordFirst.cint, sizeof(SecretWord).csize_t, GMP_WordNativeEndian.cint, 0.csize_t, rr)
 
     echo "  r GMP:               ", r.toHex()
     echo "  elapsed GMP:         ", elapsedGMP, " ns"
 
-    mpz_clear(rr)
-    mpz_clear(mm)
-    mpz_clear(ee)
-    mpz_clear(aa)
+    # Commented out: =destroy regression introduced in nim-gmp PR#3
+    # https://github.com/subsetpark/nim-gmp/pull/3/changes#diff-f944e5fa543c5f63082058ca2db21047676104fc1d68276b389bb99a51e31efc
+    # Destructors were specifically removed with motivated explanation in PR#2
+    # mpz_clear(rr)
+    # mpz_clear(mm)
+    # mpz_clear(ee)
+    # mpz_clear(aa)
 
   # echo &"\n  ratio Stint/Constantine: {float64(elapsedStint)/float64(elapsedCtt):.3f}x"
   echo &"  ratio GMP/Constantine: {float64(elapsedGMP)/float64(elapsedCtt):.3f}x"

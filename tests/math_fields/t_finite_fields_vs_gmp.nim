@@ -72,8 +72,8 @@ proc binary_prologue[Name: static Algebra, N: static int](
   aBuf.marshal(aTest, bigEndian)
   bBuf.marshal(bTest, bigEndian)
 
-  mpz_import(a, aLen, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, aBuf[0].addr)
-  mpz_import(b, bLen, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, bBuf[0].addr)
+  mpz_import(a, aLen.csize_t, GMP_MostSignificantWordFirst.cint, 1.csize_t, GMP_WordNativeEndian.cint, 0.csize_t, aBuf[0].addr)
+  mpz_import(b, bLen.csize_t, GMP_MostSignificantWordFirst.cint, 1.csize_t, GMP_WordNativeEndian.cint, 0.csize_t, bBuf[0].addr)
 
 proc binary_epilogue[Name: static Algebra, N: static int](
         r, a, b: mpz_t,
@@ -85,21 +85,19 @@ proc binary_epilogue[Name: static Algebra, N: static int](
   #########################################################
   # Check
 
-  {.push warnings: off.} # deprecated csize
-  var aW, bW, rW: csize  # Word written by GMP
-  {.pop.}
+  var aW, bW, rW: csize_t  # Word written by GMP
 
   var rGMP: array[N, byte]
-  discard mpz_export(rGMP[0].addr, rW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
+  discard mpz_export(rGMP[0].addr, rW.addr, GMP_MostSignificantWordFirst.cint, 1.csize_t, GMP_WordNativeEndian.cint, 0.csize_t, r)
 
   var rConstantine: array[N, byte]
   marshal(rConstantine, rTest, bigEndian)
 
   # Note: in bigEndian, GMP aligns left while constantine aligns right
-  doAssert rGMP.toOpenArray(0, rW-1) == rConstantine.toOpenArray(N-rW, N-1), block:
+  doAssert rGMP.toOpenArray(0, rW.int-1) == rConstantine.toOpenArray(N-rW.int, N-1), block:
     # Reexport as bigEndian for debugging
-    discard mpz_export(aBuf[0].unsafeAddr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-    discard mpz_export(bBuf[0].unsafeAddr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
+    discard mpz_export(aBuf[0].unsafeAddr, aW.addr, GMP_MostSignificantWordFirst.cint, 1.csize_t, GMP_WordNativeEndian.cint, 0.csize_t, a)
+    discard mpz_export(bBuf[0].unsafeAddr, bW.addr, GMP_MostSignificantWordFirst.cint, 1.csize_t, GMP_WordNativeEndian.cint, 0.csize_t, b)
     "\nModular " & operation & " on curve " & $Name & " with operands\n" &
     "  a:   " & aBuf.toHex & "\n" &
     "  b:   " & bBuf.toHex & "\n" &
@@ -240,11 +238,14 @@ template testSetup {.dirty.} =
   mpz_init(b)
   mpz_init(p)
   mpz_init(r)
-  defer:
-    mpz_clear(r)
-    mpz_clear(p)
-    mpz_clear(b)
-    mpz_clear(a)
+  # Commented out: =destroy regression introduced in nim-gmp PR#3
+  # https://github.com/subsetpark/nim-gmp/pull/3/changes#diff-f944e5fa543c5f63082058ca2db21047676104fc1d68276b389bb99a51e31efc
+  # Destructors were specifically removed with motivated explanation in PR#2
+  # defer:
+  #   mpz_clear(r)
+  #   mpz_clear(p)
+  #   mpz_clear(b)
+  #   mpz_clear(a)
 
 proc mainMul() =
   testSetup()

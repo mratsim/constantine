@@ -140,11 +140,11 @@ proc benchAll(desc: seq[BenchDesc]) =
 
     for i in 0 ..< desc.len:
       let aCtt = BigInt[bits].fromHex(desc[i].a)
-      a.mpz_import(aCtt.limbs.len, GMP_LeastSignificantWordFirst, sizeof(SecretWord), GMP_WordNativeEndian, 0, aCtt.limbs[0].unsafeAddr)
+      a.mpz_import(aCtt.limbs.len.csize_t, GMP_LeastSignificantWordFirst.cint, sizeof(SecretWord).csize_t, GMP_WordNativeEndian.cint, 0.csize_t, aCtt.limbs[0].unsafeAddr)
       let eCtt = BigInt[bits].fromHex(desc[i].e)
-      e.mpz_import(eCtt.limbs.len, GMP_LeastSignificantWordFirst, sizeof(SecretWord), GMP_WordNativeEndian, 0, eCtt.limbs[0].unsafeAddr)
+      e.mpz_import(eCtt.limbs.len.csize_t, GMP_LeastSignificantWordFirst.cint, sizeof(SecretWord).csize_t, GMP_WordNativeEndian.cint, 0.csize_t, eCtt.limbs[0].unsafeAddr)
       let mCtt = BigInt[bits].fromHex(desc[i].M)
-      M.mpz_import(mCtt.limbs.len, GMP_LeastSignificantWordFirst, sizeof(SecretWord), GMP_WordNativeEndian, 0, mCtt.limbs[0].unsafeAddr)
+      M.mpz_import(mCtt.limbs.len.csize_t, GMP_LeastSignificantWordFirst.cint, sizeof(SecretWord).csize_t, GMP_WordNativeEndian.cint, 0.csize_t, mCtt.limbs[0].unsafeAddr)
 
       bench(
         r.mpz_powm(a, e, M),
@@ -153,10 +153,13 @@ proc benchAll(desc: seq[BenchDesc]) =
     report("GMP", nanoseconds, ticks, desc.len)
     perfGMP = nanoseconds
 
-    mpz_clear(r)
-    mpz_clear(M)
-    mpz_clear(e)
-    mpz_clear(a)
+    # Commented out: =destroy regression introduced in nim-gmp PR#3
+    # https://github.com/subsetpark/nim-gmp/pull/3/changes#diff-f944e5fa543c5f63082058ca2db21047676104fc1d68276b389bb99a51e31efc
+    # Destructors were specifically removed with motivated explanation in PR#2
+    # mpz_clear(r)
+    # mpz_clear(M)
+    # mpz_clear(e)
+    # mpz_clear(a)
 
   block: # Stint
     var ticks, nanoseconds: int64
