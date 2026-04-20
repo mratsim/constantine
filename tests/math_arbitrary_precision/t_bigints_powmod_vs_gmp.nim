@@ -71,19 +71,22 @@ proc test(rng: var RngState) =
   mpz_init(mm)
   mpz_init(rr)
 
-  aa.mpz_import(aLen, GMP_LeastSignificantWordFirst, sizeof(SecretWord), GMP_WordNativeEndian, 0, a[0].addr)
-  ee.mpz_import(eLen, GMP_MostSignificantWordFirst, sizeof(byte), GMP_WordNativeEndian, 0, e[0].addr)
-  mm.mpz_import(mLen, GMP_LeastSignificantWordFirst, sizeof(SecretWord), GMP_WordNativeEndian, 0, M[0].addr)
+  aa.mpz_import(aLen.csize_t, GMP_LeastSignificantWordFirst.cint, sizeof(SecretWord).csize_t, GMP_WordNativeEndian.cint, 0.csize_t, a[0].addr)
+  ee.mpz_import(eLen.csize_t, GMP_MostSignificantWordFirst.cint, sizeof(byte).csize_t, GMP_WordNativeEndian.cint, 0.csize_t, e[0].addr)
+  mm.mpz_import(mLen.csize_t, GMP_LeastSignificantWordFirst.cint, sizeof(SecretWord).csize_t, GMP_WordNativeEndian.cint, 0.csize_t, M[0].addr)
 
   rr.mpz_powm(aa, ee, mm)
 
-  var rWritten: csize
-  discard rGMP[0].addr.mpz_export(rWritten.addr, GMP_LeastSignificantWordFirst, sizeof(SecretWord), GMP_WordNativeEndian, 0, rr)
+  var rWritten: csize_t
+  discard rGMP[0].addr.mpz_export(rWritten.addr, GMP_LeastSignificantWordFirst.cint, sizeof(SecretWord).csize_t, GMP_WordNativeEndian.cint, 0.csize_t, rr)
 
-  mpz_clear(rr)
-  mpz_clear(mm)
-  mpz_clear(ee)
-  mpz_clear(aa)
+  # Commented out: =destroy regression introduced in nim-gmp PR#3
+  # https://github.com/subsetpark/nim-gmp/pull/3/changes#diff-f944e5fa543c5f63082058ca2db21047676104fc1d68276b389bb99a51e31efc
+  # Destructors were specifically removed with motivated explanation in PR#2
+  # mpz_clear(rr)
+  # mpz_clear(mm)
+  # mpz_clear(ee)
+  # mpz_clear(aa)
 
   let
     aBits = a.getBits_LE_vartime()

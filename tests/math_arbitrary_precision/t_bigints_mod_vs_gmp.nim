@@ -120,8 +120,8 @@ proc main() =
     aBuf.marshal(aTest, bigEndian)
     mBuf.marshal(mTest, bigEndian)
 
-    mpz_import(a, aLen, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, aBuf[0].addr)
-    mpz_import(m, mLen, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, mBuf[0].addr)
+    mpz_import(a, aLen.csize_t, GMP_MostSignificantWordFirst.cint, 1.csize_t, GMP_WordNativeEndian.cint, 0.csize_t, aBuf[0].addr)
+    mpz_import(m, mLen.csize_t, GMP_MostSignificantWordFirst.cint, 1.csize_t, GMP_WordNativeEndian.cint, 0.csize_t, mBuf[0].addr)
 
     #########################################################
     # Modulus
@@ -134,12 +134,10 @@ proc main() =
     #########################################################
     # Check
 
-    {.push warnings: off.} # deprecated csize
-    var aW, mW, rW: csize  # Words written by GMP
-    {.pop.}
+    var aW, mW, rW: csize_t  # Words written by GMP
 
     var rGMP: array[mLen, byte]
-    discard mpz_export(rGMP[0].addr, rW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
+    discard mpz_export(rGMP[0].addr, rW.addr, GMP_MostSignificantWordFirst.cint, 1.csize_t, GMP_WordNativeEndian.cint, 0.csize_t, r)
 
     var rConstantine, rCttVartime: array[mLen, byte]
     marshal(rConstantine, rTest, bigEndian)
@@ -149,10 +147,10 @@ proc main() =
     # echo "rConstantine: ", rConstantine.toHex()
 
     # Note: in bigEndian, GMP aligns left while constantine aligns right
-    doAssert rGMP.toOpenArray(0, rW-1) == rConstantine.toOpenArray(mLen-rW, mLen-1), block:
+    doAssert rGMP.toOpenArray(0, rW.int-1) == rConstantine.toOpenArray(mLen-rW.int, mLen-1), block:
       # Reexport as bigEndian for debugging
-      discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-      discard mpz_export(mBuf[0].addr, mW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, m)
+      discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst.cint, 1.csize_t, GMP_WordNativeEndian.cint, 0.csize_t, a)
+      discard mpz_export(mBuf[0].addr, mW.addr, GMP_MostSignificantWordFirst.cint, 1.csize_t, GMP_WordNativeEndian.cint, 0.csize_t, m)
       "\nModulus with operands\n" &
       "  a (" & align($aBits, 4) & "-bit):   " & aBuf.toHex & "\n" &
       "  m (" & align($mBits, 4) & "-bit):   " & mBuf.toHex & "\n" &
@@ -161,9 +159,9 @@ proc main() =
       "  Constantine:    " & rConstantine.toHex() & "\n" &
       "(Note that GMP aligns bytes left while constantine aligns bytes right)"
 
-    doAssert rGMP.toOpenArray(0, rW-1) == rCttVartime.toOpenArray(mLen-rW, mLen-1), block:
+    doAssert rGMP.toOpenArray(0, rW.int-1) == rCttVartime.toOpenArray(mLen-rW.int, mLen-1), block:
       # Reexport as bigEndian for debugging
-      discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
+      discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst.cint, 1.csize_t, GMP_WordNativeEndian.cint, 0.csize_t, a)
       discard mpz_export(mBuf[0].addr, mW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, m)
       "\nModulus with operands\n" &
       "  a (" & align($aBits, 4) & "-bit):   " & aBuf.toHex & "\n" &
@@ -173,8 +171,11 @@ proc main() =
       "  Constantine:    " & rCttVartime.toHex() & "\n" &
       "(Note that GMP aligns bytes left while constantine aligns bytes right)"
 
-  mpz_clear(r)
-  mpz_clear(m)
-  mpz_clear(a)
+  # Commented out: =destroy regression introduced in nim-gmp PR#3
+  # https://github.com/subsetpark/nim-gmp/pull/3/changes#diff-f944e5fa543c5f63082058ca2db21047676104fc1d68276b389bb99a51e31efc
+  # Destructors were specifically removed with motivated explanation in PR#2
+  # mpz_clear(r)
+  # mpz_clear(m)
+  # mpz_clear(a)
 
 main()

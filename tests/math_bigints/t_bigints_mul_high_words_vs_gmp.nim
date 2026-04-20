@@ -63,10 +63,13 @@ proc main() =
   mpz_init(r)
   mpz_init(a)
   mpz_init(b)
-  defer:
-    mpz_clear(b)
-    mpz_clear(a)
-    mpz_clear(r)
+  # Commented out: =destroy regression introduced in nim-gmp PR#3
+  # https://github.com/subsetpark/nim-gmp/pull/3/changes#diff-f944e5fa543c5f63082058ca2db21047676104fc1d68276b389bb99a51e31efc
+  # Destructors were specifically removed with motivated explanation in PR#2
+  # defer:
+  #   mpz_clear(b)
+  #   mpz_clear(a)
+  #   mpz_clear(r)
 
   testRandomModSizes(12, rBits, aBits, bBits, wordsStartIndex):
     # echo "--------------------------------------------------------------------------------"
@@ -91,8 +94,8 @@ proc main() =
     aBuf.marshal(aTest, bigEndian)
     bBuf.marshal(bTest, bigEndian)
 
-    mpz_import(a, aLen, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, aBuf[0].addr)
-    mpz_import(b, bLen, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, bBuf[0].addr)
+    mpz_import(a, aLen.csize_t, GMP_MostSignificantWordFirst.cint, 1.csize_t, GMP_WordNativeEndian.cint, 0.csize_t, aBuf[0].addr)
+    mpz_import(b, bLen.csize_t, GMP_MostSignificantWordFirst.cint, 1.csize_t, GMP_WordNativeEndian.cint, 0.csize_t, bBuf[0].addr)
 
     #########################################################
     # Multiplication + drop low words
