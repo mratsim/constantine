@@ -25,7 +25,7 @@ rng.seed(seed)
 echo "\n------------------------------------------------------\n"
 echo "test_finite_fields_reduction xoshiro512** seed: ", seed
 
-static: doAssert defined(CTT_TEST_CURVES), "This modules requires the -d:CTT_TEST_CURVES compile option"
+static: doAssert defined(CTT_TEST_CURVES), "This module requires the -d:CTT_TEST_CURVES compile option"
 
 suite "Crandall prime reduction - anti-regression tests" & " [" & $WordBitWidth & "-bit words]":
   test "Secp256k1 - multiplication by 1 (S=0 edge case)":
@@ -37,10 +37,10 @@ suite "Crandall prime reduction - anti-regression tests" & " [" & $WordBitWidth 
       let a = rng.random_unsafe(Fp[Secp256k1])
       var b: Fp[Secp256k1]
       b.setOne()
-      
+
       var r: Fp[Secp256k1]
       r.prod(a, b)
-      
+
       doAssert bool(r == a), block:
         "\nSecp256k1 mul by 1 failed:" &
         "\nInput:    " & a.toHex() &
@@ -51,11 +51,11 @@ suite "Crandall prime reduction - anti-regression tests" & " [" & $WordBitWidth 
     ## Ensure squaring produces same result as multiplication
     for _ in 0 ..< Iters:
       let a = rng.random_unsafe(Fp[Secp256k1])
-      
+
       var r_sqr, r_mul: Fp[Secp256k1]
       r_sqr.square(a)
       r_mul.prod(a, a)
-      
+
       doAssert bool(r_sqr == r_mul), block:
         "\nSecp256k1 squaring inconsistency:" &
         "\nInput: " & a.toHex() &
@@ -68,14 +68,14 @@ suite "Crandall prime reduction - anti-regression tests" & " [" & $WordBitWidth 
       let a = rng.random_unsafe(Fp[Secp256k1])
       let b = rng.random_unsafe(Fp[Secp256k1])
       let c = rng.random_unsafe(Fp[Secp256k1])
-      
+
       var r1, r2, tmp: Fp[Secp256k1]
       tmp.prod(a, b)
       r1.prod(tmp, c)
-      
+
       tmp.prod(b, c)
       r2.prod(a, tmp)
-      
+
       doAssert bool(r1 == r2), block:
         "\nSecp256k1 associativity failed:" &
         "\na: " & a.toHex() &
@@ -90,10 +90,10 @@ suite "Crandall prime reduction - anti-regression tests" & " [" & $WordBitWidth 
       let a = rng.random_highHammingWeight(Fp[Secp256k1])
       var b: Fp[Secp256k1]
       b.setOne()
-      
+
       var r: Fp[Secp256k1]
       r.prod(a, b)
-      
+
       doAssert bool(r == a), block:
         "\nSecp256k1 mul by 1 (high Hamming) failed:" &
         "\nInput:    " & a.toHex() &
@@ -105,13 +105,13 @@ suite "Crandall prime reduction - anti-regression tests" & " [" & $WordBitWidth 
     block:
       var a: Fp[Secp256k1]
       a.fromHex("0x7123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
-      
+
       var b: Fp[Secp256k1]
       b.setOne()
-      
+
       var r: Fp[Secp256k1]
       r.prod(a, b)
-      
+
       doAssert bool(r == a), block:
         "\nSecp256k1 specific value test failed:" &
         "\nInput:    " & a.toHex() &
@@ -121,13 +121,13 @@ suite "Crandall prime reduction - anti-regression tests" & " [" & $WordBitWidth 
     block:
       var a: Fp[Secp256k1]
       a.fromHex("0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
-      
+
       var b: Fp[Secp256k1]
       b.setOne()
-      
+
       var r: Fp[Secp256k1]
       r.prod(a, b)
-      
+
       doAssert bool(r == a), block:
         "\nSecp256k1 specific value test 2 failed:" &
         "\nInput:    " & a.toHex() &
@@ -141,10 +141,10 @@ suite "Crandall prime reduction - anti-regression tests" & " [" & $WordBitWidth 
       let a = rng.random_unsafe(Fp[Edwards25519])
       var b: Fp[Edwards25519]
       b.setOne()
-      
+
       var r: Fp[Edwards25519]
       r.prod(a, b)
-      
+
       doAssert bool(r == a), block:
         "\nEdwards25519 mul by 1 failed:" &
         "\nInput:    " & a.toHex() &
@@ -154,11 +154,11 @@ suite "Crandall prime reduction - anti-regression tests" & " [" & $WordBitWidth 
   test "Edwards25519 - squaring consistency":
     for _ in 0 ..< Iters:
       let a = rng.random_unsafe(Fp[Edwards25519])
-      
+
       var r_sqr, r_mul: Fp[Edwards25519]
       r_sqr.square(a)
       r_mul.prod(a, a)
-      
+
       doAssert bool(r_sqr == r_mul), block:
         "\nEdwards25519 squaring inconsistency:" &
         "\nInput: " & a.toHex() &
