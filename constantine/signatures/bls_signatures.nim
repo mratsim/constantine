@@ -95,18 +95,11 @@ func coreVerify*[Pubkey, Sig](
   negG.neg(Pubkey.F.Name.getGenerator($Pubkey.G))
   H.hashToCurve(k, Q, augmentation, message, domainSepTag)
 
-  when Sig.F.Name.getEmbeddingDegree() == 12:
-    var gt {.noInit.}: Fp12[Sig.F.Name]
-  else:
-    {.error: "Not implemented: signature on k=" & $Sig.F.Name.getEmbeddingDegree() & " for curve " & $$Sig.F.Name.}
-
   # e(PK, H(msg))*e(sig, -G) == 1
   when Sig.G == G2:
-    pairing(gt, [pubkey, negG], [Q, signature])
+    return pairing_check(pubkey, Q, negG, signature)
   else:
-    pairing(gt, [Q, signature], [pubkey, negG])
-
-  return gt.isOne().bool()
+    return pairing_check(Q, pubkey, negG, signature)
 
 # ############################################################
 #

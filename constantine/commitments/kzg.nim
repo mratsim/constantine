@@ -260,11 +260,7 @@ func kzg_verify*[F2; Name: static Algebra](
   tmzG2.affine(tau_minus_challenge_G2)
   cmyG1.affine(commitment_minus_eval_at_challenge_G1)
 
-  # e([proof]₁, [τ]₂ - [opening_challenge]₂) * e([commitment]₁ - [eval_at_challenge]₁, [-1]₂)
-  var gt {.noInit.}: Name.getGT()
-  gt.pairing([proof, cmyG1], [tmzG2, negG2])
-
-  return gt.isOne().bool()
+  return pairing_check(proof, tmzG2, cmyG1, negG2)
 
 func kzg_verify_batch*[bits: static int, F2; Name: static Algebra](
        commitments: ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]],
@@ -374,7 +370,4 @@ func kzg_verify_batch*[bits: static int, F2; Name: static Algebra](
   var negG2 {.noInit.}: EC_ShortW_Aff[F2, G2]
   negG2.neg(Name.getGenerator("G2"))
 
-  var gt {.noInit.}: Name.getGT()
-  gt.pairing(sums, [tauG2, negG2])
-
-  return gt.isOne().bool()
+  return pairing_check(sums[0], tauG2, sums[1], negG2)

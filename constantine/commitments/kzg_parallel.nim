@@ -227,7 +227,4 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; Name: static Algebra](
   var negG2 {.noInit.}: EC_ShortW_Aff[F2, G2]
   negG2.neg(Name.getGenerator("G2"))
 
-  var gt {.noInit.}: Name.getGT()
-  gt.pairing(sums, [tauG2, negG2])
-
-  return gt.isOne().bool()
+  return pairing_check(sums[0], tauG2, sums[1], negG2)
