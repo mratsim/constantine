@@ -9,7 +9,7 @@ source: https://notes.ethereum.org/@dankrad/danksharding_encoding
 [Reverse bit order](https://en.wikipedia.org/wiki/Bit-reversal_permutation) is the name for the order of a sequence of $n$ integers, that comes from reversing the bit sequence of each individual integer and then ordering by the resulting integer. It is an idempotent operation. For example, applying this to the integers $0,1,2,3,4,5,6,7$, results in the reverse bit order sequence $0,4,2,6,1,5,3,7$.
 
 Now say we have a root of unity \omega^8=1. Then the sequence \omega^0,\omega^4,\omega^2,\omega^6,\omega^1,\omega^5,\omega^3,\omega^7$ is a permutation of the roots of unity of order 8 with the following nice properties:
- * Partitioning it into the first four and the second four elements, we get a subgroup of order 4 ($\omega^0,\omega^4,\omega^2$) and a coset of order 4  ($\omega^6,\omega^1,\omega^5,\omega^3,\omega^7$)
+ * Partitioning it into the first four and the second four elements, we get a subgroup of order 4 (\omega^0,\omega^4,\omega^2, \omega^6) and a coset of order 4 (\omega^1,\omega^5,\omega^3,\omega^7)
  * Partitioning it into four sets of size 2, we get cosets of the order 2 subgroup: ($\omega^0,\omega^4$) (which is also the subgroup), ($\omega^2,\omega^6$), ($\omega^1,\omega^5$) and ($\omega^3,\omega^7$)
 
 This property of the reverse bit order extends to higher powers: If you partition any list of length $n=2^k$ into powers of two, you always get cosets in each partition. This is useful for Fourier transforms.
