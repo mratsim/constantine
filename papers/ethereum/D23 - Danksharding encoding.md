@@ -88,7 +88,7 @@ We can now ignore the second dimension and treat everything as if there was only
 
 So there is only one commitment $C=[f(s)]_1$, for the one dimensional polynomial $f(X)$ and samples $S_0, \ldots, S_{2n/\ell-1}$ with sample proofs $\pi_0, \ldots, \pi_{2n/\ell-1}$.
 
-The proof for one sample works as follows. Let $Z_{i}(X)=(X - \omega^{\mathrm{rbo}(i\ell,2n)})(X - \omega^{\mathrm{rbo}(i\ell+1,2n)})(X - \omega^{\mathrm{rbo}(i\ell+2,2n)})\cdots(X - \omega^{\mathrm{rbo}(j+1)\ell-1,2n)})$ (i.e. the zero polynomial on the evaluation points for the sample). Further let $I_i(X)$ be the interpolation polynomial that interpolates the values of $f(X)$ on with the given samples $S_{i}$, i.e. the unique polynomial of degreee at most $\ell-1$ which satisfies
+The proof for one sample works as follows. Let $Z_{i}(X)=(X - \omega^{\mathrm{rbo}(i\ell,2n)})(X - \omega^{\mathrm{rbo}(i\ell+1,2n)})(X - \omega^{\mathrm{rbo}(i\ell+2,2n)})\cdots(X - \omega^{\mathrm{rbo}((i+1)\ell-1,2n)})$ (i.e. the zero polynomial on the evaluation points for the sample). Further let $I_i(X)$ be the interpolation polynomial that interpolates the values of $f(X)$ on with the given samples $S_{i}$, i.e. the unique polynomial of degree at most \ell-1 which satisfies
 $$
 I_i(\omega^{\mathrm{rbo}(i\ell,2n)}) = f(\omega^{\mathrm{rbo}(i\ell,2n)}) \\
 I_i(\omega^{\mathrm{rbo}(i\ell+1,2n)}) = f(\omega^{\mathrm{rbo}(i\ell+1,2n)}) \\
