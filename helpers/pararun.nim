@@ -138,7 +138,15 @@ proc flushCommandsOutput(wq: WorkQueue, total: int) {.async.} =
 
     let exitCode = p.peekExitCode()
     if exitCode != 0:
-      quit exitCode
+      # Ideally we just `quit(exitCode)` but it's not properly forwarded in nimble task
+      # And might lead to silent faires in CI.
+      #   https://github.com/mratsim/constantine/issues/601
+      #   https://github.com/nim-lang/nimble/issues/634
+      #
+      # This used to work at least until 2025 though
+      #
+      # quit exitCode
+      doAssert false, "Command #" & $id & "/" & $total & " failed with an exit code of " & $exitCode
 
     if wq.cmdQueue.len == 0 and wq.outputQueue.len == 0:
       return
