@@ -328,8 +328,6 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
     swap(u, v)
 
   result.add quote do:
-    static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
-
     var `tsym`{.noInit, used.}: typeof(`r_PIR`)
     # Assumes 64-bit limbs on 64-bit arch (or you can't store an address)
     var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
