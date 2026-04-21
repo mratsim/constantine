@@ -193,8 +193,8 @@ jobs:
       - name: Path to Nim
         shell: bash
         run: |
-          echo '${{ github.workspace }}'"/.nimble/bin" >> $GITHUB_PATH
           echo '${{ github.workspace }}'/"${{ steps.versions.outputs.installdir }}"/bin >> $GITHUB_PATH
+          echo '${{ github.workspace }}'"/.nimble/bin" >> $GITHUB_PATH
 
       - name: Install test dependencies (Linux amd64)
         if: runner.os == 'Linux' && matrix.target.cpu != 'i386'
