@@ -7,7 +7,7 @@ date: 2022-10-24
 
 It seems that we could further optimize the recovery based on Danksharding encoding - especially based on reverse bit order and samples in a coset size 16. The main conclusion is that we could reduce the problem size from 8192 to 16 sub-problems of size 512 (=8192/16) and thus the cost of Z(x) and Q2(x) can be amortized over 16 sub-problems.
 
-Consider the following danksharding encoding: the data are encoded in a polynomial with degree 4095 and are evaluated at the roots of unity of order n = 8192. The roots of unity are ordered by reverse bit order, i.e., \{ \omega_0, \omega_1, ..., \omega_{8191} \} = \{ 1, \omega^{4096}, \omega^{2048}, \omega^{6072}, …, \omega^{8191} \}. Therefore, we define \Omega = \{ \omega_0, \omega_1, … , \omega_{15} \} is a subgroup of order 16, and for each sample 0\leq i < m, we have a shifting factor h_i = \omega_{16i} so that the coset H_i = h_i \Omega.
+Consider the following danksharding encoding: the data are encoded in a polynomial with degree 4095 and are evaluated at the roots of unity of order n = 8192. The roots of unity are ordered by reverse bit order, i.e., \{ \omega_0, \omega_1, ..., \omega_{8191} \} = \{ 1, \omega^{4096}, \omega^{2048}, \omega^{6144}, …, \omega^{8191} \}. Therefore, we define \Omega = \{ \omega_0, \omega_1, … , \omega_{15} \} is a subgroup of order 16, and for each sample 0\leq i < m, we have a shifting factor h_i = \omega_{16i} so that the coset H_i = h_i \Omega.
 
 For each sample \{ d^{(i)}_j \}, i = \{0, 1, ..., 255\}, where i is the index of the sample, we have the equations:
 
