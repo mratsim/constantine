@@ -253,6 +253,13 @@ jobs:
         shell: bash
         run: rustup default ${{ matrix.rust_toolchain }}
 
+      - name: Upgrade Nimble >= 0.22.3
+        # Workaround task failures being swallowed:
+        #   - https://github.com/mratsim/constantine/issues/601
+        #   - https://github.com/nim-lang/nimble/issues/1636
+        shell: bash
+        run: nimble install nimble >= 0.22.3
+
       - name: Print Nim, Go Rust, LLVM versions and CPU specs.
         shell: bash
         # gcc is an alias to Apple Clang on MacOS
