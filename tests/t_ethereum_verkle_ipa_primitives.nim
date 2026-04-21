@@ -93,7 +93,7 @@ suite "Barycentric Form Tests":
 
         var testVals: array[10, int] = [1,2,3,4,5,6,7,8,9,10]
 
-        var lagrange_values: PolynomialEval[256, Fr[Banderwagon]]
+        var lagrange_values: PolynomialEval[256, Fr[Banderwagon], kNaturalOrder]
         lagrange_values.evals.testPoly256(testVals)
 
         var lindom: PolyEvalLinearDomain[256, Fr[Banderwagon]]
@@ -146,11 +146,11 @@ suite "Barycentric Form Tests":
         var lindom: PolyEvalLinearDomain[256, Fr[Banderwagon]]
         lindom.setupLinearEvaluationDomain()
 
-        var evaluations: PolynomialEval[EthVerkleDomain, Fr[Banderwagon]]
+        var evaluations: PolynomialEval[EthVerkleDomain, Fr[Banderwagon], kNaturalOrder]
         for i in 0 ..< EthVerkleDomain:
           evaluations.evals[i] = points[i].y
 
-        var quotient: PolynomialEval[EthVerkleDomain, Fr[Banderwagon]]
+        var quotient: PolynomialEval[EthVerkleDomain, Fr[Banderwagon], kNaturalOrder]
         lindom.getQuotientPolyInDomain(quotient, evaluations, zIndex = 1)
 
         doAssert quotient.evals[255].toHex(littleEndian) == "0x616b0e203a877177e2090013a77ce4ea8726941aac613b532002f3653d54250b", "Issue with Divide on Domain using Barycentric Precomputes!"
@@ -206,7 +206,7 @@ suite "Barycentric Form Tests":
 #       var basisPoints: PolynomialEval[256, EC_TwEdw_Aff[Fp[Banderwagon]]]
 #       basisPoints.evals.generate_random_points()
 
-#       var test_scalars {.noInit.}: PolynomialEval[256, Fr[Banderwagon]]
+#       var test_scalars {.noInit.}: PolynomialEval[256, Fr[Banderwagon], kNaturalOrder]
 #       for i in 0 ..< 256:
 #         test_scalars.evals[i].fromHex(testScalarsHex[i])
 
@@ -430,7 +430,7 @@ suite "IPA proof tests":
       let status = proof.deserialize(proof_bytes)
       doAssert status == cttEthVerkleIpa_Success
 
-      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
+      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]], kNaturalOrder]
       CRS.evals.generate_random_points()
 
       var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
@@ -477,7 +477,7 @@ suite "IPA proof tests":
       var opening_challenge: Fr[Banderwagon]
       opening_challenge.fromInt(2101)
 
-      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
+      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]], kNaturalOrder]
       CRS.evals.generate_random_points()
 
       var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
@@ -494,7 +494,7 @@ suite "IPA proof tests":
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
       ]
-      var poly: PolynomialEval[256, Fr[Banderwagon]]
+      var poly: PolynomialEval[256, Fr[Banderwagon], kNaturalOrder]
       poly.evals.testPoly256(testVals)
 
       var comm: EC_TwEdw_Prj[Fp[Banderwagon]]
@@ -543,7 +543,7 @@ suite "IPA proof tests":
       var opening_challenge: Fr[Banderwagon]
       opening_challenge.fromInt(2101)
 
-      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
+      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]], kNaturalOrder]
       CRS.evals.generate_random_points()
 
       var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
@@ -551,7 +551,7 @@ suite "IPA proof tests":
 
       # Committer's side
       var testVals : array[9, int] = [1,2,3,4,5,6,7,8,9]
-      var poly: PolynomialEval[256, Fr[Banderwagon]]
+      var poly: PolynomialEval[256, Fr[Banderwagon], kNaturalOrder]
       poly.evals.testPoly256(testVals)
 
       var comm: EC_TwEdw_Prj[Fp[Banderwagon]]
@@ -608,7 +608,7 @@ suite "Multiproof Tests":
       opening_challenges_in_domain[0] = 0'u8
       opening_challenges_in_domain[1] = 0'u8
 
-      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
+      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]], kNaturalOrder]
       CRS.evals.generate_random_points()
 
       var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
@@ -637,7 +637,7 @@ suite "Multiproof Tests":
         32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
       ]
 
-      var polys: array[2, PolynomialEval[256, Fr[Banderwagon]]]
+      var polys: array[2, PolynomialEval[256, Fr[Banderwagon], kNaturalOrder]]
       polys[0].evals.testPoly256(testVals1)
       polys[1].evals.testPoly256(testVals2)
 
@@ -671,14 +671,14 @@ suite "Multiproof Tests":
   test "Multiproof Creation and Verification":
     proc testMultiproofCreationAndVerification()=
 
-      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]]]
+      var CRS: PolynomialEval[EthVerkleDomain, EC_TwEdw_Aff[Fp[Banderwagon]], kNaturalOrder]
       CRS.evals.generate_random_points()
 
       var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
       domain.setupLinearEvaluationDomain()
 
       var testVals: array[14, int] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
-      var poly: PolynomialEval[256, Fr[Banderwagon]]
+      var poly: PolynomialEval[256, Fr[Banderwagon], kNaturalOrder]
       poly.evals.testPoly256(testVals)
 
       var prover_comm: EC_TwEdw_Prj[Fp[Banderwagon]]

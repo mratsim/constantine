@@ -178,7 +178,7 @@ func bytes_to_kzg_proof(dst: var KZGProof, src: array[48, byte]): CttCodecEccSta
   return status
 
 func blob_to_bigint_polynomial(
-       dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt()],
+       dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt(), kBitReversed],
        blob: Blob): CttCodecScalarStatus =
   ## Convert a blob to a polynomial in evaluation form
 
@@ -196,7 +196,7 @@ func blob_to_bigint_polynomial(
   return cttCodecScalar_Success
 
 func blob_to_field_polynomial(
-       dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]],
+       dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed],
        blob: Blob): CttCodecScalarStatus =
   ## Convert a blob to a polynomial in evaluation form
 
@@ -288,13 +288,13 @@ func blob_to_kzg_commitment*(
   ##
   ##   with proof = [(p(τ) - p(z)) / (τ-z)]₁
 
-  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt()], 64)
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381].getBigInt(), kBitReversed], 64)
 
   block HappyPath:
     check HappyPath, poly.blob_to_bigint_polynomial(blob)
 
     var r {.noinit.}: EC_ShortW_Aff[Fp[BLS12_381], G1]
-    kzg_commit(ctx.srs_lagrange_g1, r, poly[])
+    kzg_commit(ctx.srs_lagrange_brp_g1, r, poly[])
     discard dst.serialize_g1_compressed(r)
 
     result = cttEthKzg_Success
@@ -326,7 +326,7 @@ func compute_kzg_proof*(
   var z {.noInit.}: Fr[BLS12_381]
   checkReturn z.bytes_to_bls_field(z_bytes)
 
-  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], 64)
 
   block HappyPath:
     # Blob -> Polynomial
@@ -337,8 +337,8 @@ func compute_kzg_proof*(
     var proof {.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     kzg_prove(
-      ctx.srs_lagrange_g1,
-      ctx.domain,
+      ctx.srs_lagrange_brp_g1,
+      ctx.domain_brp,
       y, proof,
       poly[],
       z)
@@ -391,7 +391,7 @@ func compute_blob_kzg_proof*(
   checkReturn commitment.bytes_to_kzg_commitment(commitment_bytes)
 
   # Blob -> Polynomial
-  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], 64)
 
   block HappyPath:
     # Blob -> Polynomial
@@ -406,8 +406,8 @@ func compute_blob_kzg_proof*(
     var proof {.noInit.}: EC_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     kzg_prove(
-      ctx.srs_lagrange_g1,
-      ctx.domain,
+      ctx.srs_lagrange_brp_g1,
+      ctx.domain_brp,
       y, proof,
       poly[],
       opening_challenge)
@@ -432,7 +432,7 @@ func verify_blob_kzg_proof*(
   var proof {.noInit.}: KZGProof
   checkReturn proof.bytes_to_kzg_proof(proof_bytes)
 
-  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], 64)
 
   block HappyPath:
     # Blob -> Polynomial
@@ -442,7 +442,7 @@ func verify_blob_kzg_proof*(
     var opening_challenge {.noInit.}: Fr[BLS12_381]
     var eval_at_challenge {.noInit.}: Fr[BLS12_381]
     opening_challenge.addr.fiatShamirChallenge(blob, commitment_bytes)
-    ctx.domain.evalPolyAt(eval_at_challenge, poly[], opening_challenge)
+    ctx.domain_brp.evalPolyAt(eval_at_challenge, poly[], opening_challenge)
 
     # KZG verification
     let verif = kzg_verify(EC_ShortW_Aff[Fp[BLS12_381], G1](commitment),
@@ -486,7 +486,7 @@ func verify_blob_kzg_proof_batch*(
   let opening_challenges = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
   let evals_at_challenges = allocHeapArrayAligned(Fr[BLS12_381].getBigInt(), n, alignment = 64)
   let proofs = allocHeapArrayAligned(KZGProof, n, alignment = 64)
-  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], alignment = 64)
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], alignment = 64)
 
   block HappyPath:
     for i in 0 ..< n:
@@ -495,7 +495,7 @@ func verify_blob_kzg_proof_batch*(
       opening_challenges[i].addr.fiatShamirChallenge(blobs[i], commitments_bytes[i])
 
       var eval_at_challenge_fr {.noInit.}: Fr[BLS12_381]
-      ctx.domain.evalPolyAt(
+      ctx.domain_brp.evalPolyAt(
         eval_at_challenge_fr,
         poly[], opening_challenges[i]
       )

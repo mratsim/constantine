@@ -8,8 +8,9 @@
 
 import
   constantine/named/algebras,
-  ../math/[ec_shortweierstrass, arithmetic, extension_fields],
-  ../platforms/[allocs, bithacks, fileio],
+  constantine/math/[arithmetic, extension_fields],
+  constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_batch_ops],
+  ../platforms/[allocs, bithacks, fileio, views],
   ../serialization/[codecs, codecs_status_codes, codecs_bls12_381],
   ../math/polynomials/[polynomials, fft],
   ../math/io/io_fields
@@ -93,6 +94,7 @@ const ctt_eth_kzg4844_fr_pow2_roots_of_unity = [
 # ------------------------------------------------------------
 
 const FIELD_ELEMENTS_PER_BLOB* = 4096
+const FIELD_ELEMENTS_PER_EXT_BLOB* = 2 * FIELD_ELEMENTS_PER_BLOB
 const KZG_SETUP_G2_LENGTH = 65
 
 # On the number of 𝔾2 points:
@@ -120,9 +122,11 @@ type
 
     # Trusted setup, see https://vitalik.ca/general/2022/03/14/trustedsetup.html
 
-    srs_lagrange_g1*{.align: 64.}: PolynomialEval[FIELD_ELEMENTS_PER_BLOB, EC_ShortW_Aff[Fp[BLS12_381], G1]]
+    srs_lagrange_brp_g1*{.align: 64.}: PolynomialEval[FIELD_ELEMENTS_PER_BLOB, EC_ShortW_Aff[Fp[BLS12_381], G1], kBitReversed]
     # Part of the Structured Reference String (SRS) holding the 𝔾1 points
-    # This is used for committing to polynomials and producing an opening proof at
+    # Stored in bit-reversed evaluation / Lagrange form
+    #
+    # This is used in EIP-4844 for committing to polynomials and producing an opening proof at
     # a random value (chosen via Fiat-Shamir heuristic)
     #
     # Referring to the 𝔾1 generator as G, in monomial basis / coefficient form we would store:
@@ -136,7 +140,7 @@ type
     #
     # https://en.wikipedia.org/wiki/Lagrange_polynomial#Barycentric_form
     #
-    # Conversion can be done with a discrete Fourier transform.
+    # Conversion can be done with a discrete Fourier transform. In EIP-4844 we operate only on the evaluation form of polynomials over 𝔾1 (i.e. the Lagrange basis)
 
     srs_monomial_g2*{.align: 64.}: PolynomialCoef[KZG_SETUP_G2_LENGTH, EC_ShortW_Aff[Fp2[BLS12_381], G2]]
     # Part of the SRS holding the 𝔾2 points
@@ -150,7 +154,12 @@ type
     # For most schemes (Marlin, Plonk, Sonic, Ethereum's Deneb), only [τ]H is needed
     # but Ethereum's sharding will need 64 (65 with the generator H)
 
-    domain*{.align: 64.}: PolyEvalRootsDomain[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]]
+    domain_brp*{.align: 64.}: PolyEvalRootsDomain[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed]
+    # The domain field holds the roots of unity of the polynomial evaluation domain.
+    # Important: for Ethereum, roots of unity are used in bit-reversed order
+
+    ecfft_desc_ext*{.align: 64.}: ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]]
+    fft_desc_ext*{.align: 64.}: FrFFT_Descriptor[Fr[BLS12_381]]
 
   TrustedSetupStatus* = enum
     tsSuccess
@@ -166,6 +175,10 @@ func computeRootsOfUnity(dst: var openArray[Fr[BLS12_381]], generatorRootOfUnity
   for i in 1 ..< dst.len:
     dst[i] = cur
     cur *= generatorRootOfUnity
+
+template getRootOfUnityForSize(size: static int): Fr[BLS12_381] =
+  const scale = log2_vartime(uint32 size)
+  ctt_eth_kzg4844_fr_pow2_roots_of_unity[scale]
 
 proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
   ## Read a trusted setup in the reference library c-kzg-4844 format
@@ -221,6 +234,7 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
 
   block:
     # G1 points - 96 characters + newline
+    # These are the Lagrange form (bit-reversed evaluation) points
     var bufG1Hex {.noInit.}: array[2*g1Bytes+1, char] # On MacOS, an extra byte seems to be needed for fscanf or AddressSanitizer complains
     var bufG1bytes {.noInit.}: array[g1Bytes, byte]
     var charsRead: cint
@@ -229,7 +243,7 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
       if num_matches != 1 and charsRead != 2*g1Bytes:
         return tsInvalidFile
       bufG1bytes.fromHex(bufG1Hex.toOpenArray(0, 2*g1Bytes-1))
-      let status = ctx.srs_lagrange_g1.evals[i].deserialize_g1_compressed(bufG1bytes)
+      let status = ctx.srs_lagrange_brp_g1.evals[i].deserialize_g1_compressed(bufG1bytes)
       if status != cttCodecEcc_Success:
         c_printf("[Constantine Trusted Setup] Invalid G1 point on line %d: CttCodecEccStatus code %d\n", cint(2+i), status)
         return tsInvalidFile
@@ -250,25 +264,28 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
         return tsInvalidFile
 
   block:
-    # Roots of Unity
-    ctx.domain.rootsOfUnity.computeRootsOfUnity(
-      generatorRootOfUnity =
-        static(
-          ctt_eth_kzg4844_fr_pow2_roots_of_unity[
-            log2_vartime(uint32 FIELD_ELEMENTS_PER_BLOB)
-          ]
-        )
+    # Initialize FFT descriptors
+    ctx.ecfft_desc_ext = ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]].new(
+      order = FIELD_ELEMENTS_PER_EXT_BLOB,
+      generatorRootOfUnity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_EXT_BLOB)
     )
 
-    # Compute the inverse of the domain degree
-    ctx.domain.invMaxDegree.fromUint(ctx.domain.rootsOfUnity.len.uint64)
-    ctx.domain.invMaxDegree.inv_vartime()
+    # Domain: FIELD_ELEMENTS_PER_EXT_BLOB (8192) roots of unity
+    ctx.fft_desc_ext = FrFFT_Descriptor[Fr[BLS12_381]].new(
+      order = FIELD_ELEMENTS_PER_EXT_BLOB,
+      generatorRootOfUnity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_EXT_BLOB)
+    )
 
   block:
-    # Bit-reversal permutations
-    ctx.srs_lagrange_g1.evals.bit_reversal_permutation()
-    ctx.domain.rootsOfUnity.bit_reversal_permutation()
-    ctx.domain.isBitReversed = true
+    # Bit-reverse the Lagrange form points (for EIP-4844 commitments)
+    ctx.srs_lagrange_brp_g1.evals.bit_reversal_permutation()
+
+  block:
+    # Initialize domain (bit-reversed roots of unity for polynomial evaluation)
+    ctx.domain_brp.rootsOfUnity.computeRootsOfUnity(generatorRootOfUnity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_BLOB))
+    ctx.domain_brp.rootsOfUnity.bit_reversal_permutation()
+    ctx.domain_brp.invMaxDegree.fromUint(ctx.domain_brp.rootsOfUnity.len.uint64)
+    ctx.domain_brp.invMaxDegree.inv_vartime()
 
   return tsSuccess
 
@@ -291,5 +308,9 @@ proc trusted_setup_load*(ctx: var ptr EthereumKZGContext, filepath: cstring, for
   return status
 
 proc trusted_setup_delete*(ctx: ptr EthereumKZGContext) {.libPrefix: "ctt_eth_".} =
+  # This is intended for non-nim code.
+  # Nim code would automatically insert destructors
   if not ctx.isNil:
+    `=destroy`(ctx.ecfft_desc_ext)
+    `=destroy`(ctx.fft_desc_ext)
     freeHeapAligned(ctx)

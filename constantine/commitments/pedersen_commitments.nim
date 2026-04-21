@@ -35,10 +35,10 @@ func pedersen_commit[EC, ECaff](
   ##   Commit(m) := ∑[mᵢ]Gᵢ
   r.multiScalarMul_vartime(messages, public_generators)
 
-func pedersen_commit*[N: static int, EC, ECaff, F](
-      crs: PolynomialEval[N, EcAff],
+func pedersen_commit*[N: static int, EC, ECaff, F, Ord](
+      crs: PolynomialEval[N, EcAff, Ord],
       r: var EC,
-      messages: PolynomialEval[N, F]) {.inline.} =
+      messages: PolynomialEval[N, F, Ord]) {.inline.} =
   ## Vector Pedersen Commitment with elliptic curves
   ##
   ## Context

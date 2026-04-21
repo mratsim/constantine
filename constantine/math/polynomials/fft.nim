@@ -4,15 +4,25 @@
 # Licensed and distributed under either of
 #   * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
-# at your option. This file may not be copied, modified, or distributed except according to those terms.
+# at your option. This file may not be copied, modified, or distributed according to those terms.
+
+# Test with:
+#   nim c -r -d:release --hints:off --warnings:off --outdir:build/tmp --nimcache:nimcache/tmp tests/math_polynomials/t_fft.nim
+#   nim c -r -d:release --hints:off --warnings:off --outdir:build/tmp --nimcache:nimcache/tmp tests/math_polynomials/t_fft_coset.nim
 
 import
   constantine/named/algebras,
   constantine/math/arithmetic,
-  constantine/math/io/io_bigints,
+  constantine/math/io/[io_bigints, io_fields],
   constantine/math/ec_shortweierstrass,
   constantine/math/elliptic/ec_scalar_mul_vartime,
   constantine/platforms/[abstractions, allocs, views]
+
+{.push raises: [], checks: off.} # No exceptions
+
+# Forward declarations for bit_reversal_permutation (defined later in file)
+func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T])
+func bit_reversal_permutation*[T](buf: var openArray[T])
 
 # ############################################################
 #
@@ -25,9 +35,14 @@ import
 
 type
   FFTStatus* = enum
-    FFTS_Success
-    FFTS_TooManyValues = "Input length greater than the field 2-adicity (number of roots of unity)"
-    FFTS_SizeNotPowerOfTwo = "Input must be of a power of 2 length"
+    FFT_Success
+    FFT_TooManyValues = "Input length greater than the field 2-adicity (number of roots of unity)"
+    FFT_SizeNotPowerOfTwo = "Input must be of a power of 2 length"
+
+  FrFFT_Descriptor*[F] = object
+    ## Metadata for FFT on field elements
+    order*: int
+    rootsOfUnity*: ptr UncheckedArray[F]
 
   ECFFT_Descriptor*[EC] = object
     ## Metadata for FFT on Elliptic Curve
@@ -35,6 +50,30 @@ type
     rootsOfUnity*: ptr UncheckedArray[getBigInt(EC.getName(), kScalarField)]
       ## domain, starting and ending with 1, length is cardinality+1
       ## This allows FFT and inverse FFT to use the same buffer for roots.
+
+proc `=destroy`*[F](ctx: FrFFT_Descriptor[F]) =
+  if not ctx.rootsOfUnity.isNil():
+    ctx.rootsOfUnity.freeHeapAligned()
+
+proc `=destroy`*[EC](ctx: ECFFT_Descriptor[EC]) =
+  if not ctx.rootsOfUnity.isNil():
+    ctx.rootsOfUnity.freeHeapAligned()
+
+func computeRootsOfUnity[F](ctx: var FrFFT_Descriptor[F], generatorRootOfUnity: F) =
+  ctx.rootsOfUnity[0].setOne()
+
+  var cur = generatorRootOfUnity
+  for i in 1 .. ctx.order:
+    ctx.rootsOfUnity[i] = cur
+    cur *= generatorRootOfUnity
+
+  doAssert ctx.rootsOfUnity[ctx.order].isOne().bool()
+
+func new*(T: type FrFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
+  result.order = order
+  result.rootsOfUnity = allocHeapArrayAligned(T.F, order+1, alignment = 64)
+
+  result.computeRootsOfUnity(generatorRootOfUnity)
 
 func computeRootsOfUnity[EC](ctx: var ECFFT_Descriptor[EC], generatorRootOfUnity: auto) =
   static: doAssert typeof(generatorRootOfUnity) is Fr[EC.getName()]
@@ -54,33 +93,181 @@ func new*(T: type ECFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
 
   result.computeRootsOfUnity(generatorRootOfUnity)
 
-func delete*(ctx: ECFFT_Descriptor) =
-  ctx.rootsOfUnity.freeHeapAligned()
-
-func simpleFT[EC; bits: static int](
-       output: var StridedView[EC],
-       vals: StridedView[EC],
-       rootsOfUnity: StridedView[BigInt[bits]]) =
-  # FFT is a recursive algorithm
-  # This is the base-case using a O(n²) algorithm
+func simpleFT[F](
+       output: var StridedView[F],
+       vals: StridedView[F],
+       rootsOfUnity: StridedView[F]) =
+  ## Polynomial naive evaluation (naive is O(n^2))
 
   let L = output.len
-  var last {.noInit.}, v {.noInit.}: EC
-
-  var v0w0 {.noInit.} = vals[0]
-  v0w0.scalarMul_vartime(rootsOfUnity[0])
+  var last {.noInit.}, v {.noInit.}: F
 
   for i in 0 ..< L:
-    last = v0w0
+    last.prod(vals[0], rootsOfUnity[0])
     for j in 1 ..< L:
-      v.scalarMul_vartime(rootsOfUnity[(i*j) mod L], vals[j])
-      last.sum_vartime(last, v)
+      v.prod(vals[j], rootsOfUnity[(i*j) mod L])
+      last += v
     output[i] = last
+
+func fft_internal[F](
+       output: var StridedView[F],
+       vals: StridedView[F],
+       rootsOfUnity: StridedView[F]) =
+  if output.len <= 4:
+    simpleFT(output, vals, rootsOfUnity)
+    return
+
+  let (evenVals, oddVals) = vals.splitAlternate()
+  var (outLeft, outRight) = output.splitHalf()
+  let halfROI = rootsOfUnity.skipHalf()
+
+  fft_internal(outLeft, evenVals, halfROI)
+  fft_internal(outRight, oddVals, halfROI)
+
+  let half = outLeft.len
+  var y_times_root{.noinit.}: F
+
+  for i in 0 ..< half:
+    y_times_root   .prod(output[i+half], rootsOfUnity[i])
+    output[i+half] .diff(output[i], y_times_root)
+    output[i]      += y_times_root
+
+func fft_nr*[F](
+       desc: FrFFT_Descriptor[F],
+       output{.noalias.}: var openarray[F],
+       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime], meter.} =
+  ## FFT from natural order to bit-reversed order.
+  ## Input: natural order values
+  ## Output: bit-reversed order values in Fourier domain
+  ## Domain: roots of unity (no shift)
+  ##
+  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
+  if vals.len > desc.order:
+    return FFT_TooManyValues
+  if not vals.len.uint64.isPowerOf2_vartime():
+    return FFT_SizeNotPowerOfTwo
+
+  let rootz = desc.rootsOfUnity
+                  .toStridedView(desc.order)
+                  .slice(0, desc.order-1, desc.order shr log2_vartime(uint vals.len))
+
+  var voutput = output.toStridedView()
+  fft_internal(voutput, vals.toStridedView(), rootz)
+  return FFT_Success
+
+func fft_nn*[F](
+       desc: FrFFT_Descriptor[F],
+       output{.noalias.}: var openarray[F],
+       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+  ## FFT from natural order to natural order.
+  let status = fft_nr(desc, output, vals)
+  if status != FFT_Success:
+    return status
+
+  bit_reversal_permutation(output)
+  return FFT_Success
+
+func ifft_rn*[F](
+       desc: FrFFT_Descriptor[F],
+       output{.noalias.}: var openarray[F],
+       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime], meter.} =
+  ## IFFT from bit-reversed order to natural order.
+  ##
+  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
+  if vals.len > desc.order:
+    return FFT_TooManyValues
+  if not vals.len.uint64.isPowerOf2_vartime():
+    return FFT_SizeNotPowerOfTwo
+
+  let rootz = desc.rootsOfUnity
+                  .toStridedView(desc.order+1)
+                  .reversed()
+                  .slice(0, desc.order-1, desc.order shr log2_vartime(uint vals.len))
+
+  var voutput = output.toStridedView()
+  fft_internal(voutput, vals.toStridedView(), rootz)
+
+  var invLen {.noInit.}: F
+  invLen.fromUint(vals.len.uint64)
+  invLen.inv_vartime()
+
+  for i in 0 ..< output.len:
+    output[i] *= invLen
+
+  return FFT_Success
+
+func ifft_nn*[F](
+       desc: FrFFT_Descriptor[F],
+       output{.noalias.}: var openarray[F],
+       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+  ## IFFT from natural order to natural order.
+  ##
+  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
+
+  # Create temporary buffer and bit-reverse vals into it (natural → bit-reversed)
+  var temp_buf = allocHeapArrayAligned(F, vals.len, alignment = 64)
+  bit_reversal_permutation(temp_buf.toOpenArray(0, vals.len-1), vals)
+
+  # Call ifft_rn (bit-reversed → natural)
+  let status = ifft_rn(desc, output, temp_buf.toOpenArray(0, vals.len-1))
+  freeHeapAligned(temp_buf)
+  return status
+
+# Coset FFT (for Reed-Solomon erasure coding)
+
+func shift_vals*[F](
+       output: var openarray[F],
+       vals: openarray[F],
+       shift_factor: F) =
+  ## Multiply each entry in vals by succeeding powers of shift_factor
+  var shift_pow {.noInit.}: F
+  shift_pow.setOne()
+  for i in 0 ..< vals.len:
+    output[i].prod(vals[i], shift_pow)
+    shift_pow *= shift_factor
+
+func unshift_vals*[F](
+       output: var openarray[F],
+       vals: openarray[F],
+       inv_shift_factor: F) =
+  ## Multiply each entry in vals by succeeding powers of inv_shift_factor
+  var inv_shift_pow {.noInit.}: F
+  inv_shift_pow.setOne()
+  for i in 0 ..< vals.len:
+    output[i].prod(vals[i], inv_shift_pow)
+    inv_shift_pow *= inv_shift_factor
+
+func coset_fft_nr*[F](
+       desc: FrFFT_Descriptor[F],
+       output: var openarray[F],
+       vals: openarray[F],
+       cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+  ## Compute FFT over a coset of the roots of unity (natural to bit-reversed order).
+  let n = vals.len
+  var shifted = allocHeapArrayAligned(F, n, alignment = 64)
+  shifted.toOpenArray(n).shift_vals(vals, cosetShift)
+
+  result = desc.fft_nr(output, shifted.toOpenArray(n))
+  freeHeapAligned(shifted)
+
+func coset_ifft_rn*[F](
+       desc: FrFFT_Descriptor[F],
+       output: var openarray[F],
+       vals: openarray[F],
+       cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+  ## Compute inverse FFT over a coset of the roots of unity (bit-reversed to natural order).
+  result = desc.ifft_rn(output, vals)
+
+  var inv_shift_factor {.noInit.}: F
+  inv_shift_factor.inv_vartime(cosetShift)
+  output.unshift_vals(output, inv_shift_factor)
+
+  return FFT_Success
 
 func fft_internal[EC; bits: static int](
        output: var StridedView[EC],
        vals: StridedView[EC],
-       rootsOfUnity: StridedView[BigInt[bits]]) =
+       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime, Alloca].} =
   if output.len <= 4:
     simpleFT(output, vals, rootsOfUnity)
     return
@@ -98,53 +285,53 @@ func fft_internal[EC; bits: static int](
 
   for i in 0 ..< half:
     # FFT Butterfly
-    y_times_root   .scalarMul_vartime(output[i+half], rootsOfUnity[i])
+    y_times_root   .scalarMul_vartime(rootsOfUnity[i], output[i+half])
     output[i+half] .diff_vartime(output[i], y_times_root)
     output[i]      .sum_vartime(output[i], y_times_root)
 
-func fft_vartime*[EC](
+func ec_fft_nr*[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFT_Status =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca], meter.} =
   if vals.len > desc.order:
-    return FFTS_TooManyValues
+    return FFT_TooManyValues
   if not vals.len.uint64.isPowerOf2_vartime():
-    return FFTS_SizeNotPowerOfTwo
+    return FFT_SizeNotPowerOfTwo
 
   let rootz = desc.rootsOfUnity
                   .toStridedView(desc.order)
-                  .slice(0, desc.order-1, desc.order div vals.len)
+                  .slice(0, desc.order-1, desc.order shr log2_vartime(uint vals.len))
 
   var voutput = output.toStridedView()
   fft_internal(voutput, vals.toStridedView(), rootz)
-  return FFTS_Success
+  return FFT_Success
 
-func ifft_vartime*[EC](
+func ec_ifft_rn*[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFT_Status =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca], meter.} =
   ## Inverse FFT
   if vals.len > desc.order:
-    return FFTS_TooManyValues
+    return FFT_TooManyValues
   if not vals.len.uint64.isPowerOf2_vartime():
-    return FFTS_SizeNotPowerOfTwo
+    return FFT_SizeNotPowerOfTwo
 
   let rootz = desc.rootsOfUnity
                   .toStridedView(desc.order+1) # Extra 1 at the end so that when reversed the buffer starts with 1
                   .reversed()
-                  .slice(0, desc.order-1, desc.order div vals.len)
+                  .slice(0, desc.order-1, desc.order shr log2_vartime(uint vals.len))
 
   var voutput = output.toStridedView()
   fft_internal(voutput, vals.toStridedView(), rootz)
 
-  var invLen {.noInit.}: EC.F.getBigInt()
+  var invLen {.noInit.}: Fr[EC.getName()]
   invLen.fromUint(vals.len.uint64)
-  invLen.invmod_vartime(invLen, EC.F.getModulus())
+  invLen.inv_vartime()
 
   for i in 0 ..< output.len:
-    output[i].scalarMul_vartime(invLen)
+    output[i].scalarMul_vartime(invLen.toBig())
 
-  return FFTS_Success
+  return FFT_Success
 
 # ############################################################
 #
@@ -200,22 +387,35 @@ func deriveLogTileSize(T: type, logN: uint): uint =
   return q
 
 
+func bit_reversal_permutation_naive[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) =
+  ## Out-of-place bit reversal permutation using a naive algorithm.
+  debug: doAssert src.len.uint.isPowerOf2_vartime()
+  debug: doAssert dst.len == src.len
+
+  let logN = log2_vartime(uint src.len)
+  for i in 0'u ..< src.len.uint:
+    dst[int reverseBits(i, logN)] = src[i]
+
+func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) =
+  ## Out-of-place bit reversal permutation.
+  bit_reversal_permutation_naive(dst, src)
+
 func bit_reversal_permutation*[T](buf: var openArray[T]) =
   ## In-place bit reversal permutation using a cache-blocking algorithm
   #
   # We adapt the following out-of-place algorithm to in-place.
   #
   # for b = 0 to 2ˆ(lgN-2q) - 1
-  #   b’ = r(b)
+  #   b' = r(b)
   #   for a = 0 to 2ˆq - 1
-  #     a’ = r(a)
+  #     a' = r(a)
   #     for c = 0 to 2ˆq - 1
-  #       T[a’c] = A[abc]
+  #       T[a'c] = A[abc]
   #
   #   for c = 0 to 2ˆq - 1
-  #     c’ = r(c)                <- Note: typo in paper, they say c'=r(a)
-  #     for a’ = 0 to 2ˆq - 1
-  #       B[c’b’a’] = T[a’c]
+  #     c' = r(c)                <- Note: typo in paper, they say c'=r(a)
+  #     for a' = 0 to 2ˆq - 1
+  #       B[c'b'a'] = T[a'c]
   #
   # As we are in-place, A and B refer to the same buffer and
   # we don't want to destructively write to B.
@@ -227,31 +427,31 @@ func bit_reversal_permutation*[T](buf: var openArray[T]) =
   # Hence
   #
   # for b = 0 to 2ˆ(lgN-2q) - 1
-  #   b’ = r(b)
+  #   b' = r(b)
   #   for a = 0 to 2ˆq - 1
-  #     a’ = r(a)
+  #     a' = r(a)
   #     for c = 0 to 2ˆq - 1
-  #       T[a’c] = A[abc]
+  #       T[a'c] = A[abc]
   #
   #   for c = 0 to 2ˆq - 1
-  #     c’ = r(c)
-  #     for a’ = 0 to 2ˆq - 1
+  #     c' = r(c)
+  #     for a' = 0 to 2ˆq - 1
   #       if abc < c'b'a'
-  #         swap(A[c’b’a’], T[a’c])
+  #         swap(A[c'b'a'], T[a'c])
   #
   #   for a = 0 to 2ˆq - 1
-  #     a’ = r(a)
+  #     a' = r(a)
   #     for c = 0 to 2ˆq - 1
-  #       c’ = r(c)
+  #       c' = r(c)
   #       if abc < c'b'a'
-  #         swap(A[abc], T[a’c])
+  #         swap(A[abc], T[a'c])
 
   debug: doAssert buf.len.uint.isPowerOf2_vartime()
 
   let logN = log2_vartime(uint buf.len)
   let logTileSize = deriveLogTileSize(T, logN)
   let logBLen = logN - 2*logTileSize
-  let bLen = 1'u shl logBlen
+  let bLen = 1'u shl logBLen
   let tileSize = 1'u shl logTileSize
 
   let t = allocHeapArray(T, tileSize*tileSize)
@@ -262,7 +462,7 @@ func bit_reversal_permutation*[T](buf: var openArray[T]) =
     for a in 0'u ..< tileSize:
       let aRev = reverseBits(a, logTileSize)
       for c in 0'u ..< tileSize:
-        # T[a’c] = A[abc]
+        # T[a'c] = A[abc]
         let tIdx = (aRev shl logTileSize) or c
         let idx = (a shl (logBLen+logTileSize)) or
                   (b shl logTileSize) or c
@@ -350,7 +550,7 @@ when isMainModule:
 
   proc roundtrip() =
     let fftDesc = ECFFT_Descriptor[EC_G1].new(order = 1 shl 4, ctt_eth_kzg_fr_pow2_roots_of_unity[4])
-    defer: fftDesc.delete()
+    defer: `=destroy`(fftDesc)
 
     var data = newSeq[EC_G1](fftDesc.order)
     data[0].setGenerator()
@@ -358,12 +558,12 @@ when isMainModule:
       data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
 
     var coefs = newSeq[EC_G1](data.len)
-    let fftOk = fft_vartime(fftDesc, coefs, data)
+    let fftOk = ec_fft_nr(fftDesc, coefs, data)
     doAssert fftOk == FFTS_Success
     # display("coefs", 0, coefs)
 
     var res = newSeq[EC_G1](data.len)
-    let ifftOk = ifft_vartime(fftDesc, res, coefs)
+    let ifftOk = ec_ifft_rn(fftDesc, res, coefs)
     doAssert ifftOk == FFTS_Success
     # display("res", 0, res)
 
@@ -402,7 +602,7 @@ when isMainModule:
     for scale in 4 ..< 10:
       # Setup
 
-      let fftDesc = ECFFTDescriptor[EC_G1].new(order = 1 shl scale, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+      let fftDesc = ECFFT_Descriptor[EC_G1].new(order = 1 shl scale, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
       var data = newSeq[EC_G1](fftDesc.order)
       data[0].setGenerator()
       for i in 1 ..< fftDesc.order:
@@ -413,14 +613,14 @@ when isMainModule:
       # Bench
       let start = getMonotime()
       for i in 0 ..< NumIters:
-        let status = fftDesc.fft_vartime(coefsOut, data)
+        let status = ec_fft_nr(fftDesc, coefsOut, data)
         doAssert status == FFTS_Success
       let stop = getMonotime()
 
       let ns = inNanoseconds((stop-start) div NumIters)
       echo &"FFT scale {scale:>2}     {ns:>8} ns/op"
 
-      fftDesc.delete()
+      `=destroy`(fftDesc)
 
 
   proc bit_reversal() =
