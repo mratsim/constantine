@@ -10,9 +10,15 @@ import
   constantine/ethereum_evm_precompiles,
   std/unittest
 
+# Note: the input MUST be heap allocated or we get a cryptic error with GCC15 sanitizer
+#          runtime error: load of null pointer of type '_Bool'
+# which in C points to a random
+#          if (NIM_UNLIKELY(*nimErr_)) goto <location>
+# which are inserted to handle goto-based exceptions
+
 suite "EVM ModExp precompile (EIP-198)":
   test "Audit #5 - Fuzz failure with even modulus":
-    let input = [
+    let input = @[
 
         # Length of base (1)
         uint8 0x00,
@@ -43,7 +49,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r[0] == 0, ". Result was " & $r[0]
 
   test "Audit #5-2 - Fuzz failure with even modulus strikes back":
-    let input = [
+    let input = @[
 
         # Length of base (1)
         uint8 0x00,
@@ -74,7 +80,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r[0] == 0, ". Result was " & $r[0]
 
   test "Audit #5-3 - temp buffer extra uninitialized word":
-    let input = [
+    let input = @[
 
         # Length of base (1)
         uint8 0x00,
@@ -105,7 +111,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r == @[byte 0, 0, 1, 45, 106, 227, 225, 162, 136], ". Result was " & $r
 
   test "Audit #5-4 - temp buffer extra uninitialized word (2)":
-    var input = [
+    var input = @[
         # Length of base
         uint8 0x00,
               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -138,7 +144,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r == @[byte 10, 141, 74, 46, 2, 18, 2, 37, 247, 220, 246, 65, 109, 246, 7, 144, 85, 202, 194, 191, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], ". Result was " & $r
 
   test "Audit #8 - off-by-1 buffer overflow - ptr + length exclusive vs openArray(lo, hi) inclusive":
-    let input = [
+    let input = @[
         # Length of base (24)
         uint8 0x00,
               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -173,7 +179,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert status == cttEVM_Success
 
   test "Audit #18 - Handling of inputs infinitely right-padded with zeros (read past buffers or stack overflow for temporaries)":
-    let input = [
+    let input = @[
         # Base length
         uint8 0x00,
               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -209,7 +215,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert status == cttEVM_Success, "Failure status: " & $status
 
   test "Audit #6 - DOS Vector 1":
-    let input = [
+    let input = @[
         # Length of base (32)
         uint8 0x00,
               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -242,7 +248,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r == @[byte 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
   test "Audit #6 - DOS Vector 2":
-    let input = [
+    let input = @[
       # Length of base (1)
       uint8 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -279,7 +285,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r == @[byte 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 51]
 
   test "Audit #6 - DOS Vector 2.a - shortcuttable with even modulus":
-    let input = [
+    let input = @[
       # Length of base (1)
       uint8 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -316,7 +322,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r == @[byte 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 51]
 
   test "Audit #6 - DOS Vector 2.b - odd modulus with no shortcut":
-    let input = [
+    let input = @[
       # Length of base (1)
       uint8 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -353,7 +359,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r == @[byte 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 196, 178, 252, 11, 73, 111, 4, 209, 77, 144, 65]
 
   test "Audit #6 - DOS Vector 2.c - odd modulus with no shortcut":
-    let input = [
+    let input = @[
       # Length of base (1)
       uint8 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -390,7 +396,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r == @[byte 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 208, 241, 216, 60, 91]
 
   test "Audit #6 - DOS Vector 2.d - power-of-2 modulus with no shortcut":
-    let input = [
+    let input = @[
       # Length of base (1)
       uint8 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -427,7 +433,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r == @[byte 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 208, 241, 216, 60, 91]
 
   test "Audit #5 - Modified padded exponent":
-    let input = [
+    let input = @[
 
         # Length of base (1)
         uint8 0x00,
@@ -458,7 +464,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r[0] == 0, ". Result was " & $r[0]
 
   test "Audit #5-2 - Modified padded exponent":
-    let input = [
+    let input = @[
 
         # Length of base (1)
         uint8 0x00,
@@ -489,7 +495,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r[0] == 0, ". Result was " & $r[0]
 
   test "Audit #5-3 - Modified padded exponent":
-    let input = [
+    let input = @[
 
         # Length of base (1)
         uint8 0x00,
@@ -520,7 +526,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r == @[byte 0, 0, 1, 45, 106, 227, 225, 162, 136], ". Result was " & $r
 
   test "Audit #5-4 - Modified padded exponent":
-    var input = [
+    var input = @[
         # Length of base
         uint8 0x00,
               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -553,7 +559,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r == @[byte 10, 141, 74, 46, 2, 18, 2, 37, 247, 220, 246, 65, 109, 246, 7, 144, 85, 202, 194, 191, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], ". Result was " & $r
 
   test "Audit #8 - Modified padded exponent":
-    let input = [
+    let input = @[
         # Length of base (24)
         uint8 0x00,
               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -589,7 +595,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert status == cttEVM_Success
 
   test "Audit #18 - Modified padded exponent":
-    let input = [
+    let input = @[
         # Base length
         uint8 0x00,
               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
