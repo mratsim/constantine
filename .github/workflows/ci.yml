@@ -194,6 +194,7 @@ jobs:
         shell: bash
         run: |
           echo '${{ github.workspace }}'/"${{ steps.versions.outputs.installdir }}"/bin >> $GITHUB_PATH
+          echo "$HOME/.nimble/bin" >> $GITHUB_PATH
           echo '${{ github.workspace }}'"/.nimble/bin" >> $GITHUB_PATH
 
       - name: Install test dependencies (Linux amd64)
@@ -252,6 +253,18 @@ jobs:
       - name: Install Rust [${{ matrix.rust_toolchain }}]
         shell: bash
         run: rustup default ${{ matrix.rust_toolchain }}
+
+      - name: Upgrade Nimble >= 0.22.3
+        # Workaround task failures being swallowed:
+        #   - https://github.com/mratsim/constantine/issues/601
+        #   - https://github.com/nim-lang/nimble/issues/1636
+        shell: bash
+        run: |
+          echo "${PATH}"
+          which nimble
+          nimble install --verbose nimble >= 0.22.3
+          nimble path nimble
+          which nimble
 
       - name: Print Nim, Go Rust, LLVM versions and CPU specs.
         shell: bash
