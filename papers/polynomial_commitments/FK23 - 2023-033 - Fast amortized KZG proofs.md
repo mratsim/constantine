@@ -84,7 +84,7 @@ Let us consider the special case where  $ Z_I(X) $ has special form  $ X^l - \th
 
 Expanding on the last equation, we get
 
- $$ \begin{align*}T_{I}(X)=f_{d}X^{d-l}+f_{d-1}X^{d-l+1}+\cdots+f_{d-l+1}X^{d-2l+1}+\ $ f_{d-l}+\theta f_{d})X^{d-2l}+(f_{d-l-1}+\theta f_{d-1})X^{d-2l-1}+\cdots+(f_{d-2l+1}+\theta f_{d-l+1})X^{d-3l+1}+\ $ f_{d-2l}+\theta f_{d-l}+\theta^{2}f_{d})X^{d-3l}+(f_{d-2l-1}+\theta f_{d-l-1}+\theta^{2}f_{d-1})X^{d-3l-1}+\cdots+\ $ f_{d-3l+1}+\theta f_{d-2l+1}+\theta^{2}f_{d-l+1})X^{d-4l+1}+\cdots+(f_{l}+\theta f_{2l}+\theta^{2}f_{3l}+\cdots+\theta^{r-2}f_{(r-1)l})\cdot1.\end{align*} $$ 
+ $$ \begin{align*}T_{I}(X)=f_{d}X^{d-l}+f_{d-1}X^{d-l-1}+\cdots+f_{d-l+1}X^{d-2l+1}+(f_{d-l}+\theta f_{d})X^{d-2l}+(f_{d-l-1}+\theta f_{d-1})X^{d-2l-1}+\cdots+(f_{d-2l+1}+\theta f_{d-l+1})X^{d-3l+1}+(f_{d-2l}+\theta f_{d-l}+\theta^{2}f_{d})X^{d-3l}+(f_{d-2l-1}+\theta f_{d-l-1}+\theta^{2}f_{d-1})X^{d-3l-1}+\cdots+(f_{d-3l+1}+\theta f_{d-2l+1}+\theta^{2}f_{d-l+1})X^{d-4l+1}+\cdots+(f_{l}+\theta f_{2l}+\theta^{2}f_{3l}+\cdots+\theta^{r-2}f_{(r-1)l})\cdot1.\end{align*} $$ 
 
 ### 1.3 Discrete Fourier Transform
 
