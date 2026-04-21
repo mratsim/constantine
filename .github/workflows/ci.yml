@@ -258,7 +258,11 @@ jobs:
         #   - https://github.com/mratsim/constantine/issues/601
         #   - https://github.com/nim-lang/nimble/issues/1636
         shell: bash
-        run: nimble install --verbose nimble >= 0.22.3
+        run: |
+          echo "${PATH}"
+          which nimble
+          nimble install --verbose nimble >= 0.22.3
+          which nimble
 
       - name: Print Nim, Go Rust, LLVM versions and CPU specs.
         shell: bash
