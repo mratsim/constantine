@@ -111,7 +111,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r == @[byte 0, 0, 1, 45, 106, 227, 225, 162, 136], ". Result was " & $r
 
   test "Audit #5-4 - temp buffer extra uninitialized word (2)":
-    var input = [
+    var input = @[
         # Length of base
         uint8 0x00,
               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -526,7 +526,7 @@ suite "EVM ModExp precompile (EIP-198)":
     doAssert r == @[byte 0, 0, 1, 45, 106, 227, 225, 162, 136], ". Result was " & $r
 
   test "Audit #5-4 - Modified padded exponent":
-    var input = [
+    var input = @[
         # Length of base
         uint8 0x00,
               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
