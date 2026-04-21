@@ -48,6 +48,8 @@ import
     constantine/math/io/[io_bigints, io_fields],
     ./codecs_status_codes
 
+export CttCodecScalarStatus, CttCodecEccStatus
+
 const pre = "ctt_bls12_381_"
 import ../zoo_exports
 
