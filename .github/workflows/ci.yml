@@ -262,6 +262,7 @@ jobs:
           echo "${PATH}"
           which nimble
           nimble install --verbose nimble >= 0.22.3
+          nimble path nimble
           which nimble
 
       - name: Print Nim, Go Rust, LLVM versions and CPU specs.
