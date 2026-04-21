@@ -145,7 +145,7 @@ We now turn to multiproofs and their verification. For concreteness, we focus on
 
 5. Write  $ Q(X) = \sum_{i=0}^{d} Q_i X^i $ and set  $ \pi := [Q(\tau)]_1 = \sum_{i=0}^{d} Q_i [\tau^i]_1 $.
 
-• KZG.MultiVer(ck, com, m, r, §, m, π) → b for μ̂ m ∈ Zₐₐ and m = 2ᵗ, r = 2ᵗ⁻ˣ, and 0 ≤ § < 2ᵗ:
+• KZG.MultiVer(ck, com, m, r, \hat{s}, \hat{m}, \pi) → b for \hat{m} \in \mathbb{Z}_q^D and m = 2^t, r = 2^{t-j}, and 0 \leq \hat{s} < 2^j:
 
 1. Let $s$ be such that $0 \leq s < 2^j$ and $\omega^s \mathbb{H}_j = \{\tilde{\omega}_{\hat{s}r}, \ldots, \tilde{\omega}_{\hat{s}r + (r - 1)}\}$.
 
