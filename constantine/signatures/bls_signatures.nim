@@ -99,7 +99,7 @@ func coreVerify*[Pubkey, Sig](
   when Sig.G == G2:
     return pairing_check(pubkey, Q, negG, signature)
   else:
-    return pairing_check(Q, pubkey, negG, signature)
+    return pairing_check(Q, pubkey, signature, negG)
 
 # ############################################################
 #
