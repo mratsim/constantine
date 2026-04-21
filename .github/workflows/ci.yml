@@ -194,6 +194,7 @@ jobs:
         shell: bash
         run: |
           echo '${{ github.workspace }}'/"${{ steps.versions.outputs.installdir }}"/bin >> $GITHUB_PATH
+          echo "$HOME/.nimble/bin" >> $GITHUB_PATH
           echo '${{ github.workspace }}'"/.nimble/bin" >> $GITHUB_PATH
 
       - name: Install test dependencies (Linux amd64)
