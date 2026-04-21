@@ -235,6 +235,10 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
   block:
     # G1 points - 96 characters + newline
     # These are the Lagrange form (bit-reversed evaluation) points
+    # Original ceremony files:
+    # - https://github.com/ethereum/kzg-ceremony-verifier/blob/master/output_setups/trusted_setup_4096.json
+    # - https://github.com/ethereum/c-kzg-4844/blob/v2.1.7/src/trusted_setup.txt
+    # On disk, G1 points are stored in natural order and will need bit-reversal
     var bufG1Hex {.noInit.}: array[2*g1Bytes+1, char] # On MacOS, an extra byte seems to be needed for fscanf or AddressSanitizer complains
     var bufG1bytes {.noInit.}: array[g1Bytes, byte]
     var charsRead: cint
