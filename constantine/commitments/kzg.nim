@@ -255,12 +255,9 @@ func kzg_verify*[F2; Name: static Algebra](
   commitment_minus_eval_at_challenge_G1.scalarMul_vartime(eval_at_challenge)
   commitment_minus_eval_at_challenge_G1.diff(commitmentJac, commitment_minus_eval_at_challenge_G1)
 
-  var tmzG2 {.noInit.}: EC_ShortW_Aff[F2, G2]
-  var cmyG1 {.noInit.}: EC_ShortW_Aff[Fp[Name], G1]
-  tmzG2.affine(tau_minus_challenge_G2)
-  cmyG1.affine(commitment_minus_eval_at_challenge_G1)
-
-  return pairing_check(proof, tmzG2, cmyG1, negG2)
+  return pairing_check(
+    proof, tau_minus_challenge_G2,
+    commitment_minus_eval_at_challenge_G1, negG2)
 
 func kzg_verify_batch*[bits: static int, F2; Name: static Algebra](
        commitments: ptr UncheckedArray[EC_ShortW_Aff[Fp[Name], G1]],
@@ -313,9 +310,9 @@ func kzg_verify_batch*[bits: static int, F2; Name: static Algebra](
 
   static: doAssert BigInt[bits] is Fr[Name].getBigInt()
 
-  var sums_jac {.noInit.}: array[2, EC_ShortW_Jac[Fp[Name], G1]]
-  template sum_rand_proofs: untyped = sums_jac[0]
-  template sum_commit_minus_evals_G1: untyped = sums_jac[1]
+  var sum_rand_proofs {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
+  var sum_commit_minus_evals_G1 {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
+  var sum_of_sums {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
   var sum_rand_challenge_proofs {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
 
   # ∑ [rᵢ][proofᵢ]₁
@@ -360,14 +357,13 @@ func kzg_verify_batch*[bits: static int, F2; Name: static Algebra](
 
   # e(∑ [rᵢ][proofᵢ]₁, [τ]₂) . e(∑[rᵢ]([commitmentᵢ]₁ - [eval_at_challengeᵢ]₁) + ∑[rᵢ][zᵢ][proofᵢ]₁, [-1]₂) = 1
   # -----------------------------------------------------------------------------------------------------------
-  template sum_of_sums: untyped = sums_jac[1]
 
   sum_of_sums.sum_vartime(sum_commit_minus_evals_G1, sum_rand_challenge_proofs)
-
-  var sums {.noInit.}: array[2, EC_ShortW_Aff[Fp[Name], G1]]
-  sums.batchAffine(sums_jac)
 
   var negG2 {.noInit.}: EC_ShortW_Aff[F2, G2]
   negG2.neg(Name.getGenerator("G2"))
 
-  return pairing_check(sums[0], tauG2, sums[1], negG2)
+  return pairing_check(
+    sum_rand_proofs, tauG2,
+    sum_of_sums, negG2
+  )

@@ -123,9 +123,9 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; Name: static Algebra](
 
   static: doAssert BigInt[bits] is Fr[Name].getBigInt()
 
-  var sums_jac {.noInit.}: array[2, EC_ShortW_Jac[Fp[Name], G1]]
-  template sum_rand_proofs: untyped = sums_jac[0]
-  template sum_commit_minus_evals_G1: untyped = sums_jac[1]
+  var sum_rand_proofs {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
+  var sum_commit_minus_evals_G1 {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
+  var sum_of_sums {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
   var sum_rand_challenge_proofs {.noInit.}: EC_ShortW_Jac[Fp[Name], G1]
 
   # ∑ [rᵢ][proofᵢ]₁
@@ -211,7 +211,6 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; Name: static Algebra](
 
   # e(∑ [rᵢ][proofᵢ]₁, [τ]₂) . e(∑[rᵢ]([commitmentᵢ]₁ - [eval_at_challengeᵢ]₁) + ∑[rᵢ][zᵢ][proofᵢ]₁, [-1]₂) = 1
   # -----------------------------------------------------------------------------------------------------------
-  template sum_of_sums: untyped = sums_jac[1]
 
   discard sync sum_commit_minus_evals_G1_fv
   discard sync sum_rand_challenge_proofs_fv
@@ -221,10 +220,10 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; Name: static Algebra](
   discard sync sum_rand_proofs_fv
   freeHeapAligned(coefs)
 
-  var sums {.noInit.}: array[2, EC_ShortW_Aff[Fp[Name], G1]]
-  sums.batchAffine(sums_jac)
-
   var negG2 {.noInit.}: EC_ShortW_Aff[F2, G2]
   negG2.neg(Name.getGenerator("G2"))
 
-  return pairing_check(sums[0], tauG2, sums[1], negG2)
+  return pairing_check(
+    sum_rand_proofs, tauG2,
+    sum_of_sums, negG2
+  )
