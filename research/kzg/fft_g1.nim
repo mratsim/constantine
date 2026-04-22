@@ -93,12 +93,13 @@ func expandRootOfUnity[F](rootOfUnity: F): auto {.noInit.} =
 # FFT Algorithm
 # ----------------------------------------------------------------
 
-func simpleFT[EC; bits: static int](
+func simpleFT_nn[EC; bits: static int](
        output: var View[EC],
        vals: View[EC],
        rootsOfUnity: View[BigInt[bits]]) =
   # FFT is a recursive algorithm
   # This is the base-case using a O(n²) algorithm
+  # Produces natural order output from natural order input
 
   let L = output.len
   var last {.noInit.}, v {.noInit.}: EC
@@ -115,12 +116,12 @@ func simpleFT[EC; bits: static int](
       last.sum_vartime(last, v)
     output[i] = last
 
-func fft_internal[EC; bits: static int](
+func fft_internal_nn[EC; bits: static int](
        output: var View[EC],
        vals: View[EC],
        rootsOfUnity: View[BigInt[bits]]) =
   if output.len <= 4:
-    simpleFT(output, vals, rootsOfUnity)
+    simpleFT_nn(output, vals, rootsOfUnity)
     return
 
   # Recursive Divide-and-Conquer
@@ -128,8 +129,8 @@ func fft_internal[EC; bits: static int](
   var (outLeft, outRight) = output.splitHalf()
   let halfROI = rootsOfUnity.skipHalf()
 
-  fft_internal(outLeft, evenVals, halfROI)
-  fft_internal(outRight, oddVals, halfROI)
+  fft_internal_nn(outLeft, evenVals, halfROI)
+  fft_internal_nn(outRight, oddVals, halfROI)
 
   let half = outLeft.len
   var y_times_root{.noinit.}: EC

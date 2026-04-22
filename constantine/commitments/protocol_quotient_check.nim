@@ -20,9 +20,9 @@ import
 # Lagrange polynomial with domain = roots of unity
 # -------------------------------------------------------------
 
-func getQuotientPolyOffDomain[N: static int, Field](
-       r: var PolynomialEval[N, Field],
-       poly: PolynomialEval[N, Field],
+func getQuotientPolyOffDomain[N: static int, Field, Ord](
+       r: var PolynomialEval[N, Field, Ord],
+       poly: PolynomialEval[N, Field, Ord],
        pZ: Field,
        invDomainMinusZ: array[N, Field]) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
@@ -43,10 +43,10 @@ func getQuotientPolyOffDomain[N: static int, Field](
     r.evals[i].prod(qi, invDomainMinusZ[i])
 
 
-func getQuotientPolyInDomain*[N: static int, Field](
-       domain: PolyEvalRootsDomain[N, Field],
-       r: var PolynomialEval[N, Field],
-       poly: PolynomialEval[N, Field],
+func getQuotientPolyInDomain*[N: static int, Field, Ord](
+       domain: PolyEvalRootsDomain[N, Field, Ord],
+       r: var PolynomialEval[N, Field, Ord],
+       poly: PolynomialEval[N, Field, Ord],
        zIndex: uint32,
        invRootsMinusZ: array[N, Field]) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
@@ -84,15 +84,15 @@ func getQuotientPolyInDomain*[N: static int, Field](
     # Compute contribution of qᵢ to qz which can't be computed directly
     # qz = - ∑ q'ᵢ * ωⁱ/z
     var ri {.noinit.}: Field
-    if domain.isBitReversed:
-      const logN = log2_vartime(uint32 N)
-      let invZidx = N - reverseBits(uint32 zIndex, logN)
-      let canonI = reverseBits(i, logN)
-      let idx = reverseBits((canonI + invZidx) and (N-1), logN)
-      ri.prod(r.evals[i], domain.rootsOfUnity[idx])        # qᵢ * ωⁱ/z  (explanation at the bottom)
+    when Ord == kBitReversed:
+        const logN = log2_vartime(uint32 N)
+        let invZidx = N - reverseBits(uint32 zIndex, logN)
+        let canonI = reverseBits(i, logN)
+        let idx = reverseBits((canonI + invZidx) and (N-1), logN)
+        ri.prod(r.evals[i], domain.rootsOfUnity[idx])        # qᵢ * ωⁱ/z  (explanation at the bottom)
     else:
-      ri.prod(r.evals[i],
-              domain.rootsOfUnity[(i+N-zIndex) and (N-1)]) # qᵢ * ωⁱ/z  (explanation at the bottom)
+        ri.prod(r.evals[i],
+                domain.rootsOfUnity[(i+N-zIndex) and (N-1)]) # qᵢ * ωⁱ/z  (explanation at the bottom)
     r.evals[zIndex] -= ri                                  # r[zIndex] = - ∑ qᵢ * ωⁱ/z
 
     # * 1/z computation detail
@@ -113,11 +113,11 @@ func getQuotientPolyInDomain*[N: static int, Field](
     #   in non-brp order but cache misses are expensive
     #   and brp can benefits from instruction-level parallelism
 
-func getQuotientPoly*[N: static int, Field](
-       domain: PolyEvalRootsDomain[N, Field],
-       quotientPoly: var PolynomialEval[N, Field],
+func getQuotientPoly*[N: static int, Field, Ord](
+       domain: PolyEvalRootsDomain[N, Field, Ord],
+       quotientPoly: var PolynomialEval[N, Field, Ord],
        eval_at_challenge: var Field,
-       poly: PolynomialEval[N, Field],
+       poly: PolynomialEval[N, Field, Ord],
        opening_challenge: Field) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
   ##
@@ -166,8 +166,8 @@ func getQuotientPoly*[N: static int, Field](
 
 func getQuotientPolyInDomain*[N: static int, Field](
        lindom: PolyEvalLinearDomain[N, Field],
-       r: var PolynomialEval[N, Field],
-       poly: PolynomialEval[N, Field],
+       r: var PolynomialEval[N, Field, kNaturalOrder],
+       poly: PolynomialEval[N, Field, kNaturalOrder],
        zIndex: uint32) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
   ##

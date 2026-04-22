@@ -88,13 +88,14 @@ func expandRootOfUnity[F](rootOfUnity: F): seq[F] =
 # TODO: research Decimation in Time and Decimation in Frequency
 #       and FFT butterflies
 
-func simpleFT[F](
+func simpleFT_nn[F](
        output: var View[F],
        vals: View[F],
        rootsOfUnity: View[F]
      ) =
   # FFT is a recursive algorithm
   # This is the base-case using a O(n²) algorithm
+  # Produces natural order output from natural order input
 
   let L = output.len
   var last {.noInit.}, v {.noInit.}: F
@@ -106,13 +107,13 @@ func simpleFT[F](
       last += v
     output[i] = last
 
-func fft_internal[F](
+func fft_internal_nn[F](
        output: var View[F],
        vals: View[F],
        rootsOfUnity: View[F]
      ) =
   if output.len <= 4:
-    simpleFT(output, vals, rootsOfUnity)
+    simpleFT_nn(output, vals, rootsOfUnity)
     return
 
   # Recursive Divide-and-Conquer
@@ -120,8 +121,8 @@ func fft_internal[F](
   var (outLeft, outRight) = output.splitHalf()
   let halfROI = rootsOfUnity.skipHalf()
 
-  fft_internal(outLeft, evenVals, halfROI)
-  fft_internal(outRight, oddVals, halfROI)
+  fft_internal_nn(outLeft, evenVals, halfROI)
+  fft_internal_nn(outRight, oddVals, halfROI)
 
   let half = outLeft.len
   var y_times_root{.noinit.}: F

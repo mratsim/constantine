@@ -128,14 +128,29 @@ template allocStackArray*(T: typedesc, len: SomeInteger): ptr UncheckedArray[T]
 
 ### Heap Allocation
 ```nim
+# Standard allocation (uninitialized memory)
 proc allocHeap*(T: typedesc): ptr T
 proc allocHeapUnchecked*(T: typedesc, size: int): ptr T
 proc allocHeapArray*(T: typedesc, len: SomeInteger): ptr UncheckedArray[T]
 proc allocHeapAligned*(T: typedesc, alignment: static Natural): ptr T
 proc allocHeapArrayAligned*(T: typedesc, len: int, alignment: static Natural): ptr UncheckedArray[T]
+proc allocHeapAlignedPtr*(T: typedesc[ptr], alignment: static Natural): T
+proc allocHeapUncheckedAlignedPtr*(T: typedesc[ptr], size: int, alignment: static Natural): T
+
+# Zero-initialized allocation (critical for ARC with custom =destroy procs)
+proc alloc0Heap*(T: typedesc): ptr T
+proc alloc0HeapUnchecked*(T: typedesc, size: int): ptr T
+proc alloc0HeapArray*(T: typedesc, len: SomeInteger): ptr UncheckedArray[T]
+proc alloc0HeapAligned*(T: typedesc, alignment: static Natural): ptr T
 proc alloc0HeapArrayAligned*(T: typedesc, len: int, alignment: static Natural): ptr UncheckedArray[T]
-  ## Allocation + zero initialization
+proc alloc0HeapAlignedPtr*(T: typedesc[ptr], alignment: static Natural): T
+proc alloc0HeapUncheckedAlignedPtr*(T: typedesc[ptr], size: int, alignment: static Natural): T
 ```
+
+**Important**: Use `alloc0*` variants when:
+- Allocating structs with custom `=destroy` procs that check for nil pointers
+- Working with ARC memory management to avoid double-free on uninitialized memory
+- Example: `EthereumKZGContext` has `ECFFT_Descriptor` fields with `=destroy` that free memory
 
 ## varargs
 

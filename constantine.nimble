@@ -614,6 +614,9 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Polynomials
   # ----------------------------------------------------------
   ("tests/math_polynomials/t_polynomials.nim", false),
+  ("tests/math_polynomials/t_fft.nim", false),
+  ("tests/math_polynomials/t_fft_coset.nim", false),
+  ("tests/math_polynomials/t_bit_reversal.nim", false),
 
   # Protocols
   # ----------------------------------------------------------
@@ -726,6 +729,9 @@ const benchDesc = [
   "bench_verkle_primitives",
   "bench_eth_evm_precompiles",
   "bench_multilinear_extensions",
+  "bench_fft",
+  "bench_fft_bit_reversal",
+  
   # "zkalc", # Already tested through make_zkalc
 ]
 
@@ -1188,3 +1194,11 @@ task bench_eth_eip2537_subgroup_checks_impact, "Run EIP2537 subgroup checks impa
 # ------------------------------------------
 task bench_eth_evm_precompiles, "Run Ethereum EVM precompiles - CC compiler":
   runBench("bench_eth_evm_precompiles")
+
+# FFT
+# ------------------------------------------
+task bench_fft, "Run FFT / IFFT Benchmarks (BLS12-381) - CC compiler":
+  runBench("bench_fft")
+
+task bench_fft_bit_reversal, "Run Bit-Reversal Permutation Benchmarks - CC compiler":
+  runBench("bench_fft_bit_reversal")

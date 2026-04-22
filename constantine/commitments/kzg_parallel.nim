@@ -30,11 +30,11 @@ export kzg
 # KZG - Prover - Lagrange basis
 # ------------------------------------------------------------
 
-proc kzg_commit_parallel*[N, bits: static int, Name: static Algebra](
+proc kzg_commit_parallel*[N, bits: static int, Name: static Algebra; Ord: static PolyOrdering](
        tp: Threadpool,
-       powers_of_tau: PolynomialEval[N, EC_ShortW_Aff[Fp[Name], G1]],
+       powers_of_tau: PolynomialEval[N, EC_ShortW_Aff[Fp[Name], G1], Ord],
        commitment: var EC_ShortW_Aff[Fp[Name], G1],
-       poly: PolynomialEval[N, BigInt[bits]],
+       poly: PolynomialEval[N, BigInt[bits], Ord],
 ) =
   ## KZG Commit to a polynomial in Lagrange / Evaluation form
   ## Parallelism: This only returns when computation is fully done
@@ -42,14 +42,14 @@ proc kzg_commit_parallel*[N, bits: static int, Name: static Algebra](
   tp.multiScalarMul_vartime_parallel(commitmentJac, poly.evals, powers_of_tau.evals)
   commitment.affine(commitmentJac)
 
-proc kzg_prove_parallel*[N: static int, Name: static Algebra](
+proc kzg_prove_parallel*[N: static int, Name: static Algebra; Ord: static PolyOrdering](
        tp: Threadpool,
-       powers_of_tau: PolynomialEval[N, EC_ShortW_Aff[Fp[Name], G1]],
-       domain: PolyEvalRootsDomain[N, Fr[Name]],
+       powers_of_tau: PolynomialEval[N, EC_ShortW_Aff[Fp[Name], G1], Ord],
+       domain: PolyEvalRootsDomain[N, Fr[Name], Ord],
        eval_at_challenge: var Fr[Name],
        proof: var EC_ShortW_Aff[Fp[Name], G1],
-       poly: PolynomialEval[N, Fr[Name]],
-       opening_challenge: Fr[Name]) =
+       poly: PolynomialEval[N, Fr[Name], Ord],
+       opening_challenge: Fr[Name]): void =
   ## KZG prove commitment to a polynomial in Lagrange / Evaluation form
   ##
   ## Outputs:
@@ -64,7 +64,7 @@ proc kzg_prove_parallel*[N: static int, Name: static Algebra](
   #
   # z = opening_challenge in the following code
 
-  let quotientPoly = allocHeapAligned(PolynomialEval[N, Fr[Name]], alignment = 64)
+  let quotientPoly = allocHeapAligned(PolynomialEval[N, Fr[Name], Ord], alignment = 64)
   tp.getQuotientPoly_parallel(
     domain,
     quotientPoly[], eval_at_challenge,

@@ -19,10 +19,10 @@ import
 ##
 ## ############################################################
 
-proc getQuotientPolyOffDomain_parallel*[N: static int, Field](
+proc getQuotientPolyOffDomain_parallel*[N: static int, Field; Ord: static PolyOrdering](
       tp: Threadpool,
-      r: ptr PolynomialEval[N, Field],
-      poly: ptr PolynomialEval[N, Field],
+      r: ptr PolynomialEval[N, Field, Ord],
+      poly: ptr PolynomialEval[N, Field, Ord],
       pZ: ptr Field,
       invRootsMinusZ: ptr array[N, Field]) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
@@ -50,11 +50,11 @@ proc getQuotientPolyOffDomain_parallel*[N: static int, Field](
       qi.diff(poly.evals[i], pZ[])
       r.evals[i].prod(qi, invRootsMinusZ[i])
 
-proc getQuotientPolyInDomain_parallel*[N: static int, Field](
+proc getQuotientPolyInDomain_parallel*[N: static int, Field; Ord: static PolyOrdering](
       tp: Threadpool,
-      domain: ptr PolyEvalRootsDomain[N, Field],
-      r: ptr PolynomialEval[N, Field],
-      poly: ptr PolynomialEval[N, Field],
+      domain: ptr PolyEvalRootsDomain[N, Field, Ord],
+      r: ptr PolynomialEval[N, Field, Ord],
+      poly: ptr PolynomialEval[N, Field, Ord],
       zIndex: uint32,
       invRootsMinusZ: ptr array[N, Field]) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
@@ -97,7 +97,7 @@ proc getQuotientPolyInDomain_parallel*[N: static int, Field](
           # q'ᵢ = -qᵢ * ωⁱ/z
           # q'idx = ∑ q'ᵢ
           iter_ri.neg(r.evals[i])                                  # -qᵢ
-          if domain.isBitReversed:
+          when Ord == kBitReversed:
             const logN = log2_vartime(uint32 N)
             let invZidx = N - reverseBits(uint32 zIndex, logN)
             let canonI = reverseBits(uint32 i, logN)
@@ -113,12 +113,12 @@ proc getQuotientPolyInDomain_parallel*[N: static int, Field](
 
   r.evals[zIndex] = sync(evalsZindex)
 
-proc getQuotientPoly_parallel*[N: static int, Field](
+proc getQuotientPoly_parallel*[N: static int, Field; Ord: static PolyOrdering](
       tp: Threadpool,
-      domain: PolyEvalRootsDomain[N, Field],
-      quotientPoly: var PolynomialEval[N, Field],
+      domain: PolyEvalRootsDomain[N, Field, Ord],
+      quotientPoly: var PolynomialEval[N, Field, Ord],
       eval_at_challenge: var Field,
-      poly: PolynomialEval[N, Field],
+      poly: PolynomialEval[N, Field, Ord],
       opening_challenge: Field) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
   ##
