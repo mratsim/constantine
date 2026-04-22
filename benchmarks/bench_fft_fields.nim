@@ -275,8 +275,8 @@ proc bench_Fr_FFT_NR_Dispatch*() =
       let status = fft_nr(fftDesc, freq, data)
       doAssert status == FFT_Success
 
-proc bench_Fr_IFFT*() =
-  echo "\n=== Fr IFFT Benchmark ==="
+proc bench_Fr_IFFT_NN_Dispatch*() =
+  echo "\n=== Fr IFFT (Natural → Natural, Dispatch) Benchmark ==="
   separator()
 
   const NumIters = 3
@@ -294,8 +294,53 @@ proc bench_Fr_IFFT*() =
 
     var recovered = newSeq[F](order)
 
-    bench("Fr IFFT", "Fr[BLS12-381]", order, NumIters):
+    bench("Fr IFFT NN Dispatch", "Fr[BLS12-381]", order, NumIters):
       let status = ifft_nn(fftDesc, recovered, freq)
+      doAssert status == FFT_Success
+
+proc bench_Fr_IFFT_RN_Iterative_DIT*() =
+  echo "\n=== Fr IFFT (Bit-Reversed → Natural, Iterative DIT) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[F](order)
+    for i in 0 ..< order:
+      data[i].fromUint(uint64(i + 1))
+
+    bit_reversal_permutation(data)
+
+    var recovered = newSeq[F](order)
+
+    bench("Fr IFFT RN DIT", "Fr[BLS12-381]", order, NumIters):
+      let status = ifft_rn_iterative_dit(fftDesc, recovered, data)
+      doAssert status == FFT_Success
+
+proc bench_Fr_IFFT_NN_via_BitRev_and_Iterative_DIT*() =
+  echo "\n=== Fr IFFT (Natural → Natural, BitRev + Iterative DIT) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[F](order)
+    for i in 0 ..< order:
+      data[i].fromUint(uint64(i + 1))
+
+    var freq = newSeq[F](order)
+    discard fft_nn(fftDesc, freq, data)
+
+    var recovered = newSeq[F](order)
+
+    bench("Fr IFFT NN BitRev+DIT", "Fr[BLS12-381]", order, NumIters):
+      let status = ifft_nn_via_bitrev_and_iterative_dit(fftDesc, recovered, freq)
       doAssert status == FFT_Success
 
 when isMainModule:
@@ -318,8 +363,12 @@ when isMainModule:
   echo "  - Fr FFT NN BR+DIT:    Natural → Natural (BitRev + DIT)"
   echo ""
   echo "  DISPATCH:"
-  echo "  - Fr FFT NN:        Natural → Natural"
-  echo "  - Fr FFT NR:        Natural → Bit-Reversed"
+  echo "  - Fr FFT NN:           Natural → Natural (DIF + BitRev)"
+  echo "  - Fr FFT NR:           Natural → Bit-Reversed (DIF)"
+  echo ""
+  echo "  IFFT:"
+  echo "  - Fr IFFT NN Dispatch: Natural → Natural (BitRev + DIT)"
+  echo "  - Fr IFFT RN DIT:      Bit-Reversed → Natural (Iterative DIT)"
   echo "============================================================"
 
   warmup()
@@ -339,6 +388,9 @@ when isMainModule:
   bench_Fr_FFT_NN_Dispatch()
   bench_Fr_FFT_NR_Dispatch()
   echo ""
-  bench_Fr_IFFT()
+  echo "--- IFFT ---"
+  bench_Fr_IFFT_NN_Dispatch()
+  bench_Fr_IFFT_RN_Iterative_DIT()
+  bench_Fr_IFFT_NN_via_BitRev_and_Iterative_DIT()
 
   echo ""

@@ -196,23 +196,20 @@ func fft_nr_impl_iterative_dif[F](
 
 func fft_nr_iterative_dif[F](
        desc: FrFFT_Descriptor[F],
-       output{.noalias.}: var openarray[F],
-       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime], meter.} =
+       output: var openarray[F],
+       vals: openarray[F]): FFTStatus {.tags: [VarTime], meter.} =
   ## FFT from natural order to bit-reversed order using iterative Cooley-Tukey algorithm.
   ## Input: natural order values
   ## Output: bit-reversed order values in Fourier domain
   ## Domain: roots of unity (no shift)
   ##
-  ## Algorithm: In-place iterative Cooley-Tukey FFT
+  ## Algorithm: In-place iterative Cooley-Tukey FFT (DIF - Decimation-In-Frequency)
   ##
   ## This is faster than the recursive version for large sizes
   ## because it avoids function call overhead and has better cache patterns.
   ##
-  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
-  ##
-  ## Note: The {.noalias.} annotation documents this requirement but is not
-  ## currently enforced by the compiler. It serves as documentation and may
-  ## be used by future compiler optimizations or static analysis tools.
+  ## **Supports in-place operation**: `output` and `vals` can be the same array.
+  ## If they alias, the input copy is skipped for better performance.
   if vals.len > desc.order:
     return FFT_TooManyValues
   if output.len != vals.len:
@@ -222,9 +219,10 @@ func fft_nr_iterative_dif[F](
 
   let n = vals.len
 
-  # Copy input to output (iterative FFT is in-place)
-  for i in 0 ..< n:
-    output[i] = vals[i]
+  # Copy input to output (skip if aliasing for in-place operation)
+  if output[0].addr != vals[0].addr:
+    for i in 0 ..< n:
+      output[i] = vals[i]
 
   # Get roots of unity with appropriate stride
   let rootz = desc.rootsOfUnity
@@ -276,18 +274,15 @@ func fft_rn_impl_iterative_dit[F](
 
 func fft_rn_iterative_dit[F](
        desc: FrFFT_Descriptor[F],
-       output{.noalias.}: var openarray[F],
-       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime], meter.} =
+       output: var openarray[F],
+       vals: openarray[F]): FFTStatus {.tags: [VarTime], meter.} =
   ## FFT from bit-reversed order to natural order using iterative Cooley-Tukey DIT.
   ## Input: bit-reversed order values
   ## Output: natural order values in Fourier domain
   ## Domain: roots of unity (no shift)
   ##
-  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
-  ##
-  ## Note: The {.noalias.} annotation documents this requirement but is not
-  ## currently enforced by the compiler. It serves as documentation and may
-  ## be used by future compiler optimizations or static analysis tools.
+  ## **Supports in-place operation**: `output` and `vals` can be the same array.
+  ## If they alias, the input copy is skipped for better performance.
   if vals.len > desc.order:
     return FFT_TooManyValues
   if output.len != vals.len:
@@ -297,9 +292,10 @@ func fft_rn_iterative_dit[F](
 
   let n = vals.len
 
-  # Copy input to output (iterative FFT is in-place)
-  for i in 0 ..< n:
-    output[i] = vals[i]
+  # Copy input to output (skip if aliasing for in-place operation)
+  if output[0].addr != vals[0].addr:
+    for i in 0 ..< n:
+      output[i] = vals[i]
 
   # Get roots of unity with appropriate stride
   let rootz = desc.rootsOfUnity
@@ -309,6 +305,83 @@ func fft_rn_iterative_dit[F](
   # In-place iterative DIT FFT (bit-reversed → natural)
   var voutput = output.toStridedView()
   fft_rn_impl_iterative_dit(voutput, rootz)
+
+  return FFT_Success
+
+func ifft_rn_impl_iterative_dit[F](
+       output: var StridedView[F],
+       rootsOfUnity: StridedView[F]) {.inline.} =
+  ## In-place iterative IFFT (Cooley-Tukey DIT - Decimation-In-Time)
+  ## Input: bit-reversed order values in Fourier domain
+  ## Output: natural order values
+  ##
+  ## Uses inverse roots of unity and applies 1/n scaling at the end
+  let n = output.len
+
+  var length = 2
+  while length <= n:
+    let half = length shr 1
+    let step = n div length
+
+    var i = 0
+    while i < n:
+      var k = 0
+      for j in 0 ..< half:
+        var t {.noInit.}: F
+        t.prod(output[i + j + half], rootsOfUnity[k])
+
+        output[i + j + half] = output[i + j] - t
+        output[i + j] += t
+
+        k += step
+      i += length
+
+    length = length shl 1
+
+  # Apply 1/n scaling
+  var invLen {.noInit.}: F
+  invLen.fromUint(n.uint64)
+  invLen.inv_vartime()
+
+  for i in 0 ..< n:
+    output[i] *= invLen
+
+func ifft_rn_iterative_dit[F](
+       desc: FrFFT_Descriptor[F],
+       output: var openarray[F],
+       vals: openarray[F]): FFTStatus {.tags: [VarTime], meter.} =
+  ## IFFT from bit-reversed order to natural order using iterative DIT.
+  ## Input: bit-reversed order values in Fourier domain
+  ## Output: natural order values
+  ## Domain: roots of unity (no shift)
+  ##
+  ## Algorithm: In-place iterative DIT IFFT with inverse roots of unity
+  ##
+  ## **Supports in-place operation**: `output` and `vals` can be the same array.
+  ## If they alias, the input copy is skipped for better performance.
+  if vals.len > desc.order:
+    return FFT_TooManyValues
+  if output.len != vals.len:
+    return FFT_InconsistentInputOutputLengths
+  if not vals.len.uint64.isPowerOf2_vartime():
+    return FFT_SizeNotPowerOfTwo
+
+  let n = vals.len
+
+  # Copy input to output (skip if aliasing for in-place operation)
+  if output[0].addr != vals[0].addr:
+    for i in 0 ..< n:
+      output[i] = vals[i]
+
+  # Get inverse roots of unity with appropriate stride (reversed order)
+  let rootz = desc.rootsOfUnity
+                  .toStridedView(desc.order+1)
+                  .reversed()
+                  .slice(0, desc.order-1, desc.order shr log2_vartime(uint n))
+
+  # In-place iterative DIT IFFT (bit-reversed → natural)
+  var voutput = output.toStridedView()
+  ifft_rn_impl_iterative_dit(voutput, rootz)
 
   return FFT_Success
 
@@ -357,7 +430,7 @@ func fft_nn_impl_stockham[F](
     for j in 0 ..< n div R:
       # Input: strided access
       let idxS = j
-      
+
       # Twiddle index
       let wIndex = ((j mod Ns) * n) div (Ns * R)
 
@@ -437,6 +510,45 @@ func fft_nn_stockham[F](
 
 # ############################################################
 #
+#              FFT/IFFT Combinations
+#
+# ############################################################
+# These combine core algorithms with bit-reversal for testing/benchmarks.
+# Only used in tests and benchmarks - not in production dispatch.
+
+proc fft_nn_via_iterative_dif_and_bitrev[F](
+       desc: FrFFT_Descriptor[F],
+       output: var openarray[F],
+       vals: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+  ## Natural → Natural via: Iterative DIF (NR) + BitRev
+  let status = fft_nr_iterative_dif(desc, output, vals)
+  if status != FFT_Success: return status
+  bit_reversal_permutation(output)
+  return FFT_Success
+
+proc fft_nn_via_bitrev_and_iterative_dit[F](
+       desc: FrFFT_Descriptor[F],
+       output: var openarray[F],
+       vals: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+  ## Natural → Natural via: BitRev + Iterative DIT (RN)
+  var br_vals = newSeq[F](vals.len)
+  bit_reversal_permutation(br_vals, vals)
+  let status = fft_rn_iterative_dit(desc, output, br_vals)
+  return status
+
+proc ifft_nn_via_bitrev_and_iterative_dit[F](
+       desc: FrFFT_Descriptor[F],
+       output: var openarray[F],
+       vals: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+  ## Natural → Natural via: BitRev + Iterative DIT (RN)
+  ## Input: natural order values in Fourier domain
+  ## Output: natural order values
+  bit_reversal_permutation(output, vals)
+  let status = ifft_rn_iterative_dit(desc, output, output)
+  return status
+
+# ############################################################
+#
 #              High-Level FFT API (Auto-dispatch)
 #
 # ############################################################
@@ -446,80 +558,62 @@ func fft_nn_stockham[F](
 
 func fft_nn*[F](
        desc: FrFFT_Descriptor[F],
-       output{.noalias.}: var openarray[F],
-       vals{.noalias.}: openarray[F]): FFTStatus {.inline, tags: [VarTime], meter.} =
+       output: var openarray[F],
+       vals: openarray[F]): FFTStatus {.inline, tags: [VarTime, HeapAlloc], meter.} =
   ## FFT from natural order to natural order.
-  ## Uses recursive Cooley-Tukey algorithm.
+  ## Dispatches to: Iterative DIF (NR) + BitRev
   ##
   ## Input: natural order values
   ## Output: natural order values in Fourier domain
   ## Domain: roots of unity (no shift)
   ##
-  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
-  fft_nn_recursive(desc, output, vals)
+  ## **Supports in-place operation**: `output` and `vals` can be the same array.
+  let status = fft_nr_iterative_dif(desc, output, vals)
+  if status != FFT_Success: return status
+  bit_reversal_permutation(output)
+  return FFT_Success
 
 func fft_nr*[F](
        desc: FrFFT_Descriptor[F],
-       output{.noalias.}: var openarray[F],
-       vals{.noalias.}: openarray[F]): FFTStatus {.inline, tags: [VarTime, HeapAlloc], meter.} =
+       output: var openarray[F],
+       vals: openarray[F]): FFTStatus {.inline, tags: [VarTime], meter.} =
   ## FFT from natural order to bit-reversed order.
-  ## Uses recursive Cooley-Tukey + bit-reversal permutation.
+  ## Dispatches to: Iterative DIF directly
   ##
   ## Input: natural order values
   ## Output: bit-reversed order values in Fourier domain
   ## Domain: roots of unity (no shift)
   ##
-  ##
-  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
-  ##
-  ## Note: The {.noalias.} annotation documents this requirement but is not
-  ## currently enforced by the compiler. It serves as documentation and may
-  ## be used by future compiler optimizations or static analysis tools.
-  let status = fft_nn_recursive(desc, output, vals)
-  if status != FFT_Success:
-    return status
-
-  bit_reversal_permutation(output)
-  return FFT_Success
+  ## **Supports in-place operation**: `output` and `vals` can be the same array.
+  fft_nr_iterative_dif(desc, output, vals)
 
 func ifft_nn*[F](
        desc: FrFFT_Descriptor[F],
-       output{.noalias.}: var openarray[F],
-       vals{.noalias.}: openarray[F]): FFTStatus {.inline, tags: [VarTime, HeapAlloc], meter.} =
-  ifft_nn_recursive(desc, output, vals)
+       output: var openarray[F],
+       vals: openarray[F]): FFTStatus {.inline, tags: [VarTime, HeapAlloc], meter.} =
+  ## IFFT from natural order to natural order.
+  ## Dispatches to: BitRev + Iterative DIT
+  ##
+  ## Input: natural order values in Fourier domain
+  ## Output: natural order values
+  ## Domain: roots of unity (no shift)
+  ##
+  ## **Supports in-place operation**: `output` and `vals` can be the same array.
+  ifft_nn_via_bitrev_and_iterative_dit(desc, output, vals)
 
 func ifft_rn*[F](
        desc: FrFFT_Descriptor[F],
-       output{.noalias.}: var openarray[F],
-       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+       output: var openarray[F],
+       vals: openarray[F]): FFTStatus {.tags: [VarTime], meter.} =
   ## IFFT from bit-reversed order to natural order.
+  ## Dispatches to: Iterative DIT directly
+  ##
   ## Input: bit-reversed order values in Fourier domain
   ## Output: natural order values
   ## Domain: roots of unity (no shift)
   ##
-  ## Algorithm: Bit-reverse permutation + IFFT (natural to natural)
-  ##
-  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
-  ## The IFFT algorithm is NOT in-place safe.
-  ##
-  ## Note: The {.noalias.} annotation documents this requirement but is not
-  ## currently enforced by the compiler. It serves as documentation and may
-  ## be used by future compiler optimizations or static analysis tools.
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if output.len != vals.len:
-    return FFT_InconsistentInputOutputLengths
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
-
-  # Create temporary buffer and bit-reverse vals into it (bit-reversed → natural)
-  var temp_buf = allocHeapArrayAligned(F, vals.len, alignment = 64)
-  bit_reversal_permutation(temp_buf.toOpenArray(0, vals.len-1), vals)
-
-  # Call ifft_nn (natural → natural)
-  let status = ifft_nn_recursive(desc, output, temp_buf.toOpenArray(0, vals.len-1))
-  freeHeapAligned(temp_buf)
-  return status
+  ## **Supports in-place operation**: `output` and `vals` can be the same array.
+  ifft_rn_iterative_dit(desc, output, vals)
 
 # ############################################################
 #
