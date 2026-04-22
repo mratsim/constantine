@@ -117,21 +117,6 @@ func fft_nn_recursive[F](
   fft_nn_impl_recursive(voutput, vals.toStridedView(), rootz)
   return FFT_Success
 
-func fft_nr_recursive[F](
-       desc: FrFFT_Descriptor[F],
-       output{.noalias.}: var openarray[F],
-       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
-  ## FFT from natural order to bit-reversed order using recursive Cooley-Tukey + bit-reversal.
-  ## For testing/benchmarking purposes - use fft_nr* for production code.
-  ##
-  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
-  let status = fft_nn_recursive(desc, output, vals)
-  if status != FFT_Success:
-    return status
-
-  bit_reversal_permutation(output)
-  return FFT_Success
-
 func ifft_nn_recursive[F](
        desc: FrFFT_Descriptor[F],
        output{.noalias.}: var openarray[F],
@@ -292,16 +277,11 @@ func fft_rn_impl_iterative_dit[F](
 func fft_rn_iterative_dit[F](
        desc: FrFFT_Descriptor[F],
        output{.noalias.}: var openarray[F],
-       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
-  ## FFT from natural order to natural order using iterative Cooley-Tukey DIT algorithm.
-  ## Input: natural order values
+       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime], meter.} =
+  ## FFT from bit-reversed order to natural order using iterative Cooley-Tukey DIT.
+  ## Input: bit-reversed order values
   ## Output: natural order values in Fourier domain
   ## Domain: roots of unity (no shift)
-  ##
-  ## Algorithm: Bit-reverse permutation + In-place iterative Cooley-Tukey DIT FFT
-  ##
-  ## This combines bit-reversal with the DIT FFT to produce natural order output
-  ## from natural order input.
   ##
   ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
   ##
@@ -317,8 +297,9 @@ func fft_rn_iterative_dit[F](
 
   let n = vals.len
 
-  # Copy input to output and bit-reverse (natural → bit-reversed)
-  bit_reversal_permutation(output, vals)
+  # Copy input to output (iterative FFT is in-place)
+  for i in 0 ..< n:
+    output[i] = vals[i]
 
   # Get roots of unity with appropriate stride
   let rootz = desc.rootsOfUnity

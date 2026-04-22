@@ -216,6 +216,39 @@ func ec_fft_nr_iterative[EC](
 
   return FFT_Success
 
+func ec_fft_rn_iterative_dit[EC](
+       desc: ECFFT_Descriptor[EC],
+       output: var openarray[EC],
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
+  ## EC FFT from bit-reversed order to natural order using iterative Cooley-Tukey DIT.
+  ## Input: bit-reversed order values
+  ## Output: natural order values in Fourier domain
+  ## Domain: roots of unity (no shift)
+  ##
+  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
+  if vals.len > desc.order:
+    return FFT_TooManyValues
+  if output.len != vals.len:
+    return FFT_InconsistentInputOutputLengths
+  if not vals.len.uint64.isPowerOf2_vartime():
+    return FFT_SizeNotPowerOfTwo
+
+  let n = vals.len
+
+  # Copy input to output (iterative FFT is in-place)
+  for i in 0 ..< n:
+    output[i] = vals[i]
+
+  # Get roots of unity with appropriate stride
+  let rootz = desc.rootsOfUnity
+                  .toStridedView(desc.order)
+                  .slice(0, desc.order-1, desc.order shr log2_vartime(uint n))
+
+  # In-place iterative DIT FFT (bit-reversed → natural)
+  var voutput = output.toStridedView()
+  ec_fft_nr_impl_iterative(voutput, rootz)
+
+  return FFT_Success
 
 # ############################################################
 #
