@@ -337,6 +337,12 @@ func fft_nn_impl_stockham[F](
   ##
   ## Uses ping-pong buffering between vals and temp to avoid bit-reversal.
   ## Output is in natural order.
+  ##
+  ## Key insight: Each stage progressively reorders data via strided I/O.
+  ## - Input: read strided elements (j and j + n/2)
+  ## - Output: write to interleaved positions via (j//Ns)*Ns*2 + (j%Ns) pattern
+  ##
+  ## This autosort property eliminates the need for bit-reversal permutation.
 
   # Copy input to output buffer
   for i in 0 ..< n:
@@ -344,30 +350,36 @@ func fft_nn_impl_stockham[F](
 
   var src = output
   var dst = temp
-  var m = 1
-  while m < n:
-    let step = n div (2 * m)
+  var Ns = 1
 
-    # Butterfly stage
-    for k in 0 ..< n div (2 * m):
-      for j in 0 ..< m:
-        let i0 = k * 2 * m + j
-        let i1 = i0 + m
+  while Ns < n:
+    let R = 2
+    for j in 0 ..< n div R:
+      # Input: strided access
+      let idxS = j
+      
+      # Twiddle index
+      let wIndex = ((j mod Ns) * n) div (Ns * R)
 
-        let root = rootsOfUnity[j * step]
+      # Load and multiply by twiddle
+      var t {.noInit.}: F
+      t.prod(src[idxS + n div R], rootsOfUnity[wIndex])
 
-        var t {.noInit.}: F
-        t.prod(src[i1], root)
+      # Radix-2 butterfly
+      let sum = src[idxS] + t
+      let diff = src[idxS] - t
 
-        dst[k * 2 * m + 2 * j]     = src[i0] + t
-        dst[k * 2 * m + 2 * j + 1] = src[i0] - t
+      # Output: autosort indexing
+      # Writes results to interleaved positions across the array
+      let idxD = (j div Ns) * Ns * R + (j mod Ns)
+      dst[idxD] = sum
+      dst[idxD + Ns] = diff
 
-    # Swap buffers (src ↔ dst)
+    # Swap buffers
     swap(src, dst)
+    Ns = Ns * R
 
-    m = m shl 1
-
-  # If we ended with data in temp (dst was swapped to temp), copy back to output
+  # If we ended with data in temp (odd number of stages), copy back
   if src != output:
     for i in 0 ..< n:
       output[i] = src[i]

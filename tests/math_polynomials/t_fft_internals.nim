@@ -66,14 +66,20 @@ proc testFrFFTAlgorithmConsistency*() =
     var output_nn_br_dit = newSeq[F](order)
     discard fft_nn_via_bitrev_and_iterative_dit(fftDesc, output_nn_br_dit, vals)
 
+    # Method 3: Stockham (Natural → Natural)
+    var output_nn_stockham = newSeq[F](order)
+    discard fft_nn_stockham(fftDesc, output_nn_stockham, vals)
+
     # Verify all produce same natural order output
     for i in 0..<order:
       doAssert (output_nn_rec[i] == output_nn_dif_br[i]).bool,
         "NN Rec vs NN DIF+BitRev mismatch at index " & $i & " (order=" & $order & ")"
       doAssert (output_nn_rec[i] == output_nn_br_dit[i]).bool,
         "NN Rec vs NN BitRev+DIT mismatch at index " & $i & " (order=" & $order & ")"
+      doAssert (output_nn_rec[i] == output_nn_stockham[i]).bool,
+        "NN Rec vs NN Stockham mismatch at index " & $i & " (order=" & $order & ")"
 
-  echo "  ✓ Fr FFT: All 3 implementations produce identical results"
+  echo "  ✓ Fr FFT: All 4 implementations produce identical results"
 
 proc testECFFTAlgorithmConsistency*() =
   echo "Testing EC FFT consistency between recursive and iterative..."
