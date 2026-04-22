@@ -88,6 +88,24 @@ proc allocHeapArray*(T: typedesc, len: SomeInteger): ptr UncheckedArray[T] {.inl
 proc freeHeap*(p: pointer) {.inline.} =
   free(p)
 
+proc alloc0Heap*(T: typedesc): ptr T {.inline.} =
+  ## Heap allocation with zero initialization
+  result = cast[type result](malloc(sizeof(T)))
+  zeroMem(result, sizeof(T))
+
+proc alloc0HeapUnchecked*(T: typedesc, size: int): ptr T {.inline.} =
+  ## Heap allocation for types containing a variable-sized UncheckedArray field
+  ## with zero initialization
+  result = cast[type result](malloc(size))
+  zeroMem(result, size)
+
+proc alloc0HeapArray*(T: typedesc, len: SomeInteger): ptr UncheckedArray[T] {.inline.} =
+  ## Heap allocation with zero initialization
+  {.warning[CastSizes]:off.}:
+    let size = sizeof(T) * cast[int](len)
+    result = cast[type result](malloc(size))
+    zeroMem(result, size)
+
 proc allocHeapAligned*(T: typedesc, alignment: static Natural): ptr T {.inline.} =
   # aligned_alloc requires allocating in multiple of the alignment.
   let # Cannot be static with bitfields. Workaround https://github.com/nim-lang/Nim/issues/19040
@@ -122,3 +140,42 @@ proc allocHeapUncheckedAlignedPtr*(T: typedesc[ptr], size: int, alignment: stati
 
 proc freeHeapAligned*(p: pointer) {.inline.} =
   aligned_free(p)
+
+proc alloc0HeapAligned*(T: typedesc, alignment: static Natural): ptr T {.inline.} =
+  ## Aligned heap allocation with zero initialization
+  # aligned_alloc requires allocating in multiple of the alignment.
+  let # Cannot be static with bitfields. Workaround https://github.com/nim-lang/Nim/issues/19040
+    size = sizeof(T)
+    requiredMem = size.round_step_up(alignment)
+
+  result = cast[ptr T](aligned_alloc(alignment, requiredMem))
+  zeroMem(result, requiredMem)
+
+proc alloc0HeapUncheckedAligned*(T: typedesc, size: int, alignment: static Natural): ptr T {.inline.} =
+  ## Aligned heap allocation for types containing a variable-sized UncheckedArray field
+  ## or an importc type with missing size information
+  ## with zero initialization
+  # aligned_alloc requires allocating in multiple of the alignment.
+  let requiredMem = size.round_step_up(alignment)
+
+  result = cast[ptr T](aligned_alloc(alignment, requiredMem))
+  zeroMem(result, requiredMem)
+
+proc alloc0HeapArrayAligned*(T: typedesc, len: int, alignment: static Natural): ptr UncheckedArray[T] {.inline.} =
+  ## Aligned heap allocation with zero initialization
+  # aligned_alloc requires allocating in multiple of the alignment.
+  let
+    size = sizeof(T) * len
+    requiredMem = size.round_step_up(alignment)
+
+  result = cast[ptr UncheckedArray[T]](aligned_alloc(alignment, requiredMem))
+  zeroMem(result, size)
+
+proc alloc0HeapAlignedPtr*(T: typedesc[ptr], alignment: static Natural): T {.inline.} =
+  alloc0HeapAligned(typeof(default(T)[]), alignment)
+
+proc alloc0HeapUncheckedAlignedPtr*(T: typedesc[ptr], size: int, alignment: static Natural): T {.inline.} =
+  ## Aligned heap allocation for types containing a variable-sized UncheckedArray field
+  ## or an importc type with missing size information
+  ## with zero initialization
+  alloc0HeapUncheckedAligned(typeof(default(T)[]), size, alignment)

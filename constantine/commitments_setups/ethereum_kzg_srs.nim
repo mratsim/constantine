@@ -298,7 +298,10 @@ proc trusted_setup_load*(ctx: var ptr EthereumKZGContext, filepath: cstring, for
   ## Currently the only format supported
   ## is from the reference implementation c-kzg-4844 text file
 
-  ctx = allocHeapAligned(EthereumKZGContext, alignment = 64)
+  # Use alloc0HeapAligned to zero-initialize memory
+  # This is critical for ARC with custom =destroy procs (e.g., ECFFT_Descriptor, FrFFT_Descriptor)
+  # that free memory - uninitialized garbage pointers would cause double-free crashes
+  ctx = alloc0HeapAligned(EthereumKZGContext, alignment = 64)
 
   var f: File
   let ok = f.open(filepath, kRead)
