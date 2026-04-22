@@ -19,7 +19,8 @@ import
   ../../constantine/named/algebras,
   ../../constantine/named/zoo_generators,
   ../../constantine/math/[arithmetic, ec_shortweierstrass],
-  ../../constantine/math/polynomials/fft,
+  ../../constantine/math/polynomials/fft_fields {.all.},
+  ../../constantine/math/polynomials/fft_ec {.all.},
   ../../constantine/math/io/io_fields,
   ./fft_utils
 

@@ -17,7 +17,8 @@ import
   constantine/named/algebras,
   constantine/named/zoo_generators,
   constantine/math/[arithmetic, ec_shortweierstrass],
-  constantine/math/polynomials/fft {.all.},
+  constantine/math/polynomials/fft_fields {.all.},
+  constantine/math/polynomials/fft_ec {.all.},
   constantine/math/io/io_fields,
   helpers/prng_unsafe,
   ./bench_blueprint
@@ -88,8 +89,8 @@ proc warmup() =
   let stop = cpuTime()
   echo &"Warmup: {stop - start:>4.4f} s, result {foo}"
 
-proc bench_Fr_FFT*() =
-  echo "\n=== Fr FFT Benchmark ==="
+proc bench_Fr_FFT_NN_Internal*() =
+  echo "\n=== Fr FFT (Natural → Natural, Recursive Internal) Benchmark ==="
   separator()
 
   const NumIters = 3
@@ -105,8 +106,89 @@ proc bench_Fr_FFT*() =
 
     var freq = newSeq[F](order)
 
-    bench("Fr FFT", "Fr[BLS12-381]", order, NumIters):
+    bench("Fr FFT NN Rec", "Fr[BLS12-381]", order, NumIters):
+      let status = fft_nn_recursive(fftDesc, freq, data)
+      doAssert status == FFT_Success
+
+proc bench_Fr_FFT_NN_Dispatch*() =
+  echo "\n=== Fr FFT (Natural → Natural, Dispatch) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[F](order)
+    for i in 0 ..< order:
+      data[i].fromUint(uint64(i + 1))
+
+    var freq = newSeq[F](order)
+
+    bench("Fr FFT NN Dispatch", "Fr[BLS12-381]", order, NumIters):
       let status = fft_nn(fftDesc, freq, data)
+      doAssert status == FFT_Success
+
+proc bench_Fr_FFT_NR_Recursive*() =
+  echo "\n=== Fr FFT (Natural → Bit-Reversed, Recursive) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  # Test sizes: 8, 32, 128, 512, 2048, 8192 (every 2 powers, up to 8192)
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[F](order)
+    for i in 0 ..< order:
+      data[i].fromUint(uint64(i + 1))
+
+    var freq = newSeq[F](order)
+
+    bench("Fr FFT NR Rec", "Fr[BLS12-381]", order, NumIters):
+      let status = fft_nr_recursive(fftDesc, freq, data)
+      doAssert status == FFT_Success
+
+proc bench_Fr_FFT_NR_Iterative*() =
+  echo "\n=== Fr FFT (Natural → Bit-Reversed, Iterative) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[F](order)
+    for i in 0 ..< order:
+      data[i].fromUint(uint64(i + 1))
+
+    var freq = newSeq[F](order)
+
+    bench("Fr FFT NR Iter DIF", "Fr[BLS12-381]", order, NumIters):
+      let status = fft_nr_iterative_dif(fftDesc, freq, data)
+      doAssert status == FFT_Success
+
+proc bench_Fr_FFT_NR_Dispatch*() =
+  echo "\n=== Fr FFT (Natural → Bit-Reversed, Dispatch) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[F](order)
+    for i in 0 ..< order:
+      data[i].fromUint(uint64(i + 1))
+
+    var freq = newSeq[F](order)
+
+    bench("Fr FFT NR Dispatch", "Fr[BLS12-381]", order, NumIters):
+      let status = fft_nr(fftDesc, freq, data)
       doAssert status == FFT_Success
 
 proc bench_Fr_IFFT*() =
@@ -134,8 +216,50 @@ proc bench_Fr_IFFT*() =
       doAssert status == FFT_Success
 
 
-proc bench_EC_FFT*() =
-  echo "\n=== EC FFT Benchmark ==="
+proc bench_EC_FFT_NN_Internal*() =
+  echo "\n=== EC FFT (Natural → Natural, Recursive Internal) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = ECFFT_Descriptor[EC_G1].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[EC_G1](order)
+    data[0].setGenerator()
+    for i in 1 ..< order:
+      data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
+
+    var coefsOut = newSeq[EC_G1](order)
+
+    bench("EC FFT NN Rec", "EC_G1", order, NumIters):
+      let status = ec_fft_nn_recursive(fftDesc, coefsOut, data)
+      doAssert status == FFT_Success
+
+proc bench_EC_FFT_NN_Dispatch*() =
+  echo "\n=== EC FFT (Natural → Natural, Dispatch) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = ECFFT_Descriptor[EC_G1].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[EC_G1](order)
+    data[0].setGenerator()
+    for i in 1 ..< order:
+      data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
+
+    var coefsOut = newSeq[EC_G1](order)
+
+    bench("EC FFT NN Dispatch", "EC_G1", order, NumIters):
+      let status = ec_fft_nn(fftDesc, coefsOut, data)
+      doAssert status == FFT_Success
+
+proc bench_EC_FFT_NR_Recursive*() =
+  echo "\n=== EC FFT (Natural → Bit-Reversed, Recursive) Benchmark ==="
   separator()
 
   const NumIters = 3
@@ -152,8 +276,51 @@ proc bench_EC_FFT*() =
 
     var coefsOut = newSeq[EC_G1](order)
 
-    bench("EC FFT (G1)", "EC_G1", order, NumIters):
-      let status = ec_fft_nn(fftDesc, coefsOut, data)
+    bench("EC FFT NR Rec", "EC_G1", order, NumIters):
+      let status = ec_fft_nn_recursive(fftDesc, coefsOut, data)
+      doAssert status == FFT_Success
+      bit_reversal_permutation(coefsOut)
+
+proc bench_EC_FFT_NR_Iterative*() =
+  echo "\n=== EC FFT (Natural → Bit-Reversed, Iterative) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = ECFFT_Descriptor[EC_G1].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[EC_G1](order)
+    data[0].setGenerator()
+    for i in 1 ..< order:
+      data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
+
+    var coefsOut = newSeq[EC_G1](order)
+
+    bench("EC FFT NR Iter", "EC_G1", order, NumIters):
+      let status = ec_fft_nr_iterative(fftDesc, coefsOut, data)
+      doAssert status == FFT_Success
+
+proc bench_EC_FFT_NR_Dispatch*() =
+  echo "\n=== EC FFT (Natural → Bit-Reversed, Dispatch) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = ECFFT_Descriptor[EC_G1].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[EC_G1](order)
+    data[0].setGenerator()
+    for i in 1 ..< order:
+      data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
+
+    var coefsOut = newSeq[EC_G1](order)
+
+    bench("EC FFT NR Dispatch", "EC_G1", order, NumIters):
+      let status = ec_fft_nr(fftDesc, coefsOut, data)
       doAssert status == FFT_Success
 
 proc bench_EC_IFFT*() =
@@ -181,17 +348,142 @@ proc bench_EC_IFFT*() =
       let status = ec_ifft_nn(fftDesc, recovered, coefsOut)
       doAssert status == FFT_Success
 
+proc bench_Fr_FFT_NN_Stockham*() =
+  echo "\n=== Fr FFT (Natural → Natural, Stockham) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  # Test sizes: 8, 32, 128, 512, 2048, 8192 (every 2 powers, up to 8192)
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[F](order)
+    for i in 0 ..< order:
+      data[i].fromUint(uint64(i + 1))
+
+    var freq = newSeq[F](order)
+
+    bench("Fr FFT NN Stockham", "Fr[BLS12-381]", order, NumIters):
+      let status = fft_nn_stockham(fftDesc, freq, data)
+      doAssert status == FFT_Success
+
+proc bench_Fr_FFT_RN_Iterative_DIT*() =
+  echo "\n=== Fr FFT (Natural → Natural, Iterative DIT) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[F](order)
+    for i in 0 ..< order:
+      data[i].fromUint(uint64(i + 1))
+
+    var freq = newSeq[F](order)
+
+    bench("Fr FFT RN Iter DIT", "Fr[BLS12-381]", order, NumIters):
+      let status = fft_rn_iterative_dit(fftDesc, freq, data)
+      doAssert status == FFT_Success
+
+proc bench_Fr_FFT_NR_Iterative_DIF_Standalone*() =
+  echo "\n=== Fr FFT (Natural → Bit-Reversed, DIF Standalone) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[F](order)
+    for i in 0 ..< order:
+      data[i].fromUint(uint64(i + 1))
+
+    var freq = newSeq[F](order)
+
+    bench("Fr FFT NR Iter DIF", "Fr[BLS12-381]", order, NumIters):
+      let status = fft_nr_iterative_dif(fftDesc, freq, data)
+      doAssert status == FFT_Success
+
+proc bench_Fr_FFT_RN_Iterative_DIT_Standalone*() =
+  echo "\n=== Fr FFT (Bit-Reversed → Natural, DIT Standalone - Full) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[F](order)
+    for i in 0 ..< order:
+      data[i].fromUint(uint64(i + 1))
+
+    var freq = newSeq[F](order)
+
+    bench("Fr FFT RN Iter DIT", "Fr[BLS12-381]", order, NumIters):
+      # Full DIT FFT: bit-reversal + iterative DIT
+      let status = fft_rn_iterative_dit(fftDesc, freq, data)
+      doAssert status == FFT_Success
+
 when isMainModule:
   echo "============================================================"
   echo "            FFT / IFFT Benchmarks (BLS12-381)"
   echo "============================================================"
   echo "Testing every 2 powers of 2, up to 8192 elements"
   echo "============================================================"
+  echo ""
+  echo "Legend:"
+  echo "  INTERNAL IMPLEMENTATIONS:"
+  echo "  - Fr FFT NN Rec:    Natural → Natural (recursive Cooley-Tukey)"
+  echo "  - Fr FFT NR Rec:    Natural → Bit-Reversed (recursive Cooley-Tukey)"
+  echo "  - Fr FFT NR Iter:   Natural → Bit-Reversed (iterative DIF)"
+  echo "  - Fr FFT RN Iter:   Natural → Natural (bitrev + iterative DIT)"
+  echo "  - Fr FFT NN Stock:  Natural → Natural (Stockham, double-buffered)"
+  echo ""
+  echo "  STANDALONE (no bit-reversal overhead):"
+  echo "  - Fr FFT NR Iter DIF: Natural → Bit-Reversed (pure DIF)"
+  echo "  - Fr FFT RN Iter DIT: Bit-Reversed → Natural (pure DIT)"
+  echo ""
+  echo "  DISPATCH (auto-selects fastest):"
+  echo "  - Fr FFT NN:        Natural → Natural (dispatches to recursive)"
+  echo "  - Fr FFT NR:        Natural → Bit-Reversed (dispatches to iterative)"
+  echo ""
+  echo "  EC FFT benchmarks follow same pattern"
+  echo "============================================================"
 
   warmup()
-  bench_Fr_FFT()
+  echo ""
+  echo "--- Fr FFT Internal Implementations ---"
+  bench_Fr_FFT_NN_Internal()
+  bench_Fr_FFT_NR_Recursive()
+  bench_Fr_FFT_NR_Iterative()
+  bench_Fr_FFT_RN_Iterative_DIT()
+  bench_Fr_FFT_NN_Stockham()
+  echo ""
+  echo "--- Fr FFT Standalone (No Bit-Reversal Overhead) ---"
+  bench_Fr_FFT_NR_Iterative_DIF_Standalone()
+  bench_Fr_FFT_RN_Iterative_DIT_Standalone()
+  echo ""
+  echo "--- Fr FFT Dispatch ---"
+  bench_Fr_FFT_NN_Dispatch()
+  bench_Fr_FFT_NR_Dispatch()
+  echo ""
   bench_Fr_IFFT()
-  bench_EC_FFT()
+  echo ""
+  echo "--- EC FFT Internal Implementations ---"
+  bench_EC_FFT_NN_Internal()
+  bench_EC_FFT_NR_Recursive()
+  bench_EC_FFT_NR_Iterative()
+  echo ""
+  echo "--- EC FFT Dispatch ---"
+  bench_EC_FFT_NN_Dispatch()
+  bench_EC_FFT_NR_Dispatch()
+  echo ""
   bench_EC_IFFT()
 
   echo ""

@@ -10,7 +10,7 @@ import
   constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/io/io_fields,
-  constantine/math/polynomials/fft,
+  constantine/math/polynomials/fft_fields,
   constantine/platforms/[primitives, allocs, static_for]
 
 ## ############################################################

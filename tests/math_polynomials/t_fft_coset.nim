@@ -21,7 +21,7 @@
 import
   ../../constantine/named/algebras,
   ../../constantine/math/[arithmetic, ec_shortweierstrass],
-  ../../constantine/math/polynomials/[fft, polynomials],
+  ../../constantine/math/polynomials/[fft_fields, polynomials],
   ../../constantine/math/io/io_fields,
   ./fft_utils
 

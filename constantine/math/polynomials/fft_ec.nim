@@ -250,7 +250,7 @@ func ec_ifft_nn[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
        vals: openarray[EC]): FFTStatus {.inline, tags: [VarTime, Alloca], meter.} =
-  ec_ifft_nn_recursive(desc, output, vals) =
+  ec_ifft_nn_recursive(desc, output, vals)
 
 func ec_ifft_rn*[EC](
        desc: ECFFT_Descriptor[EC],
