@@ -62,7 +62,7 @@ proc testFrFFTAlgorithmConsistency*() =
   echo "  ✓ Fr FFT: All 4 implementations produce identical results"
 
 proc testECFFTAlgorithmConsistency*() =
-  echo "Testing EC FFT consistency between recursive and iterative..."
+  echo "Testing EC FFT consistency between all implementations..."
 
   for order in [4, 8, 16]:
     let fftDesc = createFFTDescriptor(EC_G1, F, order)
@@ -73,21 +73,140 @@ proc testECFFTAlgorithmConsistency*() =
     for i in 1..<order:
       vals[i].mixedSum(vals[i-1], gen)
 
-    # NN Recursive + bitrev (Natural → Bit-Reversed)
+    # Reference: NN Recursive (Natural → Natural)
     var output_nn_rec = newSeq[EC_G1](order)
     discard ec_fft_nn_recursive(fftDesc, output_nn_rec, vals)
-    bit_reversal_permutation(output_nn_rec)
+
+    # Method 1: Iterative DIF (NR) + BitRev (Natural → Natural)
+    var output_nn_dif_br = newSeq[EC_G1](order)
+    discard ec_fft_nn_via_iterative_dif_and_bitrev(fftDesc, output_nn_dif_br, vals)
+
+    # Method 2: BitRev + Iterative DIT (RN) (Natural → Natural)
+    var output_nn_br_dit = newSeq[EC_G1](order)
+    discard ec_fft_nn_via_bitrev_and_iterative_dit(fftDesc, output_nn_br_dit, vals)
+
+    # Verify all produce same natural order output
+    for i in 0..<order:
+      doAssert (output_nn_rec[i] == output_nn_dif_br[i]).bool,
+        "EC NN Rec vs NN DIF+BitRev mismatch at index " & $i & " (order=" & $order & ")"
+      doAssert (output_nn_rec[i] == output_nn_br_dit[i]).bool,
+        "EC NN Rec vs NN BitRev+DIT mismatch at index " & $i & " (order=" & $order & ")"
+
+  echo "  ✓ EC FFT: All implementations produce identical results"
+
+proc testECIFFTAlgorithmConsistency*() =
+  echo "Testing EC IFFT consistency between recursive and iterative..."
+
+  for order in [4, 8, 16]:
+    let fftDesc = createFFTDescriptor(EC_G1, F, order)
+
+    var vals = newSeq[EC_G1](order)
+    vals[0].setGenerator()
+    let gen = EC_G1.F.Name.getGenerator("G1")
+    for i in 1..<order:
+      vals[i].mixedSum(vals[i-1], gen)
+
+    # Reference: Recursive IFFT NN (Natural → Natural)
+    var output_nn_rec = newSeq[EC_G1](order)
+    discard ec_ifft_nn_recursive(fftDesc, output_nn_rec, vals)
+
+    # Method: BitRev + Iterative DIT (RN) (Natural → Natural)
+    var output_nn_dit_br = newSeq[EC_G1](order)
+    discard ec_ifft_nn_via_bitrev_and_iterative_dit(fftDesc, output_nn_dit_br, vals)
+
+    # Verify both produce same natural order output
+    for i in 0..<order:
+      doAssert (output_nn_rec[i] == output_nn_dit_br[i]).bool,
+        "EC NN Rec vs NN BitRev+DIT mismatch at index " & $i & " (order=" & $order & ")"
+
+  echo "  ✓ EC IFFT: Recursive and Iterative DIT+BitRev produce identical results"
+
+proc testECFFTNRConsistency*() =
+  echo "Testing EC FFT NR (Natural → Bit-Reversed) output ordering..."
+
+  for order in [4, 8, 16]:
+    let fftDesc = createFFTDescriptor(EC_G1, F, order)
+
+    var vals = newSeq[EC_G1](order)
+    vals[0].setGenerator()
+    let gen = EC_G1.F.Name.getGenerator("G1")
+    for i in 1..<order:
+      vals[i].mixedSum(vals[i-1], gen)
+
+    # Reference: NN Recursive (Natural → Natural)
+    var output_nn = newSeq[EC_G1](order)
+    discard ec_fft_nn_recursive(fftDesc, output_nn, vals)
 
     # NR Iterative DIF (Natural → Bit-Reversed)
-    var output_nr_dif = newSeq[EC_G1](order)
-    discard ec_fft_nr_iterative(fftDesc, output_nr_dif, vals)
+    var output_nr = newSeq[EC_G1](order)
+    discard ec_fft_nr_iterative(fftDesc, output_nr, vals)
 
-    # Verify both produce same output
+    # Verify NR output is bit-reversed version of NN output
     for i in 0..<order:
-      doAssert (output_nn_rec[i] == output_nr_dif[i]).bool,
-        "EC NN_Rec+bitrev vs NR_DIF mismatch at index " & $i & " (order=" & $order & ")"
+      let br_i = reverseBits(uint(i), order.uint64.log2_vartime())
+      doAssert (output_nr[i] == output_nn[br_i]).bool,
+        "EC NR DIF should produce bit-reversed of NN Rec at index " & $i & " (order=" & $order & ")"
 
-  echo "  ✓ EC FFT: Recursive+BitRev and Iterative DIF produce identical results"
+  echo "  ✓ EC FFT NR: Iterative DIF produces correct bit-reversed output"
+
+proc testECFFTRNConsistency*() =
+  echo "Testing EC FFT RN (Bit-Reversed → Natural) input/output..."
+
+  for order in [4, 8, 16]:
+    let fftDesc = createFFTDescriptor(EC_G1, F, order)
+
+    var vals = newSeq[EC_G1](order)
+    vals[0].setGenerator()
+    let gen = EC_G1.F.Name.getGenerator("G1")
+    for i in 1..<order:
+      vals[i].mixedSum(vals[i-1], gen)
+
+    # Bit-reverse the input
+    var vals_br = newSeq[EC_G1](order)
+    bit_reversal_permutation(vals_br, vals)
+
+    # Reference: NN Recursive (Natural → Natural)
+    var output_nn = newSeq[EC_G1](order)
+    discard ec_fft_nn_recursive(fftDesc, output_nn, vals)
+
+    # RN Iterative DIT (Bit-Reversed → Natural)
+    var output_rn = newSeq[EC_G1](order)
+    discard ec_fft_rn_iterative_dit(fftDesc, output_rn, vals_br)
+
+    # Verify RN output matches NN output (both natural order)
+    for i in 0..<order:
+      doAssert (output_rn[i] == output_nn[i]).bool,
+        "EC RN DIT should match NN Rec at index " & $i & " (order=" & $order & ")"
+
+  echo "  ✓ EC FFT RN: Iterative DIT produces correct natural order output"
+
+proc testECIFFTRNConsistency*() =
+  echo "Testing EC IFFT RN (Bit-Reversed → Natural) roundtrip..."
+
+  for order in [4, 8, 16]:
+    let fftDesc = createFFTDescriptor(EC_G1, F, order)
+
+    # Create time-domain data
+    var time_data = newSeq[EC_G1](order)
+    time_data[0].setGenerator()
+    let gen = EC_G1.F.Name.getGenerator("G1")
+    for i in 1..<order:
+      time_data[i].mixedSum(time_data[i-1], gen)
+
+    # FFT NR (Natural → Bit-Reversed)
+    var freq_br = newSeq[EC_G1](order)
+    discard ec_fft_nr_iterative(fftDesc, freq_br, time_data)
+
+    # IFFT RN (Bit-Reversed → Natural) should recover original
+    var recovered = newSeq[EC_G1](order)
+    discard ec_ifft_rn_iterative_dit(fftDesc, recovered, freq_br)
+
+    # Verify roundtrip: IFFT_RN(FFT_NR(x)) == x
+    for i in 0..<order:
+      doAssert (recovered[i] == time_data[i]).bool,
+        "EC IFFT_RN(FFT_NR(x)) roundtrip failed at index " & $i & " (order=" & $order & ")"
+
+  echo "  ✓ EC IFFT RN: IFFT_RN(FFT_NR(x)) roundtrip successful"
 
 proc testFrIFFTAlgorithmConsistency*() =
   echo "Testing Fr IFFT consistency between recursive and iterative..."
@@ -203,6 +322,10 @@ when isMainModule:
 
   testFrFFTAlgorithmConsistency()
   testECFFTAlgorithmConsistency()
+  testECIFFTAlgorithmConsistency()
+  testECFFTNRConsistency()
+  testECFFTRNConsistency()
+  testECIFFTRNConsistency()
   testFrIFFTAlgorithmConsistency()
   testFrFFTNRConsistency()
   testFrFFTRNConsistency()

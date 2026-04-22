@@ -29,9 +29,9 @@ proc report*(op, typ: string, size: int, start, stop: MonoTime, startClk, stopCl
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
     let cycles = (stopClk - startClk) div iters
-    echo &"{op:<32} size {size:>5}    {typ:<15} {throughput:>15.3f} ops/s  {ns:>12} ns/op  {cycles:>12} CPU cycles"
+    echo &"{op:<32} size {size:>5}    {typ:<25} {throughput:>15.3f} ops/s  {ns:>12} ns/op  {cycles:>12} CPU cycles"
   else:
-    echo &"{op:<32} size {size:>5}    {typ:<15} {throughput:>15.3f} ops/s  {ns:>12} ns/op"
+    echo &"{op:<32} size {size:>5}    {typ:<25} {throughput:>15.3f} ops/s  {ns:>12} ns/op"
 
 template bench*(op, typ: string, size, iters: int, body: untyped): untyped =
   block:
@@ -103,7 +103,7 @@ proc bench_EC_FFT_NN_Recursive*() =
 
     var coefsOut = newSeq[EC_G1](order)
 
-    bench("EC FFT NN Rec", "EC_G1", order, NumIters):
+    bench("EC FFT NN Rec", "EC[BLS12-381 G1]", order, NumIters):
       let status = ec_fft_nn_recursive(fftDesc, coefsOut, data)
       doAssert status == FFT_Success
 
@@ -124,7 +124,7 @@ proc bench_EC_FFT_NR_Iterative_DIF*() =
 
     var coefsOut = newSeq[EC_G1](order)
 
-    bench("EC FFT NR DIF", "EC_G1", order, NumIters):
+    bench("EC FFT NR DIF", "EC[BLS12-381 G1]", order, NumIters):
       let status = ec_fft_nr_iterative(fftDesc, coefsOut, data)
       doAssert status == FFT_Success
 
@@ -147,7 +147,7 @@ proc bench_EC_FFT_RN_Iterative_DIT*() =
 
     var coefsOut = newSeq[EC_G1](order)
 
-    bench("EC FFT RN DIT", "EC_G1", order, NumIters):
+    bench("EC FFT RN DIT", "EC[BLS12-381 G1]", order, NumIters):
       for i in 0 ..< order:
         coefsOut[i] = data[i]
       let status = ec_fft_rn_iterative_dit(fftDesc, coefsOut, coefsOut)
@@ -170,10 +170,52 @@ proc bench_EC_FFT_NR_via_Recursive_and_BitRev*() =
 
     var coefsOut = newSeq[EC_G1](order)
 
-    bench("EC FFT NR Rec+BR", "EC_G1", order, NumIters):
+    bench("EC FFT NR Rec+BR", "EC[BLS12-381 G1]", order, NumIters):
       let status = ec_fft_nn_recursive(fftDesc, coefsOut, data)
       doAssert status == FFT_Success
       bit_reversal_permutation(coefsOut)
+
+proc bench_EC_FFT_NN_via_Iterative_DIF_and_BitRev*() =
+  echo "\n=== EC FFT (Natural → Natural, Iterative DIF + BitRev) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = ECFFT_Descriptor[EC_G1].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[EC_G1](order)
+    data[0].setGenerator()
+    for i in 1 ..< order:
+      data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
+
+    var coefsOut = newSeq[EC_G1](order)
+
+    bench("EC FFT NN DIF+BR", "EC[BLS12-381 G1]", order, NumIters):
+      let status = ec_fft_nn_via_iterative_dif_and_bitrev(fftDesc, coefsOut, data)
+      doAssert status == FFT_Success
+
+proc bench_EC_FFT_NN_via_BitRev_and_Iterative_DIT*() =
+  echo "\n=== EC FFT (Natural → Natural, BitRev + Iterative DIT) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = ECFFT_Descriptor[EC_G1].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[EC_G1](order)
+    data[0].setGenerator()
+    for i in 1 ..< order:
+      data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
+
+    var coefsOut = newSeq[EC_G1](order)
+
+    bench("EC FFT NN BR+DIT", "EC[BLS12-381 G1]", order, NumIters):
+      let status = ec_fft_nn_via_bitrev_and_iterative_dit(fftDesc, coefsOut, data)
+      doAssert status == FFT_Success
 
 proc bench_EC_FFT_NN_Dispatch*() =
   echo "\n=== EC FFT (Natural → Natural, Dispatch) Benchmark ==="
@@ -192,7 +234,7 @@ proc bench_EC_FFT_NN_Dispatch*() =
 
     var coefsOut = newSeq[EC_G1](order)
 
-    bench("EC FFT NN Dispatch", "EC_G1", order, NumIters):
+    bench("EC FFT NN Dispatch", "EC[BLS12-381 G1]", order, NumIters):
       let status = ec_fft_nn(fftDesc, coefsOut, data)
       doAssert status == FFT_Success
 
@@ -213,12 +255,12 @@ proc bench_EC_FFT_NR_Dispatch*() =
 
     var coefsOut = newSeq[EC_G1](order)
 
-    bench("EC FFT NR Dispatch", "EC_G1", order, NumIters):
+    bench("EC FFT NR Dispatch", "EC[BLS12-381 G1]", order, NumIters):
       let status = ec_fft_nr(fftDesc, coefsOut, data)
       doAssert status == FFT_Success
 
-proc bench_EC_IFFT*() =
-  echo "\n=== EC IFFT Benchmark ==="
+proc bench_EC_IFFT_NN_Dispatch*() =
+  echo "\n=== EC IFFT (Natural → Natural, Dispatch) Benchmark ==="
   separator()
 
   const NumIters = 3
@@ -237,8 +279,55 @@ proc bench_EC_IFFT*() =
 
     var recovered = newSeq[EC_G1](order)
 
-    bench("EC IFFT (G1)", "EC_G1", order, NumIters):
+    bench("EC IFFT NN Dispatch", "EC[BLS12-381 G1]", order, NumIters):
       let status = ec_ifft_nn(fftDesc, recovered, coefsOut)
+      doAssert status == FFT_Success
+
+proc bench_EC_IFFT_RN_Iterative_DIT*() =
+  echo "\n=== EC IFFT (Bit-Reversed → Natural, Iterative DIT) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = ECFFT_Descriptor[EC_G1].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[EC_G1](order)
+    data[0].setGenerator()
+    for i in 1 ..< order:
+      data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
+
+    bit_reversal_permutation(data)
+
+    var recovered = newSeq[EC_G1](order)
+
+    bench("EC IFFT RN DIT", "EC[BLS12-381 G1]", order, NumIters):
+      let status = ec_ifft_rn_iterative_dit(fftDesc, recovered, data)
+      doAssert status == FFT_Success
+
+proc bench_EC_IFFT_NN_via_BitRev_and_Iterative_DIT*() =
+  echo "\n=== EC IFFT (Natural → Natural, BitRev + Iterative DIT) Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = ECFFT_Descriptor[EC_G1].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[EC_G1](order)
+    data[0].setGenerator()
+    for i in 1 ..< order:
+      data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
+
+    var coefsOut = newSeq[EC_G1](order)
+    discard ec_fft_nn(fftDesc, coefsOut, data)
+
+    var recovered = newSeq[EC_G1](order)
+
+    bench("EC IFFT NN BitRev+DIT", "EC[BLS12-381 G1]", order, NumIters):
+      let status = ec_ifft_nn_via_bitrev_and_iterative_dit(fftDesc, recovered, coefsOut)
       doAssert status == FFT_Success
 
 when isMainModule:
@@ -256,10 +345,16 @@ when isMainModule:
   echo ""
   echo "  COMBINATIONS (algorithm + bit-reversal):"
   echo "  - EC FFT NR Rec+BR:    Natural → Bit-Reversed (Recursive + BitRev)"
+  echo "  - EC FFT NN DIF+BR:    Natural → Natural (DIF + BitRev)"
+  echo "  - EC FFT NN BR+DIT:    Natural → Natural (BitRev + DIT)"
   echo ""
   echo "  DISPATCH:"
-  echo "  - EC FFT NN:        Natural → Natural"
-  echo "  - EC FFT NR:        Natural → Bit-Reversed"
+  echo "  - EC FFT NN:           Natural → Natural (DIF + BitRev)"
+  echo "  - EC FFT NR:           Natural → Bit-Reversed (DIF)"
+  echo ""
+  echo "  IFFT:"
+  echo "  - EC IFFT NN Dispatch: Natural → Natural (BitRev + DIT)"
+  echo "  - EC IFFT RN DIT:      Bit-Reversed → Natural (Iterative DIT)"
   echo "============================================================"
 
   warmup()
@@ -271,11 +366,16 @@ when isMainModule:
   echo ""
   echo "--- Combinations (Algorithm + Bit-Reversal) ---"
   bench_EC_FFT_NR_via_Recursive_and_BitRev()
+  bench_EC_FFT_NN_via_Iterative_DIF_and_BitRev()
+  bench_EC_FFT_NN_via_BitRev_and_Iterative_DIT()
   echo ""
   echo "--- Dispatch ---"
   bench_EC_FFT_NN_Dispatch()
   bench_EC_FFT_NR_Dispatch()
   echo ""
-  bench_EC_IFFT()
+  echo "--- IFFT ---"
+  bench_EC_IFFT_NN_Dispatch()
+  bench_EC_IFFT_RN_Iterative_DIT()
+  bench_EC_IFFT_NN_via_BitRev_and_Iterative_DIT()
 
   echo ""
