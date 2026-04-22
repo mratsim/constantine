@@ -19,7 +19,7 @@ import
   std/strutils,
   ../../constantine/named/algebras,
   ../../constantine/math/arithmetic,
-  ../../constantine/math/polynomials/fft {.all.},
+  ../../constantine/math/polynomials/fft_common {.all.},
   ../../constantine/math/io/io_fields,
   ../../constantine/platforms/bithacks
 
