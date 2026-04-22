@@ -79,7 +79,7 @@ const bitReversalOutOfPlaceThreshold* = 7
   ## Threshold (as log2) above which the COBRA algorithm is used for out-of-place.
   ## Below this threshold, the naive algorithm is faster on modern CPUs.
 
-func bit_reversal_permutation_naive*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) {.inline.} =
+func bit_reversal_permutation_naive[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) =
   ## Out-of-place bit reversal permutation using a naive algorithm.
   ##
   ## For each index i, places src[i] into dst[reverseBits(i)].
@@ -94,7 +94,7 @@ func bit_reversal_permutation_naive*[T](dst{.noalias.}: var openArray[T], src{.n
   for i in 0'u ..< src.len.uint:
     dst[int reverseBits(i, logN)] = src[i]
 
-func bit_reversal_permutation_naive*[T](buf: var openArray[T]) {.inline, used.} =
+func bit_reversal_permutation_naive[T](buf: var openArray[T]) {.used.} =
   ## In-place bit reversal permutation using a naive algorithm.
   ##
   ## This uses a swap-based approach where we traverse the array and
@@ -113,7 +113,7 @@ func bit_reversal_permutation_naive*[T](buf: var openArray[T]) {.inline, used.} 
     if i < rev_i:
       swap(buf[i], buf[rev_i])
 
-func bit_reversal_permutation_cobra*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) {.inline.} =
+func bit_reversal_permutation_cobra[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) =
   ## Out-of-place bit reversal permutation using the COBRA algorithm
   ## (Cache Optimal BitReverse Algorithm from Carter & Gatlin, 1998)
   ##
@@ -174,6 +174,106 @@ func bit_reversal_permutation_cobra*[T](dst{.noalias.}: var openArray[T], src{.n
                   (bRev shl logTileSize) or aRev
         let tIdx = (aRev shl logTileSize) or c
         dst[idx] = t[tIdx]
+
+  freeHeap(t)
+
+func bit_reversal_permutation_cobra[T](buf: var openArray[T]) {.used.} =
+  ## In-place bit reversal permutation using the COBRA algorithm.
+  ## Only used for benchmarking.
+  ##   Whether for uint32 (4 bytes) to Fr[BLS12_381]
+  ##   the in-place algorithm is at least 2x slower than out-of-place
+  ##   AND tuning the naive vs cobra threshold is trickier
+  ##   and might severely depend on the memory bandwidth
+  ##   and be very different between Apple CPUs and Intel/AMD
+  #
+  # We adapt the following out-of-place algorithm to in-place.
+  #
+  # for b = 0 to 2ˆ(lgN-2q) - 1
+  #   b' = r(b)
+  #   for a = 0 to 2ˆq - 1
+  #     a' = r(a)
+  #     for c = 0 to 2ˆq - 1
+  #       T[a'c] = A[abc]
+  #
+  #   for c = 0 to 2ˆq - 1
+  #     c' = r(c)                <- Note: typo in paper, they say c'=r(a)
+  #     for a' = 0 to 2ˆq - 1
+  #       B[c'b'a'] = T[a'c]
+  #
+  # As we are in-place, A and B refer to the same buffer and
+  # we don't want to destructively write to B.
+  # Instead we swap B and T to save the overwritten slot.
+  #
+  # Due to bitreversal being an involution, we can redo the first loop
+  # to place the overwritten data in its correct slot.
+  #
+  # Hence
+  #
+  # for b = 0 to 2ˆ(lgN-2q) - 1
+  #   b' = r(b)
+  #   for a = 0 to 2ˆq - 1
+  #     a' = r(a)
+  #     for c = 0 to 2ˆq - 1
+  #       T[a'c] = A[abc]
+  #
+  #   for c = 0 to 2ˆq - 1
+  #     c' = r(c)
+  #     for a' = 0 to 2ˆq - 1
+  #       if abc < c'b'a'
+  #         swap(A[c'b'a'], T[a'c])
+  #
+  #   for a = 0 to 2ˆq - 1
+  #     a' = r(a)
+  #     for c = 0 to 2ˆq - 1
+  #       c' = r(c)
+  #       if abc < c'b'a'
+  #         swap(A[abc], T[a'c])
+
+  debug: doAssert buf.len.uint.isPowerOf2_vartime()
+
+  let logN = log2_vartime(uint buf.len)
+  let logTileSize = deriveLogTileSize(T, logN)
+  let logBLen = logN - 2*logTileSize
+  let bLen = 1'u shl logBLen
+  let tileSize = 1'u shl logTileSize
+
+  let t = allocHeapArray(T, tileSize*tileSize)
+
+  for b in 0'u ..< bLen:
+    let bRev = reverseBits(b, logBLen)
+
+    for a in 0'u ..< tileSize:
+      let aRev = reverseBits(a, logTileSize)
+      for c in 0'u ..< tileSize:
+        # T[a'c] = A[abc]
+        let tIdx = (aRev shl logTileSize) or c
+        let idx = (a shl (logBLen+logTileSize)) or
+                  (b shl logTileSize) or c
+        t[tIdx] = buf[idx]
+
+    for c in 0'u ..< tileSize:
+      let cRev = reverseBits(c, logTileSize)
+      for aRev in 0'u ..< tileSize:
+        let a = reverseBits(aRev, logTileSize)
+        let idx = (a shl (logBLen+logTileSize)) or
+                  (b shl logTileSize) or c
+        let idxRev = (cRev shl (logBLen+logTileSize)) or
+                     (bRev shl logTileSize) or aRev
+        if idx < idxRev:
+          let tIdx = (aRev shl logTileSize) or c
+          swap(buf[idxRev], t[tIdx])
+
+    for a in 0'u ..< tileSize:
+      let aRev = reverseBits(a, logTileSize)
+      for c in 0'u ..< tileSize:
+        let cRev = reverseBits(c, logTileSize)
+        let idx = (a shl (logBLen+logTileSize)) or
+                  (b shl logTileSize) or c
+        let idxRev = (cRev shl (logBLen+logTileSize)) or
+                     (bRev shl logTileSize) or aRev
+        if idx < idxRev:
+          let tIdx = (aRev shl logTileSize) or c
+          swap(buf[idx], t[tIdx])
 
   freeHeap(t)
 
