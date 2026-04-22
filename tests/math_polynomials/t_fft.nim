@@ -107,11 +107,11 @@ proc testFrFFTRoundtrip*(F: typedesc[Fr]) =
         data[i].fromUint(uint64(i + 1))
 
       var freq = newSeq[F](order)
-      let fftOk = fft_nr(fftDesc, freq, data)
+      let fftOk = fft_nn(fftDesc, freq, data)
       doAssert fftOk == FFT_Success
 
       var recovered = newSeq[F](order)
-      let ifftOk = ifft_rn(fftDesc, recovered, freq)
+      let ifftOk = ifft_nn(fftDesc, recovered, freq)
       doAssert ifftOk == FFT_Success
 
       if order == 2:
@@ -140,11 +140,11 @@ proc testECFFTRoundtrip*(EC: typedesc, F: typedesc[Fr]) =
       data[i].mixedSum(data[i-1], gen)
 
     var freq = newSeq[EC](order)
-    let fftOk = ec_fft_nr(fftDesc, freq, data)
+    let fftOk = ec_fft_nn(fftDesc, freq, data)
     doAssert fftOk == FFT_Success
 
     var recovered = newSeq[EC](order)
-    let ifftOk = ec_ifft_rn(fftDesc, recovered, freq)
+    let ifftOk = ec_ifft_nn(fftDesc, recovered, freq)
     doAssert ifftOk == FFT_Success
 
     for i in 0 ..< order:
@@ -178,13 +178,9 @@ proc testIFFTInterpolation*(F: typedesc[Fr]) =
     v1_expected.sum(ys[0], y1_times_omega_inv)
     v1_expected.prod(v1_expected, two_inv)
 
-    # Create bit-reversed input for ifft_rn (which expects bit-reversed order)
-    var ys_bitrev: array[2, F]
-    ys_bitrev[0] = ys[0]  # index 0 bit-reversed is 0
-    ys_bitrev[1] = ys[1]  # index 1 bit-reversed is 1 (for log2(2)=1)
-
+    # Use ifft_nn which expects natural order input
     var coeffs: array[2, F]
-    let status = ifft_rn(fftDesc, coeffs.toOpenArray(0, L-1), ys_bitrev.toOpenArray(0, L-1))
+    let status = ifft_nn(fftDesc, coeffs.toOpenArray(0, L-1), ys.toOpenArray(0, L-1))
     doAssert status == FFT_Success
 
     doAssert (coeffs[0] == v0_expected).bool, "IFFT coefficient 0 mismatch for L=2"
@@ -199,6 +195,113 @@ proc testIFFTInterpolation*(F: typedesc[Fr]) =
 
   echo "  ✓ IFFT interpolation test PASSED"
 
+proc naiveDFT[F](vals: openArray[F], omega: F): seq[F] =
+  ## Compute DFT using naive O(n²) algorithm - produces natural order output
+  result = newSeq[F](vals.len)
+
+  for k in 0..<vals.len:
+    var sum: F
+    sum.setZero()
+
+    var wkj: F
+    wkj.setOne()   # ω^(k*0)
+
+    var wk: F
+    wk.setOne()
+    for _ in 0..<k:
+      wk *= omega  # ω^k
+
+    for j in 0..<vals.len:
+      var term: F
+      term.prod(vals[j], wkj)
+      sum += term
+      wkj *= wk    # ω^(k*(j+1))
+
+    result[k] = sum
+
+proc testFFTOrdering*(F: typedesc[Fr]) =
+  echo "Testing FFT output ordering..."
+
+  for order in [4, 8]:
+    let fftDesc = createFFTDescriptor(F, order)
+    let omega = fftDesc.rootsOfUnity[1]
+
+    var vals = newSeq[F](order)
+    for i in 0..<order:
+      vals[i].fromUint(uint64(i + 1))
+
+    let naive = naiveDFT(vals, omega)
+
+    var output_nn = newSeq[F](order)
+    var output_nr = newSeq[F](order)
+    discard fft_nn(fftDesc, output_nn, vals)
+    discard fft_nr(fftDesc, output_nr, vals)
+
+    var nn_is_natural = true
+    for i in 0..<order:
+      if not (output_nn[i] == naive[i]).bool:
+        nn_is_natural = false
+        break
+
+    var nr_is_bitrev = true
+    let log2_order = order.uint64.log2_vartime()
+    for i in 0..<order:
+      let br_i = reverseBits(uint(i), log2_order)
+      if not (output_nr[i] == naive[br_i]).bool:
+        nr_is_bitrev = false
+        break
+
+    doAssert nn_is_natural, "fft_nn should produce natural order (N=" & $order & ")"
+    doAssert nr_is_bitrev, "fft_nr should produce bit-reversed order (N=" & $order & ")"
+
+  echo "  ✓ FFT ordering tests PASSED"
+
+proc testECFFTOrdering*(EC: typedesc, F: typedesc[Fr]) =
+  echo "Testing EC FFT output ordering..."
+
+  for order in [4, 8]:
+    let fftDesc = createFFTDescriptor(EC, F, order)
+
+    var vals = newSeq[EC](order)
+    vals[0].setGenerator()
+    let gen = EC.F.Name.getGenerator($EC.G)
+    for i in 1..<order:
+      vals[i].mixedSum(vals[i-1], gen)
+
+    var output_nn = newSeq[EC](order)
+    var output_nr = newSeq[EC](order)
+    discard ec_fft_nn(fftDesc, output_nn, vals)
+    discard ec_fft_nr(fftDesc, output_nr, vals)
+
+    for i in 0..<order:
+      let br_i = reverseBits(uint(i), order.uint64.log2_vartime())
+      doAssert (output_nr[i] == output_nn[br_i]).bool,
+        "EC fft_nr should produce bit-reversed of fft_nn (N=" & $order & ")"
+
+  echo "  ✓ EC FFT ordering tests PASSED"
+
+proc testIFFTOrdering*(F: typedesc[Fr]) =
+  echo "Testing IFFT input/output ordering..."
+
+  for order in [4, 8]:
+    let fftDesc = createFFTDescriptor(F, order)
+
+    var vals = newSeq[F](order)
+    for i in 0..<order:
+      vals[i].fromUint(uint64(i + 1))
+
+    var freq_nn = newSeq[F](order)
+    discard fft_nn(fftDesc, freq_nn, vals)
+
+    var recovered_nn = newSeq[F](order)
+    discard ifft_nn(fftDesc, recovered_nn, freq_nn)
+
+    for i in 0..<order:
+      doAssert (recovered_nn[i] == vals[i]).bool,
+        "ifft_nn(fft_nn(x)) should equal x (N=" & $order & ")"
+
+  echo "  ✓ IFFT ordering tests PASSED"
+
 when isMainModule:
   echo "========================================"
   echo "    FFT/IFFT Correctness Tests"
@@ -211,6 +314,12 @@ when isMainModule:
   testECFFTRoundtrip(EC_ShortW_Prj[Fp[BLS12_381], G1], Fr[BLS12_381])
   echo ""
   testIFFTInterpolation(Fr[BLS12_381])
+  echo ""
+  testFFTOrdering(Fr[BLS12_381])
+  echo ""
+  testECFFTOrdering(EC_ShortW_Prj[Fp[BLS12_381], G1], Fr[BLS12_381])
+  echo ""
+  testIFFTOrdering(Fr[BLS12_381])
 
   echo "\n========================================"
   echo "    All FFT tests PASSED ✓"

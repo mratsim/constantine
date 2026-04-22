@@ -591,8 +591,14 @@ func deriveLogTileSize(T: type, logN: uint): uint =
   return q
 
 
-func bit_reversal_permutation_naive[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) =
+func bit_reversal_permutation_naive*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) {.inline.} =
   ## Out-of-place bit reversal permutation using a naive algorithm.
+  ##
+  ## For each index i, places src[i] into dst[reverseBits(i)].
+  ##
+  ## **IMPORTANT**: `dst` and `src` must NOT alias (be the same array).
+  ## Use the in-place overload if you need to permute in-place.
+
   debug: doAssert src.len.uint.isPowerOf2_vartime()
   debug: doAssert dst.len == src.len
 
@@ -600,12 +606,97 @@ func bit_reversal_permutation_naive[T](dst{.noalias.}: var openArray[T], src{.no
   for i in 0'u ..< src.len.uint:
     dst[int reverseBits(i, logN)] = src[i]
 
-func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) =
-  ## Out-of-place bit reversal permutation.
-  bit_reversal_permutation_naive(dst, src)
+func bit_reversal_permutation_naive*[T](buf: var openArray[T]) {.inline, used.} =
+  ## In-place bit reversal permutation using a naive algorithm.
+  ##
+  ## This uses a swap-based approach where we traverse the array and
+  ## swap elements to their bit-reversed positions.
+  ## Only used for benchmarking.
+  ##   Whether for uint32 (4 bytes) to Fr[BLS12_381]
+  ##   the in-place algorithm is at least 2x slower than out-of-place
+  ##   AND tuning the naive vs cobra threshold is trickier
+  ##   and might severely depend on the memory bandwidth
+  ##   and be very different between Apple CPUs and Intel/AMD
+  debug: doAssert buf.len.uint.isPowerOf2_vartime()
 
-func bit_reversal_permutation*[T](buf: var openArray[T]) =
-  ## In-place bit reversal permutation using a cache-blocking algorithm
+  let logN = log2_vartime(uint buf.len)
+  for i in 0'u ..< buf.len.uint:
+    let rev_i = reverseBits(i, logN)
+    if i < rev_i:
+      swap(buf[i], buf[rev_i])
+
+func bit_reversal_permutation_cobra*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) =
+  ## Out-of-place bit reversal permutation using the COBRA algorithm
+  ## (Cache Optimal BitReverse Algorithm from Carter & Gatlin, 1998)
+  ##
+  ## This implements the "square strategy" which is cache-efficient and
+  ## nearly optimal. It uses a temporary buffer that fits in L1 cache.
+  ##
+  ## Algorithm:
+  ##   for b = 0 to 2^(lgN-2q) - 1
+  ##     b' = r(b)
+  ##     for a = 0 to 2^q - 1
+  ##       a' = r(a)
+  ##       for c = 0 to 2^q - 1
+  ##         T[a'c] = A[abc]
+  ##     for c = 0 to 2^q - 1
+  ##       c' = r(c)
+  ##       for a' = 0 to 2^q - 1
+  ##         B[c'b'a'] = T[a'c]
+  ##
+  ## Parameters:
+  ##   - dst: destination array (must have same length as src)
+  ##   - src: source array in natural order
+  ##
+  ## The destination will contain the bit-reversed permutation of src.
+  ##
+  ## **IMPORTANT**: `dst` and `src` must NOT alias (be the same array).
+  ## Use the in-place overload if you need to permute in-place.
+  ##
+  ## Note: The {.noalias.} annotation documents this requirement but is not
+  ## currently enforced by the compiler. It serves as documentation and may
+  ## be used by future compiler optimizations or static analysis tools.
+  debug: doAssert src.len.uint.isPowerOf2_vartime()
+  debug: doAssert dst.len == src.len
+
+  let logN = log2_vartime(uint src.len)
+  let logTileSize = deriveLogTileSize(T, logN)
+  let logBLen = logN - 2*logTileSize
+  let bLen = 1'u shl logBLen
+  let tileSize = 1'u shl logTileSize
+
+  let t = allocHeapArray(T, tileSize*tileSize)
+
+  for b in 0'u ..< bLen:
+    let bRev = reverseBits(b, logBLen)
+
+    for a in 0'u ..< tileSize:
+      let aRev = reverseBits(a, logTileSize)
+      for c in 0'u ..< tileSize:
+        # T[a'c] = A[abc]
+        let tIdx = (aRev shl logTileSize) or c
+        let idx = (a shl (logBLen+logTileSize)) or
+                  (b shl logTileSize) or c
+        t[tIdx] = src[idx]
+
+    for c in 0'u ..< tileSize:
+      let cRev = reverseBits(c, logTileSize)
+      for aRev in 0'u ..< tileSize:
+        let idx = (cRev shl (logBLen+logTileSize)) or
+                  (bRev shl logTileSize) or aRev
+        let tIdx = (aRev shl logTileSize) or c
+        dst[idx] = t[tIdx]
+
+  freeHeap(t)
+
+func bit_reversal_permutation_cobra[T](buf: var openArray[T]) {.used.} =
+  ## In-place bit reversal permutation using the COBRA algorithm.
+  ## Only used for benchmarking.
+  ##   Whether for uint32 (4 bytes) to Fr[BLS12_381]
+  ##   the in-place algorithm is at least 2x slower than out-of-place
+  ##   AND tuning the naive vs cobra threshold is trickier
+  ##   and might severely depend on the memory bandwidth
+  ##   and be very different between Apple CPUs and Intel/AMD
   #
   # We adapt the following out-of-place algorithm to in-place.
   #
@@ -697,3 +788,38 @@ func bit_reversal_permutation*[T](buf: var openArray[T]) =
           swap(buf[idx], t[tIdx])
 
   freeHeap(t)
+
+const bitReversalInPlaceThreshold {.used.} = 18
+  ## Threshold (as log2) above which the COBRA algorithm is used for in-place.
+  ## Below this threshold, the naive algorithm is faster on modern CPUs.
+
+const bitReversalOutOfPlaceThreshold = 7
+  ## Threshold (as log2) above which the COBRA algorithm is used for out-of-place.
+  ## Below this threshold, the naive algorithm is faster on modern CPUs.
+
+func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) {.meter.} =
+  ## Out-of-place bit reversal permutation.
+  ##
+  ## Automatically selects between naive and COBRA algorithms based on size.
+  ## For small sizes (< 2^7 elements), the naive algorithm is faster.
+  ## For larger sizes, the COBRA cache-optimized algorithm is used.
+  debug: doAssert src.len.uint.isPowerOf2_vartime()
+  debug: doAssert dst.len == src.len
+
+  let logN = log2_vartime(uint src.len)
+  if logN >= bitReversalOutOfPlaceThreshold:
+    # Use out-of-place COBRA for large sizes
+    bit_reversal_permutation_cobra(dst, src)
+  else:
+    # Use naive algorithm for small sizes
+    bit_reversal_permutation_naive(dst, src)
+
+func bit_reversal_permutation*[T](buf: var openArray[T]) {.meter.} =
+  ## In-place bit reversal permutation.
+  ##
+  ## Out-of-place is at least 2x faster than in-place so dispatch to out-of-place
+  debug: doAssert buf.len > 0
+  var tmp = allocHeapArrayAligned(T, buf.len, alignment = 64)
+  bit_reversal_permutation(tmp.toOpenArray(0, buf.len-1), buf)
+  buf[0].addr.copyMem(tmp[0].addr, buf.len * sizeof(buf[0]))
+  tmp.freeHeapAligned()

@@ -17,12 +17,26 @@ import
   constantine/named/algebras,
   constantine/named/zoo_generators,
   constantine/math/[arithmetic, ec_shortweierstrass],
-  constantine/math/polynomials/fft,
+  constantine/math/polynomials/fft {.all.},
   constantine/math/io/io_fields,
   helpers/prng_unsafe,
   ./bench_blueprint
 
 proc separator() = separator(145)
+
+proc report*(op, typ: string, size: int, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
+  let ns = inNanoseconds((stop-start) div iters)
+  let throughput = 1e9 / float64(ns)
+  when SupportsGetTicks:
+    let cycles = (stopClk - startClk) div iters
+    echo &"{op:<32} size {size:>5}    {typ:<15} {throughput:>15.3f} ops/s  {ns:>12} ns/op  {cycles:>12} CPU cycles"
+  else:
+    echo &"{op:<32} size {size:>5}    {typ:<15} {throughput:>15.3f} ops/s  {ns:>12} ns/op"
+
+template bench*(op, typ: string, size, iters: int, body: untyped): untyped =
+  block:
+    measure(iters, startTime, stopTime, startClk, stopClk, body)
+    report(op, typ, size, startTime, stopTime, startClk, stopClk, iters)
 
 const ctt_eth_kzg_fr_pow2_roots_of_unity = [
   # primitive_root⁽ᵐᵒᵈᵘˡᵘˢ⁻¹⁾/⁽²^ⁱ⁾ for i in [0, 32)
@@ -80,7 +94,8 @@ proc bench_EC_FFT*() =
 
   const NumIters = 3
 
-  for scale in 4 ..< 10:
+  # Test sizes: 8, 32, 128, 512, 2048, 8192 (every 2 powers, up to 8192)
+  for scale in countup(3, 13, 2):
     let order = 1 shl scale
     let fftDesc = ECFFT_Descriptor[EC_G1].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
 
@@ -91,15 +106,34 @@ proc bench_EC_FFT*() =
 
     var coefsOut = newSeq[EC_G1](order)
 
-    let start = getMonotime()
-    for i in 0 ..< NumIters:
+    bench("EC FFT (G1)", "EC_G1", order, NumIters):
       let status = ec_fft_nn(fftDesc, coefsOut, data)
       doAssert status == FFT_Success
-    let stop = getMonotime()
 
-    let ns = inNanoseconds((stop-start) div NumIters)
-    let throughput = 1e9 / float64(ns)
-    echo &"EC FFT (G1)     size {order:>5}     {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+proc bench_EC_IFFT*() =
+  echo "\n=== EC IFFT Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  # Test sizes: 8, 32, 128, 512, 2048, 8192 (every 2 powers, up to 8192)
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = ECFFT_Descriptor[EC_G1].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[EC_G1](order)
+    data[0].setGenerator()
+    for i in 1 ..< order:
+      data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
+
+    var coefsOut = newSeq[EC_G1](order)
+    discard ec_fft_nn(fftDesc, coefsOut, data)
+
+    var recovered = newSeq[EC_G1](order)
+
+    bench("EC IFFT (G1)", "EC_G1", order, NumIters):
+      let status = ec_ifft_nn(fftDesc, recovered, coefsOut)
+      doAssert status == FFT_Success
 
 proc bench_Fr_FFT*() =
   echo "\n=== Fr FFT Benchmark ==="
@@ -107,7 +141,8 @@ proc bench_Fr_FFT*() =
 
   const NumIters = 3
 
-  for scale in 1 ..< 10:
+  # Test sizes: 8, 32, 128, 512, 2048, 8192 (every 2 powers, up to 8192)
+  for scale in countup(3, 13, 2):
     let order = 1 shl scale
     let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
 
@@ -117,15 +152,9 @@ proc bench_Fr_FFT*() =
 
     var freq = newSeq[F](order)
 
-    let start = getMonotime()
-    for i in 0 ..< NumIters:
+    bench("Fr FFT", "Fr[BLS12-381]", order, NumIters):
       let status = fft_nn(fftDesc, freq, data)
       doAssert status == FFT_Success
-    let stop = getMonotime()
-
-    let ns = inNanoseconds((stop-start) div NumIters)
-    let throughput = 1e9 / float64(ns)
-    echo &"Fr FFT (BLS12-381)  size {order:>5}     {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 proc bench_Fr_IFFT*() =
   echo "\n=== Fr IFFT Benchmark ==="
@@ -133,7 +162,8 @@ proc bench_Fr_IFFT*() =
 
   const NumIters = 3
 
-  for scale in 1 ..< 10:
+  # Test sizes: 8, 32, 128, 512, 2048, 8192 (every 2 powers, up to 8192)
+  for scale in countup(3, 13, 2):
     let order = 1 shl scale
     let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
 
@@ -146,48 +176,21 @@ proc bench_Fr_IFFT*() =
 
     var recovered = newSeq[F](order)
 
-    let start = getMonotime()
-    for i in 0 ..< NumIters:
+    bench("Fr IFFT", "Fr[BLS12-381]", order, NumIters):
       let status = ifft_nn(fftDesc, recovered, freq)
       doAssert status == FFT_Success
-    let stop = getMonotime()
-
-    let ns = inNanoseconds((stop-start) div NumIters)
-    let throughput = 1e9 / float64(ns)
-    echo &"Fr IFFT (BLS12-381) size {order:>5}     {throughput:>15.3f} ops/s     {ns:>9} ns/op"
-
-proc bench_BitReversal*() =
-  echo "\n=== Bit-Reversion Permutation Benchmark ==="
-  separator()
-
-  const NumIters = 3
-
-  for logN in 10 ..< 20:
-    let N = 1 shl logN
-
-    var src = newSeq[int64](N)
-    for i in 0 ..< N:
-      src[i] = int64(i)
-
-    let start = getMonotime()
-    for i in 0 ..< NumIters:
-      var buf = src
-      buf.bit_reversal_permutation()
-    let stop = getMonotime()
-
-    let ns = inNanoseconds((stop-start) div NumIters)
-    let throughput = 1e9 / float64(ns)
-    echo &"Bit-reversal        2^{logN:>2}       {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 when isMainModule:
   echo "============================================================"
   echo "            FFT / IFFT Benchmarks (BLS12-381)"
   echo "============================================================"
+  echo "Testing every 2 powers of 2, up to 8192 elements"
+  echo "============================================================"
 
   warmup()
   bench_EC_FFT()
+  bench_EC_IFFT()
   bench_Fr_FFT()
   bench_Fr_IFFT()
-  bench_BitReversal()
 
   echo ""
