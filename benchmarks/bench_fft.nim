@@ -88,6 +88,52 @@ proc warmup() =
   let stop = cpuTime()
   echo &"Warmup: {stop - start:>4.4f} s, result {foo}"
 
+proc bench_Fr_FFT*() =
+  echo "\n=== Fr FFT Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  # Test sizes: 8, 32, 128, 512, 2048, 8192 (every 2 powers, up to 8192)
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[F](order)
+    for i in 0 ..< order:
+      data[i].fromUint(uint64(i + 1))
+
+    var freq = newSeq[F](order)
+
+    bench("Fr FFT", "Fr[BLS12-381]", order, NumIters):
+      let status = fft_nn(fftDesc, freq, data)
+      doAssert status == FFT_Success
+
+proc bench_Fr_IFFT*() =
+  echo "\n=== Fr IFFT Benchmark ==="
+  separator()
+
+  const NumIters = 3
+
+  # Test sizes: 8, 32, 128, 512, 2048, 8192 (every 2 powers, up to 8192)
+  for scale in countup(3, 13, 2):
+    let order = 1 shl scale
+    let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
+
+    var data = newSeq[F](order)
+    for i in 0 ..< order:
+      data[i].fromUint(uint64(i + 1))
+
+    var freq = newSeq[F](order)
+    discard fft_nn(fftDesc, freq, data)
+
+    var recovered = newSeq[F](order)
+
+    bench("Fr IFFT", "Fr[BLS12-381]", order, NumIters):
+      let status = ifft_nn(fftDesc, recovered, freq)
+      doAssert status == FFT_Success
+
+
 proc bench_EC_FFT*() =
   echo "\n=== EC FFT Benchmark ==="
   separator()
@@ -135,51 +181,6 @@ proc bench_EC_IFFT*() =
       let status = ec_ifft_nn(fftDesc, recovered, coefsOut)
       doAssert status == FFT_Success
 
-proc bench_Fr_FFT*() =
-  echo "\n=== Fr FFT Benchmark ==="
-  separator()
-
-  const NumIters = 3
-
-  # Test sizes: 8, 32, 128, 512, 2048, 8192 (every 2 powers, up to 8192)
-  for scale in countup(3, 13, 2):
-    let order = 1 shl scale
-    let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
-
-    var data = newSeq[F](order)
-    for i in 0 ..< order:
-      data[i].fromUint(uint64(i + 1))
-
-    var freq = newSeq[F](order)
-
-    bench("Fr FFT", "Fr[BLS12-381]", order, NumIters):
-      let status = fft_nn(fftDesc, freq, data)
-      doAssert status == FFT_Success
-
-proc bench_Fr_IFFT*() =
-  echo "\n=== Fr IFFT Benchmark ==="
-  separator()
-
-  const NumIters = 3
-
-  # Test sizes: 8, 32, 128, 512, 2048, 8192 (every 2 powers, up to 8192)
-  for scale in countup(3, 13, 2):
-    let order = 1 shl scale
-    let fftDesc = FrFFT_Descriptor[F].new(order = order, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
-
-    var data = newSeq[F](order)
-    for i in 0 ..< order:
-      data[i].fromUint(uint64(i + 1))
-
-    var freq = newSeq[F](order)
-    discard fft_nn(fftDesc, freq, data)
-
-    var recovered = newSeq[F](order)
-
-    bench("Fr IFFT", "Fr[BLS12-381]", order, NumIters):
-      let status = ifft_nn(fftDesc, recovered, freq)
-      doAssert status == FFT_Success
-
 when isMainModule:
   echo "============================================================"
   echo "            FFT / IFFT Benchmarks (BLS12-381)"
@@ -188,9 +189,9 @@ when isMainModule:
   echo "============================================================"
 
   warmup()
-  bench_EC_FFT()
-  bench_EC_IFFT()
   bench_Fr_FFT()
   bench_Fr_IFFT()
+  bench_EC_FFT()
+  bench_EC_IFFT()
 
   echo ""
