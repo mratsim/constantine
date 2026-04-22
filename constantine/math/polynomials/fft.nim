@@ -79,29 +79,12 @@ func new*(T: type FrFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
 
   result.computeRootsOfUnity(generatorRootOfUnity)
 
-func simpleFT_nn[F](
-       output: var StridedView[F],
-       vals: StridedView[F],
-       rootsOfUnity: StridedView[F]) =
-  ## Polynomial naive evaluation (naive is O(n^2))
-  ## Produces natural order output from natural order input
-
-  let L = output.len
-  var last {.noInit.}, v {.noInit.}: F
-
-  for i in 0 ..< L:
-    last.prod(vals[0], rootsOfUnity[0])
-    for j in 1 ..< L:
-      v.prod(vals[j], rootsOfUnity[(i*j) mod L])
-      last += v
-    output[i] = last
-
 func fft_internal_nn[F](
        output: var StridedView[F],
        vals: StridedView[F],
        rootsOfUnity: StridedView[F]) =
-  if output.len <= 4:
-    simpleFT_nn(output, vals, rootsOfUnity)
+  if output.len == 1:
+    output[0] = vals[0]
     return
 
   let (evenVals, oddVals) = vals.splitAlternate()
@@ -408,7 +391,7 @@ func coset_ifft_rn*[F](
     return FFT_InconsistentInputOutputLengths
   if not vals.len.uint64.isPowerOf2_vartime():
     return FFT_SizeNotPowerOfTwo
-  
+
   let n = vals.len
   var temp_buf = allocHeapArrayAligned(F, n, alignment = 64)
   bit_reversal_permutation(temp_buf.toOpenArray(0, n-1), vals)
@@ -441,32 +424,12 @@ func new*(T: type ECFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
 
   result.computeRootsOfUnity(generatorRootOfUnity)
 
-func simpleFT_nn[EC; bits: static int](
-       output: var StridedView[EC],
-       vals: StridedView[EC],
-       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime, Alloca].} =
-  ## EC naive evaluation (O(n^2) base case for small FFT sizes)
-  ## Produces natural order output from natural order input
-
-  let L = output.len
-  var last {.noInit.}, v {.noInit.}: EC
-
-  var v0w0 {.noInit.} = vals[0]
-  v0w0.scalarMul_vartime(rootsOfUnity[0])
-
-  for i in 0 ..< L:
-    last = v0w0
-    for j in 1 ..< L:
-      v.scalarMul_vartime(rootsOfUnity[(i*j) mod L], vals[j])
-      last.sum_vartime(last, v)
-    output[i] = last
-
 func fft_internal_nn[EC; bits: static int](
        output: var StridedView[EC],
        vals: StridedView[EC],
        rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime, Alloca].} =
-  if output.len <= 4:
-    simpleFT_nn(output, vals, rootsOfUnity)
+  if output.len == 1:
+    output[0] = vals[0]
     return
 
   # Recursive Divide-and-Conquer
