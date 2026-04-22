@@ -41,11 +41,11 @@ proc testCosetFFTRoundtrip*(F: typedesc[Fr]) =
         data[i].fromUint(uint64(i + 1))
 
       var coset_freq = newSeq[F](n)
-      let cosetFftOk = coset_fft_nr(fftDesc, coset_freq, data, shift_factor)
+      let cosetFftOk = coset_fft_nn(fftDesc, coset_freq, data, shift_factor)
       doAssert cosetFftOk == FFT_Success
 
       var recovered = newSeq[F](n)
-      let cosetIfftOk = coset_ifft_rn(fftDesc, recovered, coset_freq, shift_factor)
+      let cosetIfftOk = coset_ifft_nn(fftDesc, recovered, coset_freq, shift_factor)
       doAssert cosetIfftOk == FFT_Success
 
       for i in 0 ..< n:
@@ -71,11 +71,11 @@ proc testCosetFFTSpecificSizes*(F: typedesc[Fr]) =
       data[i].fromUint(uint64(i + 1))
 
     var coset_freq = newSeq[F](n)
-    let cosetFftOk = coset_fft_nr(fftDesc, coset_freq, data, shift_factor)
+    let cosetFftOk = coset_fft_nn(fftDesc, coset_freq, data, shift_factor)
     doAssert cosetFftOk == FFT_Success
 
     var recovered = newSeq[F](n)
-    let cosetIfftOk = coset_ifft_rn(fftDesc, recovered, coset_freq, shift_factor)
+    let cosetIfftOk = coset_ifft_nn(fftDesc, recovered, coset_freq, shift_factor)
     doAssert cosetIfftOk == FFT_Success
 
     for i in 0 ..< n:
@@ -93,11 +93,11 @@ proc testCosetFFTSpecificSizes*(F: typedesc[Fr]) =
       data[i].fromUint(uint64(i + 1))
 
     var coset_freq = newSeq[F](n)
-    let cosetFftOk = coset_fft_nr(fftDesc, coset_freq, data, coset_shift)
+    let cosetFftOk = coset_fft_nn(fftDesc, coset_freq, data, coset_shift)
     doAssert cosetFftOk == FFT_Success
 
     var recovered = newSeq[F](n)
-    let cosetIfftOk = coset_ifft_rn(fftDesc, recovered, coset_freq, coset_shift)
+    let cosetIfftOk = coset_ifft_nn(fftDesc, recovered, coset_freq, coset_shift)
     doAssert cosetIfftOk == FFT_Success
 
     for i in 0 ..< n:

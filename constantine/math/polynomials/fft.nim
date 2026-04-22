@@ -30,9 +30,6 @@ func bit_reversal_permutation*[T](buf: var openArray[T])
 #
 # ############################################################
 
-# Elliptic curve Fast Fourier Transform
-# ----------------------------------------------------------------
-
 type
   FFTStatus* = enum
     FFT_Success
@@ -59,6 +56,12 @@ proc `=destroy`*[EC](ctx: ECFFT_Descriptor[EC]) =
   if not ctx.rootsOfUnity.isNil():
     ctx.rootsOfUnity.freeHeapAligned()
 
+# ############################################################
+#
+#                   Field FFT
+#
+# ############################################################
+
 func computeRootsOfUnity[F](ctx: var FrFFT_Descriptor[F], generatorRootOfUnity: F) =
   ctx.rootsOfUnity[0].setOne()
 
@@ -75,29 +78,12 @@ func new*(T: type FrFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
 
   result.computeRootsOfUnity(generatorRootOfUnity)
 
-func computeRootsOfUnity[EC](ctx: var ECFFT_Descriptor[EC], generatorRootOfUnity: auto) =
-  static: doAssert typeof(generatorRootOfUnity) is Fr[EC.getName()]
-
-  ctx.rootsOfUnity[0].setOne()
-
-  var cur = generatorRootOfUnity
-  for i in 1 .. ctx.order:
-    ctx.rootsOfUnity[i].fromField(cur)
-    cur *= generatorRootOfUnity
-
-  doAssert ctx.rootsOfUnity[ctx.order].isOne().bool()
-
-func new*(T: type ECFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
-  result.order = order
-  result.rootsOfUnity = allocHeapArrayAligned(T.EC.getScalarField().getBigInt(), order+1, alignment = 64)
-
-  result.computeRootsOfUnity(generatorRootOfUnity)
-
-func simpleFT[F](
+func simpleFT_nn[F](
        output: var StridedView[F],
        vals: StridedView[F],
        rootsOfUnity: StridedView[F]) =
   ## Polynomial naive evaluation (naive is O(n^2))
+  ## Produces natural order output from natural order input
 
   let L = output.len
   var last {.noInit.}, v {.noInit.}: F
@@ -109,20 +95,20 @@ func simpleFT[F](
       last += v
     output[i] = last
 
-func fft_internal[F](
+func fft_internal_nn[F](
        output: var StridedView[F],
        vals: StridedView[F],
        rootsOfUnity: StridedView[F]) =
   if output.len <= 4:
-    simpleFT(output, vals, rootsOfUnity)
+    simpleFT_nn(output, vals, rootsOfUnity)
     return
 
   let (evenVals, oddVals) = vals.splitAlternate()
   var (outLeft, outRight) = output.splitHalf()
   let halfROI = rootsOfUnity.skipHalf()
 
-  fft_internal(outLeft, evenVals, halfROI)
-  fft_internal(outRight, oddVals, halfROI)
+  fft_internal_nn(outLeft, evenVals, halfROI)
+  fft_internal_nn(outRight, oddVals, halfROI)
 
   let half = outLeft.len
   var y_times_root{.noinit.}: F
@@ -132,13 +118,13 @@ func fft_internal[F](
     output[i+half] .diff(output[i], y_times_root)
     output[i]      += y_times_root
 
-func fft_nr*[F](
+func fft_nn*[F](
        desc: FrFFT_Descriptor[F],
        output{.noalias.}: var openarray[F],
        vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime], meter.} =
-  ## FFT from natural order to bit-reversed order.
+  ## FFT from natural order to natural order.
   ## Input: natural order values
-  ## Output: bit-reversed order values in Fourier domain
+  ## Output: natural order values in Fourier domain
   ## Domain: roots of unity (no shift)
   ##
   ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
@@ -158,19 +144,19 @@ func fft_nr*[F](
                   .slice(0, desc.order-1, desc.order shr log2_vartime(uint vals.len))
 
   var voutput = output.toStridedView()
-  fft_internal(voutput, vals.toStridedView(), rootz)
+  fft_internal_nn(voutput, vals.toStridedView(), rootz)
   return FFT_Success
 
-func fft_nn*[F](
+func fft_nr*[F](
        desc: FrFFT_Descriptor[F],
        output{.noalias.}: var openarray[F],
        vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
-  ## FFT from natural order to natural order.
+  ## FFT from natural order to bit-reversed order.
   ## Input: natural order values
-  ## Output: natural order values in Fourier domain
+  ## Output: bit-reversed order values in Fourier domain
   ## Domain: roots of unity (no shift)
   ##
-  ## Algorithm: FFT (natural to bit-reversed) + Bit-reverse permutation
+  ## Algorithm: FFT (natural to natural) + Bit-reverse permutation
   ##
   ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
   ##
@@ -178,21 +164,21 @@ func fft_nn*[F](
   ## currently enforced by the compiler. It serves as documentation and may
   ## be used by future compiler optimizations or static analysis tools.
   ##
-  ## Use this when you have natural order input and want natural order output.
-  ## If you want bit-reversed output (more efficient), use fft_nr directly.
-  let status = fft_nr(desc, output, vals)
+  ## Use this when you have natural order input and want bit-reversed order output.
+  ## If you want natural order output (more convenient), use fft_nn directly.
+  let status = fft_nn(desc, output, vals)
   if status != FFT_Success:
     return status
 
   bit_reversal_permutation(output)
   return FFT_Success
 
-func ifft_rn*[F](
+func ifft_nn*[F](
        desc: FrFFT_Descriptor[F],
        output{.noalias.}: var openarray[F],
        vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime], meter.} =
-  ## IFFT from bit-reversed order to natural order.
-  ## Input: bit-reversed order values in Fourier domain
+  ## IFFT from natural order to natural order.
+  ## Input: natural order values in Fourier domain
   ## Output: natural order values
   ## Domain: roots of unity (no shift)
   ##
@@ -214,7 +200,7 @@ func ifft_rn*[F](
                   .slice(0, desc.order-1, desc.order shr log2_vartime(uint vals.len))
 
   var voutput = output.toStridedView()
-  fft_internal(voutput, vals.toStridedView(), rootz)
+  fft_internal_nn(voutput, vals.toStridedView(), rootz)
 
   var invLen {.noInit.}: F
   invLen.fromUint(vals.len.uint64)
@@ -225,16 +211,16 @@ func ifft_rn*[F](
 
   return FFT_Success
 
-func ifft_nn*[F](
+func ifft_rn*[F](
        desc: FrFFT_Descriptor[F],
        output{.noalias.}: var openarray[F],
        vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
-  ## IFFT from natural order to natural order.
-  ## Input: natural order values in Fourier domain
+  ## IFFT from bit-reversed order to natural order.
+  ## Input: bit-reversed order values in Fourier domain
   ## Output: natural order values
   ## Domain: roots of unity (no shift)
   ##
-  ## Algorithm: Bit-reverse permutation + IFFT (bit-reversed to natural)
+  ## Algorithm: Bit-reverse permutation + IFFT (natural to natural)
   ##
   ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
   ## The IFFT algorithm is NOT in-place safe.
@@ -243,15 +229,15 @@ func ifft_nn*[F](
   ## currently enforced by the compiler. It serves as documentation and may
   ## be used by future compiler optimizations or static analysis tools.
   ##
-  ## Use this when you have natural order input and want natural order output.
-  ## If you already have bit-reversed input, use ifft_rn directly.
+  ## Use this when you have bit-reversed order input and want natural order output.
+  ## If you have natural order input, use ifft_nn directly.
 
-  # Create temporary buffer and bit-reverse vals into it (natural → bit-reversed)
+  # Create temporary buffer and bit-reverse vals into it (bit-reversed → natural)
   var temp_buf = allocHeapArrayAligned(F, vals.len, alignment = 64)
   bit_reversal_permutation(temp_buf.toOpenArray(0, vals.len-1), vals)
 
-  # Call ifft_rn (bit-reversed → natural)
-  let status = ifft_rn(desc, output, temp_buf.toOpenArray(0, vals.len-1))
+  # Call ifft_nn (natural → natural)
+  let status = ifft_nn(desc, output, temp_buf.toOpenArray(0, vals.len-1))
   freeHeapAligned(temp_buf)
   return status
 
@@ -323,12 +309,12 @@ func unshift_vals*[F](
     output[i].prod(vals[i], inv_shift_pow)
     inv_shift_pow *= inv_shift_factor
 
-func coset_fft_nr*[F](
+func coset_fft_nn*[F](
        desc: FrFFT_Descriptor[F],
        output: var openarray[F],
        vals: openarray[F],
        cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
-  ## Compute FFT over a coset of the roots of unity (natural to bit-reversed order).
+  ## Compute FFT over a coset of the roots of unity (natural to natural order).
   ##
   ## This is used for polynomial operations where we need to avoid
   ## division by zero. By shifting the domain, polynomials that vanish
@@ -336,7 +322,7 @@ func coset_fft_nr*[F](
   ##
   ## Algorithm:
   ##   1. Multiply vals[i] by shift_factor^i (shift into coset)
-  ##   2. Apply standard FFT (natural to bit-reversed order)
+  ##   2. Apply standard FFT (natural to natural order)
   ##
   ## Parameters:
   ##   - desc: FFT descriptor with roots of unity
@@ -349,21 +335,21 @@ func coset_fft_nr*[F](
   var shifted = allocHeapArrayAligned(F, n, alignment = 64)
   shifted.toOpenArray(n).shift_vals(vals, cosetShift)
 
-  result = desc.fft_nr(output, shifted.toOpenArray(n))
+  result = desc.fft_nn(output, shifted.toOpenArray(n))
   freeHeapAligned(shifted)
 
-func coset_ifft_rn*[F](
+func coset_ifft_nn*[F](
        desc: FrFFT_Descriptor[F],
        output: var openarray[F],
        vals: openarray[F],
-       cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
-  ## Compute inverse FFT over a coset of the roots of unity (bit-reversed to natural order).
+       cosetShift: F): FFTStatus {.tags: [VarTime], meter.} =
+  ## Compute inverse FFT over a coset of the roots of unity (natural to natural order).
   ##
   ## This is used after polynomial division in the coset domain
   ## to get back the polynomial coefficients.
   ##
   ## Algorithm:
-  ##   1. Apply standard IFFT
+  ##   1. Apply standard IFFT (natural to natural)
   ##   2. Multiply result[i] by shift_factor⁻ⁱ (unshift from coset)
   ##
   ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
@@ -376,7 +362,7 @@ func coset_ifft_rn*[F](
   ##   - cosetShift, the coset shift (which will be inverted)
   ##
   ## Returns FFT_Success on success, error code otherwise
-  let status = desc.ifft_rn(output, vals)
+  let status = desc.ifft_nn(output, vals)
   if status != FFT_Success:
     return status
 
@@ -386,17 +372,57 @@ func coset_ifft_rn*[F](
 
   return FFT_Success
 
+func coset_ifft_rn*[F](
+       desc: FrFFT_Descriptor[F],
+       output: var openarray[F],
+       vals: openarray[F],
+       cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+  ## Compute inverse FFT over a coset of the roots of unity (bit-reversed to natural order).
+  ##
+  ## Algorithm:
+  ##   1. Bit-reverse permutation (bit-reversed → natural)
+  ##   2. Apply standard IFFT (natural to natural)
+  ##   3. Multiply result[i] by shift_factor⁻ⁱ (unshift from coset)
+  ##
+  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
+  let n = vals.len
+  var temp_buf = allocHeapArrayAligned(F, n, alignment = 64)
+  bit_reversal_permutation(temp_buf.toOpenArray(0, n-1), vals)
+
+  let status = desc.coset_ifft_nn(output, temp_buf.toOpenArray(0, n-1), cosetShift)
+  freeHeapAligned(temp_buf)
+  return status
+
 # ############################################################
 #
 #                   Elliptic Curve FFT
 #
 # ############################################################
 
-func simpleFT[EC; bits: static int](
+func computeRootsOfUnity[EC](ctx: var ECFFT_Descriptor[EC], generatorRootOfUnity: auto) =
+  static: doAssert typeof(generatorRootOfUnity) is Fr[EC.getName()]
+
+  ctx.rootsOfUnity[0].setOne()
+
+  var cur = generatorRootOfUnity
+  for i in 1 .. ctx.order:
+    ctx.rootsOfUnity[i].fromField(cur)
+    cur *= generatorRootOfUnity
+
+  doAssert ctx.rootsOfUnity[ctx.order].isOne().bool()
+
+func new*(T: type ECFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
+  result.order = order
+  result.rootsOfUnity = allocHeapArrayAligned(T.EC.getScalarField().getBigInt(), order+1, alignment = 64)
+
+  result.computeRootsOfUnity(generatorRootOfUnity)
+
+func simpleFT_nn[EC; bits: static int](
        output: var StridedView[EC],
        vals: StridedView[EC],
        rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime, Alloca].} =
   ## EC naive evaluation (O(n^2) base case for small FFT sizes)
+  ## Produces natural order output from natural order input
 
   let L = output.len
   var last {.noInit.}, v {.noInit.}: EC
@@ -411,12 +437,12 @@ func simpleFT[EC; bits: static int](
       last.sum_vartime(last, v)
     output[i] = last
 
-func fft_internal[EC; bits: static int](
+func fft_internal_nn[EC; bits: static int](
        output: var StridedView[EC],
        vals: StridedView[EC],
        rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime, Alloca].} =
   if output.len <= 4:
-    simpleFT(output, vals, rootsOfUnity)
+    simpleFT_nn(output, vals, rootsOfUnity)
     return
 
   # Recursive Divide-and-Conquer
@@ -424,8 +450,8 @@ func fft_internal[EC; bits: static int](
   var (outLeft, outRight) = output.splitHalf()
   let halfROI = rootsOfUnity.skipHalf()
 
-  fft_internal(outLeft, evenVals, halfROI)
-  fft_internal(outRight, oddVals, halfROI)
+  fft_internal_nn(outLeft, evenVals, halfROI)
+  fft_internal_nn(outRight, oddVals, halfROI)
 
   let half = outLeft.len
   var y_times_root{.noinit.}: EC
@@ -436,10 +462,10 @@ func fft_internal[EC; bits: static int](
     output[i+half] .diff_vartime(output[i], y_times_root)
     output[i]      .sum_vartime(output[i], y_times_root)
 
-func ec_fft_nr*[EC](
+func ec_fft_nn*[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca], meter.} =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
   if vals.len > desc.order:
     return FFT_TooManyValues
   if not vals.len.uint64.isPowerOf2_vartime():
@@ -450,14 +476,27 @@ func ec_fft_nr*[EC](
                   .slice(0, desc.order-1, desc.order shr log2_vartime(uint vals.len))
 
   var voutput = output.toStridedView()
-  fft_internal(voutput, vals.toStridedView(), rootz)
+  fft_internal_nn(voutput, vals.toStridedView(), rootz)
   return FFT_Success
 
-func ec_ifft_rn*[EC](
+func ec_fft_nr*[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
        vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca], meter.} =
-  ## Inverse FFT
+  ## EC FFT from natural order to bit-reversed order
+  ## Algorithm: FFT (natural to natural) + Bit-reverse permutation
+  let status = ec_fft_nn(desc, output, vals)
+  if status != FFT_Success:
+    return status
+
+  bit_reversal_permutation(output)
+  return status
+
+func ec_ifft_nn*[EC](
+       desc: ECFFT_Descriptor[EC],
+       output: var openarray[EC],
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
+  ## Inverse FFT from natural order to natural order
   if vals.len > desc.order:
     return FFT_TooManyValues
   if not vals.len.uint64.isPowerOf2_vartime():
@@ -469,7 +508,7 @@ func ec_ifft_rn*[EC](
                   .slice(0, desc.order-1, desc.order shr log2_vartime(uint vals.len))
 
   var voutput = output.toStridedView()
-  fft_internal(voutput, vals.toStridedView(), rootz)
+  fft_internal_nn(voutput, vals.toStridedView(), rootz)
 
   var invLen {.noInit.}: Fr[EC.getName()]
   invLen.fromUint(vals.len.uint64)
@@ -479,6 +518,24 @@ func ec_ifft_rn*[EC](
     output[i].scalarMul_vartime(invLen.toBig())
 
   return FFT_Success
+
+func ec_ifft_rn*[EC](
+       desc: ECFFT_Descriptor[EC],
+       output: var openarray[EC],
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+  ## Inverse FFT from bit-reversed order to natural order
+  ## Algorithm: Bit-reverse permutation + IFFT (natural to natural)
+  if vals.len > desc.order:
+    return FFT_TooManyValues
+  if not vals.len.uint64.isPowerOf2_vartime():
+    return FFT_SizeNotPowerOfTwo
+
+  var temp_buf = allocHeapArrayAligned(EC, vals.len, alignment = 64)
+  bit_reversal_permutation(temp_buf.toOpenArray(0, vals.len-1), vals)
+
+  let status = ec_ifft_nn(desc, output, temp_buf.toOpenArray(0, vals.len-1))
+  freeHeapAligned(temp_buf)
+  return status
 
 # ############################################################
 #

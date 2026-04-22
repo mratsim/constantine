@@ -93,7 +93,7 @@ proc bench_EC_FFT*() =
 
     let start = getMonotime()
     for i in 0 ..< NumIters:
-      let status = ec_fft_nr(fftDesc, coefsOut, data)
+      let status = ec_fft_nn(fftDesc, coefsOut, data)
       doAssert status == FFT_Success
     let stop = getMonotime()
 
