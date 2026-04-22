@@ -149,32 +149,38 @@ func polyDiv*[N, M: static int, Field](
   ##
   ## Note: The quotient array must have size at least N-M+1 for the result,
   ## but we use fixed size N for simplicity.
-  var working {.noInit.}: PolynomialCoef[N, Field]
-  for i in 0 ..< N:
-    working.coefs[i] = dividend.coefs[i]
 
-  let dividendDeg = N - 1
-  let divisorDeg = M - 1
-  var quotientDeg = dividendDeg - divisorDeg
+  static: doAssert M > 0
+  when M > N:
+    for i in 0 ..< N:
+      quotient.coefs[i].setZero()
+  else:
+    var working {.noInit.}: PolynomialCoef[N, Field]
+    for i in 0 ..< N:
+      working.coefs[i] = dividend.coefs[i]
 
-  if quotientDeg < 0:
-    quotientDeg = 0
+    let dividendDeg = N - 1
+    let divisorDeg = M - 1
+    var quotientDeg = dividendDeg - divisorDeg
 
-  var invDivisorLead {.noInit.}: Field
-  invDivisorLead.inv_vartime(divisor.coefs[divisorDeg])
+    if quotientDeg < 0:
+      quotientDeg = 0
 
-  for i in countdown(quotientDeg, 0):
-    var coef {.noInit.}: Field
-    coef.prod(working.coefs[i + divisorDeg], invDivisorLead)
-    quotient.coefs[i] = coef
+    var invDivisorLead {.noInit.}: Field
+    invDivisorLead.inv_vartime(divisor.coefs[divisorDeg])
 
-    for j in 0 ..< divisorDeg:
-      var subtrahend {.noInit.}: Field
-      subtrahend.prod(divisor.coefs[j], coef)
-      working.coefs[i + j] -= subtrahend
+    for i in countdown(quotientDeg, 0):
+      var coef {.noInit.}: Field
+      coef.prod(working.coefs[i + divisorDeg], invDivisorLead)
+      quotient.coefs[i] = coef
 
-  for i in (quotientDeg + 1) ..< N:
-    quotient.coefs[i].setZero()
+      for j in 0 ..< divisorDeg:
+        var subtrahend {.noInit.}: Field
+        subtrahend.prod(divisor.coefs[j], coef)
+        working.coefs[i + j] -= subtrahend
+
+    for i in (quotientDeg + 1) ..< N:
+      quotient.coefs[i].setZero()
 
 func sum*(r: var PolynomialCoef, f, g: PolynomialCoef) =
   ## Polynomial addition in coefficient form

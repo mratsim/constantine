@@ -67,19 +67,22 @@ proc bench_BitReversal*(T: typedesc) =
 
   const
     NumIters = 3
+    MinLogN = 2
     MaxLogN = 26
+    LogNStep = 4
+    MaxAllocLogN = MinLogN + ((MaxLogN - 1 - MinLogN) div LogNStep) * LogNStep
 
   var rng: RngState
   rng.seed 1234
 
-  let maxN = 1 shl MaxLogN
+  let maxN = 1 shl MaxAllocLogN
   var src = newSeq[T](maxN)
   rng.random_unsafe(src)
 
   echo "=== In-Place Variants ==="
   separator()
 
-  for logN in countup(2, MaxLogN-1, 4):
+  for logN in countup(MinLogN, MaxLogN-1, LogNStep):
     let N = 1 shl logN
     var buf = src[0..<N]
 
@@ -100,7 +103,7 @@ proc bench_BitReversal*(T: typedesc) =
   echo "\n=== Out-of-Place Variants ==="
   separator()
 
-  for logN in countup(2, MaxLogN-1, 4):
+  for logN in countup(MinLogN, MaxLogN-1, LogNStep):
     let N = 1 shl logN
     var dst = newSeq[T](N)
 

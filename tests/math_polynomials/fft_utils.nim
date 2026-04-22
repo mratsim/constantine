@@ -12,27 +12,25 @@ import
   constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/io/io_fields,
-  constantine/math/polynomials/fft,
+  constantine/math/polynomials/[polynomials, fft],
   constantine/named/properties_fields
 
-const BLS12_381_Fr_primitive_root = 7
-
-func buildRootLUT(F: type Fr): array[32, F] =
+func buildRootLUT(F: type Fr, primitive_root: uint): array[32, F] =
   var exponent {.noInit.}: BigInt[F.bits()]
   exponent = F.getPrimeMinus1()
 
   var i = result.len - 1
   exponent.shiftRight(i)
-  result[i].fromUint(BLS12_381_Fr_primitive_root)
+  result[i].fromUint(primitive_root)
   result[i].pow_vartime(exponent)
 
   while i > 0:
     result[i-1].square(result[i])
     dec i
 
-let BLS12_381_Fr_ScaleToRootOfUnity = buildRootLUT(Fr[BLS12_381])
+let BLS12_381_Fr_ScaleToRootOfUnity = buildRootLUT(Fr[BLS12_381], primitive_root = 7)
 
-template getRootOfUnityForScale(F: typedesc[Fr], scale: int): auto =
+template getRootOfUnityForScale*(F: typedesc[Fr], scale: int): auto =
   {.cast(noSideEffect).}:
     when F is Fr[BLS12_381]:
       BLS12_381_Fr_ScaleToRootOfUnity[scale]

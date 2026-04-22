@@ -178,7 +178,6 @@ proc testIFFTInterpolation*(F: typedesc[Fr]) =
     v1_expected.sum(ys[0], y1_times_omega_inv)
     v1_expected.prod(v1_expected, two_inv)
 
-    # Use ifft_nn which expects natural order input
     var coeffs: array[2, F]
     let status = ifft_nn(fftDesc, coeffs.toOpenArray(0, L-1), ys.toOpenArray(0, L-1))
     doAssert status == FFT_Success
@@ -192,6 +191,33 @@ proc testIFFTInterpolation*(F: typedesc[Fr]) =
 
     doAssert (v_at_1 == ys[0]).bool, "Interpolation at 1 failed"
     doAssert (v_at_omegaL == ys[1]).bool, "Interpolation at ω_L failed"
+
+  block:
+    let L = 4
+    let fftDesc = createFFTDescriptor(F, L)
+    let omegaL = fftDesc.rootsOfUnity[1]
+
+    var ys: array[4, F]
+    ys[0].fromUint(10'u64)
+    ys[1].fromUint(20'u64)
+    ys[2].fromUint(30'u64)
+    ys[3].fromUint(40'u64)
+
+    var ys_bitrev: array[4, F]
+    for i in 0..<4:
+      let rev_i = reverseBits(uint32(i), 2'u32)
+      ys_bitrev[rev_i] = ys[i]
+
+    var coeffs: array[4, F]
+    let status = ifft_nn(fftDesc, coeffs.toOpenArray(0, L-1), ys.toOpenArray(0, L-1))
+    doAssert status == FFT_Success
+
+    var evals: array[4, F]
+    let fftStatus = fft_nn(fftDesc, evals.toOpenArray(0, L-1), coeffs.toOpenArray(0, L-1))
+    doAssert fftStatus == FFT_Success
+
+    for i in 0..<4:
+      doAssert (evals[i] == ys[i]).bool, "Re-evaluation at ω^" & $i & " failed for L=4"
 
   echo "  ✓ IFFT interpolation test PASSED"
 
@@ -299,6 +325,18 @@ proc testIFFTOrdering*(F: typedesc[Fr]) =
     for i in 0..<order:
       doAssert (recovered_nn[i] == vals[i]).bool,
         "ifft_nn(fft_nn(x)) should equal x (N=" & $order & ")"
+
+    var freq_nr = newSeq[F](order)
+    let fftNrStatus = fft_nr(fftDesc, freq_nr, vals)
+    doAssert fftNrStatus == FFT_Success
+
+    var recovered_rn = newSeq[F](order)
+    let ifftRnStatus = ifft_rn(fftDesc, recovered_rn, freq_nr)
+    doAssert ifftRnStatus == FFT_Success
+
+    for i in 0..<order:
+      doAssert (recovered_rn[i] == vals[i]).bool,
+        "ifft_rn(fft_nr(x)) should equal x (N=" & $order & ")"
 
   echo "  ✓ IFFT ordering tests PASSED"
 

@@ -33,6 +33,7 @@ func bit_reversal_permutation*[T](buf: var openArray[T])
 type
   FFTStatus* = enum
     FFT_Success
+    FFT_InconsistentInputOutputLengths = "Output length must match input length"
     FFT_TooManyValues = "Input length greater than the field 2-adicity (number of roots of unity)"
     FFT_SizeNotPowerOfTwo = "Input must be of a power of 2 length"
 
@@ -136,6 +137,8 @@ func fft_nn*[F](
   ## be used by future compiler optimizations or static analysis tools.
   if vals.len > desc.order:
     return FFT_TooManyValues
+  if output.len != vals.len:
+    return FFT_InconsistentInputOutputLengths
   if not vals.len.uint64.isPowerOf2_vartime():
     return FFT_SizeNotPowerOfTwo
 
@@ -191,6 +194,8 @@ func ifft_nn*[F](
   ## be used by future compiler optimizations or static analysis tools.
   if vals.len > desc.order:
     return FFT_TooManyValues
+  if output.len != vals.len:
+    return FFT_InconsistentInputOutputLengths
   if not vals.len.uint64.isPowerOf2_vartime():
     return FFT_SizeNotPowerOfTwo
 
@@ -228,9 +233,12 @@ func ifft_rn*[F](
   ## Note: The {.noalias.} annotation documents this requirement but is not
   ## currently enforced by the compiler. It serves as documentation and may
   ## be used by future compiler optimizations or static analysis tools.
-  ##
-  ## Use this when you have bit-reversed order input and want natural order output.
-  ## If you have natural order input, use ifft_nn directly.
+  if vals.len > desc.order:
+    return FFT_TooManyValues
+  if output.len != vals.len:
+    return FFT_InconsistentInputOutputLengths
+  if not vals.len.uint64.isPowerOf2_vartime():
+    return FFT_SizeNotPowerOfTwo
 
   # Create temporary buffer and bit-reverse vals into it (bit-reversed → natural)
   var temp_buf = allocHeapArrayAligned(F, vals.len, alignment = 64)
@@ -385,6 +393,22 @@ func coset_ifft_rn*[F](
   ##   3. Multiply result[i] by shift_factor⁻ⁱ (unshift from coset)
   ##
   ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
+  ## The coset IFFT algorithm is NOT in-place safe.
+  ##
+  ## Parameters:
+  ##   - desc: CosetFFT descriptor with roots of unity and shift factor
+  ##   - output: output array (must have same length as vals)
+  ##   - vals: input values in evaluation form over coset
+  ##   - cosetShift, the coset shift (which will be inverted)
+  ##
+  ## Returns FFT_Success on success, error code otherwise
+  if vals.len > desc.order:
+    return FFT_TooManyValues
+  if output.len != vals.len:
+    return FFT_InconsistentInputOutputLengths
+  if not vals.len.uint64.isPowerOf2_vartime():
+    return FFT_SizeNotPowerOfTwo
+  
   let n = vals.len
   var temp_buf = allocHeapArrayAligned(F, n, alignment = 64)
   bit_reversal_permutation(temp_buf.toOpenArray(0, n-1), vals)
@@ -468,6 +492,8 @@ func ec_fft_nn*[EC](
        vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
   if vals.len > desc.order:
     return FFT_TooManyValues
+  if output.len != vals.len:
+    return FFT_InconsistentInputOutputLengths
   if not vals.len.uint64.isPowerOf2_vartime():
     return FFT_SizeNotPowerOfTwo
 
@@ -499,6 +525,8 @@ func ec_ifft_nn*[EC](
   ## Inverse FFT from natural order to natural order
   if vals.len > desc.order:
     return FFT_TooManyValues
+  if output.len != vals.len:
+    return FFT_InconsistentInputOutputLengths
   if not vals.len.uint64.isPowerOf2_vartime():
     return FFT_SizeNotPowerOfTwo
 
@@ -527,6 +555,8 @@ func ec_ifft_rn*[EC](
   ## Algorithm: Bit-reverse permutation + IFFT (natural to natural)
   if vals.len > desc.order:
     return FFT_TooManyValues
+  if output.len != vals.len:
+    return FFT_InconsistentInputOutputLengths
   if not vals.len.uint64.isPowerOf2_vartime():
     return FFT_SizeNotPowerOfTwo
 
