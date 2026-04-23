@@ -392,9 +392,10 @@ func fft_nn_impl_stockham[F](
   ##
   ## This autosort property eliminates the need for bit-reversal permutation.
 
-  # Copy input to output buffer
-  for i in 0 ..< n:
-    output[i] = vals[i]
+  # Copy input to output (skip if aliasing for in-place operation)
+  if output[0].addr != vals[0].addr:
+    for i in 0 ..< n:
+      output[i] = vals[i]
 
   var src = output
   var dst = temp
