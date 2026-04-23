@@ -403,7 +403,7 @@ func ifft_rn_iterative_dit[F](
 func fft_nn_impl_stockham[F](
        output: ptr UncheckedArray[F],
        vals: ptr UncheckedArray[F],
-       rootsOfUnity: ptr UncheckedArray[F],
+       rootsOfUnity: StridedView[F],
        temp: ptr UncheckedArray[F],
        n: int) =
   ## Stockham FFT algorithm (natural to natural, double-buffered)
@@ -486,26 +486,25 @@ func fft_nn_stockham[F](
 
   let n = vals.len
 
-  # Allocate temporary buffers
+  # Allocate temporary buffer
   var temp_buf = allocHeapArrayAligned(F, n, alignment = 64)
-  var roots_buf = allocHeapArrayAligned(F, n, alignment = 64)
 
-  # Copy strided roots to contiguous buffer for Stockham
+  # Create strided view of roots of unity (no allocation/copy needed)
   let rootStride = desc.order shr log2_vartime(uint n)
-  for i in 0 ..< n:
-    roots_buf[i] = desc.rootsOfUnity[i * rootStride]
+  let rootz = desc.rootsOfUnity
+                  .toStridedView(n)
+                  .slice(0, n-1, rootStride)
 
   # Stockham FFT
   fft_nn_impl_stockham(
     output.asUnchecked(),
     vals.asUnchecked(),
-    roots_buf,
+    rootz,
     temp_buf,
     n
   )
 
   freeHeapAligned(temp_buf)
-  freeHeapAligned(roots_buf)
   return FFT_Success
 
 # ############################################################
