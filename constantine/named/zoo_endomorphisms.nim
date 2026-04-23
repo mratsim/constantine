@@ -121,7 +121,7 @@ func hasEndomorphismAcceleration*(Name: static Algebra): bool {.compileTime.} =
     Vesta
   }
 
-const EndomorphismThreshold* = 192
+const EndomorphismThreshold* = 152
   ## We use substraction by maximum infinity norm coefficient
   ## to split scalars for endomorphisms
   ##

@@ -392,9 +392,10 @@ func fft_nn_impl_stockham[F](
   ##
   ## This autosort property eliminates the need for bit-reversal permutation.
 
-  # Copy input to output buffer
-  for i in 0 ..< n:
-    output[i] = vals[i]
+  # Copy input to output (skip if aliasing for in-place operation)
+  if output[0].addr != vals[0].addr:
+    for i in 0 ..< n:
+      output[i] = vals[i]
 
   var src = output
   var dst = temp
@@ -434,8 +435,8 @@ func fft_nn_impl_stockham[F](
 
 func fft_nn_stockham[F](
        desc: FrFFT_Descriptor[F],
-       output{.noalias.}: var openarray[F],
-       vals{.noalias.}: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+       output: var openarray[F],
+       vals: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
   ## FFT from natural order to natural order using Stockham algorithm.
   ## Input: natural order values
   ## Output: natural order values in Fourier domain
@@ -451,7 +452,7 @@ func fft_nn_stockham[F](
   ## - Pros: No bit-reversal, better memory access patterns
   ## - Cons: Requires 2x memory (temporary buffer)
   ##
-  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
+  ## In-place / Aliasing is supported
   checkSizesReturnEarly(desc, output, vals)
 
   let n = vals.len

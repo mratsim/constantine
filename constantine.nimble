@@ -478,12 +478,13 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/math_elliptic_curves/t_ec_twedw_prj_mul_sanity", false),
   ("tests/math_elliptic_curves/t_ec_twedw_prj_mul_distri", false),
 
-  ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_endomorphism_bls12_381", false),
-  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_endomorphism_bls12_381", false),
-  ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_endomorphism_bn254_snarks", false),
-  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_endomorphism_bn254_snarks", false),
-  ("tests/math_elliptic_curves/t_ec_twedwards_mul_endomorphism_bandersnatch", false),
+  ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_endomorphism_bls12_381.nim", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_endomorphism_bls12_381.nim", false),
+  ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_endomorphism_bn254_snarks.nim", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_endomorphism_bn254_snarks.nim", false),
+  ("tests/math_elliptic_curves/t_ec_twedwards_mul_endomorphism_bandersnatch.nim", false),
 
+  ("tests/math_elliptic_curves/t_ec_scalar_mul_vartime_exhaustive.nim", false),
 
   # Elliptic curve arithmetic 𝔾₂
   # ----------------------------------------------------------
@@ -614,6 +615,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Polynomials
   # ----------------------------------------------------------
   ("tests/math_polynomials/t_polynomials.nim", false),
+  ("tests/math_polynomials/t_fft_internals.nim", false),
   ("tests/math_polynomials/t_fft.nim", false),
   ("tests/math_polynomials/t_fft_coset.nim", false),
   ("tests/math_polynomials/t_bit_reversal.nim", false),
@@ -696,6 +698,7 @@ const benchDesc = [
   "bench_fp12",
   "bench_ec_g1",
   "bench_ec_g1_scalar_mul",
+  "bench_ec_g1_scalar_mul_vartime",
   "bench_ec_g1_batch",
   "bench_ec_msm_bandersnatch",
   "bench_ec_msm_bn254_snarks_g1",
@@ -732,7 +735,7 @@ const benchDesc = [
   "bench_fft_fields",
   "bench_fft_ec",
   "bench_fft_bit_reversal",
-  
+
   # "zkalc", # Already tested through make_zkalc
 ]
 
@@ -1063,6 +1066,9 @@ task bench_ec_g1_batch, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops)
 
 task bench_ec_g1_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - CC compiler":
   runBench("bench_ec_g1_scalar_mul")
+
+task bench_ec_g1_scalar_mul_vartime, "Run benchmark on Elliptic Curve group 𝔾1 (Variable-Time Scalar Multiplication) - CC compiler":
+  runBench("bench_ec_g1_scalar_mul_vartime")
 
 # Elliptic curve 𝔾₁ - Multi-scalar-mul
 # ------------------------------------------
