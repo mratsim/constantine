@@ -12,7 +12,7 @@ import
   constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_batch_ops],
   ../platforms/[allocs, bithacks, fileio, views],
   ../serialization/[codecs, codecs_status_codes, codecs_bls12_381],
-  ../math/polynomials/[polynomials, fft],
+  ../math/polynomials/[polynomials, fft_fields, fft_ec],
   ../math/io/io_fields
 
 # Ensure all exceptions are converted to error codes

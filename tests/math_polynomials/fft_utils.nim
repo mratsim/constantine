@@ -12,7 +12,7 @@ import
   constantine/named/algebras,
   constantine/math/arithmetic,
   constantine/math/io/io_fields,
-  constantine/math/polynomials/[polynomials, fft],
+  constantine/math/polynomials/[polynomials, fft_fields, fft_ec],
   constantine/named/properties_fields
 
 func buildRootLUT(F: type Fr, primitive_root: uint): array[32, F] =

@@ -729,7 +729,8 @@ const benchDesc = [
   "bench_verkle_primitives",
   "bench_eth_evm_precompiles",
   "bench_multilinear_extensions",
-  "bench_fft",
+  "bench_fft_fields",
+  "bench_fft_ec",
   "bench_fft_bit_reversal",
   
   # "zkalc", # Already tested through make_zkalc
@@ -1197,8 +1198,15 @@ task bench_eth_evm_precompiles, "Run Ethereum EVM precompiles - CC compiler":
 
 # FFT
 # ------------------------------------------
-task bench_fft, "Run FFT / IFFT Benchmarks (BLS12-381) - CC compiler":
-  runBench("bench_fft")
+task bench_fft_fields, "Run FFT / IFFT Benchmarks on Fields (BLS12-381) - CC compiler":
+  runBench("bench_fft_fields")
+
+task bench_fft_ec, "Run FFT / IFFT Benchmarks on Elliptic Curves (BLS12-381 G1) - CC compiler":
+  runBench("bench_fft_ec")
 
 task bench_fft_bit_reversal, "Run Bit-Reversal Permutation Benchmarks - CC compiler":
   runBench("bench_fft_bit_reversal")
+
+task bench_fft, "Run all FFT benchmarks (fields + EC)":
+  runBench("bench_fft_fields")
+  runBench("bench_fft_ec")

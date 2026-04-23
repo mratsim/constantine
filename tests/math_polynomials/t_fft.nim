@@ -19,7 +19,8 @@ import
   ../../constantine/named/algebras,
   ../../constantine/named/zoo_generators,
   ../../constantine/math/[arithmetic, ec_shortweierstrass],
-  ../../constantine/math/polynomials/fft,
+  ../../constantine/math/polynomials/fft_fields {.all.},
+  ../../constantine/math/polynomials/fft_ec {.all.},
   ../../constantine/math/io/io_fields,
   ./fft_utils
 
@@ -340,6 +341,151 @@ proc testIFFTOrdering*(F: typedesc[Fr]) =
 
   echo "  ✓ IFFT ordering tests PASSED"
 
+proc testInPlaceFFT*(F: typedesc[Fr]) =
+  echo "Testing in-place FFT support (aliasing)..."
+
+  for order in [4, 8, 16]:
+    let fftDesc = createFFTDescriptor(F, order)
+
+    # Test DIF in-place (Natural → Bit-Reversed)
+    var data_dif = newSeq[F](order)
+    for i in 0..<order:
+      data_dif[i].fromUint(uint64(i + 1))
+
+    let status_dif = fft_nr_iterative_dif(fftDesc, data_dif, data_dif)
+    doAssert status_dif == FFT_Success, "In-place DIF failed (N=" & $order & ")"
+
+    # Verify output is bit-reversed by comparing with out-of-place version
+    var data_dif_oop = newSeq[F](order)
+    for i in 0..<order:
+      data_dif_oop[i].fromUint(uint64(i + 1))
+    var out_dif = newSeq[F](order)
+    discard fft_nr_iterative_dif(fftDesc, out_dif, data_dif_oop)
+
+    for i in 0..<order:
+      doAssert (data_dif[i] == out_dif[i]).bool,
+        "In-place DIF mismatch at index " & $i & " (order=" & $order & ")"
+
+    # Test DIT in-place (Bit-Reversed → Natural)
+    var data_dit = newSeq[F](order)
+    for i in 0..<order:
+      data_dit[i].fromUint(uint64(i + 1))
+    bit_reversal_permutation(data_dit)
+
+    let status_dit = fft_rn_iterative_dit(fftDesc, data_dit, data_dit)
+    doAssert status_dit == FFT_Success, "In-place DIT failed (N=" & $order & ")"
+
+    # Verify output is natural order by comparing with out-of-place version
+    var data_dit_oop = newSeq[F](order)
+    for i in 0..<order:
+      data_dit_oop[i].fromUint(uint64(i + 1))
+    bit_reversal_permutation(data_dit_oop)
+    var out_dit = newSeq[F](order)
+    discard fft_rn_iterative_dit(fftDesc, out_dit, data_dit_oop)
+
+    for i in 0..<order:
+      doAssert (data_dit[i] == out_dit[i]).bool,
+        "In-place DIT mismatch at index " & $i & " (order=" & $order & ")"
+
+    # Test IFFT DIT in-place (Bit-Reversed → Natural)
+    var ifft_data = newSeq[F](order)
+    for i in 0..<order:
+      ifft_data[i].fromUint(uint64(i + 1))
+    bit_reversal_permutation(ifft_data)
+
+    let status_ifft = ifft_rn_iterative_dit(fftDesc, ifft_data, ifft_data)
+    doAssert status_ifft == FFT_Success, "In-place IFFT DIT failed (N=" & $order & ")"
+
+    # Compare with out-of-place version
+    var ifft_data_oop = newSeq[F](order)
+    for i in 0..<order:
+      ifft_data_oop[i].fromUint(uint64(i + 1))
+    bit_reversal_permutation(ifft_data_oop)
+    var out_ifft = newSeq[F](order)
+    discard ifft_rn_iterative_dit(fftDesc, out_ifft, ifft_data_oop)
+
+    for i in 0..<order:
+      doAssert (ifft_data[i] == out_ifft[i]).bool,
+        "In-place IFFT DIT mismatch at index " & $i & " (order=" & $order & ")"
+
+  echo "  ✓ In-place FFT tests PASSED"
+
+proc testInPlaceECFFT*(EC: typedesc, F: typedesc[Fr]) =
+  echo "Testing in-place EC FFT support (aliasing)..."
+
+  for order in [4, 8, 16]:
+    let fftDesc = createFFTDescriptor(EC, F, order)
+
+    # Test DIF in-place (Natural → Bit-Reversed)
+    var data_dif = newSeq[EC](order)
+    data_dif[0].setGenerator()
+    let gen = EC.F.Name.getGenerator($EC.G)
+    for i in 1..<order:
+      data_dif[i].mixedSum(data_dif[i-1], gen)
+
+    let status_dif = ec_fft_nr_iterative(fftDesc, data_dif, data_dif)
+    doAssert status_dif == FFT_Success, "In-place EC DIF failed (N=" & $order & ")"
+
+    # Verify output is bit-reversed by comparing with out-of-place version
+    var data_dif_oop = newSeq[EC](order)
+    data_dif_oop[0].setGenerator()
+    for i in 1..<order:
+      data_dif_oop[i].mixedSum(data_dif_oop[i-1], gen)
+    var out_dif = newSeq[EC](order)
+    discard ec_fft_nr_iterative(fftDesc, out_dif, data_dif_oop)
+
+    for i in 0..<order:
+      doAssert (data_dif[i] == out_dif[i]).bool,
+        "In-place EC DIF mismatch at index " & $i & " (order=" & $order & ")"
+
+    # Test DIT in-place (Bit-Reversed → Natural)
+    var data_dit = newSeq[EC](order)
+    data_dit[0].setGenerator()
+    for i in 1..<order:
+      data_dit[i].mixedSum(data_dit[i-1], gen)
+    bit_reversal_permutation(data_dit)
+
+    let status_dit = ec_fft_rn_iterative_dit(fftDesc, data_dit, data_dit)
+    doAssert status_dit == FFT_Success, "In-place EC DIT failed (N=" & $order & ")"
+
+    # Verify output is natural order by comparing with out-of-place version
+    var data_dit_oop = newSeq[EC](order)
+    data_dit_oop[0].setGenerator()
+    for i in 1..<order:
+      data_dit_oop[i].mixedSum(data_dit_oop[i-1], gen)
+    bit_reversal_permutation(data_dit_oop)
+    var out_dit = newSeq[EC](order)
+    discard ec_fft_rn_iterative_dit(fftDesc, out_dit, data_dit_oop)
+
+    for i in 0..<order:
+      doAssert (data_dit[i] == out_dit[i]).bool,
+        "In-place EC DIT mismatch at index " & $i & " (order=" & $order & ")"
+
+    # Test IFFT DIT in-place (Bit-Reversed → Natural)
+    var ifft_data = newSeq[EC](order)
+    ifft_data[0].setGenerator()
+    for i in 1..<order:
+      ifft_data[i].mixedSum(ifft_data[i-1], gen)
+    bit_reversal_permutation(ifft_data)
+
+    let status_ifft = ec_ifft_rn_iterative_dit(fftDesc, ifft_data, ifft_data)
+    doAssert status_ifft == FFT_Success, "In-place EC IFFT DIT failed (N=" & $order & ")"
+
+    # Compare with out-of-place version
+    var ifft_data_oop = newSeq[EC](order)
+    ifft_data_oop[0].setGenerator()
+    for i in 1..<order:
+      ifft_data_oop[i].mixedSum(ifft_data_oop[i-1], gen)
+    bit_reversal_permutation(ifft_data_oop)
+    var out_ifft = newSeq[EC](order)
+    discard ec_ifft_rn_iterative_dit(fftDesc, out_ifft, ifft_data_oop)
+
+    for i in 0..<order:
+      doAssert (ifft_data[i] == out_ifft[i]).bool,
+        "In-place EC IFFT DIT mismatch at index " & $i & " (order=" & $order & ")"
+
+  echo "  ✓ In-place EC FFT tests PASSED"
+
 when isMainModule:
   echo "========================================"
   echo "    FFT/IFFT Correctness Tests"
@@ -358,6 +504,10 @@ when isMainModule:
   testECFFTOrdering(EC_ShortW_Prj[Fp[BLS12_381], G1], Fr[BLS12_381])
   echo ""
   testIFFTOrdering(Fr[BLS12_381])
+  echo ""
+  testInPlaceFFT(Fr[BLS12_381])
+  echo ""
+  testInPlaceECFFT(EC_ShortW_Prj[Fp[BLS12_381], G1], Fr[BLS12_381])
 
   echo "\n========================================"
   echo "    All FFT tests PASSED ✓"
