@@ -95,12 +95,7 @@ func ec_fft_nn_recursive[EC](
        output: var openarray[EC],
        vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
   ## EC FFT from natural order to natural order (Recursive Cooley-Tukey).
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if output.len != vals.len:
-    return FFT_InconsistentInputOutputLengths
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
+  checkSizesReturnEarly(desc, output, vals)
 
   let rootz = desc.rootsOfUnity
                   .toStridedView(desc.order)
@@ -115,12 +110,7 @@ func ec_ifft_nn_recursive[EC](
        output: var openarray[EC],
        vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
   ## Inverse FFT from natural order to natural order
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if output.len != vals.len:
-    return FFT_InconsistentInputOutputLengths
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
+  checkSizesReturnEarly(desc, output, vals)
 
   let rootz = desc.rootsOfUnity
                   .toStridedView(desc.order+1) # Extra 1 at the end so that when reversed the buffer starts with 1
@@ -216,12 +206,7 @@ func ec_fft_nr_iterative[EC](
   ##
   ## **Supports in-place operation**: `output` and `vals` can be the same array.
   ## If they alias, the input copy is skipped for better performance.
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if output.len != vals.len:
-    return FFT_InconsistentInputOutputLengths
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
+  checkSizesReturnEarly(desc, output, vals)
 
   let n = vals.len
 
@@ -252,12 +237,7 @@ func ec_fft_rn_iterative_dit[EC](
   ##
   ## **Supports in-place operation**: `output` and `vals` can be the same array.
   ## If they alias, the input copy is skipped for better performance.
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if output.len != vals.len:
-    return FFT_InconsistentInputOutputLengths
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
+  checkSizesReturnEarly(desc, output, vals)
 
   let n = vals.len
 
@@ -327,12 +307,7 @@ func ec_ifft_rn_iterative_dit[EC](
   ##
   ## **Supports in-place operation**: `output` and `vals` can be the same array.
   ## If they alias, the input copy is skipped for better performance.
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if output.len != vals.len:
-    return FFT_InconsistentInputOutputLengths
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
+  checkSizesReturnEarly(desc, output, vals)
 
   let n = vals.len
 
@@ -376,9 +351,12 @@ proc ec_fft_nn_via_bitrev_and_iterative_dit[EC](
        output: var openarray[EC],
        vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca], meter.} =
   ## Natural → Natural via: BitRev + Iterative DIT (RN)
-  var br_vals = newSeq[EC](vals.len)
-  bit_reversal_permutation(br_vals, vals)
-  let status = ec_fft_rn_iterative_dit(desc, output, br_vals)
+  checkSizesReturnEarly(desc, output, vals)
+
+  var br_vals = allocHeapArrayAligned(EC, vals.len, alignment = 64)
+  bit_reversal_permutation(br_vals.toOpenArray(0, vals.len-1), vals)
+  let status = ec_fft_rn_iterative_dit(desc, output, br_vals.toOpenArray(0, vals.len-1))
+  freeHeapAligned(br_vals)
   return status
 
 proc ec_ifft_nn_via_bitrev_and_iterative_dit[EC](

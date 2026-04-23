@@ -102,12 +102,7 @@ func fft_nn_recursive[F](
   ## Note: The {.noalias.} annotation documents this requirement but is not
   ## currently enforced by the compiler. It serves as documentation and may
   ## be used by future compiler optimizations or static analysis tools.
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if output.len != vals.len:
-    return FFT_InconsistentInputOutputLengths
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
+  checkSizesReturnEarly(desc, output, vals)
 
   let rootz = desc.rootsOfUnity
                   .toStridedView(desc.order)
@@ -133,12 +128,7 @@ func ifft_nn_recursive[F](
   ## Note: The {.noalias.} annotation documents this requirement but is not
   ## currently enforced by the compiler. It serves as documentation and may
   ## be used by future compiler optimizations or static analysis tools.
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if output.len != vals.len:
-    return FFT_InconsistentInputOutputLengths
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
+  checkSizesReturnEarly(desc, output, vals)
 
   let rootz = desc.rootsOfUnity
                   .toStridedView(desc.order+1)
@@ -210,12 +200,7 @@ func fft_nr_iterative_dif[F](
   ##
   ## **Supports in-place operation**: `output` and `vals` can be the same array.
   ## If they alias, the input copy is skipped for better performance.
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if output.len != vals.len:
-    return FFT_InconsistentInputOutputLengths
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
+  checkSizesReturnEarly(desc, output, vals)
 
   let n = vals.len
 
@@ -283,12 +268,7 @@ func fft_rn_iterative_dit[F](
   ##
   ## **Supports in-place operation**: `output` and `vals` can be the same array.
   ## If they alias, the input copy is skipped for better performance.
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if output.len != vals.len:
-    return FFT_InconsistentInputOutputLengths
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
+  checkSizesReturnEarly(desc, output, vals)
 
   let n = vals.len
 
@@ -359,12 +339,7 @@ func ifft_rn_iterative_dit[F](
   ##
   ## **Supports in-place operation**: `output` and `vals` can be the same array.
   ## If they alias, the input copy is skipped for better performance.
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if output.len != vals.len:
-    return FFT_InconsistentInputOutputLengths
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
+  checkSizesReturnEarly(desc, output, vals)
 
   let n = vals.len
 
@@ -477,12 +452,7 @@ func fft_nn_stockham[F](
   ## - Cons: Requires 2x memory (temporary buffer)
   ##
   ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if output.len != vals.len:
-    return FFT_InconsistentInputOutputLengths
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
+  checkSizesReturnEarly(desc, output, vals)
 
   let n = vals.len
 
@@ -492,8 +462,8 @@ func fft_nn_stockham[F](
   # Create strided view of roots of unity (no allocation/copy needed)
   let rootStride = desc.order shr log2_vartime(uint n)
   let rootz = desc.rootsOfUnity
-                  .toStridedView(n)
-                  .slice(0, n-1, rootStride)
+                  .toStridedView(desc.order)
+                  .slice(0, desc.order-1, rootStride)
 
   # Stockham FFT
   fft_nn_impl_stockham(
@@ -530,9 +500,12 @@ proc fft_nn_via_bitrev_and_iterative_dit[F](
        output: var openarray[F],
        vals: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
   ## Natural → Natural via: BitRev + Iterative DIT (RN)
-  var br_vals = newSeq[F](vals.len)
-  bit_reversal_permutation(br_vals, vals)
-  let status = fft_rn_iterative_dit(desc, output, br_vals)
+  checkSizesReturnEarly(desc, output, vals)
+
+  var br_vals = allocHeapArrayAligned(F, vals.len, alignment = 64)
+  bit_reversal_permutation(br_vals.toOpenArray(0, vals.len-1), vals)
+  let status = fft_rn_iterative_dit(desc, output, br_vals.toOpenArray(0, vals.len-1))
+  freeHeapAligned(br_vals)
   return status
 
 proc ifft_nn_via_bitrev_and_iterative_dit[F](
@@ -737,12 +710,7 @@ func coset_ifft_rn*[F](
   ##   - cosetShift, the coset shift (which will be inverted)
   ##
   ## Returns FFT_Success on success, error code otherwise
-  if vals.len > desc.order:
-    return FFT_TooManyValues
-  if output.len != vals.len:
-    return FFT_InconsistentInputOutputLengths
-  if not vals.len.uint64.isPowerOf2_vartime():
-    return FFT_SizeNotPowerOfTwo
+  checkSizesReturnEarly(desc, output, vals)
 
   let n = vals.len
   var temp_buf = allocHeapArrayAligned(F, n, alignment = 64)

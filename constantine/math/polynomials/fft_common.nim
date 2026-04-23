@@ -37,6 +37,16 @@ type
     FFT_TooManyValues = "Input length greater than the field 2-adicity (number of roots of unity)"
     FFT_SizeNotPowerOfTwo = "Input must be of a power of 2 length"
 
+template checkSizesReturnEarly*(desc, output, vals: untyped): untyped =
+  ## Validate FFT input sizes and return early with appropriate FFTStatus on failure.
+  ## Use this at the start of FFT functions to validate inputs before allocation or computation.
+  if vals.len > desc.order:
+    return FFT_TooManyValues
+  if output.len != vals.len:
+    return FFT_InconsistentInputOutputLengths
+  if not vals.len.uint64.isPowerOf2_vartime():
+    return FFT_SizeNotPowerOfTwo
+
 # Bit-reversal permutation
 # ------------------------------------------------------------------------------
 
