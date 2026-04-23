@@ -143,14 +143,13 @@ proc bench_EC_FFT_RN_Iterative_DIT*() =
     for i in 1 ..< order:
       data[i].mixedSum(data[i-1], BLS12_381.getGenerator("G1"))
 
-    bit_reversal_permutation(data)
+    var bitReversedInput = data
+    bit_reversal_permutation(bitReversedInput)
 
     var coefsOut = newSeq[EC_G1](order)
 
     bench("EC FFT RN DIT", "EC[BLS12-381 G1]", order, NumIters):
-      for i in 0 ..< order:
-        coefsOut[i] = data[i]
-      let status = ec_fft_rn_iterative_dit(fftDesc, coefsOut, coefsOut)
+      let status = ec_fft_rn_iterative_dit(fftDesc, coefsOut, bitReversedInput)
       doAssert status == FFT_Success
 
 proc bench_EC_FFT_NR_via_Recursive_and_BitRev*() =

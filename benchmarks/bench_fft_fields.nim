@@ -139,14 +139,13 @@ proc bench_Fr_FFT_RN_Iterative_DIT*() =
     for i in 0 ..< order:
       data[i].fromUint(uint64(i + 1))
 
-    bit_reversal_permutation(data)
+    var bitReversedInput = data
+    bit_reversal_permutation(bitReversedInput)
 
     var freq = newSeq[F](order)
 
     bench("Fr FFT RN DIT", "Fr[BLS12-381]", order, NumIters):
-      for i in 0 ..< order:
-        freq[i] = data[i]
-      let status = fft_rn_iterative_dit(fftDesc, freq, freq)
+      let status = fft_rn_iterative_dit(fftDesc, freq, bitReversedInput)
       doAssert status == FFT_Success
 
 proc bench_Fr_FFT_NN_Stockham*() =
@@ -226,10 +225,10 @@ proc bench_Fr_FFT_NN_via_BitRev_and_Iterative_DIT*() =
       data[i].fromUint(uint64(i + 1))
 
     var freq = newSeq[F](order)
+    var br_data = newSeq[F](order)
+    bit_reversal_permutation(br_data, data)
 
     bench("Fr FFT NN BR+DIT", "Fr[BLS12-381]", order, NumIters):
-      var br_data = newSeq[F](order)
-      bit_reversal_permutation(br_data, data)
       let status = fft_rn_iterative_dit(fftDesc, freq, br_data)
       doAssert status == FFT_Success
 
