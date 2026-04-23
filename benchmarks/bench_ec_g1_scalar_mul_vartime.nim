@@ -17,9 +17,7 @@ import
   # Helpers
   helpers/prng_unsafe,
   ./platforms,
-  ./bench_blueprint,
-  # Reference unsafe scalar multiplication
-  constantine/math/elliptic/ec_scalar_mul_vartime
+  ./bench_blueprint
 
 proc separator*() = separator(179)
 
@@ -64,12 +62,9 @@ template bench*(op: string, EC: typedesc, iters: int, body: untyped): untyped =
 #
 # ############################################################
 
-const curve = BLS12_381
-const bits = Fr[curve].bits()
-const hasEndo = curve.hasEndomorphismAcceleration()
 const Iters = 1000
 
-proc scalarMulVartimeDoubleAddBench*(EC: typedesc, scalar: BigInt[bits], iters: int) {.noinline.} =
+proc scalarMulVartimeDoubleAddBench*(EC: typedesc, scalar: BigInt[255], iters: int) {.noinline.} =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -78,7 +73,7 @@ proc scalarMulVartimeDoubleAddBench*(EC: typedesc, scalar: BigInt[bits], iters: 
     r = P
     r.scalarMul_doubleAdd_vartime(scalar)
 
-proc scalarMulVartimeMinHammingWeightRecodingBench*(EC: typedesc, scalar: BigInt[bits], iters: int) {.noinline.} =
+proc scalarMulVartimeMinHammingWeightRecodingBench*(EC: typedesc, scalar: BigInt[255], iters: int) {.noinline.} =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -87,7 +82,7 @@ proc scalarMulVartimeMinHammingWeightRecodingBench*(EC: typedesc, scalar: BigInt
     r = P
     r.scalarMul_jy00_vartime(scalar)
 
-proc scalarMulVartimeWNAFBench*(EC: typedesc, scalar: BigInt[bits], window: static int, iters: int) {.noinline.} =
+proc scalarMulVartimeWNAFBench*(EC: typedesc, scalar: BigInt[255], window: static int, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -96,7 +91,7 @@ proc scalarMulVartimeWNAFBench*(EC: typedesc, scalar: BigInt[bits], window: stat
     r = P
     r.scalarMul_wNAF_vartime(scalar, window)
 
-proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, scalar: BigInt[bits], window: static int, iters: int) {.noinline.} =
+proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, scalar: BigInt[255], window: static int, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -105,7 +100,7 @@ proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, scalar: BigInt[bits], window: 
     r = P
     r.scalarMulEndo_wNAF_vartime(scalar, window)
 
-proc scalarMulVartimeBench*(EC: typedesc, scalar: BigInt[bits], iters: int) {.noinline.} =
+proc scalarMulVartimeBench*(EC: typedesc, scalar: BigInt[255], iters: int) {.noinline.} =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -114,18 +109,23 @@ proc scalarMulVartimeBench*(EC: typedesc, scalar: BigInt[bits], iters: int) {.no
     r = P
     r.scalarMul_vartime(scalar)
 
-proc makeSmallScalar(rng: var RngState, size: int): BigInt[bits] =
-  result = rng.random_unsafe(BigInt[bits])
+proc makeSmallScalar(rng: var RngState, size: int): BigInt[255] =
+  result = rng.random_unsafe(BigInt[255])
   # Note there is a BigInt.shiftRight(k) for 0 < k < WordBitwidth
   # and there is a arbitrary precision limbs shiftRight_vartime for any k
-  result.limbs.shiftRight_vartime(result.limbs, bits-size)
+  result.limbs.shiftRight_vartime(result.limbs, 255-size)
+
+  # For MSB to 1
+  let limbIdx = (size - 1) div WordBitWidth
+  let bitPos  = (size - 1) mod WordBitWidth
+  result.limbs[limbIdx] = result.limbs[limbIdx] or (SecretWord(1) shl bitPos)
 
 proc main() =
   separator()
   echo "BLS12-381 G1 Scalar Multiplication benchmarks"
   echo "=============================================="
-  echo "Scalar field bits: ", bits
-  echo "Endomorphism acceleration: ", hasEndo
+  echo "Scalar field bits: ", 255
+  echo "Endomorphism acceleration: ", BLS12_381.hasEndomorphismAcceleration()
   echo "EndomorphismThreshold: ", EndomorphismThreshold
   echo ""
   echo "NOTE: Using BigInt[255] with controlled bit patterns to test"
@@ -139,14 +139,14 @@ proc main() =
     echo "Testing scalar with ", size, " bits set (runtime-detected)"
     let smallScalar = rng.makeSmallScalar(size)
     echo "Scalar: ", smallScalar.toHex()
-    scalarMulVartimeDoubleAddBench(EC_ShortW_Jac[Fp[curve], G1], smallScalar, Iters)
-    scalarMulVartimeMinHammingWeightRecodingBench(EC_ShortW_Jac[Fp[curve], G1], smallScalar, Iters)
-    scalarMulVartimeWNAFBench(EC_ShortW_Jac[Fp[curve], G1], smallScalar, window = 3, Iters)
-    scalarMulVartimeWNAFBench(EC_ShortW_Jac[Fp[curve], G1], smallScalar, window = 4, Iters)
-    when hasEndo:
-      scalarMulVartimeEndoWNAFBench(EC_ShortW_Jac[Fp[curve], G1], smallScalar, window = 3, Iters)
-      scalarMulVartimeEndoWNAFBench(EC_ShortW_Jac[Fp[curve], G1], smallScalar, window = 4, Iters)
-    scalarMulVartimeBench(EC_ShortW_Jac[Fp[curve], G1], smallScalar, Iters)
+    scalarMulVartimeDoubleAddBench(EC_ShortW_Jac[Fp[BLS12_381], G1], smallScalar, Iters)
+    scalarMulVartimeMinHammingWeightRecodingBench(EC_ShortW_Jac[Fp[BLS12_381], G1], smallScalar, Iters)
+    scalarMulVartimeWNAFBench(EC_ShortW_Jac[Fp[BLS12_381], G1], smallScalar, window = 3, Iters)
+    scalarMulVartimeWNAFBench(EC_ShortW_Jac[Fp[BLS12_381], G1], smallScalar, window = 4, Iters)
+    when BLS12_381.hasEndomorphismAcceleration():
+      scalarMulVartimeEndoWNAFBench(EC_ShortW_Jac[Fp[BLS12_381], G1], smallScalar, window = 3, Iters)
+      scalarMulVartimeEndoWNAFBench(EC_ShortW_Jac[Fp[BLS12_381], G1], smallScalar, window = 4, Iters)
+    scalarMulVartimeBench(EC_ShortW_Jac[Fp[BLS12_381], G1], smallScalar, Iters)
     separator()
 
 main()

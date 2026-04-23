@@ -478,13 +478,13 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/math_elliptic_curves/t_ec_twedw_prj_mul_sanity", false),
   ("tests/math_elliptic_curves/t_ec_twedw_prj_mul_distri", false),
 
-  ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_endomorphism_bls12_381", false),
-  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_endomorphism_bls12_381", false),
-  ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_endomorphism_bn254_snarks", false),
-  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_endomorphism_bn254_snarks", false),
-  ("tests/math_elliptic_curves/t_ec_twedwards_mul_endomorphism_bandersnatch", false),
+  ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_endomorphism_bls12_381.nim", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_endomorphism_bls12_381.nim", false),
+  ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_endomorphism_bn254_snarks.nim", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_endomorphism_bn254_snarks.nim", false),
+  ("tests/math_elliptic_curves/t_ec_twedwards_mul_endomorphism_bandersnatch.nim", false),
 
-  ("constantine/tests/math_elliptic_curves/t_ec_scalar_mul_vartime_exhaustive.nim", false),
+  ("tests/math_elliptic_curves/t_ec_scalar_mul_vartime_exhaustive.nim", false),
 
   # Elliptic curve arithmetic 𝔾₂
   # ----------------------------------------------------------
