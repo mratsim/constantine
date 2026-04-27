@@ -735,6 +735,7 @@ const benchDesc = [
   "bench_eth_bls_signatures",
   "bench_eth_eip4844_kzg",
   "bench_eth_eip7594_peerdas",
+  "bench_kzg_multiproofs",
   "eth_eip7594/perf_compute_cells",
   "eth_eip7594/perf_compute_cells_and_kzg_proofs",
   "eth_eip7594/perf_recover_cells_and_kzg_proofs",
@@ -1202,6 +1203,9 @@ task bench_eth_eip4844_kzg, "Run Ethereum EIP4844 KZG Polynomial commitment - CC
 
 task bench_eth_eip7594_peerdas, "Run Ethereum EIP7594 PeerDAS (Data Availability Sampling) - CC compiler":
   runBench("bench_eth_eip7594_peerdas")
+
+task bench_kzg_multiproofs, "Run KZG Multiproof benchmarks (FK20 vs Naive) - CC compiler":
+  runBench("bench_kzg_multiproofs")
 
 # EIP7594 PeerDAS - Individual perf benchmarks (for VTune/perf profiling)
 # ------------------------------------------

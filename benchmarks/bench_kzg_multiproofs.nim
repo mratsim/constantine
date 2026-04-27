@@ -88,11 +88,11 @@ proc benchPolyphasePrecomputation(srs_monomial_g1: PolynomialCoef[N, EC_ShortW_A
   ## Measure one-time polyphase spectrum bank computation cost
   ## This runs once during trusted setup initialization
 
-  var polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
+  let polyphaseSpectrumBank = allocHeapAligned(array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]], 64)
+  defer: freeHeapAligned(polyphaseSpectrumBank)
 
   bench("computePolyphaseDecompositionFourier", CDS*L, iters):
-    computePolyphaseDecompositionFourier(polyphaseSpectrumBank, srs_monomial_g1, ecfft_desc)
-
+    computePolyphaseDecompositionFourier(polyphaseSpectrumBank[], srs_monomial_g1, ecfft_desc)
 proc benchFK20_Phase1_Full(ctx: ptr EthereumKZGContext,
                            poly: PolynomialCoef[N, Fr[BLS12_381]],
                            iters: int) =
@@ -141,9 +141,9 @@ proc benchKZGCosetProve_FK20(ctx: ptr EthereumKZGContext,
   var proofs: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
 
   bench("kzg_coset_prove_fk20", CDS, iters):
-    kzg_coset_prove[N, L, CDS, BLS12_381](
+    kzg_coset_prove[L, CDS, BLS12_381](
       proofs,
-      poly,
+      poly.coefs,
       ctx.fft_desc_ext,
       ctx.ecfft_desc_ext,
       ctx.polyphaseSpectrumBank

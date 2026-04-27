@@ -214,7 +214,8 @@ func compute_cells*(
   # Step 2: First 64 cells - DIRECT COPY (zero computation!)
   # ============================================================
   # The first half of the bit-reversed extended domain equals the original blob
-  var cells_evals {.noInit.}: array[CDS, array[L, Fr[BLS12_381]]]
+  let cells_evals = allocHeapAligned(array[CDS, array[L, Fr[BLS12_381]]], alignment=64)
+  defer: freeHeapAligned(cells_evals)
   copyMem(cells_evals[0][0].addr, poly_eval_brp.evals[0].addr, N*sizeof(Fr[BLS12_381]))
 
   # ============================================================
@@ -226,22 +227,18 @@ func compute_cells*(
   # 3. Shift coefficients by w_8192^k
   # 4. FFT (coefficients -> natural eval form)
   # 5. Bit-reverse output (natural eval -> bit-reversed eval for cells)
-
   # Step 3a: Lagrange -> Monomial form
-  var poly_coef_nat: PolynomialCoef[N, Fr[BLS12_381]]
-  poly_coef_nat.lagrangeInterpolate(poly_eval_brp, ctx.fft_desc_ext)
-
+  let poly_coef_nat = allocHeapAligned(PolynomialCoef[N, Fr[BLS12_381]], alignment = 64)
+  defer: freeHeapAligned(poly_coef_nat)
+  poly_coef_nat[].lagrangeInterpolate(poly_eval_brp, ctx.fft_desc_ext)
   # Step 3b: Shift coefficients by w_8192^k
   # w_8192 = primitive 8192nd root of unity (coset shift factor)
   let w_8192 = ctx.fft_desc_ext.rootsOfUnity[1]
   poly_coef_nat.coefs.shift_vals(poly_coef_nat.coefs, w_8192)
-
   # Step 3d: FFT of shifted coefficients -> evaluations directly into cells 64-127
   let pHalfCells = cells_evals[HALF_CDS].asUnchecked()
-  var odd_evals: array[N, Fr[BLS12_381]]
   let fft_status = ctx.fft_desc_ext.fft_nr(pHalfCells.toOpenArray(N), poly_coef_nat.coefs)
   doAssert fft_status == FFT_Success
-
   # ============================================================
   # Step 4: Serialize to bytes
   # ============================================================
@@ -337,7 +334,7 @@ func deduplicateCommitments*(
 func compute_verify_cell_kzg_proof_batch_challenge*(
        commitments: openArray[array[BYTES_PER_COMMITMENT, byte]],
        commitment_indices: openArray[int],
-       cell_indices: openArray[int],
+       cell_indices: openArray[CellIndex],
        cosets_evals: openArray[array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]]],
        proofs: openArray[array[BYTES_PER_PROOF, byte]]): Fr[BLS12_381] =
   ## Compute the Fiat-Shamir challenge r for batch verification.
@@ -374,7 +371,7 @@ func compute_verify_cell_kzg_proof_batch_challenge*(
 func verify_cell_kzg_proof_batch*(
        ctx: ptr EthereumKZGContext,
        commitments_bytes: openArray[array[BYTES_PER_COMMITMENT, byte]],
-       cell_indices: openArray[int],
+       cell_indices: openArray[CellIndex],
        cells: openArray[Cell],
        proofs_bytes: openArray[array[BYTES_PER_PROOF, byte]],
        secureRandomBytes: array[32, byte]): bool =

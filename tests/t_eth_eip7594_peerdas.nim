@@ -95,9 +95,9 @@ TestVectorsDir.testGen(verify_cell_kzg_proof_batch, "kzg-mainnet", testVector):
   # Parse inputs
   parseAssignList(commitmentsBytes, BYTES_PER_COMMITMENT, testVector["input"]["commitments"])
 
-  var cellIndices: seq[int] = @[]
+  var cellIndices: seq[CellIndex] = @[]
   for idx in testVector["input"]["cell_indices"]:
-    cellIndices.add(parseInt(idx.content))
+    cellIndices.add(CellIndex(parseInt(idx.content)))
 
   parseAssignList(cells, BYTES_PER_CELL, testVector["input"]["cells"])
   parseAssignList(proofsBytes, BYTES_PER_PROOF, testVector["input"]["proofs"])
@@ -133,9 +133,9 @@ TestVectorsDir.testGen(compute_verify_cell_kzg_proof_batch_challenge, "kzg-mainn
   for idx in testVector["input"]["commitment_indices"]:
     commitmentIndices.add(parseInt(idx.content))
 
-  var cellIndices: seq[int] = @[]
+  var cellIndices: seq[CellIndex] = @[]
   for idx in testVector["input"]["cell_indices"]:
-    cellIndices.add(parseInt(idx.content))
+    cellIndices.add(CellIndex(parseInt(idx.content)))
 
   var cosetsEvals: seq[array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]]]
   for cosetEvalsHex in testVector["input"]["cosets_evals"]:
