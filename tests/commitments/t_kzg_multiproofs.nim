@@ -446,8 +446,8 @@ proc testKzgCosetVerifyBatchNegative_SwitchProofs*(numTestCells: int) =
 
   for i in 0 ..< numTestCells:
     let cellIdx = uint64(i)
-    let domainPos = reverseBits(uint32(cellIdx), uint32(nBits)) * uint64(L)
-    let h = setup.rootsOfUnity.rootsOfUnity[domainPos]
+    let cosetIdx = reverseBits(uint32(cellIdx), uint32(nBits))
+    let h = setup.rootsOfUnity.rootsOfUnity[cosetIdx]
 
     evalsCols[i] = int(cellIdx)
     commitmentIdx[i] = 0
@@ -528,8 +528,8 @@ proc testKzgCosetVerifyBatchNegative_SwitchEvals*(numTestCells: int) =
 
   for i in 0 ..< numTestCells:
     let cellIdx = uint64(i)
-    let domainPos = reverseBits(uint32(cellIdx), uint32(nBits)) * uint64(L)
-    let h = setup.rootsOfUnity.rootsOfUnity[domainPos]
+    let cosetIdx = reverseBits(uint32(cellIdx), uint32(nBits))
+    let h = setup.rootsOfUnity.rootsOfUnity[cosetIdx]
 
     evalsCols[i] = int(cellIdx)
     commitmentIdx[i] = 0
@@ -615,8 +615,8 @@ proc testKzgCosetVerifyBatchNegative_FakeProof*(numTestCells: int) =
 
   for i in 0 ..< numTestCells:
     let cellIdx = uint64(i)
-    let domainPos = reverseBits(uint32(cellIdx), uint32(nBits)) * uint64(L)
-    let h = setup.rootsOfUnity.rootsOfUnity[domainPos]
+    let cosetIdx = reverseBits(uint32(cellIdx), uint32(nBits))
+    let h = setup.rootsOfUnity.rootsOfUnity[cosetIdx]
 
     evalsCols[i] = int(cellIdx)
     commitmentIdx[i] = 0

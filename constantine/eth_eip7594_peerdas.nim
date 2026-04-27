@@ -528,7 +528,10 @@ func recover_cells_and_kzg_proofs*(
   if num_cells > CELLS_PER_EXT_BLOB:
     return cttEthKzg_InputsLengthsMismatch
 
-  # Check that input is sorted and has no duplicates
+  # Validate bounds and uniqueness (strict ordering enforces both)
+  for i in 0 ..< num_cells:
+    if uint64(cell_indices[i]) >= uint64(CELLS_PER_EXT_BLOB):
+      return cttEthKzg_InputsLengthsMismatch
   for i in 1 ..< num_cells:
     if uint64(cell_indices[i-1]) >= uint64(cell_indices[i]):
       return cttEthKzg_InputsLengthsMismatch

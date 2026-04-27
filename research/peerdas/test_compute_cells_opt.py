@@ -22,7 +22,7 @@ References:
 - rust-kzg: kzg/src/das.rs (lines 241-253)
 - ethereum-research: polynomial_reconstruction/fft.py
 
-⚠️ For EIP-4844 and EIP-7597 the roots of unity are in bit-reversed order
+⚠️ For EIP-4844 and EIP-7594 the roots of unity are in bit-reversed order
 """
 
 from typing import List, Tuple

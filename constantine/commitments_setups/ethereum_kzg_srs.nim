@@ -288,7 +288,7 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
     var charsRead: cint
     for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
       let num_matches = f.c_fscanf(readHexG1, bufG1Hex.addr, charsRead.addr)
-      if num_matches != 1 and charsRead != 2*g1Bytes:
+      if num_matches != 1 or charsRead != 2*g1Bytes:
         return tsInvalidFile
       bufG1bytes.fromHex(bufG1Hex.toOpenArray(0, 2*g1Bytes-1))
       let status = ctx.srs_lagrange_brp_g1.evals[i].deserialize_g1_compressed(bufG1bytes)
@@ -303,7 +303,7 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
     var charsRead: cint
     for i in 0 ..< KZG_SETUP_G2_LENGTH:
       let num_matches = f.c_fscanf(readHexG2, bufG2Hex.addr, charsRead.addr)
-      if num_matches != 1 and charsRead != 2*g2Bytes:
+      if num_matches != 1 or charsRead != 2*g2Bytes:
         return tsInvalidFile
       bufG2bytes.fromHex(bufG2Hex.toOpenArray(0, 2*g2Bytes-1))
       let status = ctx.srs_monomial_g2.coefs[i].deserialize_g2_compressed(bufG2bytes)
@@ -319,7 +319,7 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
     var charsRead: cint
     for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
       let num_matches = f.c_fscanf(readHexG1, bufG1Hex.addr, charsRead.addr)
-      if num_matches != 1 and charsRead != 2*g1Bytes:
+      if num_matches != 1 or charsRead != 2*g1Bytes:
         return tsInvalidFile
       bufG1bytes.fromHex(bufG1Hex.toOpenArray(0, 2*g1Bytes-1))
       let status = ctx.srs_monomial_g1.coefs[i].deserialize_g1_compressed(bufG1bytes)

@@ -47,8 +47,8 @@ func checkCirculant*[F](
   ##
   ## Checks:
   ## - circulant[0] == poly[n-1-offset]
-  ## - circulant[1..r] are all zero
-  ## - circulant[r+1..2r-1] match poly values at stride intervals
+  ## - circulant[1..r+1] are all zero (r+1 zeros)
+  ## - circulant[r+2..2r-1] match poly values at stride intervals (r-2 non-zero elements)
   ##
   ## @param circulant: circulant matrix to validate (length 2*r)
   ## @param poly: polynomial coefficients (length n)
@@ -103,8 +103,8 @@ proc makeCirculantMatrix*[F](
   ##
   ## Output structure (length 2r = 128) - c-kzg convention:
   ##   output[0]      = poly[n - 1 - offset]
-  ##   output[1..r]   = 0 (zero padding)
-  ##   output[r+1..2r-1] = poly values at stride intervals
+  ##   output[1..r+1] = 0 (zero padding, r+1 zeros)
+  ##   output[r+2..2r-1] = poly values at stride intervals (r-2 non-zero elements)
   ##
   ## @param output: output array of length 2*r
   ## @param poly: polynomial coefficients of length n
@@ -179,9 +179,9 @@ proc toeplitzMatVecMulPreFFT*[EC, F](
 
   if vFft.len != n:
     return FFT_SizeNotPowerOfTwo
-  if n > frFftDesc.order + 1:
+  if n > frFftDesc.order:
     return FFT_TooManyValues
-  if n > ecFftDesc.order + 1:
+  if n > ecFftDesc.order:
     return FFT_TooManyValues
 
   let coeffsFft = allocHeapArrayAligned(F, n, 64)
@@ -256,9 +256,9 @@ proc toeplitzMatVecMul*[EC, F](
     return FFT_SizeNotPowerOfTwo
   if circulant.len != n2:
     return FFT_SizeNotPowerOfTwo
-  if n2 > frFftDesc.order + 1:
+  if n2 > frFftDesc.order:
     return FFT_TooManyValues
-  if n2 > ecFftDesc.order + 1:
+  if n2 > ecFftDesc.order:
     return FFT_TooManyValues
 
   let vExt = allocHeapArrayAligned(EC, n2, 64)

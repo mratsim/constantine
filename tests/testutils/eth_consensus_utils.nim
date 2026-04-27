@@ -52,7 +52,7 @@ proc loadVectors(filename: string): YamlNode =
 template testGen*(testDirPrefix: string, name: untyped, testDirSuffix: string, injectedTestVectorIdentifier: untyped, body: untyped): untyped {.dirty.} =
   ## Generates a test proc(ctx: ptr EthereumKZGContext)
   ## with identifier "test_name"
-  ## The test vector data is available as JsonNode under the
+  ## The test vector data is available as YamlNode under the
   ## the variable passed as `injectedTestVectorIdentifier`
   bind walkTests, loadVectors
 
@@ -78,7 +78,7 @@ template testGen*(testDirPrefix: string, name: untyped, testDirSuffix: string, i
 template testGenPar*(testDirPrefix: string, name: untyped, testDirSuffix: string, injectedTestVectorIdentifier: untyped, body: untyped): untyped {.dirty.} =
   ## Generates a test proc(ctx: ptr EthereumKZGContext, tp: Threadpool)
   ## with identifier "test_name"
-  ## The test vector data is available as JsonNode under the
+  ## The test vector data is available as YamlNode under the
   ## the variable passed as `injectedTestVectorIdentifier`
   bind walkTests, loadVectors
 
