@@ -26,9 +26,6 @@
 ##
 ## Run with
 ##   nim c -r -d:release --hints:off --warnings:off --outdir:build/wip --nimcache:nimcache/wip tests/eth_eip7594_peerdas/t_cells_and_kzg_proofs_opt.nim
-##
-## If there is an internal error, you may remove -d:release to get the full stacktrace
-## however for regular runs, the naive algorithm are very slow
 
 import
   std/[os, strutils, streams, unittest],

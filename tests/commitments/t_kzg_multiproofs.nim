@@ -9,6 +9,9 @@
 # Compile and run with:
 #   nim c -r -d:release --hints:off --warnings:off --outdir:build/tmp --nimcache:nimcache/tmp tests/commitments/t_kzg_multiproofs.nim
 
+## Run with
+##   nim c -r -d:release --hints:off --warnings:off --outdir:build/wip --nimcache:nimcache/wip tests/commitments/t_kzg_multiproofs.nim
+
 import
   constantine/named/algebras,
   constantine/named/zoo_generators,
