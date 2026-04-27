@@ -25,8 +25,9 @@ import
   # Internals
   constantine/eth_eip7594_peerdas {.all.},
   constantine/ethereum_eip4844_kzg,
-  constantine/serialization/codecs
-
+  constantine/serialization/codecs,
+  # Shared test utilities
+  ../testutils/eth_consensus_utils
 # ---------------------------------------------------------
 # Spec implementation of compute cells ~340x slower than prod
 
@@ -120,26 +121,6 @@ func compute_cells_naive(
 
 # ---------------------------------------------------------
 
-const
-  TrustedSetupMainnet =
-    currentSourcePath.rsplit(DirSep, 1)[0] /
-    ".." / ".." / "constantine" /
-    "commitments_setups" /
-    "trusted_setup_ethereum_kzg4844_reference.dat"
-
-proc trusted_setup*(): ptr EthereumKZGContext =
-  ## Load trusted setup for Ethereum mainnet
-  var ctx: ptr EthereumKZGContext
-  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
-  doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
-  return ctx
-
-proc loadVectors(filename: string): YamlNode =
-  ## Load YAML test vector file
-  var s = filename.openFileStream()
-  defer: s.close()
-  load(s, result)
-
 func isSequence(node: YamlNode): bool =
   node.kind == ySequence
 
@@ -156,7 +137,7 @@ proc parseCells(expected: YamlNode): seq[Cell] =
 const test_case = "compute_cells_case_valid_2"
 
 suite "EIP-7594 PeerDAS - compute_cells [" & test_case & "]":
-  let ctx = trusted_setup()
+  let ctx = getTrustedSetup()
 
   test "compute_cells_naive vs test vector":
     ## Verify compute_cells_naive matches official test vectors

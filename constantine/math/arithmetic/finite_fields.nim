@@ -846,7 +846,9 @@ func computePowers*[Name](dst: ptr UncheckedArray[FF[Name]], base: FF[Name], len
   ## to be in 0 < number < curve_order
   ## since modular reduction needs modular multiplication or a division anyway.
   ##
-  ## IMPORTANT: Ensure powers from r¹ (not r⁰ == 1) for blinding.
+  ## When `skipOne = false` (default): dst = [1, base, base², ..., baseᴺ⁻¹]
+  ## When `skipOne = true`:            dst = [base, base², ..., baseᴺ]
+  ## Use `skipOne = true` for blinding, where r⁰ == 1 must be avoided.
   let N = len
 
   when skipOne:

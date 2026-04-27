@@ -527,13 +527,8 @@ func verify_blob_kzg_proof_batch*(
       check HappyPath, proofs[i].bytes_to_kzg_proof(proof_bytes[i])
 
     var randomBlindingFr {.noInit.}: Fr[BLS12_381]
-    block blinding: # Ensure we don't multiply by 0 for blinding
-      # 1. Try with the random number supplied
-      for i in 0 ..< secureRandomBytes.len:
-        if secureRandomBytes[i] != byte 0:
-          randomBlindingFr.fromDigest(secureRandomBytes)
-          break blinding
-      # 2. If it's 0 (how?!), we just hash all the Fiat-Shamir challenges
+    if not randomBlindingFr.getBatchBlindingFactor(secureRandomBytes):
+      # Fall back: hash all the Fiat-Shamir challenges
       var transcript: sha256
       transcript.init()
       transcript.update(RANDOM_CHALLENGE_KZG_BATCH_DOMAIN)

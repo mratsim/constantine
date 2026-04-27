@@ -90,14 +90,14 @@ proc testMakeCirculantMatrix() =
 
   echo "✓ makeCirculantMatrix test PASSED"
 
-proc testToeplitz4x4() =
-  echo "Testing 4x4 Toeplitz matrix-vector multiplication..."
+proc testToeplitz(n: static int) =
+  ## Test Toeplitz matrix-vector multiplication for given size
+  echo "Testing ", n, "x", n, " Toeplitz matrix-vector multiplication..."
 
-  let frFftDesc = createFFTDescriptor(Fr[BLS12_381], 8)
+  let fftSize = 2 * n
+  let frFftDesc = createFFTDescriptor(Fr[BLS12_381], fftSize)
+  let ecFftDesc = createFFTDescriptor(BLS12_381_G1, Fr[BLS12_381], fftSize)
 
-  let ecFftDesc = createFFTDescriptor(BLS12_381_G1, Fr[BLS12_381], 8)
-
-  const n = 4
   var poly = newSeq[BLS12_381_Fr](n)
   var coeffs = newSeq[BLS12_381_Fr](2 * n)
   var input = newSeq[BLS12_381_G1](n)
@@ -124,49 +124,11 @@ proc testToeplitz4x4() =
       echo "  Naive: ", outputNaive[i].toHex()
       echo "  FFT:   ", outputFft[i].toHex()
       quit 1
-
-  echo "✓ 4x4 Toeplitz test PASSED"
-
-proc testToeplitz8x8() =
-  echo "Testing 8x8 Toeplitz matrix-vector multiplication..."
-
-  let frFftDesc = createFFTDescriptor(Fr[BLS12_381], 16)
-
-  let ecFftDesc = createFFTDescriptor(BLS12_381_G1, Fr[BLS12_381], 16)
-
-  const n = 8
-  var poly = newSeq[BLS12_381_Fr](n)
-  var coeffs = newSeq[BLS12_381_Fr](2 * n)
-  var input = newSeq[BLS12_381_G1](n)
-  var outputNaive = newSeq[BLS12_381_G1](n)
-  var outputFft = newSeq[BLS12_381_G1](n)
-
-  for i in 0 ..< n:
-    poly[i].fromUint((i + 1).uint64)
-
-  makeCirculantMatrix(coeffs, poly, 0, 1)
-
-  input[0].setGenerator()
-  for i in 1 ..< n:
-    input[i].mixedSum(input[i-1], BLS12_381.getGenerator("G1"))
-
-  toeplitzMatVecMulNaive(outputNaive, coeffs, input)
-
-  let status = toeplitzMatVecMul[BLS12_381_G1, BLS12_381_Fr](outputFft, coeffs, input, frFftDesc, ecFftDesc)
-  doAssert status == FFT_Success, "FFT-based multiplication failed: " & $status
-
-  for i in 0 ..< n:
-    if bool(outputNaive[i] != outputFft[i]):
-      echo "Error at index ", i
-      echo "  Naive: ", outputNaive[i].toHex()
-      echo "  FFT:   ", outputFft[i].toHex()
-      quit 1
-
-  echo "✓ 8x8 Toeplitz test PASSED"
+  echo "✓ ", n, "x", n, " Toeplitz test PASSED"
 
 when isMainModule:
   testCheckCirculant()
   testMakeCirculantMatrix()
-  testToeplitz4x4()
-  testToeplitz8x8()
+  testToeplitz(4)
+  testToeplitz(8)
   echo "\nAll Toeplitz tests PASSED ✓"
