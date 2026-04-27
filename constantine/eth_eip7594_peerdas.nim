@@ -99,6 +99,16 @@ type
 #
 # ============================================================
 
+template check(status: CttCodecScalarStatus): untyped {.dirty.} =
+  ## Check blob deserialization status and return early on error
+  case status
+  of cttCodecScalar_Success:
+    discard
+  of cttCodecScalar_Zero:
+    return cttEthKzg_ScalarZero
+  of cttCodecScalar_ScalarLargerThanCurveOrder:
+    return cttEthKzg_ScalarLargerThanCurveOrder
+
 func bytesToBlsField(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus =
   ## Convert untrusted bytes to a trusted and validated BLS scalar field element.
   var scalar {.noInit.}: Fr[BLS12_381].getBigInt()
@@ -143,6 +153,53 @@ func cosetEvalsToCell(
 #           Public API
 #
 # ============================================================
+
+func compute_cells_impl(
+       ctx: ptr EthereumKZGContext,
+       cells: var array[CELLS_PER_EXT_BLOB, Cell],
+       poly_eval_brp: PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed]): cttEthKzgStatus =
+  ## Compute all cells for an extended blob from pre-deserialized polynomial.
+  const
+    N = FIELD_ELEMENTS_PER_BLOB       # 4096
+    L = FIELD_ELEMENTS_PER_CELL       # 64
+    CDS = CELLS_PER_EXT_BLOB          # 128
+    HALF_CDS = CDS div 2              # 64
+
+  # ============================================================
+  # Step 1: First 64 cells - DIRECT COPY (zero computation!)
+  # ============================================================
+
+  # The first half of the bit-reversed extended domain equals the original blob
+  let cells_evals = allocHeapAligned(array[CDS, array[L, Fr[BLS12_381]]], alignment=64)
+  defer: freeHeapAligned(cells_evals)
+  copyMem(cells_evals[0][0].addr, poly_eval_brp.evals[0].addr, N*sizeof(Fr[BLS12_381]))
+
+  # ============================================================
+  # Step 2: Second 64 cells - IFFT + shift + FFT
+  # ============================================================
+
+  # Step 2a: Lagrange -> Monomial form
+  let poly_coef_nat = allocHeapAligned(PolynomialCoef[N, Fr[BLS12_381]], alignment = 64)
+  defer: freeHeapAligned(poly_coef_nat)
+  poly_coef_nat[].lagrangeInterpolate(poly_eval_brp, ctx.fft_desc_ext)
+
+  # Step 2b: Shift coefficients by w_8192^k
+  # w_8192 = primitive 8192nd root of unity (coset shift factor)
+  let w_8192 = ctx.fft_desc_ext.rootsOfUnity[1]
+  poly_coef_nat.coefs.shift_vals(poly_coef_nat.coefs, w_8192)
+
+  # Step 2c: FFT of shifted coefficients -> evaluations directly into cells 64-127
+  let pHalfCells = cells_evals[HALF_CDS].asUnchecked()
+  let fft_status = ctx.fft_desc_ext.fft_nr(pHalfCells.toOpenArray(N), poly_coef_nat.coefs)
+  doAssert fft_status == FFT_Success
+
+  # ============================================================
+  # Step 3: Serialize to bytes
+  # ============================================================
+  for i in 0 ..< CDS:
+    cosetEvalsToCell(cells[i], cells_evals[i])
+
+  return cttEthKzg_Success
 
 func compute_cells*(
        ctx: ptr EthereumKZGContext,
@@ -191,61 +248,16 @@ func compute_cells*(
   ##    e. Bit-reverse to match cell ordering
   ## 4. Convert cells to bytes [Serialization]
 
-  const
-    N = FIELD_ELEMENTS_PER_BLOB       # 4096
-    L = FIELD_ELEMENTS_PER_CELL       # 64
-    CDS = CELLS_PER_EXT_BLOB          # 128
-    HALF_CDS = CDS div 2              # 64
+  const N = FIELD_ELEMENTS_PER_BLOB
 
-  # ============================================================
-  # Step 1: Deserialize blob to polynomial (evaluation form, bit-reversed)
-  # ============================================================
-  var poly_eval_brp {.noInit.}: PolynomialEval[N, Fr[BLS12_381], kBitReversed]
-  let status = blob_to_field_polynomial(poly_eval_brp.addr, blob)
-  case status
-  of cttCodecScalar_Success:
-    discard
-  of cttCodecScalar_Zero:
-    return cttEthKzg_ScalarZero
-  of cttCodecScalar_ScalarLargerThanCurveOrder:
-    return cttEthKzg_ScalarLargerThanCurveOrder
+  # Deserialize blob to polynomial (evaluation form, bit-reversed)
+  # Heap allocation to avoid 128KB stack usage (10% of Windows default 1MB stack)
+  let poly_eval_brp = allocHeapAligned(PolynomialEval[N, Fr[BLS12_381], kBitReversed], 64)
+  defer: freeHeapAligned(poly_eval_brp)
 
-  # ============================================================
-  # Step 2: First 64 cells - DIRECT COPY (zero computation!)
-  # ============================================================
-  # The first half of the bit-reversed extended domain equals the original blob
-  let cells_evals = allocHeapAligned(array[CDS, array[L, Fr[BLS12_381]]], alignment=64)
-  defer: freeHeapAligned(cells_evals)
-  copyMem(cells_evals[0][0].addr, poly_eval_brp.evals[0].addr, N*sizeof(Fr[BLS12_381]))
+  check blob_to_field_polynomial(poly_eval_brp, blob)
 
-  # ============================================================
-  # Step 3: Second 64 cells - IFFT + shift + FFT
-  # ============================================================
-  # Following the Python reference implementation exactly:
-  # 1. Bit-reverse blob (bit-reversed eval form -> natural eval form)
-  # 2. IFFT (natural eval -> coefficients)
-  # 3. Shift coefficients by w_8192^k
-  # 4. FFT (coefficients -> natural eval form)
-  # 5. Bit-reverse output (natural eval -> bit-reversed eval for cells)
-  # Step 3a: Lagrange -> Monomial form
-  let poly_coef_nat = allocHeapAligned(PolynomialCoef[N, Fr[BLS12_381]], alignment = 64)
-  defer: freeHeapAligned(poly_coef_nat)
-  poly_coef_nat[].lagrangeInterpolate(poly_eval_brp, ctx.fft_desc_ext)
-  # Step 3b: Shift coefficients by w_8192^k
-  # w_8192 = primitive 8192nd root of unity (coset shift factor)
-  let w_8192 = ctx.fft_desc_ext.rootsOfUnity[1]
-  poly_coef_nat.coefs.shift_vals(poly_coef_nat.coefs, w_8192)
-  # Step 3d: FFT of shifted coefficients -> evaluations directly into cells 64-127
-  let pHalfCells = cells_evals[HALF_CDS].asUnchecked()
-  let fft_status = ctx.fft_desc_ext.fft_nr(pHalfCells.toOpenArray(N), poly_coef_nat.coefs)
-  doAssert fft_status == FFT_Success
-  # ============================================================
-  # Step 4: Serialize to bytes
-  # ============================================================
-  for i in 0 ..< CDS:
-    cosetEvalsToCell(cells[i], cells_evals[i])
-
-  return cttEthKzg_Success
+  return compute_cells_impl(ctx, cells, poly_eval_brp[])
 
 func compute_cells_and_kzg_proofs*(
        ctx: ptr EthereumKZGContext,
@@ -265,14 +277,7 @@ func compute_cells_and_kzg_proofs*(
   let poly_lagrange = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], 64)
   defer: freeHeapAligned(poly_lagrange)
 
-  let status = blob_to_field_polynomial(poly_lagrange, blob)
-  case status
-  of cttCodecScalar_Success:
-    discard
-  of cttCodecScalar_Zero:
-    return cttEthKzg_ScalarZero
-  of cttCodecScalar_ScalarLargerThanCurveOrder:
-    return cttEthKzg_ScalarLargerThanCurveOrder
+  check blob_to_field_polynomial(poly_lagrange, blob)
 
   # Step 2: Convert to monomial form via IFFT (needed for FK20 proofs)
   let poly_monomial = allocHeapAligned(PolynomialCoef[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
@@ -281,7 +286,7 @@ func compute_cells_and_kzg_proofs*(
   poly_monomial[].lagrangeInterpolate(poly_lagrange[], ctx.fft_desc_ext)
 
   # Step 3: Compute cells using the optimized half-FFT algorithm
-  let cells_status = compute_cells(ctx, cells, blob)
+  let cells_status = compute_cells_impl(ctx, cells, poly_lagrange[])
   if cells_status != cttEthKzg_Success:
     return cells_status
 
