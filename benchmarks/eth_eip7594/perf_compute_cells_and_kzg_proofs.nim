@@ -26,11 +26,12 @@ template bench(op: string, iters: int, body: untyped): untyped =
   report(op, startTime, stopTime, startClk, stopClk, iters)
 
 proc benchComputeCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
+  var cells : ref array[CELLS_PER_EXT_BLOB, Cell]
+  var proofs : ref array[CELLS_PER_EXT_BLOB, KZGProof]
+  new(cells)
+  new(proofs)
+
   bench("compute_cells_and_kzg_proofs", iters):
-    var cells {.noInit.}: ref array[CELLS_PER_EXT_BLOB, Cell]
-    var proofs {.noInit.}: ref array[CELLS_PER_EXT_BLOB, KZGProof]
-    new(cells)
-    new(proofs)
     doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(cells[], proofs[], b.blobs[0])
 
 proc main() =
@@ -57,7 +58,7 @@ proc main() =
 
   echo "Running compute_cells_and_kzg_proofs benchmark (FK20 algorithm)..."
   echo ""
-  
+
   const Iters = 10
   benchComputeCellsAndKZGProofs(b, ctx, Iters)
 

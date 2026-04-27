@@ -12,7 +12,7 @@
 ## results to the naive O(n²) reference implementation.
 ##
 ## Run with
-##   nim c -r -d:release --hints:off --warnings:off --outdir:build/wip --nimcache:nimcache/wip tests/eth_eip4844_peerdas/t_compute_cells_opt.nim
+##   nim c -r -d:release --hints:off --warnings:off --outdir:build/wip --nimcache:nimcache/wip tests/eth_eip7594_peerdas/t_compute_cells_opt.nim
 ##
 ## If there is an internal error, you may remove -d:release to get the full stacktrace
 ## however for regular runs, the naive algorithm are very slow

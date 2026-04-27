@@ -41,8 +41,7 @@ func computeRootsOfUnity*(
       F: typedesc[Fr],
       fullOrder: static int
     ): PolyEvalRootsDomain[fullOrder, F, kNaturalOrder] =
-  ## Compute fullOrder-th roots of unity in bit-reversed order
-  ## Returns array of length fullOrder + 1 (includes ω^0 = 1 at start and end)
+  ## Compute fullOrder-th roots of unity in natural (sequential) order: ω^0, ω^1, …, ω^(fullOrder-1).
   let scale = int(log2_vartime(fullOrder.uint))
   let root = getRootOfUnityForScale(F, scale)
 

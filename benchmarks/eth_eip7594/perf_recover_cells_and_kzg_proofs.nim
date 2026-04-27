@@ -27,8 +27,8 @@ template bench(op: string, iters: int, body: untyped): untyped =
 
 proc benchRecoverCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   bench("recover_cells_and_kzg_proofs (50% availability)", iters):
-    var recovered_cells {.noInit.}: ref array[CELLS_PER_EXT_BLOB, Cell]
-    var recovered_proofs {.noInit.}: ref array[CELLS_PER_EXT_BLOB, KZGProof]
+    var recovered_cells: ref array[CELLS_PER_EXT_BLOB, Cell]
+    var recovered_proofs: ref array[CELLS_PER_EXT_BLOB, KZGProof]
     new(recovered_cells)
     new(recovered_proofs)
 
@@ -64,7 +64,7 @@ proc main() =
 
   echo "Running recover_cells_and_kzg_proofs benchmark (worst case: 50% availability)..."
   echo ""
-  
+
   const Iters = 10
   benchRecoverCellsAndKZGProofs(b, ctx, Iters)
 

@@ -97,7 +97,8 @@ proc load*(T: type BenchSet, filename: string): T =
 
   # Read and verify header
   var header: array[19, char]
-  discard stream.readData(header[0].addr, header.len)
+  let headerRead = stream.readData(header[0].addr, header.len)
+  doAssert headerRead == header.len, "Truncated benchset.dat: header"
   var headerStr = newStringOfCap(header.len)
   for i in 0 ..< header.len:
     headerStr.add(header[i])
@@ -105,42 +106,57 @@ proc load*(T: type BenchSet, filename: string): T =
 
   # Read NumBlobs
   var numBlobs: int
-  discard stream.readData(numBlobs.addr, numBlobs.sizeOf)
+  let numBlobsRead = stream.readData(numBlobs.addr, numBlobs.sizeOf)
+  doAssert numBlobsRead == numBlobs.sizeOf, "Truncated benchset.dat: NumBlobs"
   doAssert numBlobs == NumBlobs, &"Expected {NumBlobs} blobs, got {numBlobs}"
 
   # Read blobs
   echo "  Reading blobs..."
-  discard stream.readData(result.blobs[0].addr, result.blobs.len * result.blobs[0].sizeOf)
+  let blobsRead = stream.readData(result.blobs[0].addr, result.blobs.len * result.blobs[0].sizeOf)
+  doAssert blobsRead == result.blobs.len * result.blobs[0].sizeOf, "Truncated benchset.dat: blobs"
 
   # Read commitments
   echo "  Reading commitments..."
-  discard stream.readData(result.commitments[0].addr, result.commitments.len * result.commitments[0].sizeOf)
+  let commitmentsRead = stream.readData(result.commitments[0].addr, result.commitments.len * result.commitments[0].sizeOf)
+  doAssert commitmentsRead == result.commitments.len * result.commitments[0].sizeOf, "Truncated benchset.dat: commitments"
 
   # Read cells
   echo "  Reading cells..."
-  discard stream.readData(result.cells[0].addr, result.cells.len * result.cells[0].sizeOf)
+  let cellsRead = stream.readData(result.cells[0].addr, result.cells.len * result.cells[0].sizeOf)
+  doAssert cellsRead == result.cells.len * result.cells[0].sizeOf, "Truncated benchset.dat: cells"
 
   # Read proofs
   echo "  Reading proofs..."
-  discard stream.readData(result.proofs[0].addr, result.proofs.len * result.proofs[0].sizeOf)
+  let proofsRead = stream.readData(result.proofs[0].addr, result.proofs.len * result.proofs[0].sizeOf)
+  doAssert proofsRead == result.proofs.len * result.proofs[0].sizeOf, "Truncated benchset.dat: proofs"
 
   # Read halfCellIndices
   echo "  Reading halfCellIndices..."
   for i in 0 ..< NumBlobs:
     var len: int
-    discard stream.readData(len.addr, len.sizeOf)
+    let lenRead = stream.readData(len.addr, len.sizeOf)
+    doAssert lenRead == len.sizeOf, &"Truncated benchset.dat at halfCellIndices[" & $i & "] length"
+    doAssert 0 <= len and len <= CELLS_PER_EXT_BLOB,
+      &"Invalid halfCellIndices length: " & $len & " (blob " & $i & ")"
     result.halfCellIndices[i] = newSeq[CellIndex](len)
     if len > 0:
-      discard stream.readData(result.halfCellIndices[i][0].addr, len * result.halfCellIndices[i][0].sizeOf)
+      let payloadBytes = len * result.halfCellIndices[i][0].sizeOf
+      let payloadRead = stream.readData(result.halfCellIndices[i][0].addr, payloadBytes)
+      doAssert payloadRead == payloadBytes, &"Truncated benchset.dat at halfCellIndices[" & $i & "] payload"
 
   # Read halfCells
   echo "  Reading halfCells..."
   for i in 0 ..< NumBlobs:
     var len: int
-    discard stream.readData(len.addr, len.sizeOf)
+    let lenRead = stream.readData(len.addr, len.sizeOf)
+    doAssert lenRead == len.sizeOf, &"Truncated benchset.dat at halfCells[" & $i & "] length"
+    doAssert 0 <= len and len <= CELLS_PER_EXT_BLOB,
+      &"Invalid halfCells length: " & $len & " (blob " & $i & ")"
     result.halfCells[i] = newSeq[Cell](len)
     if len > 0:
-      discard stream.readData(result.halfCells[i][0].addr, len * result.halfCells[i][0].sizeOf)
+      let payloadBytes = len * result.halfCells[i][0].sizeOf
+      let payloadRead = stream.readData(result.halfCells[i][0].addr, payloadBytes)
+      doAssert payloadRead == payloadBytes, &"Truncated benchset.dat at halfCells[" & $i & "] payload"
 
   let loadStop = getMonotime()
   let loadTime = (loadStop - loadStart).inNanoseconds() div 1_000_000

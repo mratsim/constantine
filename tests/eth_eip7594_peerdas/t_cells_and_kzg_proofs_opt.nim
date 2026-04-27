@@ -16,7 +16,7 @@
 ## as `compute_cells_naive` is about 350x slower than the optimized version.
 ##
 ## Companion tests:
-##   - `constantine/tests/eth_eip4844_peerdas/t_compute_cells_opt.nim`
+##   - `constantine/tests/eth_eip7594_peerdas/t_compute_cells_opt.nim`
 ##     verifies the compute_cells logic in isolation vs a naive spec-like O(n²) algorithm.
 ##     for both internal and external consistency
 ##   - `constantine/tests/commitments/t_kzg_multiproofs.nim`
@@ -25,7 +25,7 @@
 ##     against `kzg_coset_verify`
 ##
 ## Run with
-##   nim c -r -d:release --hints:off --warnings:off --outdir:build/wip --nimcache:nimcache/wip tests/eth_eip4844_peerdas/t_cells_and_kzg_proofs_opt.nim
+##   nim c -r -d:release --hints:off --warnings:off --outdir:build/wip --nimcache:nimcache/wip tests/eth_eip7594_peerdas/t_cells_and_kzg_proofs_opt.nim
 ##
 ## If there is an internal error, you may remove -d:release to get the full stacktrace
 ## however for regular runs, the naive algorithm are very slow
