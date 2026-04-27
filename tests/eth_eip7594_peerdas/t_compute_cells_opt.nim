@@ -26,8 +26,11 @@ import
   constantine/eth_eip7594_peerdas {.all.},
   constantine/ethereum_eip4844_kzg,
   constantine/serialization/codecs,
+  constantine/platforms/allocs,
   # Shared test utilities
   ../testutils/eth_consensus_utils
+
+from ../testutils/eth_consensus_utils import loadVectors
 # ---------------------------------------------------------
 # Spec implementation of compute cells ~340x slower than prod
 
@@ -81,7 +84,7 @@ func compute_cells_naive(
     CELLS = CELLS_PER_EXT_BLOB
 
   # Step 1: Deserialize blob to polynomial (evaluation form)
-  var polynomial {.noInit.}: PolynomialEval[N, Fr[BLS12_381]]
+  var polynomial {.noInit.}: PolynomialEval[N, Fr[BLS12_381], kBitReversed]
   let status = blob_to_field_polynomial(polynomial.addr, blob)
   case status
   of cttCodecScalar_Success:
@@ -102,7 +105,9 @@ func compute_cells_naive(
   # Step 4: Compute cells by evaluating at bit-reversed roots of unity
   # CRITICAL: This is the key detail that makes test vectors pass!
   # Each cell's evaluations are at consecutive bit-reversed roots of unity.
-  var cells_evals: array[CELLS, array[L, Fr[BLS12_381]]]
+  # Heap allocation to avoid ~128KB stack usage (CELLS × L × sizeof(Fr) ≈ 64 × 64 × 32 bytes)
+  let cells_evals = allocHeapAligned(array[CELLS, array[L, Fr[BLS12_381]]], 64)
+  defer: freeHeapAligned(cells_evals)
 
   const ext_size = 2 * N
   const bits = log2_vartime(uint32 ext_size)
@@ -111,11 +116,11 @@ func compute_cells_naive(
     for j in 0 ..< L:
       let br_idx = reverse_bits(uint32(i * L + j), bits)
       let z = ctx.fft_desc_ext.rootsOfUnity[br_idx]
-      evalPolyAt(cells_evals[i][j], poly_coeff_ext, z)
+      evalPolyAt(cells_evals[][i][j], poly_coeff_ext, z)
 
   # Step 5: Convert cells to bytes
   for i in 0 ..< CELLS:
-    cosetEvalsToCell(cells_evals[i], cells[i])
+    cosetEvalsToCell(cells[i], cells_evals[][i])
 
   return cttEthKzg_Success
 
@@ -177,7 +182,7 @@ suite "EIP-7594 PeerDAS - compute_cells [" & test_case & "]":
 
     var cells_opt: array[CELLS_PER_EXT_BLOB, Cell]
 
-    let status = compute_cells(ctx, blob[], cells_opt)
+    let status = compute_cells(ctx, cells_opt, blob[])
 
     doAssert status == cttEthKzg_Success, "compute_cells failed: " & $status
     let expectedCells = testData["output"].parseCells()

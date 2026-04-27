@@ -44,7 +44,7 @@ iterator walkTests(testDir: string, skipped: var int): (string, string) =
 
     yield (testDir, file)
 
-proc loadVectors(filename: string): YamlNode =
+proc loadVectors*(filename: string): YamlNode =
   var s = filename.openFileStream()
   defer: s.close()
   load(s, result)
