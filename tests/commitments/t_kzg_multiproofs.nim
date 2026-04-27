@@ -54,7 +54,7 @@ proc testFK20SingleProofs() =
   computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
 
   var fk20Proofs: array[CDS, BLS12_381_G1_Aff]
-  kzg_coset_prove(fk20Proofs, setup.testPoly, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
+  kzg_coset_prove(fk20Proofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
 
   # Compute commitment using pre-generated BigInt polynomial
   var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
@@ -90,10 +90,12 @@ proc testFK20MultiProofs(L: static int) =
     const N = 16
     const CDS = 16
     const maxWidth = 32
-  when L == 4:
+  elif L == 4:
     const N = 32
     const CDS = 16
     const maxWidth = 64
+  else:
+    {.error: "testFK20MultiProofs only supports L in {2, 4}".}
   const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
 
   let setup = gen_setup(N, L, maxWidth, tauHex)
@@ -107,7 +109,7 @@ proc testFK20MultiProofs(L: static int) =
 
   var fk20Proofs: array[CDS, BLS12_381_G1_Aff]
   kzg_coset_prove(
-    fk20Proofs, setup.testPoly, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
+    fk20Proofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
 
   fk20Proofs.bit_reversal_permutation()
 
@@ -155,10 +157,12 @@ proc testNonOptimizedCosetProofs*(L: static int) =
     const N = 16
     const CDS = 16
     const maxWidth = 32
-  when L == 4:
+  elif L == 4:
     const N = 32
     const CDS = 16
     const maxWidth = 64
+  else:
+    {.error: "testNonOptimizedCosetProofs only supports L in {2, 4}".}
   const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
 
   let setup = gen_setup(N, L, maxWidth, tauHex)
@@ -172,7 +176,7 @@ proc testNonOptimizedCosetProofs*(L: static int) =
 
   var fk20Proofs: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
   kzg_coset_prove(
-    fk20Proofs, setup.testPoly, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
+    fk20Proofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
 
   fk20Proofs.bit_reversal_permutation()
 

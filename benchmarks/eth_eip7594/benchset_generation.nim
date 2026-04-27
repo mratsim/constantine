@@ -61,7 +61,7 @@ proc new*(T: type BenchSet, ctx: ptr EthereumKZGContext): T =
   echo &"  Using {numThreads} threads for parallel initialization"
 
   var blobRngs = newSeq[RngState](NumBlobs)
-  let baseSeed = uint32(getTime().toUnix())
+  const baseSeed = 0x7594_DA5'u32  # PeerDAS marker; override via env if needed
   for i in 0 ..< NumBlobs:
     blobRngs[i].seed(baseSeed + uint32(i))
 

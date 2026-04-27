@@ -724,15 +724,14 @@ func coset_ifft_rn*[F](
   ## Compute inverse FFT over a coset of the roots of unity (bit-reversed to natural order).
   ##
   ## Algorithm:
-  ##   1. Bit-reverse permutation (bit-reversed → natural)
-  ##   2. Apply standard IFFT (natural to natural)
-  ##   3. Multiply result[i] by shift_factor⁻ⁱ (unshift from coset)
+  ##   1. Apply IFFT (bit-reversed → natural) via `ifft_rn`
+  ##   2. Multiply result[i] by shift_factor⁻ⁱ (unshift from coset)
   ##
   ## Parameters:
-  ##   - desc: CosetFFT descriptor with roots of unity and shift factor
+  ##   - desc: FFT descriptor with roots of unity
   ##   - output: output array (must have same length as vals)
   ##   - vals: input values in evaluation form over coset
-  ##   - cosetShift, the coset shift (which will be inverted)
+  ##   - cosetShift: the coset shift (which will be inverted)
   ##
   ## Returns FFT_Success on success, error code otherwise
   let status = desc.ifft_rn(output, vals)

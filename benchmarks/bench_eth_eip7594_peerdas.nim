@@ -193,28 +193,27 @@ proc benchVerifyCellKZGProofBatch_SingleBlob(b: BenchSet, ctx: ptr EthereumKZGCo
   # Test with different batch sizes - use fixed max size for ref array
   const MaxCount = 128
   for count in [1, 8, 32, 64, 128]:
+    var commitments_bytes {.noInit.}: ref array[MaxCount, array[48, byte]]
+    var cell_indices {.noInit.}: ref array[MaxCount, CellIndex]
+    var cells_array {.noInit.}: ref array[MaxCount, Cell]
+    var proofs_bytes {.noInit.}: ref array[MaxCount, array[48, byte]]
+    new(commitments_bytes)
+    new(cell_indices)
+    new(cells_array)
+    new(proofs_bytes)
     bench(&"verify_cell_kzg_proof_batch (count={count}, 1 blob)", iters):
-      var commitments_bytes {.noInit.}: ref array[MaxCount, array[48, byte]]
-      var cell_indices {.noInit.}: ref array[MaxCount, int]
-      var cells_array {.noInit.}: ref array[MaxCount, Cell]
-      var proofs_bytes {.noInit.}: ref array[MaxCount, array[48, byte]]
-      new(commitments_bytes)
-      new(cell_indices)
-      new(cells_array)
-      new(proofs_bytes)
-
       for i in 0 ..< count:
         commitments_bytes[][i] = b.commitments[0]
-        cell_indices[][i] = i
+        cell_indices[][i] = CellIndex(i)
         cells_array[][i] = b.cells[0][i]
         proofs_bytes[][i] = proofToBytes(b.proofs[0][i])
 
       discard verify_cell_kzg_proof_batch(
         ctx,
-        commitments_bytes[][0 ..< count],
-        cell_indices[][0 ..< count],
-        cells_array[][0 ..< count],
-        proofs_bytes[][0 ..< count],
+        commitments_bytes[].toOpenArray(0, count-1),
+        cell_indices[].toOpenArray(0, count-1),
+        cells_array[].toOpenArray(0, count-1),
+        proofs_bytes[].toOpenArray(0, count-1),
         secureRandomBytes
       )
 
@@ -230,34 +229,32 @@ proc benchVerifyCellKZGProofBatch_MultiBlob(b: BenchSet, ctx: ptr EthereumKZGCon
 
   var i = 1
   while i <= b.N:
+    let totalCount = i * CELLS_PER_EXT_BLOB
+    const MaxTotal = NumBlobs * CELLS_PER_EXT_BLOB
+    var commitments_bytes {.noInit.}: ref array[MaxTotal, array[48, byte]]
+    var cell_indices {.noInit.}: ref array[MaxTotal, CellIndex]
+    var cells_array {.noInit.}: ref array[MaxTotal, Cell]
+    var proofs_bytes {.noInit.}: ref array[MaxTotal, array[48, byte]]
+    new(commitments_bytes)
+    new(cell_indices)
+    new(cells_array)
+    new(proofs_bytes)
     bench(&"verify_cell_kzg_proof_batch (128 cells, {i} blobs)", iters):
-      let totalCount = i * CELLS_PER_EXT_BLOB
-      const MaxTotal = NumBlobs * CELLS_PER_EXT_BLOB
-
-      var commitments_bytes {.noInit.}: ref array[MaxTotal, array[48, byte]]
-      var cell_indices {.noInit.}: ref array[MaxTotal, int]
-      var cells_array {.noInit.}: ref array[MaxTotal, Cell]
-      var proofs_bytes {.noInit.}: ref array[MaxTotal, array[48, byte]]
-      new(commitments_bytes)
-      new(cell_indices)
-      new(cells_array)
-      new(proofs_bytes)
-
       var idx = 0
       for blobIdx in 0 ..< i:
         for cellIdx in 0 ..< CELLS_PER_EXT_BLOB:
           commitments_bytes[][idx] = b.commitments[blobIdx]
-          cell_indices[][idx] = cellIdx
+          cell_indices[][idx] = CellIndex(cellIdx)
           cells_array[][idx] = b.cells[blobIdx][cellIdx]
           proofs_bytes[][idx] = proofToBytes(b.proofs[blobIdx][cellIdx])
           inc idx
 
       discard verify_cell_kzg_proof_batch(
         ctx,
-        commitments_bytes[][0 ..< totalCount],
-        cell_indices[][0 ..< totalCount],
-        cells_array[][0 ..< totalCount],
-        proofs_bytes[][0 ..< totalCount],
+        commitments_bytes[].toOpenArray(0, totalCount-1),
+        cell_indices[].toOpenArray(0, totalCount-1),
+        cells_array[].toOpenArray(0, totalCount-1),
+        proofs_bytes[].toOpenArray(0, totalCount-1),
         secureRandomBytes
       )
 
@@ -346,7 +343,7 @@ proc benchBatchVerification_ChallengeComputation(b: BenchSet, ctx: ptr EthereumK
   # Use 128 cells from first blob
   var commitments_bytes {.noInit.}: ref array[128, array[48, byte]]
   var commitment_indices {.noInit.}: ref array[128, int]
-  var cell_indices {.noInit.}: ref array[128, int]
+  var cell_indices {.noInit.}: ref array[128, CellIndex]
   var cosets_evals {.noInit.}: ref array[128, array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]]]
   var proofs_bytes {.noInit.}: ref array[128, array[48, byte]]
   new(commitments_bytes)
@@ -358,7 +355,7 @@ proc benchBatchVerification_ChallengeComputation(b: BenchSet, ctx: ptr EthereumK
   for i in 0 ..< 128:
     commitments_bytes[][i] = b.commitments[0]
     commitment_indices[][i] = 0
-    cell_indices[][i] = i
+    cell_indices[][i] = CellIndex(i)
     proofs_bytes[][i] = proofToBytes(b.proofs[0][i])
 
   # Deserialize cells to coset evaluations

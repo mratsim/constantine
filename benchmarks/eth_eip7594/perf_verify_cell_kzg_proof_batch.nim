@@ -42,7 +42,7 @@ proc benchVerifyCellKZGProofBatch_64Blobs(b: BenchSet, ctx: ptr EthereumKZGConte
   const MaxTotal = NumBlobs * CELLS_PER_EXT_BLOB  # 8192
 
   var commitments_bytes {.noInit.}: ref array[MaxTotal, array[48, byte]]
-  var cell_indices {.noInit.}: ref array[MaxTotal, int]
+  var cell_indices {.noInit.}: ref array[MaxTotal, CellIndex]
   var cells_array {.noInit.}: ref array[MaxTotal, Cell]
   var proofs_bytes {.noInit.}: ref array[MaxTotal, array[48, byte]]
   new(commitments_bytes)
@@ -54,7 +54,7 @@ proc benchVerifyCellKZGProofBatch_64Blobs(b: BenchSet, ctx: ptr EthereumKZGConte
   for blobIdx in 0 ..< NumBlobs:
     for cellIdx in 0 ..< CELLS_PER_EXT_BLOB:
       commitments_bytes[][idx] = b.commitments[blobIdx]
-      cell_indices[][idx] = cellIdx
+      cell_indices[][idx] = CellIndex(cellIdx)
       cells_array[][idx] = b.cells[blobIdx][cellIdx]
       proofs_bytes[][idx] = proofToBytes(b.proofs[blobIdx][cellIdx])
       inc idx

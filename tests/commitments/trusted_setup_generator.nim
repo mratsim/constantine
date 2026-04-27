@@ -24,14 +24,6 @@ type
     rootsOfUnity*: PolyEvalRootsDomain[maxWidth, Fr[BLS12_381], kNaturalOrder]
       ## Generator root for verification (maxWidth-th root)
 
-func genPowersOfTauImpl(EC: typedesc, secret: auto, length: int): seq[EC] =
-  result.setLen(length)
-  var P {.noInit.}: EC
-  P.fromAffine(EC.F.C.getGenerator($EC.G))
-  result[0] = P
-  for i in 1 ..< length:
-    P.scalarMul_vartime(secret)
-    result[i] = P
 
 func computePowersOfTauG1[N: static int](powers_of_tau: var array[N, BLS12_381_G1_Aff], secret: Fr[BLS12_381]) =
   var prev {.noInit.}: BLS12_381_G1_Jac
@@ -67,7 +59,9 @@ proc gen_setup*(N, L, maxWidth: static int; tauHex: string): TrustedSetup[N, L, 
   ## matching c-kzg FK20 tests. Ethereum KZG uses evaluation form (Lagrange basis)
   ## for blobs, but FK20 algorithm operates on coefficient form.
 
-  static: doAssert N mod L == 0
+  static:
+    doAssert N mod L == 0
+    doAssert N >= 8, "Test polynomial pattern requires N >= 8"
   const CDS = 2 * (N div L)
 
   # Polynomial coefficients: [1, 2, 3, 4, 7, 7, 7, 7, 13, 13, ...]

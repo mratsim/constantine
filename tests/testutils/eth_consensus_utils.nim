@@ -101,7 +101,7 @@ template testGenPar*(testDirPrefix: string, name: untyped, testDirSuffix: string
     if skipped > 0:
       echo "[Warning]: ", skipped, " tests skipped."
 
-template parseAssign*(dstVariable: untyped, size: static int, hexInput: string) =
+template parseAssign*(testVectorNode: YamlNode, dstVariable: untyped, size: static int, hexInput: string) =
   block:
     let prefixBytes = 2*int(hexInput.startsWith("0x"))
     let expectedLength = size*2 + prefixBytes
@@ -112,14 +112,13 @@ template parseAssign*(dstVariable: untyped, size: static int, hexInput: string) 
                       "': encoding " & $encodedBytes & " bytes" &
                       " instead of expected " & $size & " ]\n"
 
-      doAssert testVector["output"].content == "null"
+      doAssert testVectorNode["output"].content == "null"
       # We're in a template, this exits the wrapping `runTest` closure
       return
 
   var dstVariable{.inject.} = new(array[size, byte])
   dstVariable[].fromHex(hexInput)
-
-template parseAssignList*(dstVariable: untyped, elemSize: static int, hexListInput: YamlNode) =
+template parseAssignList*(testVectorNode: YamlNode, dstVariable: untyped, elemSize: static int, hexListInput: YamlNode) =
 
   var dstVariable{.inject.} = newSeq[array[elemSize, byte]]()
 
@@ -137,7 +136,7 @@ template parseAssignList*(dstVariable: untyped, elemSize: static int, hexListInp
                           "': encoding " & $encodedBytes & " bytes" &
                           " instead of expected " & $elemSize & " ]\n"
 
-          doAssert testVector["output"].content == "null"
+          doAssert testVectorNode["output"].content == "null"
           break exitException
         else:
           dstVariable.setLen(dstVariable.len + 1)

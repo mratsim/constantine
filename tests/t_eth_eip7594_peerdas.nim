@@ -33,14 +33,14 @@ proc toProofBytes[N: static int](a: array[N, KZGProof]): seq[array[BYTES_PER_PRO
     doAssert result[i].serialize_g1_compressed(EC(a[i])) == cttCodecEcc_Success
 
 TestVectorsDir.testGen(compute_cells, "kzg-mainnet", testVector):
-  parseAssign(blob, BYTES_PER_BLOB, testVector["input"]["blob"].content)
+  parseAssign(testVector, blob, BYTES_PER_BLOB, testVector["input"]["blob"].content)
 
   var cells: array[CELLS_PER_EXT_BLOB, Cell]
   let status = compute_cells(ctx, cells, blob[])
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:
-    parseAssignList(expectedCells, BYTES_PER_CELL, testVector["output"])
+    parseAssignList(testVector, expectedCells, BYTES_PER_CELL, testVector["output"])
     doAssert cells.len == expectedCells.len, block:
       "\nExpected cells count: " & $expectedCells.len &
       "\nActual cells count:   " & $cells.len & "\n"
@@ -49,7 +49,7 @@ TestVectorsDir.testGen(compute_cells, "kzg-mainnet", testVector):
     doAssert testVector["output"].content == "null"
 
 TestVectorsDir.testGen(compute_cells_and_kzg_proofs, "kzg-mainnet", testVector):
-  parseAssign(blob, BYTES_PER_BLOB, testVector["input"]["blob"].content)
+  parseAssign(testVector, blob, BYTES_PER_BLOB, testVector["input"]["blob"].content)
 
   var cells: array[CELLS_PER_EXT_BLOB, Cell]
   var proofs: array[CELLS_PER_EXT_BLOB, KZGProof]
@@ -58,8 +58,8 @@ TestVectorsDir.testGen(compute_cells_and_kzg_proofs, "kzg-mainnet", testVector):
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:
-    parseAssignList(expectedCells, BYTES_PER_CELL, testVector["output"][0])
-    parseAssignList(expectedProofs, BYTES_PER_PROOF, testVector["output"][1])
+    parseAssignList(testVector, expectedCells, BYTES_PER_CELL, testVector["output"][0])
+    parseAssignList(testVector, expectedProofs, BYTES_PER_PROOF, testVector["output"][1])
     doAssert @cells == expectedCells
     doAssert proofs.toProofBytes() == expectedProofs
   else:
@@ -75,7 +75,7 @@ TestVectorsDir.testGen(recover_cells_and_kzg_proofs, "kzg-mainnet", testVector):
   for idx in testVector["input"]["cell_indices"]:
     cellIndices.add(CellIndex(parseInt(idx.content)))
 
-  parseAssignList(cells, BYTES_PER_CELL, testVector["input"]["cells"])
+  parseAssignList(testVector, cells, BYTES_PER_CELL, testVector["input"]["cells"])
 
   var recoveredCells: array[CELLS_PER_EXT_BLOB, Cell]
   var recoveredProofs: array[CELLS_PER_EXT_BLOB, KZGProof]
@@ -84,8 +84,8 @@ TestVectorsDir.testGen(recover_cells_and_kzg_proofs, "kzg-mainnet", testVector):
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:
-    parseAssignList(expectedCells, BYTES_PER_CELL, testVector["output"][0])
-    parseAssignList(expectedProofs, BYTES_PER_PROOF, testVector["output"][1])
+    parseAssignList(testVector, expectedCells, BYTES_PER_CELL, testVector["output"][0])
+    parseAssignList(testVector, expectedProofs, BYTES_PER_PROOF, testVector["output"][1])
     doAssert @recoveredCells == expectedCells
     doAssert recoveredProofs.toProofBytes() == expectedProofs
   else:
@@ -93,14 +93,14 @@ TestVectorsDir.testGen(recover_cells_and_kzg_proofs, "kzg-mainnet", testVector):
 
 TestVectorsDir.testGen(verify_cell_kzg_proof_batch, "kzg-mainnet", testVector):
   # Parse inputs
-  parseAssignList(commitmentsBytes, BYTES_PER_COMMITMENT, testVector["input"]["commitments"])
+  parseAssignList(testVector, commitmentsBytes, BYTES_PER_COMMITMENT, testVector["input"]["commitments"])
 
   var cellIndices: seq[CellIndex] = @[]
   for idx in testVector["input"]["cell_indices"]:
     cellIndices.add(CellIndex(parseInt(idx.content)))
 
-  parseAssignList(cells, BYTES_PER_CELL, testVector["input"]["cells"])
-  parseAssignList(proofsBytes, BYTES_PER_PROOF, testVector["input"]["proofs"])
+  parseAssignList(testVector, cells, BYTES_PER_CELL, testVector["input"]["cells"])
+  parseAssignList(testVector, proofsBytes, BYTES_PER_PROOF, testVector["input"]["proofs"])
 
   # Generate secure random bytes for batch verification
   var secureRandomBytes: array[32, byte]
@@ -127,7 +127,7 @@ TestVectorsDir.testGen(verify_cell_kzg_proof_batch, "kzg-mainnet", testVector):
     "\nActual:   " & $ok & "\n"
 
 TestVectorsDir.testGen(compute_verify_cell_kzg_proof_batch_challenge, "kzg-mainnet", testVector):
-  parseAssignList(commitments, BYTES_PER_COMMITMENT, testVector["input"]["commitments"])
+  parseAssignList(testVector, commitments, BYTES_PER_COMMITMENT, testVector["input"]["commitments"])
 
   var commitmentIndices: seq[int] = @[]
   for idx in testVector["input"]["commitment_indices"]:
@@ -144,7 +144,7 @@ TestVectorsDir.testGen(compute_verify_cell_kzg_proof_batch_challenge, "kzg-mainn
       evals[idx].fromHex(cosetEvalsHex[idx].content)
     cosetsEvals.add(evals)
 
-  parseAssignList(proofs, BYTES_PER_PROOF, testVector["input"]["proofs"])
+  parseAssignList(testVector, proofs, BYTES_PER_PROOF, testVector["input"]["proofs"])
 
   let challenge = compute_verify_cell_kzg_proof_batch_challenge(
     commitments,

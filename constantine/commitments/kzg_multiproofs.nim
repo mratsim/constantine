@@ -434,10 +434,7 @@ func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
       ec_fft_desc,
       accumulate = (offset > 0)
     )
-    if status != FFT_Success:
-      freeHeapAligned(circulant)
-      freeHeapAligned(u)
-      return
+    doAssert status == FFT_Success, "FK20 toeplitzMatVecMulPreFFT failed at offset " & $offset
 
   # u is already in time domain (toeplitzMatVecMulPreFFT did IFFT)
   # Zero upper half, degree is CDS/2 - 1
@@ -447,11 +444,7 @@ func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
   # FFT to get proofs
   let proofsJac = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
   let status3 = ec_fft_desc.ec_fft_nn(proofsJac.toOpenArray(CDS), u.toOpenArray(CDS))
-  if status3 != FFT_Success:
-    freeHeapAligned(proofsJac)
-    freeHeapAligned(circulant)
-    freeHeapAligned(u)
-    return
+  doAssert status3 == FFT_Success, "FK20 final ec_fft_nn failed"
 
   proofs.asUnchecked().batchAffine(proofsJac, proofs.len)
 
