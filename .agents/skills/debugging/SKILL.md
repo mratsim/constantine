@@ -1,8 +1,7 @@
 ---
-name: constantine-debugging
-description: Constantine debugging techniques and tools
+name: debugging
+description: Debugging techniques and tools for Constantine cryptographic code. Use debugEcho, toHex, debug: template, and stack trace flags when debugging Nim crypto implementations.
 license: MIT
-compatibility: opencode
 metadata:
   audience: developers
   language: nim

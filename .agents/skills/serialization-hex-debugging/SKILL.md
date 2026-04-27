@@ -1,8 +1,7 @@
 ---
 name: serialization-hex-debugging
-description: Constantine serialization and hex debugging conventions
+description: Constantine serialization and hex debugging conventions. Use when serializing cryptographic types, parsing bytes, debugging values with toHex, or working with BLS12-381, Banderwagon, or ECDSA codecs.
 license: MIT
-compatibility: opencode
 metadata:
   audience: developers
   language: nim

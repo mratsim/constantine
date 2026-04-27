@@ -1,8 +1,7 @@
 ---
 name: performance-investigation
-description: Profile and identify performance bottlenecks in Constantine cryptographic code using metering and benchmarking tools
+description: Profile and identify performance bottlenecks in Constantine cryptographic code using metering and benchmarking tools. Use when optimizing cryptographic algorithms, analyzing hotspots, or comparing implementations against reference benchmarks.
 license: MIT
-compatibility: opencode
 metadata:
   audience: developers
   language: nim

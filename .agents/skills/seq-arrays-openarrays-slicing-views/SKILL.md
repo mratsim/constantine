@@ -1,8 +1,7 @@
 ---
 name: seq-arrays-openarrays-slicing-views
-description: Nim seq, arrays, openarray, slicing, and views best practices for zero-allocation cryptographic code
+description: Nim seq, arrays, openarray, slicing, and views best practices for zero-allocation cryptographic code. Use when working with buffers, slicing data, or managing memory in Constantine to avoid heap allocations and side-channels.
 license: MIT
-compatibility: opencode
 metadata:
   audience: developers
   language: nim
