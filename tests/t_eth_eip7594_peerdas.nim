@@ -184,16 +184,17 @@ TestVectorsDir.testGen(compute_verify_cell_kzg_proof_batch_challenge, "kzg-mainn
 
 # Dedicated tests for deduplicateCommitments function
 suite "deduplicateCommitments":
-  # Helper to create test commitments
-  proc makeTestCommitment(seed: uint8): EC_ShortW_Aff[Fp[BLS12_381], G1] =
-    # Create a simple commitment by using seed as x-coordinate
-    # This is not cryptographically valid but sufficient for dedup testing
-    result.x.fromUint(seed.uint64)
-    result.y.fromUint((seed + 1).uint64)
-
+  # Helper to create test commitments (48-byte arrays)
+  proc makeTestCommitment(seed: uint8): array[BYTES_PER_COMMITMENT, byte] =
+    # Create deterministic 48-byte commitment from seed
+    # In production these would be real KZG commitments
+    result[0] = seed
+    for i in 1 ..< BYTES_PER_COMMITMENT:
+      result[i] = byte((seed + uint8(i)) * 31)  # Simple mixing
+  
   test "Empty input":
     var commitmentIdx: array[0, int]
-    var commitments: array[0, EC_ShortW_Aff[Fp[BLS12_381], G1]]
+    var commitments: array[0, array[BYTES_PER_COMMITMENT, byte]]
     check deduplicateCommitments(commitmentIdx, commitments) == 0
 
   test "Single commitment":
@@ -264,12 +265,11 @@ suite "deduplicateCommitments":
     const N = 32
     const M = 8
     var commitmentIdx: array[N, int]
-    var commitments: array[N, EC_ShortW_Aff[Fp[BLS12_381], G1]]
-
+    var commitments: array[N, array[BYTES_PER_COMMITMENT, byte]]
+    
     # Create pattern: each commitment repeated 4 times
     for i in 0 ..< N:
       commitments[i] = makeTestCommitment(uint8(i mod M))
-
     let numUnique = deduplicateCommitments(commitmentIdx, commitments)
     check numUnique == M
 

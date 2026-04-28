@@ -311,7 +311,7 @@ func compute_cells_and_kzg_proofs*(
 
 func deduplicateCommitments*(
      commitmentIdx: var openArray[int],
-     commitments: openArray[EC_ShortW_Aff[Fp[BLS12_381], G1]]): int =
+     commitments: openArray[array[BYTES_PER_COMMITMENT, byte]]): int =
   ## Deduplicate commitments and return the number of unique commitments.
   ## commitmentIdx[i] stores the index of the unique commitment for cell i.
   ##
@@ -358,10 +358,33 @@ func deduplicateCommitments*(
   ## - Ours: ~32,000 comparisons (N×M/2)
   ## - **Speedup: ~33× fewer comparisons**
   ##
+  ## ## Optimization: Byte-Level Comparison
+  ##
+  ## This function operates on **raw 48-byte commitments** instead of deserialized
+  ## EC points for several reasons:
+  ##
+  ## 1. **Cache efficiency**: 48 bytes vs ~96 bytes for deserialized G1Affine
+  ## 2. **Early exit**: memcmp exits on first differing byte
+  ## 3. **No deserialization overhead**: Skip EC point validation for duplicates
+  ## 4. **Random data**: Cryptographic commitments have uniform byte distribution,
+  ##    so P(byte match) = 1/256, making early exit highly likely
+  ##
+  ## ### Birthday Paradox Consideration
+  ##
+  ## For byte-level comparison, the probability of two different commitments
+  ## sharing the first k bytes is (1/256)^k. Even with the birthday paradox,
+  ## for 48-byte cryptographic commitments:
+  ## - P(first byte collision) = 1/256 ≈ 0.4%
+  ## - P(first 2 bytes collision) = 1/65536 ≈ 0.0015%
+  ##
+  ## This means memcmp will exit after ~1-2 bytes on average for non-matching
+  ## commitments, making byte comparison significantly faster than full EC point
+  ## comparison.
+  ##
   ## ## Example Usage
   ##
   ## ```nim
-  ## Input:  [A, A, B, B]
+  ## Input:  [A, A, B, B]  (each is array[48, byte])
   ## Output: numUnique=2, commitmentIdx=[0, 0, 1, 1]
   ## Unique commitments: [A, B] (stored in uniqueBuffer[0..numUnique-1])
   ## ```
@@ -392,13 +415,15 @@ func deduplicateCommitments*(
   var numUniqueCommitments = 0
   # Allocate buffer for unique commitments - size matches input (all could be unique)
   # Uses heap allocation like the rest of verify_cell_kzg_proof_batch
-  let uniqueBuffer = allocHeapArrayAligned(EC_ShortW_Aff[Fp[BLS12_381], G1], commitments.len, alignment = 64)
+  let uniqueBuffer = allocHeapArrayAligned(array[BYTES_PER_COMMITMENT, byte], commitments.len, alignment = 64)
   defer: freeHeapAligned(uniqueBuffer)
-
+  
   for i in 0 ..< commitments.len:
     var found = false
     for j in 0 ..< numUniqueCommitments:
-      if bool(uniqueBuffer[j] == commitments[i]):
+      # Byte-level comparison: memcmp exits early on first differing byte
+      # For cryptographic commitments, P(byte match) = 1/256, so ~1-2 bytes checked on average
+      if uniqueBuffer[j] == commitments[i]:
         commitmentIdx[i] = j
         found = true
         break
@@ -409,7 +434,6 @@ func deduplicateCommitments*(
       inc numUniqueCommitments
 
   return numUniqueCommitments
-
 func compute_verify_cell_kzg_proof_batch_challenge*(
        commitments: openArray[array[BYTES_PER_COMMITMENT, byte]],
        commitment_indices: openArray[int],
@@ -478,45 +502,40 @@ func verify_cell_kzg_proof_batch*(
 
   let numCells = len(cell_indices)
 
+  # Deduplicate commitments FIRST (on raw bytes, before deserialization)
+  # This is faster: byte comparison exits early, and we only deserialize uniques
+  let commitmentIdx = allocHeapArrayAligned(int, numCells, alignment = 64)
+  let numUniqueCommitments = deduplicateCommitments(
+    commitmentIdx.toOpenArray(numCells),
+    commitments_bytes
+  )
+
+  # Allocate and deserialize only unique commitments
+  let uniqueCommitments = allocHeapArrayAligned(
+    EC_ShortW_Aff[Fp[BLS12_381], G1], numUniqueCommitments, alignment = 64)
+  for i in 0 ..< numUniqueCommitments:
+    # Find first occurrence of this unique commitment
+    for j in 0 ..< numCells:
+      if commitmentIdx[j] == i:
+        ?uniqueCommitments[i].deserialize_g1_compressed(commitments_bytes[j])
+        break
+
   let cosets_evals = allocHeapArrayAligned(
     array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]], numCells, alignment = 64)
-  let commitments = allocHeapArrayAligned(
-    EC_ShortW_Aff[Fp[BLS12_381], G1], numCells, alignment = 64)
   let proofs = allocHeapArrayAligned(
     EC_ShortW_Aff[Fp[BLS12_381], G1], numCells, alignment = 64)
-  let commitmentIdx = allocHeapArrayAligned(int, numCells, alignment = 64)
   let evalsCols = allocHeapArrayAligned(int, numCells, alignment = 64)
   let rPowers = allocHeapArrayAligned(Fr[BLS12_381], numCells, alignment = 64)
-
+  
   block HappyPath:
     # Deserialize cells to coset evaluations
     for i in 0 ..< numCells:
       ?cellToCosetEvals(cosets_evals[i], cells[i])
       evalsCols[i] = int(cell_indices[i])
 
-    # Deserialize commitments
-    for i in 0 ..< numCells:
-      ?commitments[i].deserialize_g1_compressed(commitments_bytes[i])
-
     # Deserialize proofs
     for i in 0 ..< numCells:
       ?proofs[i].deserialize_g1_compressed(proofs_bytes[i])
-
-    # Deduplicate commitments
-    let numUniqueCommitments = deduplicateCommitments(
-      commitmentIdx.toOpenArray(numCells),
-      commitments.toOpenArray(numCells)
-    )
-
-    # Create compacted unique commitments array
-    # commitmentIdx[i] gives the index into unique commitments for cell i
-    # Since deduplication preserves order, the first cell with each unique index
-    # contains the actual unique commitment
-    let uniqueCommitments = allocHeapArrayAligned(
-      EC_ShortW_Aff[Fp[BLS12_381], G1], numUniqueCommitments, alignment = 64)
-    for i in 0 ..< numCells:
-      uniqueCommitments[commitmentIdx[i]] = commitments[i]
-
     var r: Fr[BLS12_381]
     if not r.getBatchBlindingFactor(secureRandomBytes):
       # Compute challenge r via Fiat-Shamir
@@ -560,9 +579,7 @@ func verify_cell_kzg_proof_batch*(
   freeHeapAligned(evalsCols)
   freeHeapAligned(commitmentIdx)
   freeHeapAligned(proofs)
-  freeHeapAligned(commitments)
   freeHeapAligned(cosets_evals)
-
   return result
 
 func recover_cells_and_kzg_proofs*(
