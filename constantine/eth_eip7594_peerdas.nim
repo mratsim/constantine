@@ -315,12 +315,77 @@ func deduplicateCommitments*(
   ## Deduplicate commitments and return the number of unique commitments.
   ## commitmentIdx[i] stores the index of the unique commitment for cell i.
   ##
-  ## Algorithm: O(n²) linear scan tracking first occurrence indices.
-  ## For n ≤ 128 (CELLS_PER_EXT_BLOB), this is efficient enough.
+  ## ## Algorithm Complexity
   ##
-  ## Example:
-  ##   Input:  [A, A, B, B]
-  ##   Output: numUnique=2, commitmentIdx=[0, 0, 1, 1], unique=[A, B]
+  ## This implementation is **O(N × M)** where:
+  ## - N = number of input commitments (cells in batch)
+  ## - M = number of unique commitments (blobs, max 64 per EIP-7594)
+  ##
+  ## The Ethereum spec reference uses `list.index()` which scans the entire
+  ## input list for each element, resulting in **O(N²)** complexity.
+  ##
+  ## ### Example: [A, A, B, B] (N=4, M=2)
+  ##
+  ## **Spec approach** (two passes):
+  ## ```python
+  ## # Pass 1: deduplicated = [c for i,c in enumerate(commitments)
+  ## #                        if commitments.index(c) == i]
+  ## # - i=0: scan all 4 items to find first A → 4 comparisons
+  ## # - i=1: scan all 4 items to find first A → 4 comparisons
+  ## # - i=2: scan all 4 items to find first B → 4 comparisons
+  ## # - i=3: scan all 4 items to find first B → 4 comparisons
+  ## # Total: 16 comparisons (N²)
+  ##
+  ## # Pass 2: indices = [deduplicated.index(c) for c in commitments]
+  ## # - Each scans unique list (size M=2) → 2 comparisons each
+  ## # Total: 8 comparisons (N×M)
+  ## ```
+  ##
+  ## **Our approach** (single pass):
+  ## ```nim
+  ## # Scan only the growing unique buffer (size 0→M):
+  ## # - i=0: scan 0 uniques → add A
+  ## # - i=1: scan 1 unique (A) → found at index 0
+  ## # - i=2: scan 1 unique (A) → add B
+  ## # - i=3: scan 2 uniques (A,B) → found at index 1
+  ## # Total: ~4 comparisons (N×M/2 average)
+  ## ```
+  ##
+  ## ### Performance Impact
+  ##
+  ## For typical PeerDAS batch (N=1000 cells, M=64 blobs):
+  ## - Spec: ~1,064,000 comparisons (N² + N×M)
+  ## - Ours: ~32,000 comparisons (N×M/2)
+  ## - **Speedup: ~33× fewer comparisons**
+  ##
+  ## ## Example Usage
+  ##
+  ## ```nim
+  ## Input:  [A, A, B, B]
+  ## Output: numUnique=2, commitmentIdx=[0, 0, 1, 1]
+  ## Unique commitments: [A, B] (stored in uniqueBuffer[0..numUnique-1])
+  ## ```
+  ##
+  ## ## Invariants
+  ##
+  ## - Order preserved: first occurrence of each commitment wins
+  ## - commitmentIdx[i] ∈ [0, numUniqueCommitments-1]
+  ## - uniqueBuffer[0..numUniqueCommitments-1] contains all distinct commitments
+  ## - Semantically equivalent to Ethereum spec, but O(N×M) instead of O(N²)
+  ##
+  ## ## Other approaches considered
+  ##
+  ## - Open-Adressing Map -- O(N)
+  ## - Red-Black Tree from BLST (rb_tree.c) -- O(N log N)
+  ## - Sorting -- O(N log N)
+  ##
+  ## While asymptotic complexity looks much better our linear scan approach:
+  ## - is cache friendly, buffers are processed linearly
+  ## - due to KZGCommitment cryptographic property, only 1 byte is usually enough per commitment
+  ##   scanned in the array if we use variable-time comparison
+  ## - No large memory copies vs sorting
+  ## - No complex rebalancing vs Red-Black Trees
+  ## - No slots/modulos bookkeeping vs Open-Addressing Map
   debug:
     doAssert commitmentIdx.len == commitments.len
 
@@ -329,7 +394,7 @@ func deduplicateCommitments*(
   # Uses heap allocation like the rest of verify_cell_kzg_proof_batch
   let uniqueBuffer = allocHeapArrayAligned(EC_ShortW_Aff[Fp[BLS12_381], G1], commitments.len, alignment = 64)
   defer: freeHeapAligned(uniqueBuffer)
-  
+
   for i in 0 ..< commitments.len:
     var found = false
     for j in 0 ..< numUniqueCommitments:
