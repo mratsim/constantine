@@ -26,9 +26,9 @@ template bench(op: string, iters: int, body: untyped): untyped =
   report(op, startTime, stopTime, startClk, stopClk, iters)
 
 proc benchComputeCells(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
+  var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
+  new(cells)
   bench("compute_cells", iters):
-    var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-    new(cells)
     doAssert cttEthKzg_Success == ctx.compute_cells(cells[], b.blobs[0])
 
 proc main() =

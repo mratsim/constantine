@@ -98,7 +98,7 @@ type
 # ------------------------------------------------------------
 # https://en.wikipedia.org/wiki/Fiat%E2%80%93Shamir_heuristic
 
-func fromDigest*(dst: var Fr[BLS12_381], src: array[32, byte]) =
+func fromDigest(dst: var Fr[BLS12_381], src: array[32, byte]) =
   ## Convert a SHA256 digest to an element in the scalar field Fr[BLS12-381]
   ## hash_to_bls_field: https://github.com/ethereum/consensus-specs/blob/v1.4.0-beta.1/specs/deneb/polynomial-commitments.md#hash_to_bls_field
   var scalar {.noInit.}: BigInt[256]
@@ -143,7 +143,7 @@ func fiatShamirChallenge(
   transcript.finish(opening_challenge)
   dst[].fromDigest(opening_challenge)
 
-func getBatchBlindingFactor*(
+func getBatchBlindingFactor(
        dst: var Fr[BLS12_381],
        secureRandomBytes: array[32, byte]): bool =
   ## Extract a blinding factor from secure random bytes.
@@ -168,7 +168,7 @@ func bytes_to_bls_bigint(dst: var Fr[BLS12_381].getBigInt(), src: array[32, byte
     return status
   return cttCodecScalar_Success
 
-func bytes_to_bls_field*(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus {.inline.} =
+func bytes_to_bls_field(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus {.inline.} =
   ## Convert untrusted bytes to a trusted and validated BLS scalar field element.
   ## This function does not accept inputs greater than the BLS modulus.
   var scalar {.noInit.}: Fr[BLS12_381].getBigInt()
@@ -178,11 +178,11 @@ func bytes_to_bls_field*(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodec
   dst.fromBig(scalar)
   return cttCodecScalar_Success
 
-func bls_field_to_bytes*(dst: var array[32, byte], scalar: Fr[BLS12_381]): CttCodecScalarStatus {.inline.} =
-  ## Serialize a BLS scalar field element to bytes
+proc bls_field_to_bytes(dst: var array[32, byte], scalar: Fr[BLS12_381]) {.inline.} =
+  ## Serialize a BLS12-381 scalar field element to bytes
   ## Follows the spec: big-endian encoding
-  discard serialize_scalar(dst, scalar.toBig())
-  return cttCodecScalar_Success
+  ## Fr[BLS12_381] is by construction in-range, so this cannot fail
+  serialize_scalar(dst, scalar.toBig())
 
 func bytes_to_kzg_commitment(dst: var KZGCommitment, src: array[48, byte]): CttCodecEccStatus {.inline.} =
   ## Convert untrusted bytes into a trusted and validated KZGCommitment.
@@ -218,7 +218,7 @@ func blob_to_bigint_polynomial(
 
   return cttCodecScalar_Success
 
-func blob_to_field_polynomial*(
+func blob_to_field_polynomial(
        dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed],
        blob: Blob): CttCodecScalarStatus =
   ## Convert a blob to a polynomial in evaluation form
@@ -244,7 +244,7 @@ func blob_to_field_polynomial*(
 # - Either we are in "HappyPath" section that shortcuts to resource cleanup on error
 # - or there are no resources to clean and we can early return from a function.
 
-template checkReturn(evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
+template `?`(evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code
   # Beware of resource cleanup like heap allocation, this can early exit the caller.
   block:
@@ -254,7 +254,7 @@ template checkReturn(evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
     of cttCodecScalar_Zero:                             discard
     of cttCodecScalar_ScalarLargerThanCurveOrder:       return cttEthKzg_ScalarLargerThanCurveOrder
 
-template checkReturn(evalExpr: CttCodecEccStatus): untyped {.dirty.} =
+template `?`(evalExpr: CttCodecEccStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code
   # Beware of resource cleanup like heap allocation, this can early exit the caller.
   block:
@@ -347,7 +347,7 @@ func compute_kzg_proof*(
 
   # Random or Fiat-Shamir challenge
   var z {.noInit.}: Fr[BLS12_381]
-  checkReturn z.bytes_to_bls_field(z_bytes)
+  ?z.bytes_to_bls_field(z_bytes)
 
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], 64)
 
@@ -382,16 +382,16 @@ func verify_kzg_proof*(
   ## Verify KZG proof that p(z) == y where p(z) is the polynomial represented by "polynomial_kzg"
 
   var commitment {.noInit.}: KZGCommitment
-  checkReturn commitment.bytes_to_kzg_commitment(commitment_bytes)
+  ?commitment.bytes_to_kzg_commitment(commitment_bytes)
 
   var opening_challenge {.noInit.}: Fr[BLS12_381].getBigInt()
-  checkReturn opening_challenge.bytes_to_bls_bigint(z_bytes)
+  ?opening_challenge.bytes_to_bls_bigint(z_bytes)
 
   var eval_at_challenge {.noInit.}: Fr[BLS12_381].getBigInt()
-  checkReturn eval_at_challenge.bytes_to_bls_bigint(y_bytes)
+  ?eval_at_challenge.bytes_to_bls_bigint(y_bytes)
 
   var proof {.noInit.}: KZGProof
-  checkReturn proof.bytes_to_kzg_proof(proof_bytes)
+  ?proof.bytes_to_kzg_proof(proof_bytes)
 
   let verif = kzg_verify(EC_ShortW_Aff[Fp[BLS12_381], G1](commitment),
                          opening_challenge, eval_at_challenge,
@@ -411,7 +411,7 @@ func compute_blob_kzg_proof*(
   ## This method does not verify that the commitment is correct with respect to `blob`.
 
   var commitment {.noInit.}: KZGCommitment
-  checkReturn commitment.bytes_to_kzg_commitment(commitment_bytes)
+  ?commitment.bytes_to_kzg_commitment(commitment_bytes)
 
   # Blob -> Polynomial
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], 64)
@@ -450,10 +450,10 @@ func verify_blob_kzg_proof*(
   ## Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment.
 
   var commitment {.noInit.}: KZGCommitment
-  checkReturn commitment.bytes_to_kzg_commitment(commitment_bytes)
+  ?commitment.bytes_to_kzg_commitment(commitment_bytes)
 
   var proof {.noInit.}: KZGProof
-  checkReturn proof.bytes_to_kzg_proof(proof_bytes)
+  ?proof.bytes_to_kzg_proof(proof_bytes)
 
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], 64)
 

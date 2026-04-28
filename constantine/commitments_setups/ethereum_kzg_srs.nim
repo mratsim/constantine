@@ -213,6 +213,10 @@ type
     #   - FK23 Paper (Feist-Khovratovich 2023), Proposition 4: https://eprint.iacr.org/2023/033
     #   - DSP: the SRS is seen as an input signal that undergoes multirate DSP
 
+    # ⚠️ WARNING: This field is ~1.18 MB (64 × 128 × 144 bytes).
+    # - MUST use alloc0HeapAligned for EthereumKZGContext (never stack allocate)
+    # - Language bindings (C/Rust): always use ptr semantics, avoid by-value moves/copies
+
   TrustedSetupStatus* = enum
     tsSuccess
     tsMissingOrInaccessibleFile

@@ -182,8 +182,8 @@ func isPointEqHex*(point: EC_TwEdw_Prj[Fp[Banderwagon]], expected: string): bool
 func isScalarEqHex*(scalar: Fr[Banderwagon].getBigInt(), expected: string) : bool {.discardable.} =
 
   var scalar_bytes {.noInit.}: array[32, byte]
-  if scalar_bytes.serialize_scalar(scalar) == cttCodecScalar_Success:
-    doAssert (scalar_bytes.toHex() == expected).bool() == true, "Scalar does not equal to the expected hex value!"
+  scalar_bytes.serialize_scalar(scalar)
+  doAssert (scalar_bytes.toHex() == expected).bool() == true, "Scalar does not equal to the expected hex value!"
 
 func getDegreeOfPoly*(res: var int, p: openArray[Fr]) =
   for d in countdown(p.len - 1, 0):

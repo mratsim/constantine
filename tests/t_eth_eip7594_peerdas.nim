@@ -108,7 +108,7 @@ TestVectorsDir.testGen(verify_cell_kzg_proof_batch, "kzg-mainnet", testVector):
     secureRandomBytes[i] = byte(i + 1)  # Deterministic for testing
 
   # Call verify_cell_kzg_proof_batch
-  let ok = verify_cell_kzg_proof_batch(
+  let status = verify_cell_kzg_proof_batch(
     ctx,
     commitmentsBytes,
     cellIndices,
@@ -117,14 +117,31 @@ TestVectorsDir.testGen(verify_cell_kzg_proof_batch, "kzg-mainnet", testVector):
     secureRandomBytes
   )
 
-  stdout.write "[" & $ok & "]\n"
+  stdout.write "[" & $status & "]\n"
 
-  # Check output
-  let expectedOk = testVector["output"].content == "true"
-  doAssert ok == expectedOk, block:
-    "\nTest case: " & file &
-    "\nExpected: " & $expectedOk &
-    "\nActual:   " & $ok & "\n"
+  # Check output - tri-state: "true" (success), "false" (verification failure), "null" (invalid input)
+  let outputStr = testVector["output"].content
+  if outputStr == "true":
+    doAssert status == cttEthKzg_Success, block:
+      "\nTest case: " & file &
+      "\nExpected: verification success (output=\"true\")" &
+      "\nActual:   status=" & $status & "\n"
+  elif outputStr == "false":
+    # Verification failure - some proofs/cells/commitments are incorrect
+    doAssert status == cttEthKzg_VerificationFailure, block:
+      "\nTest case: " & file &
+      "\nExpected: verification failure (output=\"false\")" &
+      "\nActual:   status=" & $status & "\n"
+  elif outputStr == "null":
+    # Invalid input (malformed data, length mismatch, deserialization errors)
+    # Note: Empty input is valid per EIP-7594 spec (returns Success), so should not be labeled "null"
+    doAssert status != cttEthKzg_Success and status != cttEthKzg_VerificationFailure, block:
+      "\nTest case: " & file &
+      "\nExpected: invalid input error (output=\"null\")" &
+      "\nActual:   status=" & $status &
+      "\nExpected status: one of the input/deserialization error codes\n"
+  else:
+    doAssert false, "\nTest case: " & file & "\nUnexpected output value: " & outputStr
 
 TestVectorsDir.testGen(compute_verify_cell_kzg_proof_batch_challenge, "kzg-mainnet", testVector):
   parseAssignList(testVector, commitments, BYTES_PER_COMMITMENT, testVector["input"]["commitments"])

@@ -86,7 +86,7 @@ def _fft(vals: List[int], roots_of_unity: List[int]) -> List[int]:
     L = _fft(vals[::2], roots_of_unity[::2])
     R = _fft(vals[1::2], roots_of_unity[::2])
     o = [0 for _ in vals]
-    for i, (x, y) in enumerate(zip(L, R)):
+    for i, (x, y) in enumerate(zip(L, R, strict=True)):
         y_times_root = y * roots_of_unity[i] % BLS_MODULUS
         o[i] = (x + y_times_root) % BLS_MODULUS
         o[i + len(L)] = (x - y_times_root) % BLS_MODULUS

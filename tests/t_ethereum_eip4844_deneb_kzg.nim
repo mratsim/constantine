@@ -40,7 +40,7 @@ TestVectorsDir.testGen(blob_to_kzg_commitment, "kzg-mainnet", testVector):
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:
-    parseAssign(testVector, expectedCommit, 48, testVector["output"].content)
+    parseAssign(testVector, expectedCommit, BYTES_PER_COMMITMENT, testVector["output"].content)
     doAssert bool(commitment == expectedCommit[]), block:
       "\ncommitment: " & commitment.toHex() &
       "\nexpected:   " & expectedCommit[].toHex() & "\n"
@@ -96,7 +96,7 @@ TestVectorsDir.testGen(compute_blob_kzg_proof, "kzg-mainnet", testVector):
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:
-    parseAssign(testVector, expectedProof, 48, testVector["output"].content)
+    parseAssign(testVector, expectedProof, BYTES_PER_PROOF, testVector["output"].content)
 
     doAssert bool(proof == expectedProof[]), block:
       "\nproof:    " & proof.toHex() &
@@ -163,22 +163,22 @@ block:
   suite "Ethereum Deneb Hardfork / EIP-4844 / Proto-Danksharding / KZG Polynomial Commitments":
     let ctx = getTrustedSetup()
 
-    test "blob_to_kzg_commitment(dst: var array[48, byte], blob: ptr array[4096, byte])":
+    test "blob_to_kzg_commitment(dst: var array[BYTES_PER_COMMITMENT, byte], blob: ptr array[4096, byte])":
       ctx.test_blob_to_kzg_commitment()
 
-    test "compute_kzg_proof(proof: var array[48, byte], y: var array[32, byte], blob: ptr array[4096, byte], z: array[32, byte])":
+    test "compute_kzg_proof(proof: var array[BYTES_PER_PROOF, byte], y: var array[32, byte], blob: ptr array[4096, byte], z: array[32, byte])":
       ctx.test_compute_kzg_proof()
 
-    test "verify_kzg_proof(commitment: array[48, byte], z, y: array[32, byte], proof: array[48, byte]) -> bool":
+    test "verify_kzg_proof(commitment: array[BYTES_PER_COMMITMENT, byte], z, y: array[32, byte], proof: array[BYTES_PER_PROOF, byte]) -> bool":
       ctx.test_verify_kzg_proof()
 
-    test "compute_blob_kzg_proof(proof: var array[48, byte], blob: ptr array[4096, byte], commitment: array[48, byte])":
+    test "compute_blob_kzg_proof(proof: var array[BYTES_PER_PROOF, byte], blob: ptr array[4096, byte], commitment: array[BYTES_PER_COMMITMENT, byte])":
       ctx.test_compute_blob_kzg_proof()
 
-    test "verify_blob_kzg_proof(blob: ptr array[4096, byte], commitment, proof: array[48, byte])":
+    test "verify_blob_kzg_proof(blob: ptr array[4096, byte], commitment: array[BYTES_PER_COMMITMENT, byte], proof: array[BYTES_PER_PROOF, byte])":
       ctx.test_verify_blob_kzg_proof()
 
-    test "verify_blob_kzg_proof_batch(blobs: ptr UncheckedArray[array[4096, byte]], commitments, proofs: ptr UncheckedArray[array[48, byte]], n: int, secureRandomBytes: array[32, byte])":
+    test "verify_blob_kzg_proof_batch(blobs: ptr UncheckedArray[array[4096, byte]], commitments: ptr UncheckedArray[array[BYTES_PER_COMMITMENT, byte]], proofs: ptr UncheckedArray[array[BYTES_PER_PROOF, byte]], n: int, secureRandomBytes: array[32, byte])":
       ctx.test_verify_blob_kzg_proof_batch()
 
     ctx.trusted_setup_delete()

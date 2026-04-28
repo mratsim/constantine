@@ -740,6 +740,7 @@ const benchDesc = [
   "eth_eip7594/perf_compute_cells_and_kzg_proofs",
   "eth_eip7594/perf_recover_cells_and_kzg_proofs",
   "eth_eip7594/perf_verify_cell_kzg_proof_batch",
+  "eth_eip7594/benchset_generation",
   "bench_verkle_primitives",
   "bench_eth_evm_precompiles",
   "bench_multilinear_extensions",

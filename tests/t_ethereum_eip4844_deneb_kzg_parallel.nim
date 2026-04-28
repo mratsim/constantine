@@ -12,6 +12,7 @@ import
   # Internals
   constantine/hashes,
   constantine/serialization/codecs,
+  constantine/ethereum_eip4844_kzg,
   constantine/ethereum_eip4844_kzg_parallel,
   constantine/threadpool/threadpool,
   # Test utilities
@@ -28,36 +29,21 @@ import
 # and failure modes (subgroups, ...)
 # https://nimyaml.org/serialization.html
 
-const TrustedSetupMainnet =
-  currentSourcePath.rsplit(DirSep, 1)[0] /
-  ".." / "constantine" /
-  "commitments_setups" /
-  "trusted_setup_ethereum_kzg4844_reference.dat"
-
-proc trusted_setup*(): ptr EthereumKZGContext =
-  ## This is a convenience function for the Ethereum mainnet testing trusted setups.
-  ## It is insecure and will be replaced once the KZG ceremony is done.
-
-  var ctx: ptr EthereumKZGContext
-  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
-  doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
-  echo "Trusted Setup loaded successfully"
-  return ctx
 
 const
   TestVectorsDir =
     currentSourcePath.rsplit(DirSep, 1)[0] / "protocol_ethereum_eip4844_deneb_kzg"
 
 TestVectorsDir.testGenPar(blob_to_kzg_commitment, "kzg-mainnet", testVector):
-  parseAssign(testVector, blob, 32*4096, testVector["input"]["blob"].content)
+  parseAssign(testVector, blob, BYTES_PER_BLOB, testVector["input"]["blob"].content)
 
-  var commitment: array[48, byte]
+  var commitment: array[BYTES_PER_COMMITMENT, byte]
 
   let status = tp.blob_to_kzg_commitment_parallel(ctx, commitment, blob[])
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:
-    parseAssign(testVector, expectedCommit, 48, testVector["output"].content)
+    parseAssign(testVector, expectedCommit, BYTES_PER_COMMITMENT, testVector["output"].content)
     doAssert bool(commitment == expectedCommit[]), block:
       "\ncommitment: " & commitment.toHex() &
       "\nexpected:   " & expectedCommit[].toHex() & "\n"
@@ -65,18 +51,18 @@ TestVectorsDir.testGenPar(blob_to_kzg_commitment, "kzg-mainnet", testVector):
     doAssert testVector["output"].content == "null"
 
 TestVectorsDir.testGenPar(compute_kzg_proof, "kzg-mainnet", testVector):
-  parseAssign(testVector, blob, 32*4096, testVector["input"]["blob"].content)
-  parseAssign(testVector, z, 32, testVector["input"]["z"].content)
+  parseAssign(testVector, blob, BYTES_PER_BLOB, testVector["input"]["blob"].content)
+  parseAssign(testVector, z, BYTES_PER_FIELD_ELEMENT, testVector["input"]["z"].content)
 
-  var proof: array[48, byte]
-  var y: array[32, byte]
+  var proof: array[BYTES_PER_PROOF, byte]
+  var y: array[BYTES_PER_FIELD_ELEMENT, byte]
 
   let status = compute_kzg_proof_parallel(tp, ctx, proof, y, blob[], z[])
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:
-    parseAssign(testVector, expectedEvalAtChallenge, 32, testVector["output"][1].content)
-    parseAssign(testVector, expectedProof, 48, testVector["output"][0].content)
+    parseAssign(testVector, expectedEvalAtChallenge, BYTES_PER_FIELD_ELEMENT, testVector["output"][1].content)
+    parseAssign(testVector, expectedProof, BYTES_PER_PROOF, testVector["output"][0].content)
 
     doAssert bool(y == expectedEvalAtChallenge[]), block:
       "\ny (= p(z)): " & y.toHex() &
@@ -105,16 +91,16 @@ TestVectorsDir.testGenPar(compute_kzg_proof, "kzg-mainnet", testVector):
 #     doAssert testVector["output"].content == "null"
 
 TestVectorsDir.testGenPar(compute_blob_kzg_proof, "kzg-mainnet", testVector):
-  parseAssign(testVector, blob,  32*4096, testVector["input"]["blob"].content)
-  parseAssign(testVector, commitment, 48, testVector["input"]["commitment"].content)
+  parseAssign(testVector, blob,  BYTES_PER_BLOB, testVector["input"]["blob"].content)
+  parseAssign(testVector, commitment, BYTES_PER_COMMITMENT, testVector["input"]["commitment"].content)
 
-  var proof: array[48, byte]
+  var proof: array[BYTES_PER_PROOF, byte]
 
   let status = compute_blob_kzg_proof_parallel(tp, ctx, proof, blob[], commitment[])
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:
-    parseAssign(testVector, expectedProof, 48, testVector["output"].content)
+    parseAssign(testVector, expectedProof, BYTES_PER_PROOF, testVector["output"].content)
 
     doAssert bool(proof == expectedProof[]), block:
       "\nproof:    " & proof.toHex() &
@@ -123,9 +109,9 @@ TestVectorsDir.testGenPar(compute_blob_kzg_proof, "kzg-mainnet", testVector):
     doAssert testVector["output"].content == "null"
 
 TestVectorsDir.testGenPar(verify_blob_kzg_proof, "kzg-mainnet", testVector):
-  parseAssign(testVector, blob,  32*4096, testVector["input"]["blob"].content)
-  parseAssign(testVector, commitment, 48, testVector["input"]["commitment"].content)
-  parseAssign(testVector, proof,      48, testVector["input"]["proof"].content)
+  parseAssign(testVector, blob,  BYTES_PER_BLOB, testVector["input"]["blob"].content)
+  parseAssign(testVector, commitment, BYTES_PER_COMMITMENT, testVector["input"]["commitment"].content)
+  parseAssign(testVector, proof,      BYTES_PER_PROOF, testVector["input"]["proof"].content)
 
   let status = verify_blob_kzg_proof_parallel(tp, ctx, blob[], commitment[], proof[])
   stdout.write "[" & $status & "]\n"
@@ -138,9 +124,9 @@ TestVectorsDir.testGenPar(verify_blob_kzg_proof, "kzg-mainnet", testVector):
     doAssert testVector["output"].content == "null"
 
 TestVectorsDir.testGenPar(verify_blob_kzg_proof_batch, "kzg-mainnet", testVector):
-  parseAssignList(testVector, blobs,  32*4096, testVector["input"]["blobs"])
-  parseAssignList(testVector, commitments, 48, testVector["input"]["commitments"])
-  parseAssignList(testVector, proofs,      48, testVector["input"]["proofs"])
+  parseAssignList(testVector, blobs,  BYTES_PER_BLOB, testVector["input"]["blobs"])
+  parseAssignList(testVector, commitments, BYTES_PER_COMMITMENT, testVector["input"]["commitments"])
+  parseAssignList(testVector, proofs,      BYTES_PER_PROOF, testVector["input"]["proofs"])
 
   if blobs.len != commitments.len:
     stdout.write "[ Length mismatch between blobs and commitments ]\n"
@@ -152,7 +138,7 @@ TestVectorsDir.testGenPar(verify_blob_kzg_proof_batch, "kzg-mainnet", testVector
     return
 
   # For reproducibility/debugging we don't use the CSPRNG here
-  var randomBlinding {.noInit.}: array[32, byte]
+  var randomBlinding {.noInit.}: array[BYTES_PER_FIELD_ELEMENT, byte]
   sha256.hash(randomBlinding, "The wizard quickly jinxed the gnomes before they vaporized.")
 
   template asUnchecked[T](a: openArray[T]): ptr UncheckedArray[T] =
@@ -180,26 +166,26 @@ TestVectorsDir.testGenPar(verify_blob_kzg_proof_batch, "kzg-mainnet", testVector
 
 block:
   suite "Ethereum Deneb Hardfork / EIP-4844 / Proto-Danksharding / KZG Polynomial Commitments (Parallel)":
-    let ctx = trusted_setup()
+    let ctx = getTrustedSetup()
     let tp = Threadpool.new()
 
-    test "blob_to_kzg_commitment_parallel(dst: var array[48, byte], blob: ptr array[4096, byte])":
+    test "blob_to_kzg_commitment_parallel(dst: var array[BYTES_PER_COMMITMENT, byte], blob: ptr array[BYTES_PER_BLOB, byte])":
       test_blob_to_kzg_commitment(ctx, tp)
 
-    test "compute_kzg_proof_parallel(proof: var array[48, byte], y: var array[32, byte], blob: ptr array[4096, byte], z: array[32, byte])":
+    test "compute_kzg_proof_parallel(proof: var array[BYTES_PER_PROOF, byte], y: var array[BYTES_PER_FIELD_ELEMENT, byte], blob: ptr array[BYTES_PER_BLOB, byte], z: array[BYTES_PER_FIELD_ELEMENT, byte])":
       test_compute_kzg_proof(ctx, tp)
 
     # Not parallelized
-    # test "verify_kzg_proof(commitment: array[48, byte], z, y: array[32, byte], proof: array[48, byte]) -> bool":
+    # test "verify_kzg_proof(commitment: array[BYTES_PER_COMMITMENT, byte], z, y: array[BYTES_PER_FIELD_ELEMENT, byte], proof: array[BYTES_PER_PROOF, byte]) -> bool":
     #   ctx.test_verify_kzg_proof()
 
-    test "compute_blob_kzg_proof_parallel(proof: var array[48, byte], blob: ptr array[4096, byte], commitment: array[48, byte])":
+    test "compute_blob_kzg_proof_parallel(proof: var array[BYTES_PER_PROOF, byte], blob: ptr array[BYTES_PER_BLOB, byte], commitment: array[BYTES_PER_COMMITMENT, byte])":
       test_compute_blob_kzg_proof(ctx, tp)
 
-    test "verify_blob_kzg_proof_parallel(blob: ptr array[4096, byte], commitment, proof: array[48, byte])":
+    test "verify_blob_kzg_proof_parallel(blob: ptr array[BYTES_PER_BLOB, byte], commitment: array[BYTES_PER_COMMITMENT, byte], proof: array[BYTES_PER_PROOF, byte])":
       test_verify_blob_kzg_proof(ctx, tp)
 
-    test "verify_blob_kzg_proof_batch_parallel(blobs: ptr UncheckedArray[array[4096, byte]], commitments, proofs: ptr UncheckedArray[array[48, byte]], n: int, secureRandomBytes: array[32, byte])":
+    test "verify_blob_kzg_proof_batch_parallel(blobs: ptr UncheckedArray[array[BYTES_PER_BLOB, byte]], commitments: ptr UncheckedArray[array[BYTES_PER_COMMITMENT, byte]], proofs: ptr UncheckedArray[array[BYTES_PER_PROOF, byte]], n: int, secureRandomBytes: array[BYTES_PER_FIELD_ELEMENT, byte])":
       test_verify_blob_kzg_proof_batch(ctx, tp)
 
     tp.shutdown()

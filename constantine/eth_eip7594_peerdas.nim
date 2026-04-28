@@ -13,7 +13,7 @@ import
   constantine/math/io/[io_bigints, io_fields],
   constantine/platforms/[primitives, views, allocs],
   constantine/commitments_setups/ethereum_kzg_srs,
-  constantine/ethereum_eip4844_kzg,
+  constantine/ethereum_eip4844_kzg {.all.},
   constantine/serialization/[codecs_status_codes, codecs_bls12_381, endians],
   constantine/data_availability_sampling/eth_peerdas,
   constantine/commitments/kzg_multiproofs,
@@ -99,16 +99,6 @@ type
 #
 # ============================================================
 
-template check(status: CttCodecScalarStatus): untyped {.dirty.} =
-  ## Check blob deserialization status and return early on error
-  case status
-  of cttCodecScalar_Success:
-    discard
-  of cttCodecScalar_Zero:
-    return cttEthKzg_ScalarZero
-  of cttCodecScalar_ScalarLargerThanCurveOrder:
-    return cttEthKzg_ScalarLargerThanCurveOrder
-
 func bytesToBlsField(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus =
   ## Convert untrusted bytes to a trusted and validated BLS scalar field element.
   var scalar {.noInit.}: Fr[BLS12_381].getBigInt()
@@ -154,11 +144,19 @@ func cosetEvalsToCell(
 #
 # ============================================================
 
+template `?`(status: cttEthKzgStatus): untyped {.dirty.} =
+  ## Check KZG operation status and return early on error
+  if status != cttEthKzg_Success:
+    return status
+
 func compute_cells_impl(
-       ctx: ptr EthereumKZGContext,
-       cells: var array[CELLS_PER_EXT_BLOB, Cell],
-       poly_eval_brp: PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed]): cttEthKzgStatus =
-  ## Compute all cells for an extended blob from pre-deserialized polynomial.
+      ctx: ptr EthereumKZGContext,
+      cells: var array[CELLS_PER_EXT_BLOB, Cell],
+      poly_eval_brp: PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed],
+      poly_coef_nat: PolynomialCoef[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]]): cttEthKzgStatus =
+  ## Compute all cells for an extended blob.
+  ## poly_eval_brp: evaluation form (for first 64 cells)
+  ## poly_coef_nat: coefficient form (for second 64 cells, no IFFT needed)
   const
     N = FIELD_ELEMENTS_PER_BLOB       # 4096
     L = FIELD_ELEMENTS_PER_CELL       # 64
@@ -175,22 +173,18 @@ func compute_cells_impl(
   copyMem(cells_evals[0][0].addr, poly_eval_brp.evals[0].addr, N*sizeof(Fr[BLS12_381]))
 
   # ============================================================
-  # Step 2: Second 64 cells - IFFT + shift + FFT
+  # Step 2: Second 64 cells - shift + FFT (no IFFT needed!)
   # ============================================================
 
-  # Step 2a: Lagrange -> Monomial form
-  let poly_coef_nat = allocHeapAligned(PolynomialCoef[N, Fr[BLS12_381]], alignment = 64)
-  defer: freeHeapAligned(poly_coef_nat)
-  poly_coef_nat[].lagrangeInterpolate(poly_eval_brp, ctx.fft_desc_ext)
-
-  # Step 2b: Shift coefficients by w_8192^k
+  # Shift coefficients by w_8192^k
   # w_8192 = primitive 8192nd root of unity (coset shift factor)
+  var poly_coef_shifted = poly_coef_nat
   let w_8192 = ctx.fft_desc_ext.rootsOfUnity[1]
-  poly_coef_nat.coefs.shift_vals(poly_coef_nat.coefs, w_8192)
+  poly_coef_shifted.coefs.shift_vals(poly_coef_shifted.coefs, w_8192)
 
-  # Step 2c: FFT of shifted coefficients -> evaluations directly into cells 64-127
+  # FFT of shifted coefficients -> evaluations directly into cells 64-127
   let pHalfCells = cells_evals[HALF_CDS].asUnchecked()
-  let fft_status = ctx.fft_desc_ext.fft_nr(pHalfCells.toOpenArray(N), poly_coef_nat.coefs)
+  let fft_status = ctx.fft_desc_ext.fft_nr(pHalfCells.toOpenArray(N), poly_coef_shifted.coefs)
   doAssert fft_status == FFT_Success
 
   # ============================================================
@@ -255,9 +249,14 @@ func compute_cells*(
   let poly_eval_brp = allocHeapAligned(PolynomialEval[N, Fr[BLS12_381], kBitReversed], 64)
   defer: freeHeapAligned(poly_eval_brp)
 
-  check blob_to_field_polynomial(poly_eval_brp, blob)
+  ?blob_to_field_polynomial(poly_eval_brp, blob)
 
-  return compute_cells_impl(ctx, cells, poly_eval_brp[])
+  # Convert to monomial form for compute_cells_impl
+  let poly_coef_nat = allocHeapAligned(PolynomialCoef[N, Fr[BLS12_381]], 64)
+  defer: freeHeapAligned(poly_coef_nat)
+  poly_coef_nat[].lagrangeInterpolate(poly_eval_brp[], ctx.fft_desc_ext)
+
+  return compute_cells_impl(ctx, cells, poly_eval_brp[], poly_coef_nat[])
 
 func compute_cells_and_kzg_proofs*(
        ctx: ptr EthereumKZGContext,
@@ -277,18 +276,16 @@ func compute_cells_and_kzg_proofs*(
   let poly_lagrange = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], 64)
   defer: freeHeapAligned(poly_lagrange)
 
-  check blob_to_field_polynomial(poly_lagrange, blob)
+  ?blob_to_field_polynomial(poly_lagrange, blob)
 
-  # Step 2: Convert to monomial form via IFFT (needed for FK20 proofs)
+  # Step 2: Convert to monomial form via IFFT (needed for FK20 proofs AND cells)
   let poly_monomial = allocHeapAligned(PolynomialCoef[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
   defer: freeHeapAligned(poly_monomial)
 
   poly_monomial[].lagrangeInterpolate(poly_lagrange[], ctx.fft_desc_ext)
 
-  # Step 3: Compute cells using the optimized half-FFT algorithm
-  let cells_status = compute_cells_impl(ctx, cells, poly_lagrange[])
-  if cells_status != cttEthKzg_Success:
-    return cells_status
+  # Step 3: Compute cells using the optimized half-FFT algorithm (reuses poly_monomial)
+  let cells_status = compute_cells_impl(ctx, cells, poly_lagrange[], poly_monomial[])
 
   # Step 4: Compute FK20 proofs
   const N = FIELD_ELEMENTS_PER_BLOB
@@ -365,7 +362,7 @@ func compute_verify_cell_kzg_proof_batch_challenge*(
     transcript.update(toBytes(uint64 cell_indices[k], bigEndian))
     for eval in cosets_evals[k]:
       var evalBytes: array[32, byte]
-      discard bls_field_to_bytes(evalBytes, eval)
+      bls_field_to_bytes(evalBytes, eval)
       transcript.update(evalBytes)
     transcript.update(proofs[k])
 
@@ -379,7 +376,7 @@ func verify_cell_kzg_proof_batch*(
        cell_indices: openArray[CellIndex],
        cells: openArray[Cell],
        proofs_bytes: openArray[array[BYTES_PER_PROOF, byte]],
-       secureRandomBytes: array[32, byte]): bool =
+       secureRandomBytes: array[32, byte]): cttEthKzgStatus {.raises: [].} =
   ## Verify that a set of cells belong to their corresponding commitments.
   ##
   ## This implements the universal verification equation from:
@@ -391,16 +388,16 @@ func verify_cell_kzg_proof_batch*(
   if len(commitments_bytes) != len(cells) or
      len(commitments_bytes) != len(proofs_bytes) or
      len(commitments_bytes) != len(cell_indices):
-    return false
+    return cttEthKzg_InputsLengthsMismatch
 
   # Validate cell indices are in bounds
   for cell_idx in cell_indices:
     if cell_idx >= CELLS_PER_EXT_BLOB:
-      return false
+      return cttEthKzg_InputsLengthsMismatch
 
   # Edge case: zero cells is trivially valid
   if len(cell_indices) == 0:
-    return true
+    return cttEthKzg_Success
 
   let numCells = len(cell_indices)
 
@@ -417,25 +414,16 @@ func verify_cell_kzg_proof_batch*(
   block HappyPath:
     # Deserialize cells to coset evaluations
     for i in 0 ..< numCells:
-      let status = cellToCosetEvals(cosets_evals[i], cells[i])
-      if status != cttEthKzg_Success:
-        result = false
-        break HappyPath
+      ?cellToCosetEvals(cosets_evals[i], cells[i])
       evalsCols[i] = int(cell_indices[i])
 
     # Deserialize commitments
     for i in 0 ..< numCells:
-      let status = commitments[i].deserialize_g1_compressed(commitments_bytes[i])
-      if status notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
-        result = false
-        break HappyPath
+      ?commitments[i].deserialize_g1_compressed(commitments_bytes[i])
 
     # Deserialize proofs
     for i in 0 ..< numCells:
-      let status = proofs[i].deserialize_g1_compressed(proofs_bytes[i])
-      if status notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
-        result = false
-        break HappyPath
+      ?proofs[i].deserialize_g1_compressed(proofs_bytes[i])
 
     # Deduplicate commitments
     let numUniqueCommitments = deduplicateCommitments(
@@ -474,7 +462,7 @@ func verify_cell_kzg_proof_batch*(
     # Compute powers of r: [r^1, r^2, ..., r^{numCells}]
     rPowers.computePowers(r, numCells, skipOne = true)
 
-    result = kzg_coset_verify_batch(
+    let verifyStatus = kzg_coset_verify_batch(
       uniqueCommitments = uniqueCommitments.toOpenArray(numUniqueCommitments),
       commitmentIdx = commitmentIdx.toOpenArray(numCells),
       proofs = proofs.toOpenArray(numCells),
@@ -486,6 +474,7 @@ func verify_cell_kzg_proof_batch*(
       tau_pow_L_g2 = ctx.srs_monomial_g2.coefs[FIELD_ELEMENTS_PER_CELL],
       N = FIELD_ELEMENTS_PER_EXT_BLOB
     )
+    result = if verifyStatus: cttEthKzg_Success else: cttEthKzg_VerificationFailure
 
     freeHeapAligned(uniqueCommitments)
 
