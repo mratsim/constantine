@@ -181,6 +181,103 @@ TestVectorsDir.testGen(compute_verify_cell_kzg_proof_batch_challenge, "kzg-mainn
     "\nExpected: " & testVector["output"].content &
     "\nActual:   " & $challenge & "\n"
 
+
+# Dedicated tests for deduplicateCommitments function
+suite "deduplicateCommitments":
+  # Helper to create test commitments
+  proc makeTestCommitment(seed: uint8): EC_ShortW_Aff[Fp[BLS12_381], G1] =
+    # Create a simple commitment by using seed as x-coordinate
+    # This is not cryptographically valid but sufficient for dedup testing
+    result.x.fromUint(seed.uint64)
+    result.y.fromUint((seed + 1).uint64)
+
+  test "Empty input":
+    var commitmentIdx: array[0, int]
+    var commitments: array[0, EC_ShortW_Aff[Fp[BLS12_381], G1]]
+    check deduplicateCommitments(commitmentIdx, commitments) == 0
+
+  test "Single commitment":
+    var commitmentIdx: array[1, int]
+    var commitments = [makeTestCommitment(1)]
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    check numUnique == 1
+    check commitmentIdx[0] == 0
+
+  test "All identical commitments":
+    var commitmentIdx: array[4, int]
+    var commitments = [
+      makeTestCommitment(1),
+      makeTestCommitment(1),
+      makeTestCommitment(1),
+      makeTestCommitment(1)
+    ]
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    check numUnique == 1
+    check commitmentIdx == [0, 0, 0, 0]
+
+  test "All unique commitments":
+    var commitmentIdx: array[4, int]
+    var commitments = [
+      makeTestCommitment(1),
+      makeTestCommitment(2),
+      makeTestCommitment(3),
+      makeTestCommitment(4)
+    ]
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    check numUnique == 4
+    check commitmentIdx == [0, 1, 2, 3]
+
+  test "Non-consecutive duplicates":
+    # Input: [A, A, B, B] should produce unique=[A, B], indices=[0, 0, 1, 1]
+    var commitmentIdx: array[4, int]
+    let A = makeTestCommitment(1)
+    let B = makeTestCommitment(2)
+    var commitments = [A, A, B, B]
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    check numUnique == 2
+    check commitmentIdx == [0, 0, 1, 1]
+
+  test "Interleaved duplicates":
+    # Input: [A, B, A, B, C, A] should produce unique=[A, B, C], indices=[0, 1, 0, 1, 2, 0]
+    var commitmentIdx: array[6, int]
+    let A = makeTestCommitment(1)
+    let B = makeTestCommitment(2)
+    let C = makeTestCommitment(3)
+    var commitments = [A, B, A, B, C, A]
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    check numUnique == 3
+    check commitmentIdx == [0, 1, 0, 1, 2, 0]
+
+  test "Duplicates at end":
+    # Input: [A, B, C, A, A] should produce unique=[A, B, C], indices=[0, 1, 2, 0, 0]
+    var commitmentIdx: array[5, int]
+    let A = makeTestCommitment(1)
+    let B = makeTestCommitment(2)
+    let C = makeTestCommitment(3)
+    var commitments = [A, B, C, A, A]
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    check numUnique == 3
+    check commitmentIdx == [0, 1, 2, 0, 0]
+
+  test "Large input with many duplicates":
+    # Simulate realistic PeerDAS scenario: 32 cells, 8 unique commitments
+    const N = 32
+    const M = 8
+    var commitmentIdx: array[N, int]
+    var commitments: array[N, EC_ShortW_Aff[Fp[BLS12_381], G1]]
+
+    # Create pattern: each commitment repeated 4 times
+    for i in 0 ..< N:
+      commitments[i] = makeTestCommitment(uint8(i mod M))
+
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    check numUnique == M
+
+    # Verify indices are correct
+    for i in 0 ..< N:
+      check commitmentIdx[i] == (i mod M)
+
+
 block:
   suite "Ethereum Fulu Hardfork / EIP-7594 / PeerDAS / Data Availability Sampling":
     let ctx = getTrustedSetup()

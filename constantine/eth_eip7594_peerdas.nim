@@ -310,24 +310,36 @@ func compute_cells_and_kzg_proofs*(
   return cttEthKzg_Success
 
 func deduplicateCommitments*(
-       commitmentIdx: var openArray[int],
-       commitments: openArray[EC_ShortW_Aff[Fp[BLS12_381], G1]]): int =
+     commitmentIdx: var openArray[int],
+     commitments: openArray[EC_ShortW_Aff[Fp[BLS12_381], G1]]): int =
   ## Deduplicate commitments and return the number of unique commitments.
   ## commitmentIdx[i] stores the index of the unique commitment for cell i.
-  ## This function will be optimized in a future refactoring.
+  ##
+  ## Algorithm: O(n²) linear scan tracking first occurrence indices.
+  ## For n ≤ 128 (CELLS_PER_EXT_BLOB), this is efficient enough.
+  ##
+  ## Example:
+  ##   Input:  [A, A, B, B]
+  ##   Output: numUnique=2, commitmentIdx=[0, 0, 1, 1], unique=[A, B]
   debug:
     doAssert commitmentIdx.len == commitments.len
 
   var numUniqueCommitments = 0
+  # Allocate buffer for unique commitments - size matches input (all could be unique)
+  # Uses heap allocation like the rest of verify_cell_kzg_proof_batch
+  let uniqueBuffer = allocHeapArrayAligned(EC_ShortW_Aff[Fp[BLS12_381], G1], commitments.len, alignment = 64)
+  defer: freeHeapAligned(uniqueBuffer)
+  
   for i in 0 ..< commitments.len:
     var found = false
     for j in 0 ..< numUniqueCommitments:
-      if bool(commitments[j] == commitments[i]):
+      if bool(uniqueBuffer[j] == commitments[i]):
         commitmentIdx[i] = j
         found = true
         break
 
     if not found:
+      uniqueBuffer[numUniqueCommitments] = commitments[i]
       commitmentIdx[i] = numUniqueCommitments
       inc numUniqueCommitments
 
