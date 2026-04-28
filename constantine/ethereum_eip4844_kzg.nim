@@ -154,7 +154,9 @@ func getBatchBlindingFactor(
   for i in 0 ..< secureRandomBytes.len:
     if secureRandomBytes[i] != byte 0:
       dst.fromDigest(secureRandomBytes)
-      return true
+      # Defense in depth, what if we get supplied the scalar field modulus
+      # Then `fromDigest` returns 0.
+      return not dst.isZero().bool
   return false
 
 # Conversion

@@ -41,7 +41,7 @@ proc newBenchSet*(): BenchSet =
 proc serialize*(B: BenchSet, filename: string) =
   ## Serialize BenchSet to binary file
   echo &"Serializing BenchSet to {filename}..."
-  let stream = newFileStream(filename, fmWrite)
+  let stream = openFileStream(filename, fmWrite)
   defer: stream.close()
 
   # Write header for validation
@@ -90,9 +90,9 @@ proc load*(T: type BenchSet, filename: string): T =
   ## Load BenchSet from binary file
   echo &"Loading BenchSet from {filename}..."
   let loadStart = getMonotime()
-  
+
   result = newBenchSet()
-  let stream = newFileStream(filename, fmRead)
+  let stream = openFileStream(filename, fmRead)
   defer: stream.close()
 
   # Read and verify header

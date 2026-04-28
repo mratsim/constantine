@@ -37,6 +37,10 @@ def bit_reversal_permutation(sequence):
     return [sequence[reverse_bits(i, len(sequence))] for i in range(len(sequence))]
 
 
+# Store results for 4096 and 8192 to verify the subset property
+brp_roots_4096 = None
+brp_roots_8192 = None
+
 for N in [4, 8, 4096, 8192]:
     MULT_GENERATOR = pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // N, MODULUS)
     ROOTS_OF_UNITY = [pow(MULT_GENERATOR, i, MODULUS) for i in range(N)]
@@ -51,3 +55,14 @@ for N in [4, 8, 4096, 8192]:
     print(f"  >>> {top} first bit-reversed roots of unity")
     for i in range(top):
         print(f"      - {hex(BRP_ROOTS_OF_UNITY[i])}")
+
+    # Store for later comparison
+    if N == 4096:
+        brp_roots_4096 = BRP_ROOTS_OF_UNITY
+    elif N == 8192:
+        brp_roots_8192 = BRP_ROOTS_OF_UNITY
+
+# Assert the 4096⊂8192 bit-reversed-domain property
+assert brp_roots_4096 is not None and brp_roots_8192 is not None, "Failed to generate both root sets"
+assert brp_roots_4096 == brp_roots_8192[:4096], "4096 bit-reversed roots must equal first half of 8192 bit-reversed roots"
+print("\n✓ Verified: 4096 bit-reversed roots == first 4096 of 8192 bit-reversed roots")

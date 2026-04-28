@@ -31,10 +31,11 @@ import
   std/[os, strutils, streams, unittest],
   pkg/yaml,
   constantine/eth_eip7594_peerdas {.all.},
-  constantine/ethereum_eip4844_kzg,
+  constantine/ethereum_eip4844_kzg {.all.},
   constantine/serialization/[codecs, codecs_bls12_381],
   constantine/math/ec_shortweierstrass,
-  constantine/named/algebras
+  constantine/named/algebras,
+  constantine/platforms/allocs
 
 # ---------------------------------------------------------
 # Spec implementation of compute_cells_and_kzg_proofs_naive
@@ -90,29 +91,26 @@ func compute_cells_and_kzg_proofs_naive(
   if cells_status != cttEthKzg_Success:
     return cells_status
 
-  # Convert cells back to field elements for proof computation
-  var cells_evals_naive: array[CELLS_PER_EXT_BLOB, array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]]]
-  for i in 0 ..< CELLS_PER_EXT_BLOB:
-    let status = cellToCosetEvals(cells_evals_naive[i], cells[i])
-    if status != cttEthKzg_Success:
-      return status
+  # Note: kzg_coset_prove_naive now computes evaluations internally,
+  # so cells_evals_naive is no longer needed
 
   # Compute L-th root of unity from extended domain for proof computation
-  var lthRoot {.noInit.}: Fr[BLS12_381]
-  lthRoot = ctx.fft_desc_ext.rootsOfUnity[1] ~^ uint32(2*N div L)
+  # (no longer needed with updated kzg_coset_prove_naive API)
 
   # Get bit-reversed roots of unity for coset shifts
-  var roots_of_unity_brp: array[2*N, Fr[BLS12_381]]
+  # Heap allocation to avoid ~256KB stack usage (2*N * sizeof(Fr) ≈ 8192 * 32 bytes)
+  let roots_of_unity_brp = allocHeapAligned(array[2*N, Fr[BLS12_381]], 64)
+  defer: freeHeapAligned(roots_of_unity_brp)
   for i in 0 ..< 2*N:
-    roots_of_unity_brp[i] = ctx.fft_desc_ext.rootsOfUnity[i]
-  roots_of_unity_brp.bit_reversal_permutation()
+    roots_of_unity_brp[][i] = ctx.fft_desc_ext.rootsOfUnity[i]
+  roots_of_unity_brp[].bit_reversal_permutation()
 
   # Compute proofs for each cell
   for cell_idx in 0 ..< CELLS:
-    let x = roots_of_unity_brp[L * cell_idx]  # Coset shift in bit-reversed order
+    let x = roots_of_unity_brp[][L * cell_idx]  # Coset shift in bit-reversed order
     var proof: EC_ShortW_Aff[Fp[BLS12_381], G1]
-    kzg_coset_prove_naive[N, L, BLS12_381](
-      proof, cells_evals_naive[cell_idx], poly_monomial, x, lthRoot, ctx.srs_monomial_g1)
+    kzg_coset_prove_naive[N, BLS12_381](
+      proof, poly_monomial, x, L, ctx.srs_monomial_g1)
     proofs[cell_idx] = KZGProof(proof)
 
   return cttEthKzg_Success

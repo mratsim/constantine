@@ -462,6 +462,29 @@ proc testKzgCosetVerifyBatchNegative_SwitchProofs*(numTestCells: int) =
     kzg_coset_prove_naive(
       proofs[i], setup.testPoly, h, L, setup.powers_of_tau_G1)
 
+
+  var r: Fr[BLS12_381]
+  r.fromHex("0x0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829")
+  var linearIndepRandNumbers = newSeq[Fr[BLS12_381]](numTestCells)
+  linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells, skipOne = true)
+
+  let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
+  # BASELINE: Verify clean batch passes before corruption
+  let verified_clean = kzg_coset_verify_batch[L, BLS12_381](
+    uniqueCommitments,
+    commitmentIdx,
+    proofs,
+    evals,
+    evalsCols,
+    fr_fft_desc,
+    linearIndepRandNumbers,
+    setup.powers_of_tau_G1.coefs,
+    tau_pow_L_g2,
+    maxWidth  # Use extended domain size
+  )
+  doAssert verified_clean, "Clean batch verification must succeed before corruption test!"
+  echo "  ✓ Clean batch verification passed (", numTestCells, " cells)"
+
   # NEGATIVE TEST: Corrupt one proof by using evals from a different cell
   # This creates a provable mismatch that should be detected
   if numTestCells >= 2:
@@ -470,12 +493,6 @@ proc testKzgCosetVerifyBatchNegative_SwitchProofs*(numTestCells: int) =
     evalsCols[0] = evalsCols[1]
     cosetShifts[0] = cosetShifts[1]
 
-  var r: Fr[BLS12_381]
-  r.fromHex("0x0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829")
-  var linearIndepRandNumbers = newSeq[Fr[BLS12_381]](numTestCells)
-  linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells, skipOne = true)
-
-  let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
   let verified = kzg_coset_verify_batch[L, BLS12_381](
     uniqueCommitments,
     commitmentIdx,

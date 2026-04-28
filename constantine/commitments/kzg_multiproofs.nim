@@ -555,7 +555,8 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
     let hk = domain.rootsOfUnity[domainPos]
 
     # agg_cols[c] is in bit-reversed order
-    discard domain.coset_ifft_rn(col_interpoly.coefs, agg_cols[c], hk)
+    let status = domain.coset_ifft_rn(col_interpoly.coefs, agg_cols[c], hk)
+    doAssert status == FFT_Success, "Internal error: coset_ifft_rn failed: " & $status
 
     # Accumulate
     interpoly += col_interpoly
