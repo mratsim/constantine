@@ -47,9 +47,9 @@ proc testFK20SingleProofs() =
 
   let setup = gen_setup(N, L, maxWidth, tauHex)
 
-  # TODO: we switched to CDS, wrong comment
-  # Create FFT descriptors using stride from maxWidth descriptor
-  # This matches production code which uses ctx.fft_desc_ext (8192-order) for all sizes
+  # Create FFT descriptors sized to CDS (= 2 * N).
+  # Production code uses a single larger descriptor (ctx.fft_desc_ext) with strides;
+  # this test isolates the FK20 path with descriptors sized exactly to the test.
   let ecfft_desc = ECFFT_Descriptor[BLS12_381_G1_Jac].new(order = CDS, setup.omegaForFFT)
   let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.omegaForFFT)
 

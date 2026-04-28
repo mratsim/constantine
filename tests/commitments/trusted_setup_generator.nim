@@ -48,12 +48,14 @@ func computePowersOfTauG2[N: static int](powers_of_tau: var array[N, BLS12_381_G
     prev = next
 
 proc gen_setup*(N, L, maxWidth: static int; tauHex: string): TrustedSetup[N, L, maxWidth] =
-  ## Generate test setup for FK20 with given polynomial size N and domain size K2.
+  ## Generate a test trusted setup for FK20 multiproofs.
   ##
-  ## @param N: polynomial size (coefficient form)
-  ## @param K2: domain size (must be power of 2, >= 2*N for DA)
-  ## @param tauHex: hex string for secret tau
-  ## @return: tuple with poly, polyBig (BigInt version), powers_of_tau, tau, tauG2, domain
+  ## @param N        polynomial size (coefficient form), must satisfy `N mod L == 0` and `N >= 8`
+  ## @param L        cell size (number of evaluations per coset proof); CDS = 2*N/L
+  ## @param maxWidth full FFT/verification domain size (power of 2)
+  ## @param tauHex   hex string for the secret τ
+  ## @return         TrustedSetup with testPoly, testPolyBig, powers_of_tau_G1, powers_of_tau_G2,
+  ##                 omegaForFFT (CDS-th root) and rootsOfUnity (maxWidth domain)
   ##
   ## Note: Both poly and powers_of_tau are in coefficient form (monomial basis),
   ## matching c-kzg FK20 tests. Ethereum KZG uses evaluation form (Lagrange basis)
@@ -87,7 +89,8 @@ proc gen_setup*(N, L, maxWidth: static int; tauHex: string): TrustedSetup[N, L, 
 
   # Domain setup using fft_utils for proper root computation
   # - omegaForFFT: CDS-th root used for FFT descriptor creation
-  # - omegaMax: maxWidth-th root used for x computation in verification
+  # - rootsOfUnity: precomputed maxWidth-th roots of unity (natural order)
+  #   used as the full evaluation domain in verification
   #
   # Relationship between parameters:
   #   CDS = 2 * N / L        # Circulant domain size (FFT during proof gen)
