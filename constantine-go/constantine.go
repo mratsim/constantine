@@ -424,15 +424,9 @@ func (sig *EthBlsSignature) Validate() (err error) {
 }
 
 func (sec *EthBlsSecKey) Serialize() (dst Bytes32, err error) {
-	status := C.ctt_eth_bls_serialize_seckey((*C.byte)(unsafe.Pointer(&dst)),
+	C.ctt_eth_bls_serialize_seckey((*C.byte)(unsafe.Pointer(&dst)),
 		(*C.ctt_eth_bls_seckey)(sec),
 	)
-	if status != C.cttCodecScalar_Success {
-		err := errors.New(
-			C.GoString(C.ctt_codec_scalar_status_to_string(status)),
-		)
-		return dst, err
-	}
 	return dst, nil
 }
 

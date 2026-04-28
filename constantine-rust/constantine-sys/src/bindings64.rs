@@ -4387,12 +4387,11 @@ unsafe extern "C" {
     ) -> ctt_codec_ecc_status;
 }
 unsafe extern "C" {
-    #[must_use]
-    #[doc = " Serialize a secret key\n\n  Returns cttCodecScalar_Success if successful"]
+    #[doc = " Serialize a secret key"]
     pub fn ctt_eth_bls_serialize_seckey(
         dst: *mut byte,
         seckey: *const ctt_eth_bls_seckey,
-    ) -> ctt_codec_scalar_status;
+    );
 }
 unsafe extern "C" {
     #[must_use]
