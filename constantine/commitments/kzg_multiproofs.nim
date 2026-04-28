@@ -499,7 +499,7 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
       evalsCols: openArray[int],
       domain: FrFFT_Descriptor[Fr[Name]],
       linearIndepRandNumbers: openArray[Fr[Name]],
-      N: static int) {.meter.} =
+      N: static int): bool {.meter.} =
   ## Compute ∑ₖrᵏIₖ(X)
   ##
   ## Input is a "sparse bunch of evals" and their corresponding column.
@@ -518,7 +518,16 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
     doAssert evals.len == evalsCols.len
     doAssert linearIndepRandNumbers.len >= evalsCols.len
 
+  # Runtime validation: prevent out-of-bounds indexing of agg_cols heap allocation
+  if evals.len != evalsCols.len or linearIndepRandNumbers.len < evalsCols.len:
+    return false
+
   const NumCols = N div L
+  for k in 0 ..< evalsCols.len:
+    let c = evalsCols[k]
+    if c < 0 or c >= NumCols:
+      return false
+
   const logNumCols = log2_vartime(uint32(NumCols))
 
   # 1. Aggregate polynomials evaluated on the same coset (columns)
@@ -563,6 +572,7 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
 
   freeHeapAligned(agg_cols_used)
   freeHeapAligned(agg_cols)
+  return true
 
 func kzg_coset_verify_batch*[L: static int, Name: static Algebra](
       uniqueCommitments: openArray[EC_ShortW_Aff[Fp[Name], G1]],
@@ -635,6 +645,20 @@ func kzg_coset_verify_batch*[L: static int, Name: static Algebra](
     doAssert evalsCols.len == proofs.len
     doAssert linearIndepRandNumbers.len >= proofs.len
 
+  # Runtime validation: prevent out-of-bounds indexing of heap allocations
+  if commitmentIdx.len != proofs.len or
+     evals.len != proofs.len or
+     evalsCols.len != proofs.len or
+     linearIndepRandNumbers.len < proofs.len:
+    return false
+
+  let numCols = N div L
+  for k in 0 ..< proofs.len:
+    let i = commitmentIdx[k]
+    let c = evalsCols[k]
+    if i < 0 or i >= uniqueCommitments.len or c < 0 or c >= numCols:
+      return false
+
   let K = proofs.len
 
   var
@@ -669,15 +693,15 @@ func kzg_coset_verify_batch*[L: static int, Name: static Algebra](
   #                  ∑ₖrᵏIₖ(X)
   #         and evaluate it at trusted setup secret τ
   #                 [∑ₖrᵏIₖ(τ)]₁
-  interpoly.computeAggRandScaledInterpoly(
+  if not interpoly.computeAggRandScaledInterpoly(
     evals,
     evalsCols,
     domain,
     linearIndepRandNumbers,
     N
-  )
+  ):
+    return false
   rli.multiScalarMul_vartime(interpoly.coefs.asUnchecked(), powers_of_tau.asUnchecked(), L)
-
   rl -= rli
 
   # Step 3: Aggregate ∑ₖrᵏhₖᴸ·πₖ

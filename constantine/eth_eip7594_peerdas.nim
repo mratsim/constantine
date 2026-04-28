@@ -505,6 +505,7 @@ func verify_cell_kzg_proof_batch*(
   # Deduplicate commitments FIRST (on raw bytes, before deserialization)
   # This is faster: byte comparison exits early, and we only deserialize uniques
   let commitmentIdx = allocHeapArrayAligned(int, numCells, alignment = 64)
+  defer: freeHeapAligned(commitmentIdx)
   let numUniqueCommitments = deduplicateCommitments(
     commitmentIdx.toOpenArray(numCells),
     commitments_bytes
@@ -513,6 +514,7 @@ func verify_cell_kzg_proof_batch*(
   # Allocate and deserialize only unique commitments
   let uniqueCommitments = allocHeapArrayAligned(
     EC_ShortW_Aff[Fp[BLS12_381], G1], numUniqueCommitments, alignment = 64)
+  defer: freeHeapAligned(uniqueCommitments)
   for i in 0 ..< numUniqueCommitments:
     # Find first occurrence of this unique commitment
     for j in 0 ..< numCells:
@@ -522,10 +524,15 @@ func verify_cell_kzg_proof_batch*(
 
   let cosets_evals = allocHeapArrayAligned(
     array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]], numCells, alignment = 64)
+  defer: freeHeapAligned(cosets_evals)
   let proofs = allocHeapArrayAligned(
     EC_ShortW_Aff[Fp[BLS12_381], G1], numCells, alignment = 64)
+  defer: freeHeapAligned(proofs)
   let evalsCols = allocHeapArrayAligned(int, numCells, alignment = 64)
+  defer: freeHeapAligned(evalsCols)
   let rPowers = allocHeapArrayAligned(Fr[BLS12_381], numCells, alignment = 64)
+  defer: freeHeapAligned(rPowers)
+  
   
   block HappyPath:
     # Deserialize cells to coset evaluations
@@ -572,14 +579,6 @@ func verify_cell_kzg_proof_batch*(
     )
     result = if verifyStatus: cttEthKzg_Success else: cttEthKzg_VerificationFailure
 
-    freeHeapAligned(uniqueCommitments)
-
-
-  freeHeapAligned(rPowers)
-  freeHeapAligned(evalsCols)
-  freeHeapAligned(commitmentIdx)
-  freeHeapAligned(proofs)
-  freeHeapAligned(cosets_evals)
   return result
 
 func recover_cells_and_kzg_proofs*(
