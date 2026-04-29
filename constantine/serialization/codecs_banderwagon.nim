@@ -44,22 +44,15 @@ func validate_scalar*(scalar: Fr[Banderwagon].getBigInt()): CttCodecScalarStatus
 
 # ------------------------------------------------------------------------------------------------
 
-func serialize_scalar*(
-      dst: var array[32, byte],
-      scalar: Fr[Banderwagon].getBigInt(),
-      order: static Endianness = bigEndian): CttCodecScalarStatus {.discardable.} =
+proc serialize_scalar*(dst: var array[32, byte], scalar: Fr[Banderwagon].getBigInt(), order: static Endianness = bigEndian) {.discardable.} =
   ## Serialize a scalar
-  ## Returns cttCodecScalar_Success if successful
+  ## Fr[Banderwagon] is by construction in-range, so this cannot fail
   dst.marshal(scalar, order)
-  return cttCodecScalar_Success
 
-func serialize_fr*(
-      dst: var array[32, byte],
-      scalar: Fr[Banderwagon],
-      order: static Endianness = bigEndian): CttCodecScalarStatus {.discardable.} =
+proc serialize_fr*(dst: var array[32, byte], scalar: Fr[Banderwagon], order: static Endianness = bigEndian) {.discardable.} =
   ## Serialize a scalar
-  ## Returns cttCodecScalar_Success if successful
-  return dst.serialize_scalar(scalar.toBig(), order)
+  ## Fr[Banderwagon] is by construction in-range, so this cannot fail
+  dst.serialize_scalar(scalar.toBig(), order)
 
 func deserialize_scalar*(dst: var Fr[Banderwagon].getBigInt(), src: array[32, byte], order: static Endianness = bigEndian): CttCodecScalarStatus =
   ## Deserialize a scalar

@@ -10,10 +10,11 @@ import
   constantine/named/algebras,
   constantine/math/[arithmetic, extension_fields],
   constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_batch_ops],
-  ../platforms/[allocs, bithacks, fileio, views],
-  ../serialization/[codecs, codecs_status_codes, codecs_bls12_381],
-  ../math/polynomials/[polynomials, fft_fields, fft_ec],
-  ../math/io/io_fields
+  constantine/math/polynomials/[polynomials, fft_fields, fft_ec],
+  constantine/math/io/io_fields,
+  constantine/platforms/[allocs, bithacks, fileio, views],
+  constantine/serialization/[codecs, codecs_status_codes, codecs_bls12_381],
+  constantine/commitments/kzg_multiproofs
 
 # Ensure all exceptions are converted to error codes
 {.push raises: [], checks: off.}
@@ -90,12 +91,33 @@ const ctt_eth_kzg4844_fr_pow2_roots_of_unity = [
   Fr[BLS12_381].fromHex"0x4b5371495990693fad1715b02e5713b5f070bb00e28a193d63e7cb4906ffc93f"
 ]
 
+template getRootOfUnityForSize(size: static int): Fr[BLS12_381] =
+  ## size MUST be a power of 2
+  bind ctt_eth_kzg4844_fr_pow2_roots_of_unity
+  const scale = log2_vartime(uint32 size)
+  ctt_eth_kzg4844_fr_pow2_roots_of_unity[scale]
+
+func computeRootsOfUnity(dst: var openArray[Fr[BLS12_381]], generatorRootOfUnity: Fr[BLS12_381]) =
+  dst[0].setOne()
+  var cur = generatorRootOfUnity
+  for i in 1 ..< dst.len:
+    dst[i] = cur
+    cur *= generatorRootOfUnity
+
 # Trusted setup
 # ------------------------------------------------------------
 
 const FIELD_ELEMENTS_PER_BLOB* = 4096
 const FIELD_ELEMENTS_PER_EXT_BLOB* = 2 * FIELD_ELEMENTS_PER_BLOB
 const KZG_SETUP_G2_LENGTH = 65
+
+# EIP-7594 PeerDAS constants
+# https://eips.ethereum.org/EIPS/eip-7594
+# https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.3/specs/fulu/polynomial-commitments-sampling.md
+const FIELD_ELEMENTS_PER_CELL* = 64
+const CELLS_PER_BLOB* = FIELD_ELEMENTS_PER_BLOB div FIELD_ELEMENTS_PER_CELL
+const CELLS_PER_EXT_BLOB* = FIELD_ELEMENTS_PER_EXT_BLOB div FIELD_ELEMENTS_PER_CELL
+const BYTES_PER_CELL* = FIELD_ELEMENTS_PER_CELL * 32
 
 # On the number of 𝔾2 points:
 #   - In the Deneb specs, https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/deneb/polynomial-commitments.md
@@ -120,6 +142,13 @@ type
   EthereumKZGContext* = object
     ## KZG commitment context
 
+    # It can be very confusing to follow:
+    # - natural order, bit-reversed permuted, reversed
+    # - monomial/coefficient, and evaluation/lagrange form
+    # - powers of tau / srs for commitments, roots of unity for FFT
+    # - domain / bit-reverse permuted roots of unity for polynomial evaluation
+    #   vs natural order roots of unity (in FFT descriptor) for FFT
+
     # Trusted setup, see https://vitalik.ca/general/2022/03/14/trustedsetup.html
 
     srs_lagrange_brp_g1*{.align: 64.}: PolynomialEval[FIELD_ELEMENTS_PER_BLOB, EC_ShortW_Aff[Fp[BLS12_381], G1], kBitReversed]
@@ -134,13 +163,21 @@ type
     # with τ a random secret derived from a multi-party computation ceremony
     # with at least one honest random secret contributor (also called KZG ceremony or powers-of-tau ceremony)
     #
-    # For efficiency we operate only on the evaluation form of polynomials over 𝔾1 (i.e. the Lagrange basis)
+    # In EIP-4844 we operate only on the evaluation form of polynomials over 𝔾1 (i.e. the Lagrange basis)
     # i.e. for agreed upon [ω⁰, ω¹, ..., ω⁴⁰⁹⁶]
     # we store [f(ω⁰), f(ω¹), ..., f(ω⁴⁰⁹⁶)]
     #
     # https://en.wikipedia.org/wiki/Lagrange_polynomial#Barycentric_form
     #
     # Conversion can be done with a discrete Fourier transform. In EIP-4844 we operate only on the evaluation form of polynomials over 𝔾1 (i.e. the Lagrange basis)
+
+    srs_monomial_g1*{.align: 64.}: PolynomialCoef[FIELD_ELEMENTS_PER_BLOB, EC_ShortW_Aff[Fp[BLS12_381], G1]]
+    # Part of the Structured Reference String (SRS) holding the 𝔾1 points
+    # Stores the powers of tau
+    #   [G, [τ]G, [τ²]G, ... [τ⁴⁰⁹⁶]G]
+    # in coefficient / monomial form
+    #
+    # This is used in EIP-7594 to produce KZG multiproofs
 
     srs_monomial_g2*{.align: 64.}: PolynomialCoef[KZG_SETUP_G2_LENGTH, EC_ShortW_Aff[Fp2[BLS12_381], G2]]
     # Part of the SRS holding the 𝔾2 points
@@ -160,6 +197,25 @@ type
 
     ecfft_desc_ext*{.align: 64.}: ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]]
     fft_desc_ext*{.align: 64.}: FrFFT_Descriptor[Fr[BLS12_381]]
+    # FFT descriptors are precomputed
+    # They hold rootsOfUnity stored in natural order.
+    #
+    # The extended domain roots are stored in fft_desc_ext.rootsOfUnity
+    # and can be accessed when needed (e.g., in recover functions).
+
+    polyphaseSpectrumBank*{.align: 64.}: array[FIELD_ELEMENTS_PER_CELL, array[CELLS_PER_EXT_BLOB, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
+    # Precomputed polyphase decomposition of the SRS in the Fourier domain.
+    #
+    # This is computed once during trusted setup and reused for all KZG multiproofs.
+    # Size: L × CDS = 64 × 128 = 8192 EC points in Jacobian form
+    #
+    # References:
+    #   - FK23 Paper (Feist-Khovratovich 2023), Proposition 4: https://eprint.iacr.org/2023/033
+    #   - DSP: the SRS is seen as an input signal that undergoes multirate DSP
+
+    # ⚠️ WARNING: This field is ~1.18 MB (64 × 128 × 144 bytes).
+    # - MUST use alloc0HeapAligned for EthereumKZGContext (never stack allocate)
+    # - Language bindings (C/Rust): always use ptr semantics, avoid by-value moves/copies
 
   TrustedSetupStatus* = enum
     tsSuccess
@@ -169,28 +225,20 @@ type
   TrustedSetupFormat* = enum
     kReferenceCKzg4844
 
-func computeRootsOfUnity(dst: var openArray[Fr[BLS12_381]], generatorRootOfUnity: Fr[BLS12_381]) =
-  dst[0].setOne()
-  var cur = generatorRootOfUnity
-  for i in 1 ..< dst.len:
-    dst[i] = cur
-    cur *= generatorRootOfUnity
-
-template getRootOfUnityForSize(size: static int): Fr[BLS12_381] =
-  const scale = log2_vartime(uint32 size)
-  ctt_eth_kzg4844_fr_pow2_roots_of_unity[scale]
-
 proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
   ## Read a trusted setup in the reference library c-kzg-4844 format
-  # Format is the following
+  # Format is the following (c-kzg-4844 with Monomial G1 for FK20):
   # <nG1: number of G1 points>
   # <nG2: number of G2 points>
-  # <Hex encoding of compressed G1 point: 0>
+  # <Hex encoding of compressed G1 point (Lagrange): 0>
   # ...
-  # <Hex encoding of compressed G1 point: nG1 - 1>
-  # <Hex encoding of compressed G2 point: 0>
+  # <Hex encoding of compressed G1 point (Lagrange): nG1 - 1>
+  # <Hex encoding of compressed G2 point (Monomial): 0>
   # ...
-  # <Hex encoding of compressed G2 point: nG2 - 1>
+  # <Hex encoding of compressed G2 point (Monomial): nG2 - 1>
+  # <Hex encoding of compressed G1 point (Monomial): 0>
+  # ...
+  # <Hex encoding of compressed G1 point (Monomial): nG1 - 1>
   #
   # Each line is terminated by new line/line feed (binary byte 10)
   #
@@ -244,7 +292,7 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
     var charsRead: cint
     for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
       let num_matches = f.c_fscanf(readHexG1, bufG1Hex.addr, charsRead.addr)
-      if num_matches != 1 and charsRead != 2*g1Bytes:
+      if num_matches != 1 or charsRead != 2*g1Bytes:
         return tsInvalidFile
       bufG1bytes.fromHex(bufG1Hex.toOpenArray(0, 2*g1Bytes-1))
       let status = ctx.srs_lagrange_brp_g1.evals[i].deserialize_g1_compressed(bufG1bytes)
@@ -259,12 +307,28 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
     var charsRead: cint
     for i in 0 ..< KZG_SETUP_G2_LENGTH:
       let num_matches = f.c_fscanf(readHexG2, bufG2Hex.addr, charsRead.addr)
-      if num_matches != 1 and charsRead != 2*g2Bytes:
+      if num_matches != 1 or charsRead != 2*g2Bytes:
         return tsInvalidFile
       bufG2bytes.fromHex(bufG2Hex.toOpenArray(0, 2*g2Bytes-1))
       let status = ctx.srs_monomial_g2.coefs[i].deserialize_g2_compressed(bufG2bytes)
       if status != cttCodecEcc_Success:
         c_printf("[Constantine Trusted Setup] Invalid G2 point on line %d: CttCodecEccStatus code %d\n", cint(2+FIELD_ELEMENTS_PER_BLOB+i), status)
+        return tsInvalidFile
+
+  block:
+    # G1 points (Monomial form) - 96 characters + newline
+    # These are needed for FK20 multiproof computation (EIP-7594)
+    var bufG1Hex {.noInit.}: array[2*g1Bytes+1, char]
+    var bufG1bytes {.noInit.}: array[g1Bytes, byte]
+    var charsRead: cint
+    for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
+      let num_matches = f.c_fscanf(readHexG1, bufG1Hex.addr, charsRead.addr)
+      if num_matches != 1 or charsRead != 2*g1Bytes:
+        return tsInvalidFile
+      bufG1bytes.fromHex(bufG1Hex.toOpenArray(0, 2*g1Bytes-1))
+      let status = ctx.srs_monomial_g1.coefs[i].deserialize_g1_compressed(bufG1bytes)
+      if status != cttCodecEcc_Success:
+        c_printf("[Constantine Trusted Setup] Invalid G1 Monomial point on line %d: CttCodecEccStatus code %d\n", cint(2+FIELD_ELEMENTS_PER_BLOB+KZG_SETUP_G2_LENGTH+i), status)
         return tsInvalidFile
 
   block:
@@ -281,12 +345,20 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
     )
 
   block:
+    computePolyphaseDecompositionFourier(ctx.polyphaseSpectrumBank, ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
+
+  block:
+    # Powers of tau: [G, [τ]G, [τ²]G, ... [τ⁴⁰⁹⁶]G]
+
     # Bit-reverse the Lagrange form points (for EIP-4844 commitments)
     ctx.srs_lagrange_brp_g1.evals.bit_reversal_permutation()
 
+    # G1 Monomial points are already loaded from the trusted setup file
+
   block:
     # Initialize domain (bit-reversed roots of unity for polynomial evaluation)
-    ctx.domain_brp.rootsOfUnity.computeRootsOfUnity(generatorRootOfUnity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_BLOB))
+    # Domain: FIELD_ELEMENTS_PER_BLOB (4096) roots of unity (bit-reversed)
+    ctx.domain_brp.rootsOfUnity.computeRootsOfUnity(generatorRootOfunity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_BLOB))
     ctx.domain_brp.rootsOfUnity.bit_reversal_permutation()
     ctx.domain_brp.invMaxDegree.fromUint(ctx.domain_brp.rootsOfUnity.len.uint64)
     ctx.domain_brp.invMaxDegree.inv_vartime()

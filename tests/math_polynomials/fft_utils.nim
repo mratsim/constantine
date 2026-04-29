@@ -6,6 +6,9 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+## Run with
+##   nim c -r -d:release --hints:off --warnings:off --outdir:build/wip --nimcache:nimcache/wip tests/math_polynomials/fft_utils.nim
+
 import
   std/strformat,
   constantine/platforms/primitives,
@@ -36,6 +39,23 @@ template getRootOfUnityForScale*(F: typedesc[Fr], scale: int): auto =
       BLS12_381_Fr_ScaleToRootOfUnity[scale]
     else:
       {.error: "Roots of unity computation is not implemented for " & $F.}
+
+func computeRootsOfUnity*(
+      F: typedesc[Fr],
+      fullOrder: static int
+    ): PolyEvalRootsDomain[fullOrder, F, kNaturalOrder] =
+  ## Compute fullOrder-th roots of unity in natural (sequential) order: ω^0, ω^1, …, ω^(fullOrder-1).
+  let scale = int(log2_vartime(fullOrder.uint))
+  let root = getRootOfUnityForScale(F, scale)
+
+  result.rootsOfUnity[0].setOne()
+  var cur = root
+  for i in 1 ..< fullOrder:
+    result.rootsOfUnity[i] = cur
+    cur *= root
+
+  result.invMaxDegree.fromUint(fullOrder)
+  result.invMaxDegree.inv_vartime()
 
 func createFFTDescriptor*(F: typedesc[Fr], orderSize: int): FrFFT_Descriptor[F] =
   let scale = int(log2_vartime(orderSize.uint))

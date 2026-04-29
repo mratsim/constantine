@@ -100,9 +100,9 @@ ctt_codec_ecc_status ctt_eth_bls_validate_signature(const ctt_eth_bls_signature*
 // ------------------------------------------------------------------------------------------------
 /** Serialize a secret key
  *
- *  Returns cttCodecScalar_Success if successful
+ *  SecretKey wraps Fr[BLS12_381] which is by construction in-range, so this cannot fail
  */
-ctt_codec_scalar_status ctt_eth_bls_serialize_seckey(byte dst[32], const ctt_eth_bls_seckey* seckey) __attribute__((warn_unused_result));
+void ctt_eth_bls_serialize_seckey(byte dst[32], const ctt_eth_bls_seckey* seckey);
 
 /** Serialize a public key in compressed (Zcash) format
  *

@@ -9,7 +9,7 @@
 import
   std/macros,
   constantine/platforms/abstractions,
-  constantine/math/extension_fields,
+  constantine/math/[arithmetic, extension_fields],
   constantine/math/endomorphisms/frobenius,
   constantine/math/elliptic/[
     ec_shortweierstrass_affine,

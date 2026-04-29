@@ -489,7 +489,7 @@ func fft_nn_stockham[F](
 proc fft_nn_via_iterative_dif_and_bitrev[F](
        desc: FrFFT_Descriptor[F],
        output: var openarray[F],
-       vals: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+      vals: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
   ## Natural → Natural via: Iterative DIF (NR) + BitRev
   let status = fft_nr_iterative_dif(desc, output, vals)
   if status != FFT_Success: return status
@@ -512,7 +512,7 @@ proc fft_nn_via_bitrev_and_iterative_dit[F](
 proc ifft_nn_via_bitrev_and_iterative_dit[F](
        desc: FrFFT_Descriptor[F],
        output: var openarray[F],
-       vals: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+      vals: openarray[F]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
   ## Natural → Natural via: BitRev + Iterative DIT (RN)
   ## Input: natural order values in Fourier domain
   ## Output: natural order values
@@ -532,7 +532,7 @@ proc ifft_nn_via_bitrev_and_iterative_dit[F](
 func fft_nn*[F](
        desc: FrFFT_Descriptor[F],
        output: var openarray[F],
-       vals: openarray[F]): FFTStatus {.inline, tags: [VarTime, HeapAlloc], meter.} =
+      vals: openarray[F]): FFTStatus {.inline, tags: [VarTime, HeapAlloc], meter.} =
   ## FFT from natural order to natural order.
   ## Dispatches to: Iterative DIF (NR) + BitRev
   ##
@@ -563,7 +563,7 @@ func fft_nr*[F](
 func ifft_nn*[F](
        desc: FrFFT_Descriptor[F],
        output: var openarray[F],
-       vals: openarray[F]): FFTStatus {.inline, tags: [VarTime, HeapAlloc], meter.} =
+      vals: openarray[F]): FFTStatus {.inline, tags: [VarTime, HeapAlloc], meter.} =
   ## IFFT from natural order to natural order.
   ## Dispatches to: BitRev + Iterative DIT
   ##
@@ -656,10 +656,10 @@ func coset_fft_nn*[F](
   freeHeapAligned(shifted)
 
 func coset_ifft_nn*[F](
-       desc: FrFFT_Descriptor[F],
-       output: var openarray[F],
-       vals: openarray[F],
-       cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+      desc: FrFFT_Descriptor[F],
+      output: var openarray[F],
+      vals: openarray[F],
+      cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
   ## Compute inverse FFT over a coset of the roots of unity (natural to natural order).
   ##
   ## This is used after polynomial division in the coset domain
@@ -668,9 +668,6 @@ func coset_ifft_nn*[F](
   ## Algorithm:
   ##   1. Apply standard IFFT (natural to natural)
   ##   2. Multiply result[i] by shift_factor⁻ⁱ (unshift from coset)
-  ##
-  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
-  ## The coset IFFT algorithm is NOT in-place safe.
   ##
   ## Parameters:
   ##   - desc: FFT descriptor with roots of unity
@@ -689,34 +686,60 @@ func coset_ifft_nn*[F](
 
   return FFT_Success
 
-func coset_ifft_rn*[F](
+
+func coset_fft_nr*[F](
        desc: FrFFT_Descriptor[F],
        output: var openarray[F],
        vals: openarray[F],
        cosetShift: F): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+  ## Compute FFT over a coset of the roots of unity (natural to bit-reversed order).
+  ##
+  ## This is used for polynomial operations where we need to avoid
+  ## division by zero. By shifting the domain, polynomials that vanish
+  ## at certain points won't cause issues during division.
+  ##
+  ## Algorithm:
+  ##   1. Multiply vals[i] by shift_factor^i (shift into coset)
+  ##   2. Apply standard FFT (natural to bit-reversed order)
+  ##
+  ## Parameters:
+  ##   - desc: FFT descriptor with roots of unity
+  ##   - output: output array (must have same length as vals)
+  ##   - vals: input values in evaluation form
+  ##   - cosetShift, the coset shift
+  ##
+  ## Returns FFT_Success on success, error code otherwise
+  let n = vals.len
+  var shifted = allocHeapArrayAligned(F, n, alignment = 64)
+  shifted.toOpenArray(n).shift_vals(vals, cosetShift)
+
+  result = desc.fft_nr(output, shifted.toOpenArray(n))
+  freeHeapAligned(shifted)
+
+func coset_ifft_rn*[F](
+       desc: FrFFT_Descriptor[F],
+       output: var openarray[F],
+       vals: openarray[F],
+      cosetShift: F): FFTStatus {.tags: [VarTime], meter.} =
   ## Compute inverse FFT over a coset of the roots of unity (bit-reversed to natural order).
   ##
   ## Algorithm:
-  ##   1. Bit-reverse permutation (bit-reversed → natural)
-  ##   2. Apply standard IFFT (natural to natural)
-  ##   3. Multiply result[i] by shift_factor⁻ⁱ (unshift from coset)
-  ##
-  ## **IMPORTANT**: `output` and `vals` must NOT alias (be the same array).
-  ## The coset IFFT algorithm is NOT in-place safe.
+  ##   1. Apply IFFT (bit-reversed → natural) via `ifft_rn`
+  ##   2. Multiply result[i] by shift_factor⁻ⁱ (unshift from coset)
   ##
   ## Parameters:
-  ##   - desc: CosetFFT descriptor with roots of unity and shift factor
+  ##   - desc: FFT descriptor with roots of unity
   ##   - output: output array (must have same length as vals)
   ##   - vals: input values in evaluation form over coset
-  ##   - cosetShift, the coset shift (which will be inverted)
+  ##   - cosetShift: the coset shift (which will be inverted)
   ##
   ## Returns FFT_Success on success, error code otherwise
-  checkSizesReturnEarly(desc, output, vals)
+  let status = desc.ifft_rn(output, vals)
+  if status != FFT_Success:
+    return status
 
-  let n = vals.len
-  var temp_buf = allocHeapArrayAligned(F, n, alignment = 64)
-  bit_reversal_permutation(temp_buf.toOpenArray(0, n-1), vals)
+  var inv_shift_factor {.noInit.}: F
+  inv_shift_factor.inv_vartime(cosetShift)
+  output.unshift_vals(output, inv_shift_factor)
 
-  let status = desc.coset_ifft_nn(output, temp_buf.toOpenArray(0, n-1), cosetShift)
-  freeHeapAligned(temp_buf)
-  return status
+  return FFT_Success

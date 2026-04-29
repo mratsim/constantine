@@ -91,11 +91,10 @@ func validate_g2*(g2P: EC_ShortW_Aff[Fp2[BLS12_381], G2]): CttCodecEccStatus {.l
 # Codecs
 # ------------------------------------------------------------------------------------------------
 
-func serialize_scalar*(dst: var array[32, byte], scalar: Fr[BLS12_381].getBigInt()): CttCodecScalarStatus {.libPrefix: pre, discardable.} =
+proc serialize_scalar*(dst: var array[32, byte], scalar: Fr[BLS12_381].getBigInt()) {.libPrefix: pre.} =
   ## Serialize a scalar
-  ## Returns cttCodecScalar_Success if successful
+  ## Fr[BLS12_381] is by construction in-range, so this cannot fail
   dst.marshal(scalar, bigEndian)
-  return cttCodecScalar_Success
 
 func deserialize_scalar*(dst: var Fr[BLS12_381].getBigInt(), src: array[32, byte]): CttCodecScalarStatus {.libPrefix: pre.} =
   ## Deserialize a scalar

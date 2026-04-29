@@ -96,18 +96,15 @@ pub fn validate_signature(sig: &EthBlsSignature) -> Result<(), ctt_codec_ecc_sta
 }
 
 #[must_use]
-pub fn serialize_seckey(sec: &EthBlsSecKey) -> Result<[u8; 32], ctt_codec_scalar_status> {
+pub fn serialize_seckey(sec: &EthBlsSecKey) -> [u8; 32] {
     let mut dst = [0u8; 32];
     unsafe {
-        let status = ctt_eth_bls_serialize_seckey(
+        ctt_eth_bls_serialize_seckey(
             dst.as_mut_ptr() as *mut byte,
             sec as *const ctt_eth_bls_seckey,
         );
-        match status {
-            ctt_codec_scalar_status::cttCodecScalar_Success => Ok(dst),
-            _ => Err(status),
-        }
     }
+    dst
 }
 
 #[must_use]
