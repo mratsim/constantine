@@ -285,7 +285,6 @@ func compute_cells_and_kzg_proofs*(
   poly_monomial[].lagrangeInterpolate(poly_lagrange[], ctx.fft_desc_ext)
 
   # Step 3: Compute cells using the optimized half-FFT algorithm (reuses poly_monomial)
-  # Step 3: Compute cells using the optimized half-FFT algorithm (reuses poly_monomial)
   ?compute_cells_impl(ctx, cells, poly_lagrange[], poly_monomial[])
 
   # Step 4: Compute FK20 proofs
@@ -418,7 +417,7 @@ func deduplicateCommitments*(
   # Uses heap allocation like the rest of verify_cell_kzg_proof_batch
   let uniqueBuffer = allocHeapArrayAligned(array[BYTES_PER_COMMITMENT, byte], commitments.len, alignment = 64)
   defer: freeHeapAligned(uniqueBuffer)
-  
+
   for i in 0 ..< commitments.len:
     var found = false
     for j in 0 ..< numUniqueCommitments:
@@ -533,8 +532,8 @@ func verify_cell_kzg_proof_batch*(
   defer: freeHeapAligned(evalsCols)
   let rPowers = allocHeapArrayAligned(Fr[BLS12_381], numCells, alignment = 64)
   defer: freeHeapAligned(rPowers)
-  
-  
+
+
   block HappyPath:
     # Deserialize cells to coset evaluations
     for i in 0 ..< numCells:
