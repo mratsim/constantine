@@ -203,11 +203,11 @@ type
     # The extended domain roots are stored in fft_desc_ext.rootsOfUnity
     # and can be accessed when needed (e.g., in recover functions).
 
-    polyphaseSpectrumBank*{.align: 64.}: array[FIELD_ELEMENTS_PER_CELL, array[CELLS_PER_EXT_BLOB, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
-    # Precomputed polyphase decomposition of the SRS in the Fourier domain.
+    polyphaseSpectrumBank*{.align: 64.}: array[FIELD_ELEMENTS_PER_CELL, array[CELLS_PER_EXT_BLOB, EC_ShortW_Aff[Fp[BLS12_381], G1]]]
+    # Precomputed polyphase decomposition of the SRS in the Fourier domain (affine form).
     #
     # This is computed once during trusted setup and reused for all KZG multiproofs.
-    # Size: L × CDS = 64 × 128 = 8192 EC points in Jacobian form
+    # Size: L × CDS = 64 × 128 = 8192 EC points in affine form
     #
     # References:
     #   - FK23 Paper (Feist-Khovratovich 2023), Proposition 4: https://eprint.iacr.org/2023/033

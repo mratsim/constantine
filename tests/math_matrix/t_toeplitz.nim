@@ -6,6 +6,9 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+# Run with
+#   nim c -r -d:CTT_DEBUG -d:release --hints:off --warnings:off --outdir:build/wip --nimcache:nimcache/wip tests/math_matrix/t_toeplitz.nim
+
 import
   constantine/named/algebras,
   constantine/named/zoo_generators,
@@ -116,7 +119,7 @@ proc testToeplitz(n: static int) =
   toeplitzMatVecMulNaive(outputNaive, coeffs, input)
 
   let status = toeplitzMatVecMul[BLS12_381_G1, BLS12_381_Fr](outputFft, coeffs, input, frFftDesc, ecFftDesc)
-  doAssert status == FFT_Success, "FFT-based multiplication failed: " & $status
+  doAssert status == Toeplitz_Success, "FFT-based multiplication failed: " & $status
 
   for i in 0 ..< n:
     if bool(outputNaive[i] != outputFft[i]):
