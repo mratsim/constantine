@@ -252,6 +252,8 @@ proc testKzgCosetVerifyBatch*(numTestCells: int) =
     L = 64    # FIELD_ELEMENTS_PER_CELL (coset size)
     maxWidth = 8192  # Full domain size = CDS * L = 2 * N
     nBits = 7  # log2(128)
+    numCols = maxWidth div L
+  doAssert numTestCells <= numCols, "numTestCells exceeds available columns"
 
   const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
 
@@ -354,6 +356,8 @@ proc testKzgCosetVerifyBatchSmallSizes*(numTestCells: int) =
     L = 4     # Small coset size
     maxWidth = 128  # Extended domain
     nBits = 5  # log2(32)
+    numCols = maxWidth div L
+  doAssert numTestCells <= numCols, "numTestCells exceeds available columns"
 
   const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
 
@@ -528,6 +532,8 @@ proc testKzgCosetVerifyBatchNegative_SwitchEvals*(numTestCells: int) =
     L = 4
     maxWidth = 128
     nBits = 5
+    numCols = maxWidth div L
+  doAssert numTestCells <= numCols, "numTestCells exceeds available columns"
 
   const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
 
@@ -561,6 +567,23 @@ proc testKzgCosetVerifyBatchNegative_SwitchEvals*(numTestCells: int) =
     kzg_coset_prove_naive(
       proofs[i], setup.testPoly, h, L, setup.powers_of_tau_G1)
 
+  var r: Fr[BLS12_381]
+  r.fromHex("0x0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829")
+  var linearIndepRandNumbers = newSeq[Fr[BLS12_381]](numTestCells)
+  linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells, skipOne = true)
+
+  let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
+
+  # PRE-TEST: Verify clean batch before corruption
+  let verified_clean = kzg_coset_verify_batch[L, BLS12_381](
+    uniqueCommitments, commitmentIdx, proofs, evals, evalsCols,
+    fr_fft_desc, linearIndepRandNumbers, setup.powers_of_tau_G1.coefs,
+    tau_pow_L_g2, maxWidth
+  )
+  doAssert verified_clean, "Clean batch verification must succeed before corruption test!"
+
+  # NEGATIVE TEST: Switch evals AND their metadata (but not proofs)
+
   # NEGATIVE TEST: Switch evals AND their metadata (but not proofs)
   # This creates a mismatch between proofs and evals
   if numTestCells >= 2:
@@ -574,12 +597,6 @@ proc testKzgCosetVerifyBatchNegative_SwitchEvals*(numTestCells: int) =
     cosetShifts[0] = cosetShifts[1]
     cosetShifts[1] = tempShift
 
-  var r: Fr[BLS12_381]
-  r.fromHex("0x0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829")
-  var linearIndepRandNumbers = newSeq[Fr[BLS12_381]](numTestCells)
-  linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells, skipOne = true)
-
-  let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
   let verified = kzg_coset_verify_batch[L, BLS12_381](
     uniqueCommitments,
     commitmentIdx,
@@ -615,6 +632,8 @@ proc testKzgCosetVerifyBatchNegative_FakeProof*(numTestCells: int) =
     L = 4
     maxWidth = 128
     nBits = 5
+    numCols = maxWidth div L
+  doAssert numTestCells <= numCols, "numTestCells exceeds available columns"
 
   const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
 
@@ -648,6 +667,22 @@ proc testKzgCosetVerifyBatchNegative_FakeProof*(numTestCells: int) =
     kzg_coset_prove_naive(
       proofs[i], setup.testPoly, h, L, setup.powers_of_tau_G1)
 
+  var r: Fr[BLS12_381]
+  r.fromHex("0x0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829")
+  var linearIndepRandNumbers = newSeq[Fr[BLS12_381]](numTestCells)
+  linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells, skipOne = true)
+
+  let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
+
+  # PRE-TEST: Verify clean batch before corruption
+  let verified_clean = kzg_coset_verify_batch[L, BLS12_381](
+    uniqueCommitments, commitmentIdx, proofs, evals, evalsCols,
+    fr_fft_desc, linearIndepRandNumbers, setup.powers_of_tau_G1.coefs,
+    tau_pow_L_g2, maxWidth
+  )
+  doAssert verified_clean, "Clean batch verification must succeed before corruption test!"
+
+  # NEGATIVE TEST: Create a fake proof by modifying the first proof
   # NEGATIVE TEST: Create a fake proof by modifying the first proof
   if numTestCells >= 1:
     # Modify the proof by adding a random point to it
@@ -663,12 +698,6 @@ proc testKzgCosetVerifyBatchNegative_FakeProof*(numTestCells: int) =
     fakeProofAff.affine(fakeProofJac)
     proofs[0] = fakeProofAff
 
-  var r: Fr[BLS12_381]
-  r.fromHex("0x0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829")
-  var linearIndepRandNumbers = newSeq[Fr[BLS12_381]](numTestCells)
-  linearIndepRandNumbers.asUnchecked().computePowers(r, numTestCells, skipOne = true)
-
-  let tau_pow_L_g2 = setup.powers_of_tau_G2.coefs[L]
   let verified = kzg_coset_verify_batch[L, BLS12_381](
     uniqueCommitments,
     commitmentIdx,
@@ -704,6 +733,8 @@ proc testKzgCosetVerifyBatchMultipleCommitments*(numCommitments: int, cellsPerCo
     L = 4
     maxWidth = 128
     nBits = 5
+    numCols = maxWidth div L
+  doAssert cellsPerCommitment <= numCols, "cellsPerCommitment exceeds available columns"
 
   const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
 

@@ -147,10 +147,10 @@ func getBatchBlindingFactor(
        dst: var Fr[BLS12_381],
        secureRandomBytes: array[32, byte]): bool =
   ## Extract a blinding factor from secure random bytes.
-  ## Returns true if successful (non-zero bytes), false if all bytes are zero.
+  ## Returns true if successful (derived scalar is non-zero),
+  ## false if input is all-zero or reduction yields zero.
   ##
-  ## TODO: If this returns false, compute challenge via Fiat-Shamir heuristic
-  ## by hashing all the batch inputs with domain separator.
+  ## Callers should fall back to Fiat-Shamir challenge derivation on false.
   for i in 0 ..< secureRandomBytes.len:
     if secureRandomBytes[i] != byte 0:
       dst.fromDigest(secureRandomBytes)

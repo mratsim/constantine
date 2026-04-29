@@ -113,7 +113,7 @@ func cellToCosetEvals(
        cell: openArray[byte]): cttEthKzgStatus =
   ## Convert cell bytes to coset evaluations (field elements).
   ## Input:  L * 32 bytes
-  ## Output: L field elements in little-endian format
+  ## Output: L field elements in big-endian format
   ## Returns: cttEthKzg_Success on success, error status otherwise
   for i in 0 ..< FIELD_ELEMENTS_PER_CELL:
     let start = i * 32
@@ -285,7 +285,8 @@ func compute_cells_and_kzg_proofs*(
   poly_monomial[].lagrangeInterpolate(poly_lagrange[], ctx.fft_desc_ext)
 
   # Step 3: Compute cells using the optimized half-FFT algorithm (reuses poly_monomial)
-  let cells_status = compute_cells_impl(ctx, cells, poly_lagrange[], poly_monomial[])
+  # Step 3: Compute cells using the optimized half-FFT algorithm (reuses poly_monomial)
+  ?compute_cells_impl(ctx, cells, poly_lagrange[], poly_monomial[])
 
   # Step 4: Compute FK20 proofs
   const N = FIELD_ELEMENTS_PER_BLOB

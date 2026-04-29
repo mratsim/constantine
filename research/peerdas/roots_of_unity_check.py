@@ -43,7 +43,17 @@ brp_roots_8192 = None
 
 for N in [4, 8, 4096, 8192]:
     MULT_GENERATOR = pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // N, MODULUS)
+    # Validate that MULT_GENERATOR is a primitive N-th root of unity
+    if MULT_GENERATOR == 1:
+        raise ValueError(f"PRIMITIVE_ROOT_OF_UNITY^{(MODULUS - 1) // N} ≡ 1 mod MODULUS for N={N}; not a primitive root")
+    if pow(MULT_GENERATOR, N, MODULUS) != 1:
+        raise ValueError(f"PRIMITIVE_ROOT_OF_UNITY does not yield order-{N} subgroup: MULT_GENERATOR^{N} ≢ 1 mod MODULUS")
+    if N > 1 and pow(MULT_GENERATOR, N // 2, MODULUS) == 1:
+        raise ValueError(f"PRIMITIVE_ROOT_OF_UNITY yields degenerate subgroup for N={N}: MULT_GENERATOR^{N//2} ≡ 1 mod MODULUS")
     ROOTS_OF_UNITY = [pow(MULT_GENERATOR, i, MODULUS) for i in range(N)]
+    # Verify all roots are distinct
+    if len(set(ROOTS_OF_UNITY)) != N:
+        raise ValueError(f"Generated roots of unity for N={N} are not distinct; PRIMITIVE_ROOT_OF_UNITY is invalid")
     print(f"N = {N}")
     top = min(N, 10)
     print(f"  >>> {top} first roots of unity")
