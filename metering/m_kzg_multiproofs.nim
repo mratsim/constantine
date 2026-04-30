@@ -24,7 +24,7 @@ import
   constantine/named/algebras,
   constantine/named/zoo_generators,
   constantine/math/[arithmetic, extension_fields, ec_shortweierstrass],
-  constantine/math/polynomials/[polynomials, fft_ec],
+  constantine/math/polynomials/[polynomials, fft_fields, fft_ec],
   constantine/math/matrix/toeplitz,
   constantine/commitments/kzg_multiproofs,
   constantine/commitments_setups/ethereum_kzg_srs,
@@ -62,26 +62,27 @@ proc fk20Phase1Meter*[Name: static Algebra](
   poly: PolynomialCoef[N, Fr[Name]],
   fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
   ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
-  polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]]
+  polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Aff[Fp[Name], G1]]]
 ) {.meter.} =
+  type BLS12_381_G1_aff = EC_ShortW_Jac[Fp[Name], G1]
+  type BLS12_381_G1_jac = EC_ShortW_Aff[Fp[Name], G1]
+  var accum: ToeplitzAccumulator[BLS12_381_G1_aff, BLS12_381_G1_jac, Fr[Name]]
   let circulant = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
 
-  for offset in 0 ..< L:
-    makeCirculantMatrix(circulant.toOpenArray(0, CDS - 1), poly.coefs, offset, L)
+  let status = accum.init(fr_fft_desc, ec_fft_desc, CDS, L)
+  if status != Toeplitz_Success:
+    freeHeapAligned(circulant)
+    return
 
-    let status = toeplitzMatVecMulPreFFT(
-      u.toOpenArray(0, CDS - 1),
-      circulant.toOpenArray(0, CDS - 1),
-      polyphaseSpectrumBank[offset],
-      fr_fft_desc,
-      ec_fft_desc,
-      accumulate = (offset > 0)
-    )
-    if status != FFT_Success:
-      freeHeapAligned(circulant)
-      return
+  for offset in 0 ..< L:
+    makeCirculantMatrix(circulant.toOpenArray(CDS), poly.coefs, offset, L)
+    let accStatus = accum.accumulate(circulant.toOpenArray(CDS), polyphaseSpectrumBank[offset])
+    doAssert accStatus == Toeplitz_Success:
 
   freeHeapAligned(circulant)
+
+  let finishStatus = accum.finish(u)
+  doAssert finishStatus == Toeplitz_Success:
 
 # Metered FK20 Phase 2 - Final FFT
 proc fk20Phase2Meter*[Name: static Algebra](

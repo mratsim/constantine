@@ -18,6 +18,7 @@ import
   constantine/math/[ec_shortweierstrass, extension_fields],
   constantine/math/polynomials/[polynomials, fft_fields, fft_ec],
   constantine/math/arithmetic/finite_fields,
+  constantine/math/matrix/toeplitz,
   constantine/commitments/kzg_multiproofs,
   constantine/commitments/kzg,
   constantine/math/io/[io_fields, io_bigints],
@@ -57,7 +58,8 @@ proc testFK20SingleProofs() =
   computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
 
   var fk20Proofs: array[CDS, BLS12_381_G1_Aff]
-  kzg_coset_prove(fk20Proofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
+  let status = kzg_coset_prove(fk20Proofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
+  doAssert status == Toeplitz_Success, "kzg_coset_prove failed: " & $status
 
   # Compute commitment using pre-generated BigInt polynomial
   var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
@@ -111,8 +113,9 @@ proc testFK20MultiProofs(L: static int) =
   computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
 
   var fk20Proofs: array[CDS, BLS12_381_G1_Aff]
-  kzg_coset_prove(
+  let status = kzg_coset_prove(
     fk20Proofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
+  doAssert status == Toeplitz_Success, "kzg_coset_prove failed: " & $status
 
   fk20Proofs.bit_reversal_permutation()
 
@@ -178,8 +181,9 @@ proc testNonOptimizedCosetProofs*(L: static int) =
   computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
 
   var fk20Proofs: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
-  kzg_coset_prove(
+  let status = kzg_coset_prove(
     fk20Proofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
+  doAssert status == Toeplitz_Success, "kzg_coset_prove failed: " & $status
 
   fk20Proofs.bit_reversal_permutation()
 

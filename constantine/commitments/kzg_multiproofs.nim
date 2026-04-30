@@ -372,13 +372,13 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
 
   freeHeapAligned(polyphaseSpectrumBankJac)
 
-func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
+proc kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
        proofs: var array[CDS, EC_ShortW_Aff[Fp[Name], G1]],
        poly: openArray[Fr[Name]],
        fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
        ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
        polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Aff[Fp[Name], G1]]]
-      ) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
+      ): void {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
   ## Compute KZG multi-proofs for EIP-7594 cell proofs using FK20 algorithm.
   ##
   ## This implements the FK20 amortized KZG proofs from c-kzg-4844.
@@ -428,8 +428,7 @@ func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
   # Use Toeplitz accumulator with MSM for FK20
   var accum: ToeplitzAccumulator[EC_ShortW_Jac[Fp[Name], G1], EC_ShortW_Aff[Fp[Name], G1], Fr[Name]]
   let status = accum.init(fr_fft_desc, ec_fft_desc, CDS, L)
-  if status != Toeplitz_Success:
-    return
+  doAssert status == Toeplitz_Success, "Internal error: Toeplitz accumulator init failed: " & $status
 
   let circulant = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
 
@@ -442,18 +441,14 @@ func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
       circulant.toOpenArray(CDS),
       polyphaseSpectrumBank[offset]
     )
-    if status != Toeplitz_Success:
-      freeHeapAligned(circulant)
-      return
+    doAssert status == Toeplitz_Success, "Internal error: Toeplitz accumulator failed at offset " & $offset & ": " & $status
 
   freeHeapAligned(circulant)
 
   # MSM per position + one amortized IFFT at the end
   let u = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
   let status2 = accum.finish(u.toOpenArray(CDS))
-  if status2 != Toeplitz_Success:
-    freeHeapAligned(u)
-    return
+  doAssert status2 == Toeplitz_Success, "Internal error: Toeplitz accumulator finish failed: " & $status2
 
   # Zero upper half, degree is CDS/2 - 1
   for i in CDSdiv2 ..< CDS:
@@ -462,13 +457,10 @@ func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
   # FFT to get proofs
   let proofsJac = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
   let status3 = ec_fft_desc.ec_fft_nn(proofsJac.toOpenArray(CDS), u.toOpenArray(CDS))
+  doAssert status3 == FFT_Success, "Internal error: EC FFT failed: " & $status3
   freeHeapAligned(u)
-  if status3 != FFT_Success:
-    freeHeapAligned(proofsJac)
-    return
 
   proofs.asUnchecked().batchAffine(proofsJac, proofs.len)
-
   freeHeapAligned(proofsJac)
 
 # ############################################################
@@ -518,7 +510,7 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
       evalsCols: openArray[int],
       domain: FrFFT_Descriptor[Fr[Name]],
       linearIndepRandNumbers: openArray[Fr[Name]],
-      N: static int): bool {.meter.} =
+      N: static int) {.meter.} =
   ## Compute ∑ₖrᵏIₖ(X)
   ##
   ## Input is a "sparse bunch of evals" and their corresponding column.
@@ -538,14 +530,13 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
     doAssert linearIndepRandNumbers.len >= evalsCols.len
 
   # Runtime validation: prevent out-of-bounds indexing of agg_cols heap allocation
-  if evals.len != evalsCols.len or linearIndepRandNumbers.len < evalsCols.len:
-    return false
+  doAssert evals.len == evalsCols.len, "Internal error: evals and evalsCols must have same length"
+  doAssert linearIndepRandNumbers.len >= evalsCols.len, "Internal error: linearIndepRandNumbers must cover all evals"
 
   const NumCols = N div L
   for k in 0 ..< evalsCols.len:
     let c = evalsCols[k]
-    if c < 0 or c >= NumCols:
-      return false
+    doAssert c >= 0 and c < NumCols, "Internal error: Column index out of bounds: " & $c
 
   const logNumCols = log2_vartime(uint32(NumCols))
 
@@ -591,7 +582,6 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
 
   freeHeapAligned(agg_cols_used)
   freeHeapAligned(agg_cols)
-  return true
 
 func kzg_coset_verify_batch*[L: static int, Name: static Algebra](
       uniqueCommitments: openArray[EC_ShortW_Aff[Fp[Name], G1]],
@@ -712,14 +702,13 @@ func kzg_coset_verify_batch*[L: static int, Name: static Algebra](
   #                  ∑ₖrᵏIₖ(X)
   #         and evaluate it at trusted setup secret τ
   #                 [∑ₖrᵏIₖ(τ)]₁
-  if not interpoly.computeAggRandScaledInterpoly(
+  interpoly.computeAggRandScaledInterpoly(
     evals,
     evalsCols,
     domain,
     linearIndepRandNumbers,
     N
-  ):
-    return false
+  )
   rli.multiScalarMul_vartime(interpoly.coefs.asUnchecked(), powers_of_tau.asUnchecked(), L)
   rl -= rli
 

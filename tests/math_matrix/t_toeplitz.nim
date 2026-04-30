@@ -18,13 +18,13 @@ import
   constantine/math/arithmetic/finite_fields,
   ../math_polynomials/fft_utils
 
-type BLS12_381_G1 = EC_ShortW_Prj[Fp[BLS12_381], G1]
+type BLS12_381_G1_Prj = EC_ShortW_Prj[Fp[BLS12_381], G1]
 type BLS12_381_Fr = Fr[BLS12_381]
 
 proc toeplitzMatVecMulNaive(
-  output: var openArray[BLS12_381_G1],
+  output: var openArray[BLS12_381_G1_Prj],
   coeffs: openArray[BLS12_381_Fr],
-  input: openArray[BLS12_381_G1]
+  input: openArray[BLS12_381_G1_Prj]
 ) {.raises: [].} =
   ## Naive O(n²) Toeplitz matrix-vector multiplication for testing.
   let n = input.len
@@ -33,12 +33,12 @@ proc toeplitzMatVecMulNaive(
   doAssert n2 == 2 * n
 
   for i in 0 ..< n:
-    var sum: BLS12_381_G1
+    var sum: BLS12_381_G1_Prj
     sum.setNeutral()
 
     for j in 0 ..< n:
       let coeffIdx = if i >= j: i - j else: n2 - (j - i)
-      var term: BLS12_381_G1
+      var term: BLS12_381_G1_Prj
       term.scalarMul_vartime(coeffs[coeffIdx].toBig(), input[j])
 
       if j == 0:
@@ -99,13 +99,13 @@ proc testToeplitz(n: static int) =
 
   let fftSize = 2 * n
   let frFftDesc = createFFTDescriptor(Fr[BLS12_381], fftSize)
-  let ecFftDesc = createFFTDescriptor(BLS12_381_G1, Fr[BLS12_381], fftSize)
+  let ecFftDesc = createFFTDescriptor(BLS12_381_G1_Prj, Fr[BLS12_381], fftSize)
 
   var poly = newSeq[BLS12_381_Fr](n)
   var coeffs = newSeq[BLS12_381_Fr](2 * n)
-  var input = newSeq[BLS12_381_G1](n)
-  var outputNaive = newSeq[BLS12_381_G1](n)
-  var outputFft = newSeq[BLS12_381_G1](n)
+  var input = newSeq[BLS12_381_G1_Prj](n)
+  var outputNaive = newSeq[BLS12_381_G1_Prj](n)
+  var outputFft = newSeq[BLS12_381_G1_Prj](n)
 
   for i in 0 ..< n:
     poly[i].fromUint((i + 1).uint64)
@@ -118,7 +118,7 @@ proc testToeplitz(n: static int) =
 
   toeplitzMatVecMulNaive(outputNaive, coeffs, input)
 
-  let status = toeplitzMatVecMul[BLS12_381_G1, BLS12_381_Fr](outputFft, coeffs, input, frFftDesc, ecFftDesc)
+  let status = toeplitzMatVecMul[BLS12_381_G1_Prj, BLS12_381_Fr](outputFft, coeffs, input, frFftDesc, ecFftDesc)
   doAssert status == Toeplitz_Success, "FFT-based multiplication failed: " & $status
 
   for i in 0 ..< n:
@@ -129,9 +129,73 @@ proc testToeplitz(n: static int) =
       quit 1
   echo "✓ ", n, "x", n, " Toeplitz test PASSED"
 
+proc testToeplitzAccumulatorInitErrors() =
+  echo "Testing ToeplitzAccumulator.init error paths..."
+  type BLS12_381_G1_aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+  let fftSize = 128
+  let frDesc = createFFTDescriptor(Fr[BLS12_381], fftSize)
+  let ecDesc = createFFTDescriptor(BLS12_381_G1_Prj, Fr[BLS12_381], fftSize)
+
+  var acc: ToeplitzAccumulator[BLS12_381_G1_Prj, BLS12_381_G1_aff, Fr[BLS12_381]]
+
+  # size = 0 → Toeplitz_SizeNotPowerOfTwo
+  doAssert acc.init(frDesc, ecDesc, size = 0, L = 1) == Toeplitz_SizeNotPowerOfTwo
+
+  # L = 0 → Toeplitz_SizeNotPowerOfTwo
+  doAssert acc.init(frDesc, ecDesc, size = 4, L = 0) == Toeplitz_SizeNotPowerOfTwo
+
+  # non-power-of-2 → Toeplitz_SizeNotPowerOfTwo
+  doAssert acc.init(frDesc, ecDesc, size = 6, L = 1) == Toeplitz_SizeNotPowerOfTwo
+
+  # negative size
+  doAssert acc.init(frDesc, ecDesc, size = -1, L = 1) == Toeplitz_SizeNotPowerOfTwo
+
+  # Valid init should succeed
+  doAssert acc.init(frDesc, ecDesc, size = 4, L = 2) == Toeplitz_Success
+  # (acc will be destroyed on scope exit, freeing buffers)
+
+  echo "✓ ToeplitzAccumulator.init errors PASSED"
+
+proc testToeplitzAccumulatorFinishErrors() =
+  echo "Testing ToeplitzAccumulator.finish error paths..."/to
+  type G1Aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+  let fftSize = 128
+  let frDesc = createFFTDescriptor(Fr[BLS12_381], fftSize)
+  let ecDesc = createFFTDescriptor(BLS12_381_G1_Prj, Fr[BLS12_381], fftSize)
+
+  var acc: ToeplitzAccumulator[BLS12_381_G1_Prj, G1Aff, Fr[BLS12_381]]
+  doAssert acc.init(frDesc, ecDesc, size = 4, L = 2) == Toeplitz_Success
+
+  # finish without any accumulate → Toeplitz_MismatchedSizes (offset != L)
+  var output: array[4, BLS12_381_G1_Prj]
+  doAssert acc.finish(output.toOpenArray(0, 3)) == Toeplitz_MismatchedSizes
+
+  echo "✓ ToeplitzAccumulator.finish errors PASSED"
+
+proc testCheckCirculantR1() =
+  echo "Testing checkCirculant with r=1 (circulant length 2)..."
+  var poly = newSeq[Fr[BLS12_381]](2)  # n=2, so circulant = 2*r where r = CDS/2
+  var circ = newSeq[Fr[BLS12_381]](2)  # 2*r = 2, so r=1
+
+  poly[0].fromUint(1)
+  poly[1].fromUint(2)
+
+  makeCirculantMatrix(circ, poly, 0, 1)
+  doAssert checkCirculant(circ, poly, 0, 1), "Valid r=1 circulant should pass"
+
+  # Corrupt
+  circ[0].fromUint(999)
+  doAssert not checkCirculant(circ, poly, 0, 1), "Corrupted r=1 circulant should fail"
+
+  echo "✓ checkCirculant r=1 PASSED"
+
 when isMainModule:
+  testToeplitzAccumulatorInitErrors()
+  testToeplitzAccumulatorFinishErrors()
+  testCheckCirculantR1()
   testCheckCirculant()
   testMakeCirculantMatrix()
   testToeplitz(4)
   testToeplitz(8)
+  testToeplitz(16)
   echo "\nAll Toeplitz tests PASSED ✓"

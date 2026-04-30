@@ -111,68 +111,25 @@ proc benchMakeCirculantMatrix_VaryingOffset(poly: openArray[F],
     bench(&"makeCirculantMatrix_offset{offset}", CDS, iters):
       makeCirculantMatrix(coeffs.toOpenArray(0, CDS-1), poly, offset, L)
 
-proc benchToeplitzMatVecMulPreFFT_Size128(circulant: openArray[F], 
-                                          vFft: openArray[EC_G1], 
-                                          frDesc: FrFFT_Descriptor[F], 
-                                          ecDesc: ECFFT_Descriptor[EC_G1], 
-                                          iters: int) =
-  ## Core FK20 multiplication: size 128, no accumulation
-  
-  var output: array[CDS, EC_G1]
-  
-  bench("toeplitzMatVecMulPreFFT_size128", CDS, iters):
-    let status = toeplitzMatVecMulPreFFT(
-      output.toOpenArray(0, CDS-1),
-      circulant,
-      vFft,
-      frDesc,
-      ecDesc,
-      accumulate = false
-    )
-    doAssert status == FFT_Success
+proc benchToeplitzMatVecMul_Size128(circulant: openArray[F], 
+                                    v: openArray[EC_G1], 
+                                    frDesc: FrFFT_Descriptor[F], 
+                                    ecDesc: ECFFT_Descriptor[EC_G1], 
+                                    iters: int) =
+  ## Core FK20 multiplication: size 128
+  ## Uses toeplitzMatVecMul which handles FFT internally
 
-proc benchToeplitzMatVecMulPreFFT_Accumulate(circulant: openArray[F], 
-                                             vFft: openArray[EC_G1], 
-                                             frDesc: FrFFT_Descriptor[F], 
-                                             ecDesc: ECFFT_Descriptor[EC_G1], 
-                                             iters: int) =
-  ## With accumulation (accumulate=true)
-  
   var output: array[CDS, EC_G1]
-  # Initialize output
-  for i in 0 ..< CDS:
-    output[i].setNeutral()
-  
-  bench("toeplitzMatVecMulPreFFT_accumulate", CDS, iters):
-    let status = toeplitzMatVecMulPreFFT(
-      output.toOpenArray(0, CDS-1),
-      circulant,
-      vFft,
-      frDesc,
-      ecDesc,
-      accumulate = true
-    )
-    doAssert status == FFT_Success
 
-proc benchToeplitzMatVecMulPreFFT_NoAccumulate(circulant: openArray[F], 
-                                               vFft: openArray[EC_G1], 
-                                               frDesc: FrFFT_Descriptor[F], 
-                                               ecDesc: ECFFT_Descriptor[EC_G1], 
-                                               iters: int) =
-  ## Without accumulation (accumulate=false)
-  
-  var output: array[CDS, EC_G1]
-  
-  bench("toeplitzMatVecMulPreFFT_noAccumulate", CDS, iters):
-    let status = toeplitzMatVecMulPreFFT(
+  bench("toeplitzMatVecMul_size128", CDS, iters):
+    let status = toeplitzMatVecMul(
       output.toOpenArray(0, CDS-1),
       circulant,
-      vFft,
+      v,
       frDesc,
-      ecDesc,
-      accumulate = false
+      ecDesc
     )
-    doAssert status == FFT_Success
+    doAssert status == Toeplitz_Success
 
 proc benchToeplitz_Scaling(sizes: openArray[int], iters: int) =
   ## Scaling analysis for different Toeplitz sizes
@@ -200,7 +157,7 @@ proc benchToeplitz_Scaling(sizes: openArray[int], iters: int) =
         descs.frDesc,
         descs.ecDesc
       )
-      doAssert status == FFT_Success
+      doAssert status == Toeplitz_Success
 
 proc main() =
   echo "Toeplitz Matrix-Vector Multiplication Benchmarks (FK20)"
@@ -226,30 +183,17 @@ proc main() =
   separator(145)
   
   # Setup for size 128 benchmarks
-  let descs128 = createFFTDescriptors(CDS)
-  var circulant128 = newSeq[F](CDS)
-  makeCirculantMatrix(circulant128.toOpenArray(0, CDS-1), polyFull.toOpenArray(0, N-1), 0, L)
-  
+  # toeplitzMatVecMul needs circulant of size 2*n and FFT descriptors of order >= 2*n
+  let descs128 = createFFTDescriptors(2 * CDS)
+  var circulant128 = newSeq[F](2 * CDS)
+  makeCirculantMatrix(circulant128.toOpenArray(0, 2*CDS-1), polyFull.toOpenArray(0, N-1), 0, 1)
+
   var v128 = newSeq[EC_G1](CDS)
   v128[0].setGenerator()
   for i in 1 ..< CDS:
     v128[i].mixedSum(v128[i-1], BLS12_381.getGenerator("G1"))
-  
-  # For PreFFT benchmarks, FFT the vector directly (no zero-extension needed)
-  var vFft128 = newSeq[EC_G1](CDS)
-  discard ec_fft_nr(descs128.ecDesc, vFft128.toOpenArray(0, CDS-1), v128.toOpenArray(0, CDS-1))
-  
-  benchToeplitzMatVecMulPreFFT_Size128(circulant128.toOpenArray(0, CDS-1), vFft128.toOpenArray(0, CDS-1), descs128.frDesc, descs128.ecDesc, ItersLarge)
-  echo ""
-  
-  benchToeplitzMatVecMulPreFFT_Accumulate(circulant128.toOpenArray(0, CDS-1), vFft128.toOpenArray(0, CDS-1), descs128.frDesc, descs128.ecDesc, ItersLarge)
-  echo ""
-  
-  benchToeplitzMatVecMulPreFFT_NoAccumulate(circulant128.toOpenArray(0, CDS-1), vFft128.toOpenArray(0, CDS-1), descs128.frDesc, descs128.ecDesc, ItersLarge)
-  echo ""
-  
-  echo "  [Skipping toeplitzMatVecMul_Full - FK20 uses PreFFT version]"
-  echo ""
+
+  benchToeplitzMatVecMul_Size128(circulant128.toOpenArray(0, 2*CDS-1), v128.toOpenArray(0, CDS-1), descs128.frDesc, descs128.ecDesc, ItersLarge)
   
   separator(145)
   echo "Scaling Analysis"

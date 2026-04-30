@@ -49,7 +49,7 @@ func checkCirculant*[F](
   ## Checks:
   ## - circulant[0] == poly[n-1-offset]
   ## - circulant[1..r] are all zero
-  ## - circulant[r+1..2r-1] match poly values at stride intervals
+  ## - circulant[r+2..2r-1] match poly values at stride intervals
   ##
   ## @param circulant: circulant matrix to validate (length 2*r)
   ## @param poly: polynomial coefficients (length n)
@@ -106,7 +106,7 @@ proc makeCirculantMatrix*[F](
   ## Output structure (length 2r = 128) - c-kzg convention:
   ##   output[0]      = poly[n - 1 - offset]
   ##   output[1..r]   = 0 (zero padding)
-  ##   output[r+1..2r-1] = poly values at stride intervals
+  ##   output[r+2..2r-1] = poly values at stride intervals
   ##
   ## @param output: output array of length 2*r
   ## @param poly: polynomial coefficients of length n
@@ -184,8 +184,8 @@ type
   ToeplitzAccumulator*[EC, ECaff, F] = object
     ## Accumulator for Toeplitz matrix-vector multiplication with MSM
     ## Following c-kzg-4844 fk20.c algorithm
-    frFftDesc: FrFFT_Descriptor[F]
-    ecFftDesc: ECFFT_Descriptor[EC]
+    frFftDesc: FrFFT_Descriptor[F]          # FFT descriptor for field element transforms (user-owned, not freed by =destroy)
+    ecFftDesc: ECFFT_Descriptor[EC]         # FFT descriptor for EC point transforms (user-owned, not freed by =destroy)
     coeffs: ptr UncheckedArray[F]           # [size*L] transposed coeffs
     points: ptr UncheckedArray[ECaff]       # [size*L] points for each position
     size: int
@@ -199,9 +199,8 @@ proc `=destroy`*[EC, ECaff, F](ctx: var ToeplitzAccumulator[EC, ECaff, F]) {.rai
     freeHeapAligned(ctx.points)
   ctx.coeffs = nil
   ctx.points = nil
-  ctx.size = 0
-  ctx.L = 0
-  ctx.offset = 0
+
+proc `=copy`*[EC, ECaff, F](dst: var ToeplitzAccumulator[EC, ECaff, F], src: ToeplitzAccumulator[EC, ECaff, F]) {.error: "ToeplitzAccumulator cannot be copied".}
 
 proc init*[EC, ECaff, F](
   ctx: var ToeplitzAccumulator[EC, ECaff, F],
@@ -210,6 +209,12 @@ proc init*[EC, ECaff, F](
   size: int,
   L: int
 ): ToeplitzStatus {.raises: [], meter.} =
+  # Free existing allocations (defensive: handles accidental double-init)
+  if not ctx.coeffs.isNil():
+    freeHeapAligned(ctx.coeffs)
+  if not ctx.points.isNil():
+    freeHeapAligned(ctx.points)
+
   ctx.size = 0
   ctx.offset = 0
   ctx.L = 0
@@ -242,7 +247,6 @@ proc accumulate*[EC, ECaff, F](
 
   let coeffsFft = allocHeapArrayAligned(F, n, 64)
   block HappyPath:
-    # CRITICAL: fft_nr in perf-fix → fft_nn in review05 (Natural→Natural output)
     check HappyPath, fft_nn(ctx.frFftDesc, coeffsFft.toOpenArray(n), circulant)
 
     # Store transposed: coeffs[i*L + offset] and points[i*L + offset]
@@ -274,6 +278,7 @@ proc finish*[EC, ECaff, F](
 
     # MSM: output[i] = Σ scalars[offset] * points[offset]
     let pointsPtr = cast[ptr UncheckedArray[ECaff]](addr ctx.points[i * ctx.L])
+    # SAFE: all inputs are public data per FK20 construction — no secret-dependent branching risk
     output[i].multiScalarMul_vartime(scalars, pointsPtr, ctx.L)
 
   freeHeapAligned(scalars)
@@ -283,7 +288,6 @@ proc finish*[EC, ECaff, F](
     for i in 0 ..< n:
       ifftInput[i] = output[i]
 
-    # CRITICAL: ec_ifft_rn in perf-fix → ec_ifft_nn in review05 (Natural→Natural output)
     check HappyPath, ec_ifft_nn(ctx.ecFftDesc, output, ifftInput.toOpenArray(0, n - 1))
     result = Toeplitz_Success
 
@@ -326,9 +330,9 @@ proc toeplitzMatVecMul*[EC, F](
     return Toeplitz_MismatchedSizes
   if circulant.len != n2:
     return Toeplitz_MismatchedSizes
-  if n2 > frFftDesc.order + 1:
+  if n2 > frFftDesc.order:
     return Toeplitz_TooManyValues
-  if n2 > ecFftDesc.order + 1:
+  if n2 > ecFftDesc.order:
     return Toeplitz_TooManyValues
 
   let vExt = allocHeapArrayAligned(EC, n2, 64)
@@ -340,10 +344,10 @@ proc toeplitzMatVecMul*[EC, F](
   let vExtFft = allocHeapArrayAligned(EC, n2, 64)
   var vExtFftAff: ptr UncheckedArray[ECaff] = nil
   var ifftResult: ptr UncheckedArray[EC] = nil
-  var acc {.noInit.}: ToeplitzAccumulator[EC, ECaff, F]
+  # Default-init is safe: =destroy nil-checks all ptr fields and type is not large
+  var acc: ToeplitzAccumulator[EC, ECaff, F]
 
   block HappyPath:
-    # CRITICAL: ec_fft_nr in perf-fix → ec_fft_nn in review05 (Natural→Natural output)
     check HappyPath, ec_fft_nn(ecFftDesc, vExtFft.toOpenArray(n2), vExt.toOpenArray(n2))
 
     vExtFftAff = allocHeapArrayAligned(ECaff, n2, 64)
