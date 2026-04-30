@@ -341,18 +341,18 @@ proc toeplitzMatVecMul*[EC, F](
   for i in n ..< n2:
     vExt[i].setNeutral()
 
-  let vExtFft = allocHeapArrayAligned(EC, n2, 64)
+  # ec_fft_nn supports in-place operation — reuse vExt buffer
   var vExtFftAff: ptr UncheckedArray[ECaff] = nil
   var ifftResult: ptr UncheckedArray[EC] = nil
   # Default-init is safe: =destroy nil-checks all ptr fields and type is not large
   var acc: ToeplitzAccumulator[EC, ECaff, F]
 
   block HappyPath:
-    check HappyPath, ec_fft_nn(ecFftDesc, vExtFft.toOpenArray(n2), vExt.toOpenArray(n2))
+    check HappyPath, ec_fft_nn(ecFftDesc, vExt.toOpenArray(n2), vExt.toOpenArray(n2))
 
     vExtFftAff = allocHeapArrayAligned(ECaff, n2, 64)
     for i in 0 ..< n2:
-      vExtFftAff[i].affine(vExtFft[i])
+      vExtFftAff[i].affine(vExt[i])
 
     check HappyPath, acc.init(frFftDesc, ecFftDesc, n2, L = 1)
     check HappyPath, acc.accumulate(circulant, vExtFftAff.toOpenArray(n2))
@@ -369,7 +369,6 @@ proc toeplitzMatVecMul*[EC, F](
     freeHeapAligned(vExtFftAff)
   if ifftResult != nil:
     freeHeapAligned(ifftResult)
-  freeHeapAligned(vExtFft)
   freeHeapAligned(vExt)
 
   return result

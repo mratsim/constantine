@@ -282,26 +282,23 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
   static: doAssert CDS.isPowerOf2_vartime(), "CDS must be a power of two"
   doAssert ecfft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
 
-  let polyphaseComponent = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
-
-  # Extract polyphase component with stride L and given offset (convert affine to Jacobian for FFT)
+  # Extract polyphase component directly into output buffer (convert affine to Jacobian for FFT)
   # This is the polyphase decomposition: x_i[m] = x[m·L + offset] with reversal
   let start = N - L - 1 - offset
   var j = start
   for i in 0 ..< CDSdiv2 - 1:
-    polyphaseComponent[i].fromAffine(powers_of_tau.coefs[j])
+    polyphaseSpectrum[i].fromAffine(powers_of_tau.coefs[j])
     j -= L
   # Handle last element before zero padding
   if j >= 0:
-    polyphaseComponent[CDSdiv2 - 1].fromAffine(powers_of_tau.coefs[j])
+    polyphaseSpectrum[CDSdiv2 - 1].fromAffine(powers_of_tau.coefs[j])
   else:
-    polyphaseComponent[CDSdiv2 - 1].setNeutral()
+    polyphaseSpectrum[CDSdiv2 - 1].setNeutral()
   for j in CDSdiv2 ..< CDS:
-    polyphaseComponent[j].setNeutral()
+    polyphaseSpectrum[j].setNeutral()
 
-  # FFT the polyphase component to get its spectrum (frequency-domain representation)
-  result = ec_fft_nn(ecfft_desc, polyphaseSpectrum, polyphaseComponent.toOpenArray(CDS))
-  freeHeapAligned(polyphaseComponent)
+  # FFT in-place to get polyphase spectrum (frequency-domain representation)
+  result = ec_fft_nn(ecfft_desc, polyphaseSpectrum, polyphaseSpectrum)
 
 func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static Algebra](
        polyphaseSpectrumBank: var array[L, array[CDS, EC_ShortW_Aff[Fp[Name], G1]]],
@@ -454,14 +451,12 @@ proc kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
   for i in CDSdiv2 ..< CDS:
     u[i].setNeutral()
 
-  # FFT to get proofs
-  let proofsJac = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
-  let status3 = ec_fft_desc.ec_fft_nn(proofsJac.toOpenArray(CDS), u.toOpenArray(CDS))
+  # FFT in-place to get proofs — reuse u buffer
+  let status3 = ec_fft_desc.ec_fft_nn(u.toOpenArray(CDS), u.toOpenArray(CDS))
   doAssert status3 == FFT_Success, "Internal error: EC FFT failed: " & $status3
-  freeHeapAligned(u)
 
-  proofs.asUnchecked().batchAffine(proofsJac, proofs.len)
-  freeHeapAligned(proofsJac)
+  proofs.asUnchecked().batchAffine(u, proofs.len)
+  freeHeapAligned(u)
 
 # ############################################################
 #
@@ -568,17 +563,17 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
     if not agg_cols_used[c]:
       continue
 
-    # Compute the per-column interpolation polynomial
-    var col_interpoly {.noInit.}: PolynomialCoef[L, Fr[Name]]
+    # Compute the per-column interpolation polynomial (IFFT in-place)
     let domainPos = reverseBits(uint32(c), logNumCols)
     let hk = domain.rootsOfUnity[domainPos]
 
     # agg_cols[c] is in bit-reversed order
-    let status = domain.coset_ifft_rn(col_interpoly.coefs, agg_cols[c], hk)
+    let status = domain.coset_ifft_rn(agg_cols[c], agg_cols[c], hk)
     doAssert status == FFT_Success, "Internal error: coset_ifft_rn failed: " & $status
 
-    # Accumulate
-    interpoly += col_interpoly
+    # Accumulate directly from agg_cols[c] (now in coefficient form)
+    for i in 0 ..< L:
+      interpoly.coefs[i] += agg_cols[c][i]
 
   freeHeapAligned(agg_cols_used)
   freeHeapAligned(agg_cols)

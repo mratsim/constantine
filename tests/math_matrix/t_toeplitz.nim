@@ -157,7 +157,7 @@ proc testToeplitzAccumulatorInitErrors() =
   echo "✓ ToeplitzAccumulator.init errors PASSED"
 
 proc testToeplitzAccumulatorFinishErrors() =
-  echo "Testing ToeplitzAccumulator.finish error paths..."/to
+  echo "Testing ToeplitzAccumulator.finish error paths..."
   type G1Aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
   let fftSize = 128
   let frDesc = createFFTDescriptor(Fr[BLS12_381], fftSize)
