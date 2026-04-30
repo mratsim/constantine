@@ -131,6 +131,65 @@ proc benchToeplitzMatVecMul_Size128(circulant: openArray[F],
     )
     doAssert status == Toeplitz_Success
 
+proc benchToeplitzAccumulator_64Accumulates(poly: openArray[F], iters: int) =
+  ## Benchmark ToeplitzAccumulator with 64 accumulate calls (PeerDAS L=64)
+  ## This is the core FK20 accumulation pattern used in multi-proof generation
+  ##
+  ## Each accumulate:
+  ## 1. Computes FFT of circulant (size 128)
+  ## 2. Stores result in transposed layout
+  ##
+  ## After 64 accumulates, finish() performs MSM + IFFT
+  
+  const size = CDS  # 128
+  const L = 64
+  
+  # Type aliases matching ToeplitzAccumulator (following bench_kzg_multiproofs.nim pattern)
+  type BLS12_381_G1_aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+  type BLS12_381_G1_jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
+  
+  # Setup FFT descriptors
+  let descs = createFFTDescriptors(2 * size)
+  
+  # Generate random input vectors for each accumulate (affine coordinates)
+  var vFftList: array[L, seq[BLS12_381_G1_aff]]
+  for i in 0 ..< L:
+    vFftList[i].setLen(size)
+    var rng: RngState
+    rng.seed(RngSeed + uint32(i))
+    rng.random_unsafe(vFftList[i])
+  
+  # Generate random circulants for each accumulate
+  var circulantList: array[L, seq[F]]
+  for i in 0 ..< L:
+    circulantList[i].setLen(size)
+    var rng: RngState
+    rng.seed(RngSeed + uint32(i) + 1000)
+    rng.random_unsafe(circulantList[i])
+  
+  # Benchmark: init + 64 accumulates + finish
+  var acc: ToeplitzAccumulator[BLS12_381_G1_jac, BLS12_381_G1_aff, F]
+  
+  bench("ToeplitzAccumulator_64accumulates", size, iters):
+    # Initialize accumulator
+    let statusInit = acc.init(descs.frDesc, descs.ecDesc, size, L)
+    doAssert statusInit == Toeplitz_Success
+    
+    # 64 accumulate calls
+    for i in 0 ..< L:
+      let status = acc.accumulate(
+        circulantList[i].toOpenArray(0, size-1),
+        vFftList[i].toOpenArray(0, size-1)
+      )
+      doAssert status == Toeplitz_Success
+    
+    # Finish with MSM + IFFT
+    var output: array[size, EC_G1]
+    let statusFinish = acc.finish(output.toOpenArray(0, size-1))
+    doAssert statusFinish == Toeplitz_Success
+  
+  # Accumulator destroyed on scope exit (frees heap buffers)
+
 proc benchToeplitz_Scaling(sizes: openArray[int], iters: int) =
   ## Scaling analysis for different Toeplitz sizes
   
@@ -196,6 +255,13 @@ proc main() =
   benchToeplitzMatVecMul_Size128(circulant128.toOpenArray(0, 2*CDS-1), v128.toOpenArray(0, CDS-1), descs128.frDesc, descs128.ecDesc, ItersLarge)
   
   separator(145)
+  echo "Toeplitz Accumulator (64 Accumulates)"
+  separator(145)
+  
+  benchToeplitzAccumulator_64Accumulates(polyFull.toOpenArray(0, N-1), ItersLarge)
+  echo ""
+  
+  separator(145)
   echo "Scaling Analysis"
   separator(145)
   benchToeplitz_Scaling(TestSizes, ItersScaling)
@@ -206,8 +272,8 @@ proc main() =
   separator(145)
   echo "- All benchmarks use random polynomials (seed=42)"
   echo "- PeerDAS parameters: N=4096, L=64, CDS=128"
-  echo "- Accumulation mode shows sum_vartime overhead"
-  echo "- Full toeplitzMatVecMul includes vector FFT"
+  echo "- Accumulator benchmark: 64 accumulate calls + MSM + IFFT"
+  echo "- toeplitzMatVecMul includes forward FFT on input vector"
 
 when isMainModule:
   main()
