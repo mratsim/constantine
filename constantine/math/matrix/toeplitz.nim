@@ -106,6 +106,7 @@ proc makeCirculantMatrix*[F](
   ## Output structure (length 2r = 128) - c-kzg convention:
   ##   output[0]      = poly[n - 1 - offset]
   ##   output[1..r]   = 0 (zero padding)
+  ##   output[r+1]    = 0 (from zero-init)
   ##   output[r+2..2r-1] = poly values at stride intervals
   ##
   ## @param output: output array of length 2*r
@@ -193,11 +194,6 @@ type
     offset: int
 
 proc `=destroy`*[EC, ECaff, F](ctx: var ToeplitzAccumulator[EC, ECaff, F]) {.raises: [].} =
-  # Prevent double-destruction of non-owned decsriptors
-  # by setting them to binary 0
-  frFftDesc.reset()
-  ecFftDesc.reset()
-
   if not ctx.coeffs.isNil():
     freeHeapAligned(ctx.coeffs)
   if not ctx.points.isNil():
