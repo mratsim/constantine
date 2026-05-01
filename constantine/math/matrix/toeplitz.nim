@@ -193,6 +193,11 @@ type
     offset: int
 
 proc `=destroy`*[EC, ECaff, F](ctx: var ToeplitzAccumulator[EC, ECaff, F]) {.raises: [].} =
+  # Prevent double-destruction of non-owned decsriptors
+  # by setting them to binary 0
+  frFftDesc.reset()
+  ecFftDesc.reset()
+
   if not ctx.coeffs.isNil():
     freeHeapAligned(ctx.coeffs)
   if not ctx.points.isNil():
