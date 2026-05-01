@@ -33,7 +33,7 @@ func kzg_coset_prove_naive*[N: static int, Name: static Algebra](
        proof: var EC_ShortW_Aff[Fp[Name], G1],
        poly: PolynomialCoef[N, Fr[Name]],
        cosetShift: Fr[Name], L: static int,
-       powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]]) {.tags:[HeapAlloc, Vartime], meter.} =
+       powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]]) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
   ## Compute a KZG multi-evaluation proof for a polynomial
   ##  at L points on a coset.
   ##
