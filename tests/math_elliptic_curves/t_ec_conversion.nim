@@ -9,7 +9,12 @@
 import
   # Internals
   constantine/named/algebras,
-  constantine/math/elliptic/[ec_shortweierstrass_jacobian, ec_shortweierstrass_projective],
+  constantine/math/elliptic/[
+    ec_shortweierstrass_jacobian,
+    ec_shortweierstrass_projective,
+    ec_twistededwards_projective,
+    ec_shortweierstrass_batch_ops
+  ],
   constantine/math/extension_fields,
   # Test utilities
   ./t_ec_template
@@ -100,4 +105,29 @@ run_EC_affine_conversion_vartime(
     ec = EC_ShortW_Prj[Fp2[BLS12_381], G2],
     Iters = Iters,
     moduleName = "test_ec_conversion_shortw_affine_projective_g2_" & $BLS12_381 & "_vartime"
+  )
+
+# Twisted Edwards batch affine conversion tests
+run_EC_twedwards_affine_conversion(
+    ec = EC_TwEdw_Prj[Fp[Bandersnatch]],
+    Iters = Iters,
+    moduleName = "test_ec_conversion_twedwards_projective_" & $Bandersnatch
+  )
+
+run_EC_twedwards_affine_conversion(
+    ec = EC_TwEdw_Prj[Fp[Banderwagon]],
+    Iters = Iters,
+    moduleName = "test_ec_conversion_twedwards_projective_" & $Banderwagon
+  )
+
+run_EC_twedwards_affine_conversion_vartime(
+    ec = EC_TwEdw_Prj[Fp[Bandersnatch]],
+    Iters = Iters,
+    moduleName = "test_ec_conversion_twedwards_projective_" & $Bandersnatch & "_vartime"
+  )
+
+run_EC_twedwards_affine_conversion_vartime(
+    ec = EC_TwEdw_Prj[Fp[Banderwagon]],
+    Iters = Iters,
+    moduleName = "test_ec_conversion_twedwards_projective_" & $Banderwagon & "_vartime"
   )

@@ -27,6 +27,7 @@ import
     ec_shortweierstrass_batch_ops,
     ec_twistededwards_affine,
     ec_twistededwards_projective,
+    ec_twistededwards_batch_ops,
     ec_scalar_mul,
     ec_multi_scalar_mul],
   constantine/math/io/[io_bigints, io_fields, io_ec],
@@ -1311,6 +1312,123 @@ proc run_EC_affine_conversion_vartime*(
       test(ec, gen = Uniform)
       test(ec, gen = HighHammingWeight)
       test(ec, gen = Long01Sequence)
+
+
+# Twisted Edwards batch affine conversion tests
+# -----------------------------------------------
+proc run_EC_twedwards_affine_conversion*(
+       ec: typedesc,
+       Iters: static int,
+       moduleName: string) =
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1))
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo moduleName, " xoshiro512** seed: ", seed
+
+  const testSuiteDesc = "Elliptic curve in " & $ec.getName().getEquationForm() & " form"
+
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
+    test "batchAffine is consistent with single affine conversion":
+      proc test(EC: typedesc, gen: RandomGen) =
+        const batchSize = 10
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          for i in 0 ..< batchSize:
+            Ps[i] = rng.random_point(EC, randZ = true, gen)
+
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Qs[i].affine(Ps[i])
+          Rs.batchAffine(Ps)
+
+          for i in countdown(batchSize-1, 0):
+            doAssert bool(Qs[i] == Rs[i]), "batchAffine mismatch at " & $i
+
+      test(ec, gen = Uniform)
+      test(ec, gen = HighHammingWeight)
+      test(ec, gen = Long01Sequence)
+
+    test "batchAffine with infinite points":
+      proc test(EC: typedesc, gen: RandomGen) =
+        const batchSize = 10
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          for i in 0 ..< batchSize:
+            if rng.sample_unsafe([0, 1, 2]) != 0:
+              Ps[i] = rng.random_point(EC, randZ = true, gen)
+            else:
+              Ps[i].setNeutral()
+
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Qs[i].affine(Ps[i])
+          Rs.batchAffine(Ps)
+
+          for i in countdown(batchSize-1, 0):
+            doAssert bool(Qs[i] == Rs[i]), "batchAffine with neutral mismatch at " & $i
+
+      test(ec, gen = Uniform)
+      test(ec, gen = HighHammingWeight)
+      test(ec, gen = Long01Sequence)
+
+
+proc run_EC_twedwards_affine_conversion_vartime*(
+       ec: typedesc,
+       Iters: static int,
+       moduleName: string) =
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1))
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo moduleName, " xoshiro512** seed: ", seed
+
+  const testSuiteDesc = "Elliptic curve in " & $ec.getName().getEquationForm() & " form (vartime)"
+
+  suite testSuiteDesc & " - " & $ec & " (vartime) - [" & $WordBitWidth & "-bit mode]":
+    test "batchAffine_vartime is consistent with single affine conversion":
+      proc test(EC: typedesc, gen: RandomGen) =
+        const batchSize = 10
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          for i in 0 ..< batchSize:
+            Ps[i] = rng.random_point(EC, randZ = true, gen)
+
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Qs[i].affine(Ps[i])
+          Rs.batchAffine_vartime(Ps)
+
+          for i in countdown(batchSize-1, 0):
+            doAssert bool(Qs[i] == Rs[i]), "batchAffine_vartime mismatch at " & $i
+
+      test(ec, gen = Uniform)
+      test(ec, gen = HighHammingWeight)
+      test(ec, gen = Long01Sequence)
+
+    test "batchAffine_vartime with infinite points":
+      proc test(EC: typedesc, gen: RandomGen) =
+        const batchSize = 10
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          for i in 0 ..< batchSize:
+            if rng.sample_unsafe([0, 1, 2]) != 0:
+              Ps[i] = rng.random_point(EC, randZ = true, gen)
+            else:
+              Ps[i].setNeutral()
+
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Qs[i].affine(Ps[i])
+          Rs.batchAffine_vartime(Ps)
+
+          for i in countdown(batchSize-1, 0):
+            doAssert bool(Qs[i] == Rs[i]), "batchAffine_vartime with neutral mismatch at " & $i
+
+      test(ec, gen = Uniform)
+      test(ec, gen = HighHammingWeight)
+      test(ec, gen = Long01Sequence)
+
 
 proc run_EC_conversion_failures*(
        moduleName: string
