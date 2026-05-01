@@ -456,7 +456,7 @@ proc kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
   let status3 = ec_fft_desc.ec_fft_nn(u.toOpenArray(CDS), u.toOpenArray(CDS))
   doAssert status3 == FFT_Success, "Internal error: EC FFT failed: " & $status3
 
-  proofs.asUnchecked().batchAffine(u, proofs.len)
+  proofs.asUnchecked().batchAffine_vartime(u, proofs.len)
   freeHeapAligned(u)
 
 # ############################################################

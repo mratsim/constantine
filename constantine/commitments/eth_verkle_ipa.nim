@@ -222,7 +222,7 @@ func ipa_prove*[N, logN: static int, EcAff, F](
     lr[0] ~+= aRbL_Q
     lr[1] ~+= aLbR_Q
 
-    lrAff.batchAffine(lr)
+    lrAff.batchAffine_vartime(lr)
     transcript.absorb("L", lrAff[0])
     transcript.absorb("R", lrAff[1])
     proof.L[i] = lrAff[0]
@@ -257,7 +257,7 @@ func ipa_prove*[N, logN: static int, EcAff, F](
       gg[j].scalarMul_vartime(xinvbig)
       gg[j] ~+= gL[j]
 
-    batchAffine(
+    batchAffine_vartime(
       gL.asUnchecked(),
       gg[].asUnchecked(),
       gL.len
@@ -646,7 +646,7 @@ func sumCommitmentsAndEvalsByChallenge[N: static int, F, ECaff](
       cidx += 1
 
   if affNeeded > 0:
-    tmpAff.batchAffine(tmp, affNeeded) # TODO: introduce batchAffine_vartime
+    tmpAff.batchAffine_vartime(tmp, affNeeded)
     for i in 0 ..< affNeeded:
       comms_by_challenges[idxmap[i]] = tmpAff[i]
 
