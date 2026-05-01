@@ -267,7 +267,7 @@ proc finish*[EC, ECaff, F](
 ): ToeplitzStatus {.raises: [], meter.} =
   ## MSM per position, then IFFT
   let n = ctx.size
-  if n == 0 or output.len < n or ctx.offset != ctx.L:
+  if n == 0 or output.len != n or ctx.offset != ctx.L:
     return Toeplitz_MismatchedSizes
 
   let scalars = allocHeapArrayAligned(F.getBigInt(), ctx.L, alignment = 64)
