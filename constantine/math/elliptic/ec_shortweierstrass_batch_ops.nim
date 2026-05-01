@@ -173,6 +173,165 @@ func batchAffine*[M, N: static int, F, G](
        projs: array[M, array[N, EC_ShortW_Jac[F, G]]]) {.inline.} =
   batchAffine(affs[0].asUnchecked(), projs[0].asUnchecked(), M*N)
 
+# Variable-time batch conversion
+# ---------------------------------------------------------------
+
+func batchAffine_vartime*[F, G](
+       affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
+       projs: ptr UncheckedArray[EC_ShortW_Prj[F, G]],
+       N: int) {.meter.} =
+  # Algorithm: Montgomery's batch inversion
+  # - Speeding the Pollard and Elliptic Curve Methods of Factorization
+  #   Section 10.3.1
+  #   Peter L. Montgomery
+  #   https://www.ams.org/journals/mcom/1987-48-177/S0025-5718-1987-0866113-7/S0025-5718-1987-0866113-7.pdf
+  # - Modern Computer Arithmetic
+  #   Section 2.5.1 Several inversions at once
+  #   Richard P. Brent and Paul Zimmermann
+  #   https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf
+
+  # To avoid temporaries, we store partial accumulations
+  # in affs[i].x and affs[i].y will store if the input was 0
+  template zero(i: int): SecretWord =
+    when F is Fp:
+      affs[i].y.mres.limbs[0]
+    else:
+      affs[i].y.coords[0].mres.limbs[0]
+
+  zero(0) = SecretWord projs[0].z.isZero()
+  if zero(0).isZero().bool():
+    affs[0].x = projs[0].z
+  else:
+    affs[0].x.setOne()
+
+  for i in 1 ..< N:
+    # Skip zero z-coordinates (infinity points)
+    zero(i) = SecretWord projs[i].z.isZero()
+    if zero(i).isZero().bool():
+      if i != N-1:
+        affs[i].x.prod(affs[i-1].x, projs[i].z, lazyReduce = true)
+      else:
+        affs[i].x.prod(affs[i-1].x, projs[i].z, lazyReduce = false)
+    else:
+      # Maintain the product chain: multiply by 1
+      affs[i].x = affs[i-1].x
+
+  var accInv {.noInit.}: F
+  accInv.inv_vartime(affs[N-1].x)
+
+  for i in countdown(N-1, 1):
+    # Extract 1/Pᵢ
+    var invi {.noInit.}: F
+    if zero(i).isZero().bool():
+      invi.prod(accInv, affs[i-1].x, lazyReduce = true)
+      accInv.prod(accInv, projs[i].z, lazyReduce = true)
+
+      # Now convert Pᵢ to affine
+      affs[i].x.prod(projs[i].x, invi)
+      affs[i].y.prod(projs[i].y, invi)
+
+    else:
+      # accInv is unchanged
+      affs[i].setNeutral()
+
+  block: # tail
+    if zero(0).isZero().bool():
+      affs[0].x.prod(projs[0].x, accInv)
+      affs[0].y.prod(projs[0].y, accInv)
+    else:
+      affs[0].setNeutral()
+
+func batchAffine_vartime*[N: static int, F, G](
+       affs: var array[N, EC_ShortW_Aff[F, G]],
+       projs: array[N, EC_ShortW_Prj[F, G]]) {.inline.} =
+  batchAffine_vartime(affs.asUnchecked(), projs.asUnchecked(), N)
+
+func batchAffine_vartime*[M, N: static int, F, G](
+       affs: var array[M, array[N, EC_ShortW_Aff[F, G]]],
+       projs: array[M, array[N, EC_ShortW_Prj[F, G]]]) {.inline.} =
+  batchAffine_vartime(affs[0].asUnchecked(), projs[0].asUnchecked(), M*N)
+
+func batchAffine_vartime*[F, G](
+       affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
+       jacs: ptr UncheckedArray[EC_ShortW_Jac[F, G]],
+       N: int) {.meter.} =
+  # Algorithm: Montgomery's batch inversion
+  # - Speeding the Pollard and Elliptic Curve Methods of Factorization
+  #   Section 10.3.1
+  #   Peter L. Montgomery
+  #   https://www.ams.org/journals/mcom/1987-48-177/S0025-5718-1987-0866113-7/S0025-5718-1987-0866113-7.pdf
+  # - Modern Computer Arithmetic
+  #   Section 2.5.1 Several inversions at once
+  #   Richard P. Brent and Paul Zimmermann
+  #   https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf
+
+  # To avoid temporaries, we store partial accumulations
+  # in affs[i].x and whether z == 0 in affs[i].y
+  template zero(i: int): SecretWord =
+    when F is Fp:
+      affs[i].y.mres.limbs[0]
+    else:
+      affs[i].y.coords[0].mres.limbs[0]
+
+  zero(0) = SecretWord jacs[0].z.isZero()
+  if zero(0).isZero().bool():
+    affs[0].x = jacs[0].z
+  else:
+    affs[0].x.setOne()
+
+  for i in 1 ..< N:
+    # Skip zero z-coordinates (infinity points)
+    zero(i) = SecretWord jacs[i].z.isZero()
+    if zero(i).isZero().bool():
+      if i != N-1:
+        affs[i].x.prod(affs[i-1].x, jacs[i].z, lazyReduce = true)
+      else:
+        affs[i].x.prod(affs[i-1].x, jacs[i].z, lazyReduce = false)
+    else:
+      # Maintain the product chain: multiply by 1
+      affs[i].x = affs[i-1].x
+
+  var accInv {.noInit.}: F
+  accInv.inv_vartime(affs[N-1].x)
+
+  for i in countdown(N-1, 1):
+    # Extract 1/Pᵢ
+    var invi {.noInit.}: F
+    if zero(i).isZero().bool():
+      invi.prod(accInv, affs[i-1].x, lazyReduce = true)
+      accInv.prod(accInv, jacs[i].z, lazyReduce = true)
+
+      # Now convert Pᵢ to affine
+      var invi2 {.noinit.}: F
+      invi2.square(invi, lazyReduce = true)
+      affs[i].x.prod(jacs[i].x, invi2)
+      invi.prod(invi, invi2, lazyReduce = true)
+      affs[i].y.prod(jacs[i].y, invi)
+    else:
+      # accInv is unchanged
+      affs[i].setNeutral()
+
+
+  block: # tail
+    var invi2 {.noinit.}: F
+    if zero(0).isZero().bool():
+      invi2.square(accInv, lazyReduce = true)
+      affs[0].x.prod(jacs[0].x, invi2)
+      accInv.prod(accInv, invi2, lazyReduce = true)
+      affs[0].y.prod(jacs[0].y, accInv)
+    else:
+      affs[0].setNeutral()
+
+func batchAffine_vartime*[N: static int, F, G](
+       affs: var array[N, EC_ShortW_Aff[F, G]],
+       jacs: array[N, EC_ShortW_Jac[F, G]]) {.inline.} =
+  batchAffine_vartime(affs.asUnchecked(), jacs.asUnchecked(), N)
+
+func batchAffine_vartime*[M, N: static int, F, G](
+       affs: var array[M, array[N, EC_ShortW_Aff[F, G]]],
+       jacs: array[M, array[N, EC_ShortW_Jac[F, G]]]) {.inline.} =
+  batchAffine_vartime(affs[0].asUnchecked(), jacs[0].asUnchecked(), M*N)
+
 func batchFromAffine*[F, G](
        jacs: ptr UncheckedArray[EC_ShortW_Jac[F, G]],
        affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],

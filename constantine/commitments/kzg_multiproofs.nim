@@ -360,8 +360,9 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
     let status = computePolyphaseDecompositionFourierOffset(polyphaseSpectrumBankJac[offset], powers_of_tau, ecfft_desc, offset)
     doAssert status == FFT_Success, "Polyphase decomposition FFT failed at offset " & $offset
 
-  # Batch convert Jacobian to affine reinterpreting 2D array as 1D using pointer API
-  batchAffine(
+  # Half the points are points at infinity. A vartime batch inversion
+  # saves a lot of compute, 3*L*CDS
+  batchAffine_vartime(
     polyphaseSpectrumBank[0].asUnchecked(),
     polyphaseSpectrumBankJac[0].asUnchecked(),
     L * CDS

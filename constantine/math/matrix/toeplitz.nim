@@ -351,8 +351,7 @@ proc toeplitzMatVecMul*[EC, F](
     check HappyPath, ec_fft_nn(ecFftDesc, vExt.toOpenArray(n2), vExt.toOpenArray(n2))
 
     vExtFftAff = allocHeapArrayAligned(ECaff, n2, 64)
-    for i in 0 ..< n2:
-      vExtFftAff[i].affine(vExt[i])
+    batchAffine(vExtFftAff, vExt, n2)
 
     check HappyPath, acc.init(frFftDesc, ecFftDesc, n2, L = 1)
     check HappyPath, acc.accumulate(circulant, vExtFftAff.toOpenArray(n2))
