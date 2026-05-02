@@ -34,7 +34,7 @@ import
   constantine/math/[arithmetic, ec_shortweierstrass],
   constantine/math/io/io_fields,
   # Standard library
-  std/[os, strutils, monotimes]
+  std/[os, strutils, monotimes, importutils]
 
 const
   # PeerDAS production parameters
@@ -167,14 +167,19 @@ proc benchToeplitzAccumulator_64Accumulates(poly: openArray[F], iters: int) =
     rng.seed(RngSeed + uint32(i) + 1000)
     rng.random_unsafe(circulantList[i])
   
-  # Benchmark: init + 64 accumulates + finish
+  # Allow direct access to private 'offset' field for benchmark reuse
+  privateAccess(toeplitz.ToeplitzAccumulator)
+
+  # Initialize accumulator once outside the benchmark loop to avoid
+  # allocation overhead (3 x allocHeapAligned, ~772 KB total) in timing.
   var acc: ToeplitzAccumulator[BLS12_381_G1_jac, BLS12_381_G1_aff, F]
-  
+  let statusInit = acc.init(descs.frDesc, descs.ecDesc, size, L)
+  doAssert statusInit == Toeplitz_Success
+
   bench("ToeplitzAccumulator_64accumulates", size, iters):
-    # Initialize accumulator
-    let statusInit = acc.init(descs.frDesc, descs.ecDesc, size, L)
-    doAssert statusInit == Toeplitz_Success
-    
+    # Reset accumulator state for this iteration (avoids free+alloc)
+    acc.offset = 0
+
     # 64 accumulate calls
     for i in 0 ..< L:
       let status = acc.accumulate(
@@ -182,13 +187,11 @@ proc benchToeplitzAccumulator_64Accumulates(poly: openArray[F], iters: int) =
         vFftList[i].toOpenArray(0, size-1)
       )
       doAssert status == Toeplitz_Success
-    
+
     # Finish with MSM + IFFT
     var output: array[size, EC_G1]
     let statusFinish = acc.finish(output.toOpenArray(0, size-1))
     doAssert statusFinish == Toeplitz_Success
-  
-  # Accumulator destroyed on scope exit (frees heap buffers)
 
 proc benchToeplitz_Scaling(sizes: openArray[int], iters: int) =
   ## Scaling analysis for different Toeplitz sizes
