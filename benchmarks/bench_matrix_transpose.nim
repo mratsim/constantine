@@ -5,7 +5,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-# ############################################################
+############################################################
 #
 #           Matrix Transposition Benchmarks
 #
@@ -21,73 +21,64 @@
 #
 # See: https://github.com/mratsim/laser/blob/master/benchmarks/transpose/transpose_bench.nim
 #
-# ############################################################
+############################################################
 
 import
-  std/[random, times, stats, strformat, math, sequtils],
+  # Benchmark infrastructure
+  ./bench_blueprint,
+  # Constantine math
   constantine/math/arithmetic,
   constantine/named/config_fields_and_curves
 
-# ############################################################
-# Benchmarking utilities
-# ############################################################
-
-template printStats(name: string, req_ops: int, global_start, global_stop: float) {.dirty.} =
-  echo "\n", name
-  echo &"Collected {stats.n} samples in {global_stop - global_start:>4.3f} seconds"
-  echo &"Average time: {stats.mean * 1000:>4.3f} ms"
-  echo &"Stddev  time: {stats.standardDeviationS * 1000:>4.3f} ms"
-  echo &"Min     time: {stats.min * 1000:>4.3f} ms"
-  echo &"Max     time: {stats.max * 1000:>4.3f} ms"
-  echo &"Perf:         {req_ops.float / stats.mean / 1e9:>4.3f} GMEMOPs/s"
-  echo &"Throughput:   {req_ops.float * 32.0 / stats.mean / 1e9:>4.3f} GB/s"
-
-template bench(name: string, initialisation, body: untyped) {.dirty.} =
-  block:
-    var stats: RunningStat
-    let global_start = epochTime()
-    for _ in 0 ..< NbSamples:
-      initialisation
-      let start = epochTime()
-      body
-      let stop = epochTime()
-      stats.push(stop - start)
-    let global_stop = epochTime()
-    printStats(name, req_ops, global_start, global_stop)
-
-# ############################################################
+############################################################
 # Test parameters
-# ############################################################
+############################################################
 
 const
+  Iters = 20
   M = 512       # Rows
   N = 512       # Columns
-  NbSamples = 100
 
 # For Fr[BLS12_381]
 type F = Fr[BLS12_381]
 
-let req_ops = M * N
 let req_bytes = sizeof(F) * M * N
+
+proc separator*() = separator(180)
+
+proc report(op: string, startTime, stopTime: MonoTime,
+            startClk, stopClk: int64, iters: int) =
+  let ns = inNanoseconds((stopTime-startTime) div iters)
+  let throughput = 1e9 / float64(ns)
+  let elapsedNs = inNanoseconds(stopTime - startTime)
+  let gbPerS = req_bytes.float * iters.float / elapsedNs.float * 1e9
+  when SupportsGetTicks:
+    echo &"{op:<60} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles     {gbPerS:>9.2f} GB/s"
+  else:
+    echo &"{op:<60} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {gbPerS:>9.2f} GB/s"
+
+template bench(op: string, iters: int, body: untyped): untyped =
+  measure(iters, startTime, stopTime, startClk, stopClk, body)
+  report(op, startTime, stopTime, startClk, stopClk, iters)
 
 echo &"Benchmarking matrix transposition: {M}x{N} matrix"
 echo &"Element type: Fr[BLS12_381] ({sizeof(F)} bytes)"
 echo &"Total size: {req_bytes / 1024 / 1024:>4.2f} MB"
-echo &"Required operations: {req_ops}"
 echo ""
 
-# ############################################################
+
+############################################################
 # Test data setup
-# ############################################################
+############################################################
 
 # Create input matrix with constant values (values don't matter for perf)
 var input = newSeq[F](M * N)
 for i in 0 ..< M * N:
   input[i] = F.getOne()
 
-# ############################################################
+############################################################
 # 1. Naive Sequential Transpose
-# ############################################################
+############################################################
 
 proc naiveTranspose[T](dst, src: ptr UncheckedArray[T], M, N: int) =
   ## Simple row-to-column copy
@@ -101,16 +92,14 @@ proc benchNaive() =
   let pi = cast[ptr UncheckedArray[F]](input[0].addr)
   let po = cast[ptr UncheckedArray[F]](output[0].addr)
 
-  bench("Naive Sequential"):
-    discard
-  do:
+  bench("Naive Sequential", Iters):
     naiveTranspose(po, pi, M, N)
 
 benchNaive()
 
-# ############################################################
+############################################################
 # 2. Naive with Exchanged Loop Order
-# ############################################################
+############################################################
 
 proc naiveTransposeExchanged[T](dst, src: ptr UncheckedArray[T], M, N: int) =
   ## Iterate input linearly, write with stride
@@ -124,16 +113,14 @@ proc benchNaiveExchanged() =
   let pi = cast[ptr UncheckedArray[F]](input[0].addr)
   let po = cast[ptr UncheckedArray[F]](output[0].addr)
 
-  bench("Naive (exchanged loops)"):
-    discard
-  do:
+  bench("Naive (exchanged loops)", Iters):
     naiveTransposeExchanged(po, pi, M, N)
 
 benchNaiveExchanged()
 
-# ############################################################
+############################################################
 # 3. 1D Blocked Transpose
-# ############################################################
+############################################################
 
 proc blocked1DTranspose[T](dst, src: ptr UncheckedArray[T], M, N: int, blockSize: static int) =
   ## Block along one dimension (rows of output) to improve cache locality
@@ -145,15 +132,13 @@ proc blocked1DTranspose[T](dst, src: ptr UncheckedArray[T], M, N: int, blockSize
       for i in 0 ..< M:
         dst[j * M + i] = src[i * N + j]
 
-template benchBlocked1D(blockSize: static int) =
+proc benchBlocked1D(blockSize: static int) =
   var output = newSeq[F](N * M)
   let pi = cast[ptr UncheckedArray[F]](input[0].addr)
   let po = cast[ptr UncheckedArray[F]](output[0].addr)
 
   const name = "1D Blocked (block=" & $blockSize & ")"
-  bench(name):
-    discard
-  do:
+  bench(name, Iters):
     blocked1DTranspose[F](po, pi, M, N, blockSize)
 
 # Test various block sizes
@@ -163,9 +148,9 @@ benchBlocked1D(32)
 benchBlocked1D(64)
 benchBlocked1D(128)
 
-# ############################################################
+############################################################
 # 4. 2D Blocked (Tiled) Transpose [WINNER]
-# ############################################################
+############################################################
 
 proc blocked2DTranspose[T](dst, src: ptr UncheckedArray[T], M, N: int, blockSize: static int) =
   ## 2D tiling - process matrix in small tiles
@@ -181,15 +166,13 @@ proc blocked2DTranspose[T](dst, src: ptr UncheckedArray[T], M, N: int, blockSize
         for i in ii ..< min(ii + blck, M):
           dst[j * M + i] = src[i * N + j]
 
-template benchBlocked2D(blockSize: static int) =
+proc benchBlocked2D(blockSize: static int) =
   var output = newSeq[F](N * M)
   let pi = cast[ptr UncheckedArray[F]](input[0].addr)
   let po = cast[ptr UncheckedArray[F]](output[0].addr)
 
   const name = "2D Blocked (block=" & $blockSize & ")"
-  bench(name):
-    discard
-  do:
+  bench(name, Iters):
     blocked2DTranspose[F](po, pi, M, N, blockSize)
 
 # Test various block sizes - smaller for 32-byte elements
@@ -198,9 +181,9 @@ benchBlocked2D(8)
 benchBlocked2D(16)
 benchBlocked2D(32)
 
-# ############################################################
+############################################################
 # Summary
-# ############################################################
+############################################################
 
 echo "\n============================================================"
 echo "Benchmark complete"
