@@ -1214,6 +1214,57 @@ proc run_EC_affine_conversion*(
       test(ec, gen = HighHammingWeight)
       test(ec, gen = Long01Sequence)
 
+    # Boundary: single-element batch
+    test "EC " & $ec.G & " batchAffine with single element":
+      proc test(EC: typedesc, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          var P: array[1, EC]
+          P[0] = rng.random_point(EC, randZ = true, gen)
+          var Qs, Rs: array[1, affine(EC)]
+          Qs[0].affine(P[0])
+          Rs.batchAffine(P)
+          doAssert bool(Qs[0] == Rs[0]), "batchAffine single-element mismatch"
+
+      test(ec, gen = Uniform)
+      test(ec, gen = HighHammingWeight)
+      test(ec, gen = Long01Sequence)
+
+    # Boundary: all-neutral batch
+    test "EC " & $ec.G & " batchAffine with all neutral points":
+      proc test(EC: typedesc) =
+        const batchSize = 10
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Ps[i].setNeutral()
+            Qs[i].setNeutral()
+          Rs.batchAffine(Ps)
+          for i in 0 ..< batchSize:
+            doAssert bool(Qs[i] == Rs[i]), "batchAffine all-neutral mismatch at " & $i
+      test(ec)
+
+    # Boundary: varied batch sizes
+    test "EC " & $ec.G & " batchAffine with varied batch sizes":
+      proc testSize(EC: typedesc, batchSize: static int, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          for i in 0 ..< batchSize:
+            Ps[i] = rng.random_point(EC, randZ = true, gen)
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Qs[i].affine(Ps[i])
+          Rs.batchAffine(Ps)
+          for i in 0 ..< batchSize:
+            doAssert bool(Qs[i] == Rs[i]), "batchAffine size-" & $batchSize & " mismatch at " & $i
+
+      testSize(ec, 2, gen = Uniform)
+      testSize(ec, 2, gen = HighHammingWeight)
+      testSize(ec, 2, gen = Long01Sequence)
+      testSize(ec, 16, gen = Uniform)
+      testSize(ec, 16, gen = HighHammingWeight)
+      testSize(ec, 16, gen = Long01Sequence)
+
 proc run_EC_affine_conversion_vartime*(
        ec: typedesc,
        Iters: static int,
@@ -1313,6 +1364,58 @@ proc run_EC_affine_conversion_vartime*(
       test(ec, gen = HighHammingWeight)
       test(ec, gen = Long01Sequence)
 
+    # Boundary: single-element batch
+    test "EC " & $ec.G & " batchAffine_vartime with single element":
+      proc test(EC: typedesc, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          var P: array[1, EC]
+          P[0] = rng.random_point(EC, randZ = true, gen)
+          var Qs, Rs: array[1, affine(EC)]
+          Qs[0].affine(P[0])
+          Rs.batchAffine_vartime(P)
+          doAssert bool(Qs[0] == Rs[0]), "batchAffine_vartime single-element mismatch"
+
+      test(ec, gen = Uniform)
+      test(ec, gen = HighHammingWeight)
+      test(ec, gen = Long01Sequence)
+
+    # Boundary: all-neutral batch
+    test "EC " & $ec.G & " batchAffine_vartime with all neutral points":
+      proc test(EC: typedesc) =
+        const batchSize = 10
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Ps[i].setNeutral()
+            Qs[i].setNeutral()
+          Rs.batchAffine_vartime(Ps)
+          for i in 0 ..< batchSize:
+            doAssert bool(Qs[i] == Rs[i]), "batchAffine_vartime all-neutral mismatch at " & $i
+      test(ec)
+
+    # Boundary: varied batch sizes
+    test "EC " & $ec.G & " batchAffine_vartime with varied batch sizes":
+      proc testSize(EC: typedesc, batchSize: static int, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          for i in 0 ..< batchSize:
+            Ps[i] = rng.random_point(EC, randZ = true, gen)
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Qs[i].affine(Ps[i])
+          Rs.batchAffine_vartime(Ps)
+          for i in 0 ..< batchSize:
+            doAssert bool(Qs[i] == Rs[i]), "batchAffine_vartime size-" & $batchSize & " mismatch at " & $i
+
+      testSize(ec, 2, gen = Uniform)
+      testSize(ec, 2, gen = HighHammingWeight)
+      testSize(ec, 2, gen = Long01Sequence)
+      testSize(ec, 16, gen = Uniform)
+      testSize(ec, 16, gen = HighHammingWeight)
+      testSize(ec, 16, gen = Long01Sequence)
+
+
 
 # Twisted Edwards batch affine conversion tests
 # -----------------------------------------------
@@ -1372,6 +1475,59 @@ proc run_EC_twedwards_affine_conversion*(
       test(ec, gen = HighHammingWeight)
       test(ec, gen = Long01Sequence)
 
+    # Boundary: single-element batch
+    test "batchAffine with single element":
+      proc test(EC: typedesc, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          var P: array[1, EC]
+          P[0] = rng.random_point(EC, randZ = true, gen)
+          var Qs, Rs: array[1, affine(EC)]
+          Qs[0].affine(P[0])
+          Rs.batchAffine(P)
+          doAssert bool(Qs[0] == Rs[0]), "batchAffine single-element mismatch"
+
+      test(ec, gen = Uniform)
+      test(ec, gen = HighHammingWeight)
+      test(ec, gen = Long01Sequence)
+
+    # Boundary: all-neutral batch
+    test "batchAffine with all neutral points":
+      proc test(EC: typedesc) =
+        const batchSize = 10
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Ps[i].setNeutral()
+            Qs[i].setNeutral()
+          Rs.batchAffine(Ps)
+          for i in 0 ..< batchSize:
+            doAssert bool(Qs[i] == Rs[i]), "batchAffine all-neutral mismatch at " & $i
+      test(ec)
+
+    # Boundary: varied batch sizes
+    test "batchAffine with varied batch sizes":
+      proc testSize(EC: typedesc, batchSize: static int, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          for i in 0 ..< batchSize:
+            Ps[i] = rng.random_point(EC, randZ = true, gen)
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Qs[i].affine(Ps[i])
+          Rs.batchAffine(Ps)
+          for i in 0 ..< batchSize:
+            doAssert bool(Qs[i] == Rs[i]), "batchAffine size-" & $batchSize & " mismatch at " & $i
+
+      testSize(ec, 2, gen = Uniform)
+      testSize(ec, 2, gen = HighHammingWeight)
+      testSize(ec, 2, gen = Long01Sequence)
+      testSize(ec, 16, gen = Uniform)
+      testSize(ec, 16, gen = HighHammingWeight)
+      testSize(ec, 16, gen = Long01Sequence)
+
+
+
 
 proc run_EC_twedwards_affine_conversion_vartime*(
        ec: typedesc,
@@ -1428,6 +1584,58 @@ proc run_EC_twedwards_affine_conversion_vartime*(
       test(ec, gen = Uniform)
       test(ec, gen = HighHammingWeight)
       test(ec, gen = Long01Sequence)
+
+    # Boundary: single-element batch
+    test "batchAffine_vartime with single element":
+      proc test(EC: typedesc, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          var P: array[1, EC]
+          P[0] = rng.random_point(EC, randZ = true, gen)
+          var Qs, Rs: array[1, affine(EC)]
+          Qs[0].affine(P[0])
+          Rs.batchAffine_vartime(P)
+          doAssert bool(Qs[0] == Rs[0]), "batchAffine_vartime single-element mismatch"
+
+      test(ec, gen = Uniform)
+      test(ec, gen = HighHammingWeight)
+      test(ec, gen = Long01Sequence)
+
+    # Boundary: all-neutral batch
+    test "batchAffine_vartime with all neutral points":
+      proc test(EC: typedesc) =
+        const batchSize = 10
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Ps[i].setNeutral()
+            Qs[i].setNeutral()
+          Rs.batchAffine_vartime(Ps)
+          for i in 0 ..< batchSize:
+            doAssert bool(Qs[i] == Rs[i]), "batchAffine_vartime all-neutral mismatch at " & $i
+      test(ec)
+
+    # Boundary: varied batch sizes
+    test "batchAffine_vartime with varied batch sizes":
+      proc testSize(EC: typedesc, batchSize: static int, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          for i in 0 ..< batchSize:
+            Ps[i] = rng.random_point(EC, randZ = true, gen)
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Qs[i].affine(Ps[i])
+          Rs.batchAffine_vartime(Ps)
+          for i in 0 ..< batchSize:
+            doAssert bool(Qs[i] == Rs[i]), "batchAffine_vartime size-" & $batchSize & " mismatch at " & $i
+
+      testSize(ec, 2, gen = Uniform)
+      testSize(ec, 2, gen = HighHammingWeight)
+      testSize(ec, 2, gen = Long01Sequence)
+      testSize(ec, 16, gen = Uniform)
+      testSize(ec, 16, gen = HighHammingWeight)
+      testSize(ec, 16, gen = Long01Sequence)
+
 
 
 proc run_EC_conversion_failures*(
