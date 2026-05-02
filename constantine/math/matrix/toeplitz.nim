@@ -219,8 +219,8 @@ proc init*[EC, ECaff, F](
 ): ToeplitzStatus {.raises: [], meter.} =
   ## Initialize a ToeplitzAccumulator for matrix-vector multiplication.
   ##
-  ## The accumulator stores coefficients and EC points in a transposed layout:
-  ## `coeffs[i*L + offset]` and `points[i*L + offset]`, so that all `L` layers
+  ## The accumulator stores coefficients and EC points in position-major layout:
+  ## `coeffs[i * L + offset]` and `points[i * L + offset]`, so that all `L` layers
   ## for a given output position `i` are contiguous in memory. This layout is
   ## optimized for the per-position MSM in `finish`.
   ##
@@ -268,13 +268,15 @@ proc init*[EC, ECaff, F](
   ctx.size = size
   ctx.L = L
   ctx.offset = 0
-  # Allocate transposed buffers: [size*L]
+  # Allocate position-major buffers: [size * L]
+  # coeffs[i * L + offset] and points[i * L + offset]
   ctx.coeffs = allocHeapArrayAligned(F, size * L, alignment = 64)
   ctx.points = allocHeapArrayAligned(ECaff, size * L, alignment = 64)
   # Allocate scratch buffer for zero-alloc hot path
   ctx.scratchScalars = allocHeapArrayAligned(F, max(size, L), alignment = 64)
 
   return Toeplitz_Success
+
 proc accumulate*[EC, ECaff, F](
   ctx: var ToeplitzAccumulator[EC, ECaff, F],
   circulant: openArray[F],
@@ -288,7 +290,7 @@ proc accumulate*[EC, ECaff, F](
   block HappyPath:
     check HappyPath, fft_nn(ctx.frFftDesc, ctx.scratchScalars.toOpenArray(n), circulant)
 
-    # Store transposed: coeffs[i*L + offset] and points[i*L + offset]
+    # Store in position-major layout: coeffs[i*L + offset] and points[i*L + offset]
     for i in 0 ..< n:
       ctx.coeffs[i * ctx.L + ctx.offset] = ctx.scratchScalars[i]
       ctx.points[i * ctx.L + ctx.offset] = vFft[i]
@@ -313,6 +315,10 @@ proc finish*[EC, ECaff, F](
   ## After all `n` MSMs, an in-place EC IFFT is applied to `output` via
   ## `ec_ifft_nn`. The `bit_reversal_permutation` inside IFFT handles the
   ## aliasing (same buffer for input and output) internally.
+  ##
+  ## Data is stored in position-major layout: `coeffs[i * L + offset]` and
+  ## `points[i * L + offset]`. For each position `i`, both `fromField` reads
+  ## and the `pointsPtr` slice are contiguous, so no temporary buffer is needed.
   ##
   ## Preconditions:
   ##   - `offset == L` (all `L` `accumulate` calls must have been made)
@@ -340,14 +346,13 @@ proc finish*[EC, ECaff, F](
   let scalars = cast[ptr UncheckedArray[F.getBigInt()]](ctx.scratchScalars)
 
   for i in 0 ..< n:
-    # Load L scalars for position i
+    # Load L scalars for position i — contiguous in both source and destination
     for offset in 0 ..< ctx.L:
       scalars[offset].fromField(ctx.coeffs[i * ctx.L + offset])
 
-    # MSM: output[i] = Σ scalars[offset] * points[offset]
+    # MSM: points[i * L .. i * L + L - 1] are contiguous — pass directly
     let pointsPtr = cast[ptr UncheckedArray[ECaff]](addr ctx.points[i * ctx.L])
     output[i].multiScalarMul_vartime(scalars, pointsPtr, ctx.L)
-
   # IFFT in-place — bit_reversal_permutation handles aliasing internally
   checkReturn ec_ifft_nn(ctx.ecFftDesc, output, output)
   return Toeplitz_Success
