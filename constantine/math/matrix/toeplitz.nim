@@ -277,7 +277,11 @@ proc finish*[EC, ECaff, F](
   if n == 0 or output.len != n or ctx.offset != ctx.L:
     return Toeplitz_MismatchedSizes
 
-  # Cast scratchScalars (type F) to F.getBigInt() — same sizeof per field convention
+  # Invariant: scratchScalars is typed as F but re-interpreted as F.getBigInt() below.
+  # This requires sizeof(F) == sizeof(F.getBigInt()), which holds for all production
+  # field types (e.g. Fr[BLS12_381] is 32 bytes in both representations).
+  static: doAssert sizeof(F) == sizeof(F.getBigInt()), "scratchScalars cast requires sizeof(F) == sizeof(F.getBigInt())"
+
   let scalars = cast[ptr UncheckedArray[F.getBigInt()]](ctx.scratchScalars)
 
   for i in 0 ..< n:

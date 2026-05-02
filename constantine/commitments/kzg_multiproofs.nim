@@ -289,11 +289,10 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
   for i in 0 ..< CDSdiv2 - 1:
     polyphaseSpectrum[i].fromAffine(powers_of_tau.coefs[j])
     j -= L
-  # Handle last element before zero padding
-  if j >= 0:
-    polyphaseSpectrum[CDSdiv2 - 1].fromAffine(powers_of_tau.coefs[j])
-  else:
-    polyphaseSpectrum[CDSdiv2 - 1].setNeutral()
+  # j is always < 0 here: CDS*L == 2*N (invariant at line 353), so CDSdiv2*L = N.
+  # After the loop: j = start - (CDSdiv2-1)*L = N - CDSdiv2*L - 1 - offset = -1 - offset < 0.
+  doAssert j < 0, "Internal error: polyphase extraction index should be negative at CDSdiv2-1 (CDS*L must equal 2*N)"
+  polyphaseSpectrum[CDSdiv2 - 1].setNeutral()
   for j in CDSdiv2 ..< CDS:
     polyphaseSpectrum[j].setNeutral()
 

@@ -25,7 +25,7 @@ import
 func batchAffine*[F](
        affs: ptr UncheckedArray[EC_TwEdw_Aff[F]],
        projs: ptr UncheckedArray[EC_TwEdw_Prj[F]],
-       N: int) =
+       N: int) {.meter.} =
   if N <= 0:
     return
 
@@ -98,7 +98,7 @@ func batchAffine*[M, N: static int, F](
 func batchAffine_vartime*[F](
        affs: ptr UncheckedArray[EC_TwEdw_Aff[F]],
        projs: ptr UncheckedArray[EC_TwEdw_Prj[F]],
-       N: int) {.tags:[VarTime].} =
+       N: int) {.tags:[VarTime], meter.} =
   if N <= 0:
     return
 
