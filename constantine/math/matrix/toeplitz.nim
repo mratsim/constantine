@@ -69,11 +69,13 @@ func checkCirculant*[F](
   if not (circulant[0] == poly[d - offset]).bool:
     return false
 
-  # Check zero padding (indices 1 to r)
-  # Note: Fixed from `1 .. r + 1` to avoid OOB when r=1
+  # Check zero padding (indices 1 to r+1)
   for i in 1 .. r:
     if not circulant[i].isZero().bool:
       return false
+  # Also check index r+1 when it is in bounds (r >= 2)
+  if r + 1 < k2 and not circulant[r + 1].isZero().bool:
+    return false
 
   # Check strided elements: output[2r-j] = poly[d-offset-j*stride] for j=1..r-2
   for j in 1 ..< r - 1:

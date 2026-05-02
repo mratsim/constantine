@@ -26,6 +26,9 @@ func batchAffine*[F](
        affs: ptr UncheckedArray[EC_TwEdw_Aff[F]],
        projs: ptr UncheckedArray[EC_TwEdw_Prj[F]],
        N: int) {.noInline, tags:[Alloca].} =
+  if N <= 0:
+    return
+
   # Algorithm: Montgomery's batch inversion
   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
   #   Section 10.3.1
@@ -94,6 +97,9 @@ func batchAffine_vartime*[F](
        affs: ptr UncheckedArray[EC_TwEdw_Aff[F]],
        projs: ptr UncheckedArray[EC_TwEdw_Prj[F]],
        N: int) {.noInline, tags:[VarTime, Alloca].} =
+  if N <= 0:
+    return
+
   # Algorithm: Montgomery's batch inversion (variable-time version)
   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
   #   Section 10.3.1
