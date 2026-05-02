@@ -199,22 +199,22 @@ func batchAffine_vartime*[F, G](
       affs[i].y.coords[0].mres.limbs[0]
 
   zero(0) = SecretWord projs[0].z.isZero()
-  if zero(0).isZero().bool():
-    affs[0].x = projs[0].z
-  else:
+  if zero(0).bool():
     affs[0].x.setOne()
+  else:
+    affs[0].x = projs[0].z
 
   for i in 1 ..< N:
     # Skip zero z-coordinates (infinity points)
     zero(i) = SecretWord projs[i].z.isZero()
-    if zero(i).isZero().bool():
+    if zero(i).bool():
+      # Maintain the product chain: multiply by 1
+      affs[i].x = affs[i-1].x
+    else:
       if i != N-1:
         affs[i].x.prod(affs[i-1].x, projs[i].z, lazyReduce = true)
       else:
         affs[i].x.prod(affs[i-1].x, projs[i].z, lazyReduce = false)
-    else:
-      # Maintain the product chain: multiply by 1
-      affs[i].x = affs[i-1].x
 
   var accInv {.noInit.}: F
   accInv.inv_vartime(affs[N-1].x)
@@ -222,7 +222,10 @@ func batchAffine_vartime*[F, G](
   for i in countdown(N-1, 1):
     # Extract 1/Pᵢ
     var invi {.noInit.}: F
-    if zero(i).isZero().bool():
+    if zero(i).bool():
+      # accInv is unchanged
+      affs[i].setNeutral()
+    else:
       invi.prod(accInv, affs[i-1].x, lazyReduce = true)
       accInv.prod(accInv, projs[i].z, lazyReduce = true)
 
@@ -230,16 +233,12 @@ func batchAffine_vartime*[F, G](
       affs[i].x.prod(projs[i].x, invi)
       affs[i].y.prod(projs[i].y, invi)
 
-    else:
-      # accInv is unchanged
-      affs[i].setNeutral()
-
   block: # tail
-    if zero(0).isZero().bool():
+    if zero(0).bool():
+      affs[0].setNeutral()
+    else:
       affs[0].x.prod(projs[0].x, accInv)
       affs[0].y.prod(projs[0].y, accInv)
-    else:
-      affs[0].setNeutral()
 
 func batchAffine_vartime*[N: static int, F, G](
        affs: var array[N, EC_ShortW_Aff[F, G]],
@@ -274,22 +273,22 @@ func batchAffine_vartime*[F, G](
       affs[i].y.coords[0].mres.limbs[0]
 
   zero(0) = SecretWord jacs[0].z.isZero()
-  if zero(0).isZero().bool():
-    affs[0].x = jacs[0].z
-  else:
+  if zero(0).bool():
     affs[0].x.setOne()
+  else:
+    affs[0].x = jacs[0].z
 
   for i in 1 ..< N:
     # Skip zero z-coordinates (infinity points)
     zero(i) = SecretWord jacs[i].z.isZero()
-    if zero(i).isZero().bool():
+    if zero(i).bool():
+      # Maintain the product chain: multiply by 1
+      affs[i].x = affs[i-1].x
+    else:
       if i != N-1:
         affs[i].x.prod(affs[i-1].x, jacs[i].z, lazyReduce = true)
       else:
         affs[i].x.prod(affs[i-1].x, jacs[i].z, lazyReduce = false)
-    else:
-      # Maintain the product chain: multiply by 1
-      affs[i].x = affs[i-1].x
 
   var accInv {.noInit.}: F
   accInv.inv_vartime(affs[N-1].x)
@@ -297,7 +296,10 @@ func batchAffine_vartime*[F, G](
   for i in countdown(N-1, 1):
     # Extract 1/Pᵢ
     var invi {.noInit.}: F
-    if zero(i).isZero().bool():
+    if zero(i).bool():
+      # accInv is unchanged
+      affs[i].setNeutral()
+    else:
       invi.prod(accInv, affs[i-1].x, lazyReduce = true)
       accInv.prod(accInv, jacs[i].z, lazyReduce = true)
 
@@ -307,20 +309,17 @@ func batchAffine_vartime*[F, G](
       affs[i].x.prod(jacs[i].x, invi2)
       invi.prod(invi, invi2, lazyReduce = true)
       affs[i].y.prod(jacs[i].y, invi)
-    else:
-      # accInv is unchanged
-      affs[i].setNeutral()
 
 
   block: # tail
     var invi2 {.noinit.}: F
-    if zero(0).isZero().bool():
+    if zero(0).bool():
+      affs[0].setNeutral()
+    else:
       invi2.square(accInv, lazyReduce = true)
       affs[0].x.prod(jacs[0].x, invi2)
       accInv.prod(accInv, invi2, lazyReduce = true)
       affs[0].y.prod(jacs[0].y, accInv)
-    else:
-      affs[0].setNeutral()
 
 func batchAffine_vartime*[N: static int, F, G](
        affs: var array[N, EC_ShortW_Aff[F, G]],
