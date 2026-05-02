@@ -304,13 +304,13 @@ func bit_reversal_permutation_noalias*[T](dst{.noalias.}: var openArray[T], src{
     # Use naive algorithm for small sizes
     bit_reversal_permutation_naive(dst, src)
 
-func bit_reversal_permutation*[T](dst: var openArray[T], src: openArray[T]) {.inline.} =
+func bit_reversal_permutation*[T](dst: var openArray[T], src: openArray[T]) =
   ## Out-of-place bit reversal permutation with aliasing detection.
   ##
   ## If dst and src are the same array (aliasing), a temporary buffer is allocated.
-  debug: doAssert src.len.uint.isPowerOf2_vartime()
+  debug: doAssert dst.len.uint.isPowerOf2_vartime()
   debug: doAssert dst.len == src.len
-  debug: doAssert buf.len > 0
+  debug: doAssert dst.len > 0
 
   if dst[0].addr == src[0].addr:
     # Alias: allocate temp, permute to temp, copy back
@@ -321,11 +321,11 @@ func bit_reversal_permutation*[T](dst: var openArray[T], src: openArray[T]) {.in
   else:
     bit_reversal_permutation_noalias(dst, src)
 
-func bit_reversal_permutation*[T](buf: var openArray[T]) {.inline.} =
+func bit_reversal_permutation*[T](buf: var openArray[T]) =
   ## In-place bit reversal permutation.
   ##
   ## Out-of-place is at least 2x faster than in-place so dispatch to out-of-place
-  debug: doAssert src.len.uint.isPowerOf2_vartime()
+  debug: doAssert buf.len.uint.isPowerOf2_vartime()
   debug: doAssert buf.len > 0
   var tmp = allocHeapArrayAligned(T, buf.len, alignment = 64)
   bit_reversal_permutation_noalias(tmp.toOpenArray(0, buf.len-1), buf)
