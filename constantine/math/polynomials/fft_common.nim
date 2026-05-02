@@ -287,7 +287,7 @@ func bit_reversal_permutation_cobra[T](buf: var openArray[T]) {.used.} =
 
   freeHeap(t)
 
-func bit_reversal_permutation_noalias*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) {.inline.} =
+func bit_reversal_permutation_noalias[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) {.inline.} =
   ## Out-of-place bit reversal permutation (no aliasing between dst and src).
   ##
   ## Automatically selects between naive and COBRA algorithms based on size.

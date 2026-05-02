@@ -217,6 +217,35 @@ proc init*[EC, ECaff, F](
   size: int,
   L: int
 ): ToeplitzStatus {.raises: [], meter.} =
+  ## Initialize a ToeplitzAccumulator for matrix-vector multiplication.
+  ##
+  ## The accumulator stores coefficients and EC points in a transposed layout:
+  ## `coeffs[i*L + offset]` and `points[i*L + offset]`, so that all `L` layers
+  ## for a given output position `i` are contiguous in memory. This layout is
+  ## optimized for the per-position MSM in `finish`.
+  ##
+  ## Three 64-byte-aligned heap allocations are performed:
+  ##   - `coeffs`:      `[size * L]` field elements  (~32 bytes each)
+  ##   - `points`:      `[size * L]` affine EC points (~48 bytes each for BLS12-381)
+  ##   - `scratchScalars`: `[max(size, L)]` field elements (reusable scratch buffer)
+  ##
+  ## For EIP-7594 (size=128, L=64) this totals approximately 660 KB.
+  ## The scratch buffer is typed as `F` but re-interpreted as `F.getBigInt()`
+  ## in `finish` via type-punning (requires `sizeof(F) == sizeof(F.getBigInt())`).
+  ##
+  ## The `frFftDesc` and `ecFftDesc` descriptors are stored by value and are
+  ## user-owned; they are NOT freed by `=destroy`.
+  ##
+  ## Calling `init` on an already-initialized context frees existing allocations
+  ## first (defensive against accidental double-init).
+  ##
+  ## @param ctx: accumulator to initialize
+  ## @param frFftDesc: FFT descriptor for field-element transforms (stored, not freed)
+  ## @param ecFftDesc: FFT descriptor for EC-point transforms (stored, not freed)
+  ## @param size: transform size (must be a power of two and > 0)
+  ## @param L: number of layers/strides (must be > 0)
+  ## @return: Toeplitz_Success on success
+  ##          Toeplitz_SizeNotPowerOfTwo if `size` or `L` is non-positive or `size` is not a power of two
   # Free existing allocations (defensive: handles accidental double-init)
   if not ctx.coeffs.isNil():
     freeHeapAligned(ctx.coeffs)
@@ -273,7 +302,32 @@ proc finish*[EC, ECaff, F](
   ctx: var ToeplitzAccumulator[EC, ECaff, F],
   output: var openArray[EC]
 ): ToeplitzStatus {.raises: [], meter.} =
-  ## MSM per position, then IFFT
+  ## Finalize the accumulator: perform per-position MSM followed by in-place IFFT.
+  ##
+  ## For each output position `i` in `0..n-1`, this extracts the `L` scalars
+  ## from `coeffs` (converting via `fromField`), gathers the `L` affine points
+  ## from `points`, and computes
+  ##   `output[i] = Σ_j scalars[j] * points[j]`
+  ## using `multiScalarMul_vartime`.
+  ##
+  ## After all `n` MSMs, an in-place EC IFFT is applied to `output` via
+  ## `ec_ifft_nn`. The `bit_reversal_permutation` inside IFFT handles the
+  ## aliasing (same buffer for input and output) internally.
+  ##
+  ## Preconditions:
+  ##   - `offset == L` (all `L` `accumulate` calls must have been made)
+  ##   - `output.len == size` (the transform dimension)
+  ##
+  ## The `scratchScalars` buffer is reused during this proc: it is type-punned
+  ## via `cast` to `ptr UncheckedArray[F.getBigInt()]` to feed `multiScalarMul`. This
+  ## requires `sizeof(F) == sizeof(F.getBigInt())`, which is verified at compile time.
+  ##
+  ## `finish` should be called exactly once after the `L` `accumulate` calls.
+  ##
+  ## @param ctx: fully-accumulated ToeplitzAccumulator (`offset` must equal `L`)
+  ## @param output: result buffer of length `size` (EC points, overwritten)
+  ## @return: Toeplitz_Success on success
+  ##          Toeplitz_MismatchedSizes if `offset != L`, `size == 0`, or `output.len != size`
   let n = ctx.size
   if n == 0 or output.len != n or ctx.offset != ctx.L:
     return Toeplitz_MismatchedSizes
