@@ -12,7 +12,7 @@
 # Optimized for large field elements (e.g., Fr[BLS12_381] - 32 bytes)
 #
 # Benchmark results (512x512 matrix, 32-byte elements):
-# - 2D Blocked (block=16):   20.4 GB/s  ⭐ WINNER
+# - 2D Blocked (block=16):   20.4 GB/s  [WINNER]
 # - 2D Blocked (block=32):   20.1 GB/s
 # - 2D Blocked (block=8):    19.8 GB/s
 # - Naive sequential:        10.1 GB/s

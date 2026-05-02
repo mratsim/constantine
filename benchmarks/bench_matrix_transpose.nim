@@ -16,7 +16,7 @@
 # 1. Naive sequential
 # 2. Naive with exchanged loop order
 # 3. 1D blocked (various block sizes)
-# 4. 2D blocked/tiled (various block sizes) ⭐ WINNER
+# 4. 2D blocked/tiled (various block sizes) [WINNER]
 # 5. Divide & conquer cache-oblivious (untested, for reference)
 #
 # See: https://github.com/mratsim/laser/blob/master/benchmarks/transpose/transpose_bench.nim
@@ -164,7 +164,7 @@ benchBlocked1D(64)
 benchBlocked1D(128)
 
 # ############################################################
-# 4. 2D Blocked (Tiled) Transpose ⭐ WINNER
+# 4. 2D Blocked (Tiled) Transpose [WINNER]
 # ############################################################
 
 proc blocked2DTranspose[T](dst, src: ptr UncheckedArray[T], M, N: int, blockSize: static int) =

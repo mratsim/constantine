@@ -25,9 +25,9 @@ export FFT_Status
 #
 # For FK20, the Toeplitz matrix has a SPECIAL SPARSE structure:
 # The circulant coefficients are:
-#   c[0] = poly[n-1]
-#   c[1..n+1] = 0
-#   c[n+2..2n-1] = poly[1..n-2]
+#   c[0] = poly[r-1]
+#   c[1..r+1] = 0
+#   c[r+2..2r-1] = poly[1..r-2]
 #
 # General algorithm for O(n log n) Toeplitz matrix-vector multiplication:
 # 1. Build circulant vector a_2n from Toeplitz entries

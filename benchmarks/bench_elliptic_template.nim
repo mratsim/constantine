@@ -136,7 +136,7 @@ proc affFromProjBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, ite
       bench("EC Projective to Affine -   batched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
         r.asUnchecked().batchAffine(points.asUnchecked(), numPoints)
     block:
-      bench("EC Projective to Affine - batched_vt " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+      bench("EC Projective to Affine -   batched_vt " & $EC.G & " (" & $numPoints & " points)", EC, iters):
         r.asUnchecked().batchAffine_vartime(points.asUnchecked(), numPoints)
   else:
     bench("EC Projective to Affine - unbatched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
@@ -155,7 +155,7 @@ proc affFromJacBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, iter
       bench("EC Jacobian to Affine -   batched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
         r.asUnchecked().batchAffine(points.asUnchecked(), numPoints)
     block:
-      bench("EC Jacobian to Affine - batched_vt " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+      bench("EC Jacobian to Affine -   batched_vt " & $EC.G & " (" & $numPoints & " points)", EC, iters):
         r.asUnchecked().batchAffine_vartime(points.asUnchecked(), numPoints)
   else:
     bench("EC Jacobian to Affine - unbatched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
