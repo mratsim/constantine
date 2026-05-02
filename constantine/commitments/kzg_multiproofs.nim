@@ -357,7 +357,7 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
 
   for offset in 0 ..< L:
     let status = computePolyphaseDecompositionFourierOffset(polyphaseSpectrumBankJac[offset], powers_of_tau, ecfft_desc, offset)
-    doAssert status == FFT_Success, "Polyphase decomposition FFT failed at offset " & $offset
+    doAssert status == FFT_Success, "Internal error: Polyphase decomposition FFT failed at offset " & $offset
 
   # Half the points are points at infinity. A vartime batch inversion
   # saves a lot of compute, 3*L*CDS

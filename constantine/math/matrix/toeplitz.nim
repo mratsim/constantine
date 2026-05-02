@@ -49,6 +49,7 @@ func checkCirculant*[F](
   ## Checks:
   ## - circulant[0] == poly[n-1-offset]
   ## - circulant[1..r] are all zero
+  ## - circulant[r+1] is zero when r+1 < 2*r (bounds-checked for r >= 2)
   ## - circulant[r+2..2r-1] match poly values at stride intervals
   ##
   ## @param circulant: circulant matrix to validate (length 2*r)
