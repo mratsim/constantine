@@ -227,7 +227,7 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
        polyphaseSpectrum: var array[CDS, EC_ShortW_Jac[Fp[Name], G1]],
        powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
        ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
-       offset: int = 0): FFT_Status {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
+       offset: int = 0): FFT_Status {.tags:[HeapAlloc, Vartime], meter.} =
   ## Compute FFT of one polyphase component of the SRS (Toeplitz input spectrum).
   ##
   ## DSP Terminology (Crypto ↔ Signal Processing Mapping)
@@ -303,7 +303,7 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
 func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static Algebra](
        polyphaseSpectrumBank: var array[L, array[CDS, EC_ShortW_Aff[Fp[Name], G1]]],
        powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
-       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]]) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
+       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]]) {.tags:[HeapAlloc, Vartime], meter.} =
   ## Compute polyphase decomposition Fourier transform for all L phases (complete polyphase filter bank).
   ##
   ## DSP Terminology (Crypto ↔ Signal Processing Mapping)

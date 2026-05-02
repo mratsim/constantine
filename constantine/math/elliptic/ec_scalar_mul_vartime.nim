@@ -335,7 +335,7 @@ func accumNAF[precompSize, NafMax: static int, EC, ECaff](
     elif digit < 0:
       P ~-= tab[-digit shr 1]
 
-func scalarMul_wNAF_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime, Alloca], meter.} =
+func scalarMul_wNAF_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime], meter.} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
@@ -375,7 +375,7 @@ func scalarMul_wNAF_vartime*[EC](P: var EC, scalar: BigInt, window: static int) 
 func scalarMulEndo_wNAF_vartime*[scalBits: static int; EC](
        P: var EC,
        scalar: BigInt[scalBits],
-       window: static int) {.tags:[VarTime, Alloca], meter.} =
+       window: static int) {.tags:[VarTime], meter.} =
   ## Endomorphism-accelerated windowed vartime scalar multiplication
   ##
   ##   P <- [k] P

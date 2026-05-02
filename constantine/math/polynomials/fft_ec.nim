@@ -67,7 +67,7 @@ func new*(T: type ECFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
 func ec_fft_nn_impl_recursive[EC; bits: static int](
        output: var StridedView[EC],
        vals: StridedView[EC],
-       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime, Alloca].} =
+       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime].} =
   ## Recursive Cooley-Tukey EC FFT (natural to natural)
   if output.len == 1:
     output[0] = vals[0]
@@ -93,7 +93,7 @@ func ec_fft_nn_impl_recursive[EC; bits: static int](
 func ec_fft_nn_recursive[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime], meter.} =
   ## EC FFT from natural order to natural order (Recursive Cooley-Tukey).
   checkSizesReturnEarly(desc, output, vals)
 
@@ -108,7 +108,7 @@ func ec_fft_nn_recursive[EC](
 func ec_ifft_nn_recursive[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime], meter.} =
   ## Inverse FFT from natural order to natural order
   checkSizesReturnEarly(desc, output, vals)
 
@@ -134,7 +134,7 @@ func ec_ifft_nn_recursive[EC](
 
 func ec_fft_nr_impl_iterative_dif[EC; bits: static int](
        output: var StridedView[EC],
-       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime, Alloca].} =
+       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime].} =
   ## In-place iterative EC FFT (Cooley-Tukey DIF - Decimation-In-Frequency)
   ## Input: natural order values
   ## Output: bit-reversed order values in Fourier domain
@@ -163,7 +163,7 @@ func ec_fft_nr_impl_iterative_dif[EC; bits: static int](
 
 func ec_fft_rn_impl_iterative_dit[EC; bits: static int](
        output: var StridedView[EC],
-       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime, Alloca].} =
+       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime].} =
   ## In-place iterative EC FFT (Cooley-Tukey DIT - Decimation-In-Time)
   ## Input: bit-reversed order values
   ## Output: natural order values in Fourier domain
@@ -193,7 +193,7 @@ func ec_fft_rn_impl_iterative_dit[EC; bits: static int](
 func ec_fft_nr_iterative[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime], meter.} =
   ## EC FFT from natural order to bit-reversed order using iterative Cooley-Tukey DIF.
   ## Input: natural order values
   ## Output: bit-reversed order values in Fourier domain
@@ -229,7 +229,7 @@ func ec_fft_nr_iterative[EC](
 func ec_fft_rn_iterative_dit[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime], meter.} =
   ## EC FFT from bit-reversed order to natural order using iterative Cooley-Tukey DIT.
   ## Input: bit-reversed order values
   ## Output: natural order values in Fourier domain
@@ -259,7 +259,7 @@ func ec_fft_rn_iterative_dit[EC](
 
 func ec_ifft_rn_impl_iterative[EC; bits: static int](
        output: var StridedView[EC],
-       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime, Alloca].} =
+       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime].} =
   ## In-place iterative EC IFFT (Cooley-Tukey DIT - Decimation-In-Time)
   ## Input: bit-reversed order values in Fourier domain
   ## Output: natural order values
@@ -297,7 +297,7 @@ func ec_ifft_rn_impl_iterative[EC; bits: static int](
 func ec_ifft_rn_iterative_dit[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime], meter.} =
   ## EC IFFT from bit-reversed order to natural order using iterative DIT.
   ## Input: bit-reversed order values in Fourier domain
   ## Output: natural order values
@@ -339,7 +339,7 @@ func ec_ifft_rn_iterative_dit[EC](
 proc ec_fft_nn_via_iterative_dif_and_bitrev[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca], meter.} =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
   ## Natural → Natural via: Iterative DIF (NR) + BitRev
   let status = ec_fft_nr_iterative(desc, output, vals)
   if status != FFT_Success: return status
@@ -349,7 +349,7 @@ proc ec_fft_nn_via_iterative_dif_and_bitrev[EC](
 proc ec_fft_nn_via_bitrev_and_iterative_dit[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca], meter.} =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
   ## Natural → Natural via: BitRev + Iterative DIT (RN)
   checkSizesReturnEarly(desc, output, vals)
 
@@ -362,7 +362,7 @@ proc ec_fft_nn_via_bitrev_and_iterative_dit[EC](
 proc ec_ifft_nn_via_bitrev_and_iterative_dit[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca], meter.} =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
   ## Natural → Natural via: BitRev + Iterative DIT (RN)
   ## Input: natural order values in Fourier domain
   ## Output: natural order values
@@ -382,7 +382,7 @@ proc ec_ifft_nn_via_bitrev_and_iterative_dit[EC](
 func ec_fft_nr*[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime], meter.} =
   ## EC FFT from natural order to bit-reversed order.
   ## Dispatches to: Iterative DIF directly
   ##
@@ -392,7 +392,7 @@ func ec_fft_nr*[EC](
 func ec_fft_nn*[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.inline, tags: [VarTime, HeapAlloc, Alloca], meter.} =
+       vals: openarray[EC]): FFTStatus {.inline, tags: [VarTime, HeapAlloc], meter.} =
   ## EC FFT from natural order to natural order.
   ## Dispatches to: Iterative DIF (NR) + BitRev
   ##
@@ -405,7 +405,7 @@ func ec_fft_nn*[EC](
 func ec_ifft_nn*[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.inline, tags: [VarTime, HeapAlloc, Alloca], meter.} =
+       vals: openarray[EC]): FFTStatus {.inline, tags: [VarTime, HeapAlloc], meter.} =
   ## EC IFFT from natural order to natural order.
   ## Dispatches to: BitRev + Iterative DIT
   ##
@@ -415,7 +415,7 @@ func ec_ifft_nn*[EC](
 func ec_ifft_rn*[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
+       vals: openarray[EC]): FFTStatus {.tags: [VarTime], meter.} =
   ## EC IFFT from bit-reversed order to natural order.
   ## Dispatches to: Iterative DIT directly
   ##

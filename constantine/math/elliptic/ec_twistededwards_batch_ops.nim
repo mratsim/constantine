@@ -25,7 +25,7 @@ import
 func batchAffine*[F](
        affs: ptr UncheckedArray[EC_TwEdw_Aff[F]],
        projs: ptr UncheckedArray[EC_TwEdw_Prj[F]],
-       N: int) {.noInline, tags:[Alloca].} =
+       N: int) =
   if N <= 0:
     return
 
@@ -40,17 +40,19 @@ func batchAffine*[F](
   #   https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf
 
   # To avoid temporaries, we store partial accumulations
-  # in affs[i].x
-  let zeroes = allocStackArray(SecretBool, N)
+  # in affs[i].x and zero-tracking in affs[i].y
+  template zero(i: int): SecretWord =
+    affs[i].y.mres.limbs[0]
+
   affs[0].x = projs[0].z
-  zeroes[0] = affs[0].x.isZero()
-  affs[0].x.csetOne(zeroes[0])
+  zero(0) = SecretWord affs[0].x.isZero()
+  affs[0].x.csetOne(SecretBool zero(0))
 
   for i in 1 ..< N:
     # Skip zero z-coordinates (infinity points)
     var z = projs[i].z
-    zeroes[i] = z.isZero()
-    z.csetOne(zeroes[i])
+    zero(i) = SecretWord z.isZero()
+    z.csetOne(SecretBool zero(i))
 
     if i != N-1:
       affs[i].x.prod(affs[i-1].x, z, lazyReduce = true)
@@ -62,21 +64,21 @@ func batchAffine*[F](
 
   for i in countdown(N-1, 1):
     # Extract 1/Pᵢ
-    var invi {.noInit.}: F
+    var invi {.noInit.}, invi_next {.noInit.}: F
     invi.prod(accInv, affs[i-1].x, lazyReduce = true)
-    invi.csetZero(zeroes[i])
+    invi.csetZero(SecretBool zero(i))
+
+    # next iteration
+    invi_next = projs[i].z
+    invi_next.csetOne(SecretBool zero(i))
+    accInv.prod(accInv, invi_next, lazyReduce = true)
 
     # Now convert Pᵢ to affine
     affs[i].x.prod(projs[i].x, invi)
     affs[i].y.prod(projs[i].y, invi)
 
-    # next iteration
-    invi = projs[i].z
-    invi.csetOne(zeroes[i])
-    accInv.prod(accInv, invi, lazyReduce = true)
-
   block: # tail
-    accInv.csetZero(zeroes[0])
+    accInv.csetZero(SecretBool zero(0))
     affs[0].x.prod(projs[0].x, accInv)
     affs[0].y.prod(projs[0].y, accInv)
 
@@ -96,7 +98,7 @@ func batchAffine*[M, N: static int, F](
 func batchAffine_vartime*[F](
        affs: ptr UncheckedArray[EC_TwEdw_Aff[F]],
        projs: ptr UncheckedArray[EC_TwEdw_Prj[F]],
-       N: int) {.noInline, tags:[VarTime, Alloca].} =
+       N: int) {.tags:[VarTime].} =
   if N <= 0:
     return
 
@@ -111,18 +113,20 @@ func batchAffine_vartime*[F](
   #   https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf
 
   # To avoid temporaries, we store partial accumulations
-  # in affs[i].x
-  let zeroes = allocStackArray(bool, N)
+  # in affs[i].x and zero-tracking in affs[i].y
+  template zero(i: int): SecretWord =
+    affs[i].y.mres.limbs[0]
 
-  zeroes[0] = projs[0].z.isZero().bool()
-  if zeroes[0]:
+  zero(0) = SecretWord projs[0].z.isZero()
+  if zero(0).bool():
     affs[0].x.setOne()
   else:
     affs[0].x = projs[0].z
 
   for i in 1 ..< N:
-    zeroes[i] = projs[i].z.isZero().bool()
-    if zeroes[i]:
+    # Skip zero z-coordinates (infinity points)
+    zero(i) = SecretWord projs[i].z.isZero()
+    if zero(i).bool():
       # Maintain the product chain: multiply by 1
       affs[i].x = affs[i-1].x
     else:
@@ -137,7 +141,7 @@ func batchAffine_vartime*[F](
   for i in countdown(N-1, 1):
     # Extract 1/Pᵢ
     var invi {.noInit.}: F
-    if zeroes[i]:
+    if zero(i).bool():
       # accInv is unchanged
       affs[i].setNeutral()
     else:
@@ -149,7 +153,7 @@ func batchAffine_vartime*[F](
       affs[i].y.prod(projs[i].y, invi)
 
   block: # tail
-    if zeroes[0]:
+    if zero(0).bool():
       affs[0].setNeutral()
     else:
       affs[0].x.prod(projs[0].x, accInv)
