@@ -1,0 +1,2800 @@
+diff --git a/.agents/skills/debugging/SKILL.md b/.agents/skills/debugging/SKILL.md
+index fb15780d..e5dcb628 100644
+--- a/.agents/skills/debugging/SKILL.md
++++ b/.agents/skills/debugging/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: debugging
+-description: Debugging techniques and tools for Constantine cryptographic code. Use debugEcho, toHex, debug: template, and stack trace flags when debugging Nim crypto implementations.
++description: "Debugging techniques and tools for Constantine cryptographic code. Use debugEcho, toHex, debug: template, and stack trace flags when debugging Nim crypto implementations."
+ license: MIT
+ metadata:
+   audience: developers
+diff --git a/benchmarks/bench_elliptic_template.nim b/benchmarks/bench_elliptic_template.nim
+index cbd20624..2786405d 100644
+--- a/benchmarks/bench_elliptic_template.nim
++++ b/benchmarks/bench_elliptic_template.nim
+@@ -132,8 +132,12 @@ proc affFromProjBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, ite
+     points[i] = rng.random_unsafe(EC)
+ 
+   if useBatching:
+-    bench("EC Projective to Affine -   batched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+-      r.asUnchecked().batchAffine(points.asUnchecked(), numPoints)
++    block:
++      bench("EC Projective to Affine -   batched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
++        r.asUnchecked().batchAffine(points.asUnchecked(), numPoints)
++    block:
++      bench("EC Projective to Affine -   batched_vt " & $EC.G & " (" & $numPoints & " points)", EC, iters):
++        r.asUnchecked().batchAffine_vartime(points.asUnchecked(), numPoints)
+   else:
+     bench("EC Projective to Affine - unbatched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+       for i in 0 ..< numPoints:
+@@ -147,8 +151,12 @@ proc affFromJacBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, iter
+     points[i] = rng.random_unsafe(EC)
+ 
+   if useBatching:
+-    bench("EC Jacobian to Affine -   batched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+-      r.asUnchecked().batchAffine(points.asUnchecked(), numPoints)
++    block:
++      bench("EC Jacobian to Affine -   batched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
++        r.asUnchecked().batchAffine(points.asUnchecked(), numPoints)
++    block:
++      bench("EC Jacobian to Affine -   batched_vt " & $EC.G & " (" & $numPoints & " points)", EC, iters):
++        r.asUnchecked().batchAffine_vartime(points.asUnchecked(), numPoints)
+   else:
+     bench("EC Jacobian to Affine - unbatched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+       for i in 0 ..< numPoints:
+diff --git a/benchmarks/bench_kzg_multiproofs.nim b/benchmarks/bench_kzg_multiproofs.nim
+index 7a718b64..fd8621bf 100644
+--- a/benchmarks/bench_kzg_multiproofs.nim
++++ b/benchmarks/bench_kzg_multiproofs.nim
+@@ -88,7 +88,7 @@ proc benchPolyphasePrecomputation(srs_monomial_g1: PolynomialCoef[N, EC_ShortW_A
+   ## Measure one-time polyphase spectrum bank computation cost
+   ## This runs once during trusted setup initialization
+ 
+-  let polyphaseSpectrumBank = allocHeapAligned(array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]], 64)
++  let polyphaseSpectrumBank = allocHeapAligned(array[L, array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]], 64)
+   defer: freeHeapAligned(polyphaseSpectrumBank)
+ 
+   bench("computePolyphaseDecompositionFourier", CDS*L, iters):
+@@ -96,30 +96,21 @@ proc benchPolyphasePrecomputation(srs_monomial_g1: PolynomialCoef[N, EC_ShortW_A
+ proc benchFK20_Phase1_Full(ctx: ptr EthereumKZGContext,
+                            poly: PolynomialCoef[N, Fr[BLS12_381]],
+                            iters: int) =
+-  ## Complete FK20 Phase 1: 64 iterations of toeplitzMatVecMulPreFFT with accumulation
++  ## Complete FK20 Phase 1: 64 iterations of ToeplitzAccumulator accumulate+finish
+   ## This is the main FK20 proving loop
+ 
+   var u: array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]
+-  var circulant: array[CDS, Fr[BLS12_381]]
+ 
+   bench("fk20_phase1_accumulation_loop", CDS, iters):
+-    # Zero u
+-    for i in 0 ..< CDS:
+-      u[i].setNeutral()
+-
+-    # Accumulation loop (matches production kzg_coset_prove)
++    type BLS12_381_G1_aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
++    type BLS12_381_G1_jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
++    var accum: ToeplitzAccumulator[BLS12_381_G1_jac, BLS12_381_G1_aff, Fr[BLS12_381]]
++    doAssert accum.init(ctx.fft_desc_ext, ctx.ecfft_desc_ext, CDS, L) == Toeplitz_Success
++    var circulant: array[CDS, Fr[BLS12_381]]
+     for offset in 0 ..< L:
+       makeCirculantMatrix(circulant.toOpenArray(0, CDS-1), poly.coefs, offset, L)
+-
+-      let status = toeplitzMatVecMulPreFFT(
+-        u.toOpenArray(0, CDS-1),
+-        circulant.toOpenArray(0, CDS-1),
+-        ctx.polyphaseSpectrumBank[offset],
+-        ctx.fft_desc_ext,
+-        ctx.ecfft_desc_ext,
+-        accumulate = (offset > 0)
+-      )
+-      doAssert status == FFT_Success
++      doAssert accum.accumulate(circulant.toOpenArray(0, CDS-1), ctx.polyphaseSpectrumBank[offset]) == Toeplitz_Success
++    doAssert accum.finish(u.toOpenArray(0, CDS-1)) == Toeplitz_Success
+ 
+ proc benchFK20_Phase2(u: var array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]],
+                       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]],
+diff --git a/benchmarks/bench_toeplitz_multiproofs.nim b/benchmarks/bench_matrix_toeplitz.nim
+similarity index 62%
+rename from benchmarks/bench_toeplitz_multiproofs.nim
+rename to benchmarks/bench_matrix_toeplitz.nim
+index d262a67a..936ffa67 100644
+--- a/benchmarks/bench_toeplitz_multiproofs.nim
++++ b/benchmarks/bench_matrix_toeplitz.nim
+@@ -34,7 +34,7 @@ import
+   constantine/math/[arithmetic, ec_shortweierstrass],
+   constantine/math/io/io_fields,
+   # Standard library
+-  std/[os, strutils, monotimes]
++  std/[os, strutils, monotimes, importutils]
+ 
+ const
+   # PeerDAS production parameters
+@@ -111,68 +111,87 @@ proc benchMakeCirculantMatrix_VaryingOffset(poly: openArray[F],
+     bench(&"makeCirculantMatrix_offset{offset}", CDS, iters):
+       makeCirculantMatrix(coeffs.toOpenArray(0, CDS-1), poly, offset, L)
+ 
+-proc benchToeplitzMatVecMulPreFFT_Size128(circulant: openArray[F], 
+-                                          vFft: openArray[EC_G1], 
+-                                          frDesc: FrFFT_Descriptor[F], 
+-                                          ecDesc: ECFFT_Descriptor[EC_G1], 
+-                                          iters: int) =
+-  ## Core FK20 multiplication: size 128, no accumulation
+-  
++proc benchToeplitzMatVecMul_Size128(circulant: openArray[F], 
++                                    v: openArray[EC_G1], 
++                                    frDesc: FrFFT_Descriptor[F], 
++                                    ecDesc: ECFFT_Descriptor[EC_G1], 
++                                    iters: int) =
++  ## Core FK20 multiplication: size 128
++  ## Uses toeplitzMatVecMul which handles FFT internally
++
+   var output: array[CDS, EC_G1]
+-  
+-  bench("toeplitzMatVecMulPreFFT_size128", CDS, iters):
+-    let status = toeplitzMatVecMulPreFFT(
++
++  bench("toeplitzMatVecMul_size128", CDS, iters):
++    let status = toeplitzMatVecMul(
+       output.toOpenArray(0, CDS-1),
+       circulant,
+-      vFft,
++      v,
+       frDesc,
+-      ecDesc,
+-      accumulate = false
++      ecDesc
+     )
+-    doAssert status == FFT_Success
++    doAssert status == Toeplitz_Success
+ 
+-proc benchToeplitzMatVecMulPreFFT_Accumulate(circulant: openArray[F], 
+-                                             vFft: openArray[EC_G1], 
+-                                             frDesc: FrFFT_Descriptor[F], 
+-                                             ecDesc: ECFFT_Descriptor[EC_G1], 
+-                                             iters: int) =
+-  ## With accumulation (accumulate=true)
++proc benchToeplitzAccumulator_64Accumulates(poly: openArray[F], iters: int) =
++  ## Benchmark ToeplitzAccumulator with 64 accumulate calls (PeerDAS L=64)
++  ## This is the core FK20 accumulation pattern used in multi-proof generation
++  ##
++  ## Each accumulate:
++  ## 1. Computes FFT of circulant (size 128)
++  ## 2. Stores result in transposed layout
++  ##
++  ## After 64 accumulates, finish() performs MSM + IFFT
+   
+-  var output: array[CDS, EC_G1]
+-  # Initialize output
+-  for i in 0 ..< CDS:
+-    output[i].setNeutral()
++  const size = CDS  # 128
++  const L = 64
+   
+-  bench("toeplitzMatVecMulPreFFT_accumulate", CDS, iters):
+-    let status = toeplitzMatVecMulPreFFT(
+-      output.toOpenArray(0, CDS-1),
+-      circulant,
+-      vFft,
+-      frDesc,
+-      ecDesc,
+-      accumulate = true
+-    )
+-    doAssert status == FFT_Success
+-
+-proc benchToeplitzMatVecMulPreFFT_NoAccumulate(circulant: openArray[F], 
+-                                               vFft: openArray[EC_G1], 
+-                                               frDesc: FrFFT_Descriptor[F], 
+-                                               ecDesc: ECFFT_Descriptor[EC_G1], 
+-                                               iters: int) =
+-  ## Without accumulation (accumulate=false)
++  # Type aliases matching ToeplitzAccumulator (following bench_kzg_multiproofs.nim pattern)
++  type BLS12_381_G1_aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
++  type BLS12_381_G1_jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
+   
+-  var output: array[CDS, EC_G1]
++  # Setup FFT descriptors
++  let descs = createFFTDescriptors(2 * size)
+   
+-  bench("toeplitzMatVecMulPreFFT_noAccumulate", CDS, iters):
+-    let status = toeplitzMatVecMulPreFFT(
+-      output.toOpenArray(0, CDS-1),
+-      circulant,
+-      vFft,
+-      frDesc,
+-      ecDesc,
+-      accumulate = false
+-    )
+-    doAssert status == FFT_Success
++  # Generate random input vectors for each accumulate (affine coordinates)
++  var vFftList: array[L, seq[BLS12_381_G1_aff]]
++  for i in 0 ..< L:
++    vFftList[i].setLen(size)
++    var rng: RngState
++    rng.seed(RngSeed + uint32(i))
++    rng.random_unsafe(vFftList[i])
++  
++  # Generate random circulants for each accumulate
++  var circulantList: array[L, seq[F]]
++  for i in 0 ..< L:
++    circulantList[i].setLen(size)
++    var rng: RngState
++    rng.seed(RngSeed + uint32(i) + 1000)
++    rng.random_unsafe(circulantList[i])
++  
++  # Allow direct access to private 'offset' field for benchmark reuse
++  privateAccess(toeplitz.ToeplitzAccumulator)
++
++  # Initialize accumulator once outside the benchmark loop to avoid
++  # allocation overhead (3 x allocHeapAligned, ~772 KB total) in timing.
++  var acc: ToeplitzAccumulator[BLS12_381_G1_jac, BLS12_381_G1_aff, F]
++  let statusInit = acc.init(descs.frDesc, descs.ecDesc, size, L)
++  doAssert statusInit == Toeplitz_Success
++
++  bench("ToeplitzAccumulator_64accumulates", size, iters):
++    # Reset accumulator state for this iteration (avoids free+alloc)
++    acc.offset = 0
++
++    # 64 accumulate calls
++    for i in 0 ..< L:
++      let status = acc.accumulate(
++        circulantList[i].toOpenArray(0, size-1),
++        vFftList[i].toOpenArray(0, size-1)
++      )
++      doAssert status == Toeplitz_Success
++
++    # Finish with MSM + IFFT
++    var output: array[size, EC_G1]
++    let statusFinish = acc.finish(output.toOpenArray(0, size-1))
++    doAssert statusFinish == Toeplitz_Success
+ 
+ proc benchToeplitz_Scaling(sizes: openArray[int], iters: int) =
+   ## Scaling analysis for different Toeplitz sizes
+@@ -200,7 +219,7 @@ proc benchToeplitz_Scaling(sizes: openArray[int], iters: int) =
+         descs.frDesc,
+         descs.ecDesc
+       )
+-      doAssert status == FFT_Success
++      doAssert status == Toeplitz_Success
+ 
+ proc main() =
+   echo "Toeplitz Matrix-Vector Multiplication Benchmarks (FK20)"
+@@ -226,29 +245,23 @@ proc main() =
+   separator(145)
+   
+   # Setup for size 128 benchmarks
+-  let descs128 = createFFTDescriptors(CDS)
+-  var circulant128 = newSeq[F](CDS)
+-  makeCirculantMatrix(circulant128.toOpenArray(0, CDS-1), polyFull.toOpenArray(0, N-1), 0, L)
+-  
++  # toeplitzMatVecMul needs circulant of size 2*n and FFT descriptors of order >= 2*n
++  let descs128 = createFFTDescriptors(2 * CDS)
++  var circulant128 = newSeq[F](2 * CDS)
++  makeCirculantMatrix(circulant128.toOpenArray(0, 2*CDS-1), polyFull.toOpenArray(0, N-1), 0, 1)
++
+   var v128 = newSeq[EC_G1](CDS)
+   v128[0].setGenerator()
+   for i in 1 ..< CDS:
+     v128[i].mixedSum(v128[i-1], BLS12_381.getGenerator("G1"))
++
++  benchToeplitzMatVecMul_Size128(circulant128.toOpenArray(0, 2*CDS-1), v128.toOpenArray(0, CDS-1), descs128.frDesc, descs128.ecDesc, ItersLarge)
+   
+-  # For PreFFT benchmarks, FFT the vector directly (no zero-extension needed)
+-  var vFft128 = newSeq[EC_G1](CDS)
+-  discard ec_fft_nr(descs128.ecDesc, vFft128.toOpenArray(0, CDS-1), v128.toOpenArray(0, CDS-1))
+-  
+-  benchToeplitzMatVecMulPreFFT_Size128(circulant128.toOpenArray(0, CDS-1), vFft128.toOpenArray(0, CDS-1), descs128.frDesc, descs128.ecDesc, ItersLarge)
+-  echo ""
+-  
+-  benchToeplitzMatVecMulPreFFT_Accumulate(circulant128.toOpenArray(0, CDS-1), vFft128.toOpenArray(0, CDS-1), descs128.frDesc, descs128.ecDesc, ItersLarge)
+-  echo ""
+-  
+-  benchToeplitzMatVecMulPreFFT_NoAccumulate(circulant128.toOpenArray(0, CDS-1), vFft128.toOpenArray(0, CDS-1), descs128.frDesc, descs128.ecDesc, ItersLarge)
+-  echo ""
++  separator(145)
++  echo "Toeplitz Accumulator (64 Accumulates)"
++  separator(145)
+   
+-  echo "  [Skipping toeplitzMatVecMul_Full - FK20 uses PreFFT version]"
++  benchToeplitzAccumulator_64Accumulates(polyFull.toOpenArray(0, N-1), ItersLarge)
+   echo ""
+   
+   separator(145)
+@@ -262,8 +275,8 @@ proc main() =
+   separator(145)
+   echo "- All benchmarks use random polynomials (seed=42)"
+   echo "- PeerDAS parameters: N=4096, L=64, CDS=128"
+-  echo "- Accumulation mode shows sum_vartime overhead"
+-  echo "- Full toeplitzMatVecMul includes vector FFT"
++  echo "- Accumulator benchmark: 64 accumulate calls + MSM + IFFT"
++  echo "- toeplitzMatVecMul includes forward FFT on input vector"
+ 
+ when isMainModule:
+   main()
+\ No newline at end of file
+diff --git a/benchmarks/bench_matrix_transpose.nim b/benchmarks/bench_matrix_transpose.nim
+new file mode 100644
+index 00000000..a0646199
+--- /dev/null
++++ b/benchmarks/bench_matrix_transpose.nim
+@@ -0,0 +1,214 @@
++# Constantine
++# Copyright (c) 2020-Present Mamy André-Ratsimbazafy
++# Licensed and distributed under either of
++#   * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
++#   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
++# at your option. This file may not be copied, modified, or distributed except according to those terms.
++
++# ############################################################
++#
++#           Matrix Transposition Benchmarks
++#
++# Comparing different transposition strategies for large field elements
++# Target: Fr[BLS12_381] (32 bytes per element)
++#
++# Implementations tested:
++# 1. Naive sequential
++# 2. Naive with exchanged loop order
++# 3. 1D blocked (various block sizes)
++# 4. 2D blocked/tiled (various block sizes) [WINNER]
++# 5. Divide & conquer cache-oblivious (untested, for reference)
++#
++# See: https://github.com/mratsim/laser/blob/master/benchmarks/transpose/transpose_bench.nim
++#
++# ############################################################
++
++import
++  std/[random, times, stats, strformat, math, sequtils],
++  constantine/math/arithmetic,
++  constantine/named/config_fields_and_curves
++
++# ############################################################
++# Benchmarking utilities
++# ############################################################
++
++template printStats(name: string, req_ops: int, global_start, global_stop: float) {.dirty.} =
++  echo "\n", name
++  echo &"Collected {stats.n} samples in {global_stop - global_start:>4.3f} seconds"
++  echo &"Average time: {stats.mean * 1000:>4.3f} ms"
++  echo &"Stddev  time: {stats.standardDeviationS * 1000:>4.3f} ms"
++  echo &"Min     time: {stats.min * 1000:>4.3f} ms"
++  echo &"Max     time: {stats.max * 1000:>4.3f} ms"
++  echo &"Perf:         {req_ops.float / stats.mean / 1e9:>4.3f} GMEMOPs/s"
++  echo &"Throughput:   {req_ops.float * 32.0 / stats.mean / 1e9:>4.3f} GB/s"
++
++template bench(name: string, initialisation, body: untyped) {.dirty.} =
++  block:
++    var stats: RunningStat
++    let global_start = epochTime()
++    for _ in 0 ..< NbSamples:
++      initialisation
++      let start = epochTime()
++      body
++      let stop = epochTime()
++      stats.push(stop - start)
++    let global_stop = epochTime()
++    printStats(name, req_ops, global_start, global_stop)
++
++# ############################################################
++# Test parameters
++# ############################################################
++
++const
++  M = 512       # Rows
++  N = 512       # Columns
++  NbSamples = 100
++
++# For Fr[BLS12_381]
++type F = Fr[BLS12_381]
++
++let req_ops = M * N
++let req_bytes = sizeof(F) * M * N
++
++echo &"Benchmarking matrix transposition: {M}x{N} matrix"
++echo &"Element type: Fr[BLS12_381] ({sizeof(F)} bytes)"
++echo &"Total size: {req_bytes / 1024 / 1024:>4.2f} MB"
++echo &"Required operations: {req_ops}"
++echo ""
++
++# ############################################################
++# Test data setup
++# ############################################################
++
++# Create input matrix with constant values (values don't matter for perf)
++var input = newSeq[F](M * N)
++for i in 0 ..< M * N:
++  input[i] = F.getOne()
++
++# ############################################################
++# 1. Naive Sequential Transpose
++# ############################################################
++
++proc naiveTranspose[T](dst, src: ptr UncheckedArray[T], M, N: int) =
++  ## Simple row-to-column copy
++  ## Poor cache performance due to strided writes
++  for j in 0 ..< N:
++    for i in 0 ..< M:
++      dst[j * M + i] = src[i * N + j]
++
++proc benchNaive() =
++  var output = newSeq[F](N * M)
++  let pi = cast[ptr UncheckedArray[F]](input[0].addr)
++  let po = cast[ptr UncheckedArray[F]](output[0].addr)
++
++  bench("Naive Sequential"):
++    discard
++  do:
++    naiveTranspose(po, pi, M, N)
++
++benchNaive()
++
++# ############################################################
++# 2. Naive with Exchanged Loop Order
++# ############################################################
++
++proc naiveTransposeExchanged[T](dst, src: ptr UncheckedArray[T], M, N: int) =
++  ## Iterate input linearly, write with stride
++  ## Better read pattern, worse write pattern
++  for i in 0 ..< M:
++    for j in 0 ..< N:
++      dst[j * M + i] = src[i * N + j]
++
++proc benchNaiveExchanged() =
++  var output = newSeq[F](N * M)
++  let pi = cast[ptr UncheckedArray[F]](input[0].addr)
++  let po = cast[ptr UncheckedArray[F]](output[0].addr)
++
++  bench("Naive (exchanged loops)"):
++    discard
++  do:
++    naiveTransposeExchanged(po, pi, M, N)
++
++benchNaiveExchanged()
++
++# ############################################################
++# 3. 1D Blocked Transpose
++# ############################################################
++
++proc blocked1DTranspose[T](dst, src: ptr UncheckedArray[T], M, N: int, blockSize: static int) =
++  ## Block along one dimension (rows of output) to improve cache locality
++  ## Processes output in blocks of blockSize rows at a time
++  ## Note: For 32-byte elements, 1D blocking has limited benefit vs 2D
++  const blck = blockSize
++  for jj in countup(0, N - 1, blck):
++    for j in jj ..< min(jj + blck, N):
++      for i in 0 ..< M:
++        dst[j * M + i] = src[i * N + j]
++
++template benchBlocked1D(blockSize: static int) =
++  var output = newSeq[F](N * M)
++  let pi = cast[ptr UncheckedArray[F]](input[0].addr)
++  let po = cast[ptr UncheckedArray[F]](output[0].addr)
++
++  const name = "1D Blocked (block=" & $blockSize & ")"
++  bench(name):
++    discard
++  do:
++    blocked1DTranspose[F](po, pi, M, N, blockSize)
++
++# Test various block sizes
++benchBlocked1D(8)
++benchBlocked1D(16)
++benchBlocked1D(32)
++benchBlocked1D(64)
++benchBlocked1D(128)
++
++# ############################################################
++# 4. 2D Blocked (Tiled) Transpose [WINNER]
++# ############################################################
++
++proc blocked2DTranspose[T](dst, src: ptr UncheckedArray[T], M, N: int, blockSize: static int) =
++  ## 2D tiling - process matrix in small tiles
++  ## Best cache utilization for large matrices
++  ##
++  ## For 32-byte elements (Fr[BLS12_381]):
++  ## - block=16: 16×16×32 = 8KB per tile (fits in L1)
++  ## - block=32: 32×32×32 = 32KB per tile (L1/L2 boundary)
++  const blck = blockSize
++  for jj in countup(0, N - 1, blck):
++    for ii in countup(0, M - 1, blck):
++      for j in jj ..< min(jj + blck, N):
++        for i in ii ..< min(ii + blck, M):
++          dst[j * M + i] = src[i * N + j]
++
++template benchBlocked2D(blockSize: static int) =
++  var output = newSeq[F](N * M)
++  let pi = cast[ptr UncheckedArray[F]](input[0].addr)
++  let po = cast[ptr UncheckedArray[F]](output[0].addr)
++
++  const name = "2D Blocked (block=" & $blockSize & ")"
++  bench(name):
++    discard
++  do:
++    blocked2DTranspose[F](po, pi, M, N, blockSize)
++
++# Test various block sizes - smaller for 32-byte elements
++benchBlocked2D(4)
++benchBlocked2D(8)
++benchBlocked2D(16)
++benchBlocked2D(32)
++
++# ############################################################
++# Summary
++# ############################################################
++
++echo "\n============================================================"
++echo "Benchmark complete"
++echo "============================================================"
++echo "\nRecommended production implementation:"
++echo "  → 2D Blocked with block size 16 or 32"
++echo "  → See: constantine/math/matrix/transpose.nim"
++echo "\nKey insight: For 32-byte field elements, 16×16 tiles"
++echo "(8KB per tile) fit perfectly in L1 cache, giving 2×"
++echo "speedup over naive sequential transposition."
++echo "============================================================"
+\ No newline at end of file
+diff --git a/constantine.nimble b/constantine.nimble
+index b5fb4d3a..4a65727f 100644
+--- a/constantine.nimble
++++ b/constantine.nimble
+@@ -736,6 +736,7 @@ const benchDesc = [
+   "bench_eth_eip4844_kzg",
+   "bench_eth_eip7594_peerdas",
+   "bench_kzg_multiproofs",
++  "bench_matrix_toeplitz",
+   "eth_eip7594/benchset_generation",
+   "eth_eip7594/perf_compute_cells",
+   "eth_eip7594/perf_compute_cells_and_kzg_proofs",
+@@ -1208,6 +1209,8 @@ task bench_eth_eip7594_peerdas, "Run Ethereum EIP7594 PeerDAS (Data Availability
+ task bench_kzg_multiproofs, "Run KZG Multiproof benchmarks (FK20 vs Naive) - CC compiler":
+   runBench("bench_kzg_multiproofs")
+ 
++task bench_matrix_toeplitz, "Run Toeplitz matrix benchmarks (FK20 accumulation, 64 accumulates) - CC compiler":
++  runBench("bench_matrix_toeplitz")
+ # EIP7594 PeerDAS - Individual perf benchmarks (for VTune/perf profiling)
+ # ------------------------------------------
+ task bench_eth_eip7594_generate_benchset, "Generate PeerDAS benchset.dat for perf benchmarks - CC compiler":
+diff --git a/constantine/commitments/eth_verkle_ipa.nim b/constantine/commitments/eth_verkle_ipa.nim
+index 9958ba9e..c81155d2 100644
+--- a/constantine/commitments/eth_verkle_ipa.nim
++++ b/constantine/commitments/eth_verkle_ipa.nim
+@@ -222,7 +222,7 @@ func ipa_prove*[N, logN: static int, EcAff, F](
+     lr[0] ~+= aRbL_Q
+     lr[1] ~+= aLbR_Q
+ 
+-    lrAff.batchAffine(lr)
++    lrAff.batchAffine_vartime(lr)
+     transcript.absorb("L", lrAff[0])
+     transcript.absorb("R", lrAff[1])
+     proof.L[i] = lrAff[0]
+@@ -257,7 +257,7 @@ func ipa_prove*[N, logN: static int, EcAff, F](
+       gg[j].scalarMul_vartime(xinvbig)
+       gg[j] ~+= gL[j]
+ 
+-    batchAffine(
++    batchAffine_vartime(
+       gL.asUnchecked(),
+       gg[].asUnchecked(),
+       gL.len
+@@ -646,7 +646,7 @@ func sumCommitmentsAndEvalsByChallenge[N: static int, F, ECaff](
+       cidx += 1
+ 
+   if affNeeded > 0:
+-    tmpAff.batchAffine(tmp, affNeeded) # TODO: introduce batchAffine_vartime
++    tmpAff.batchAffine_vartime(tmp, affNeeded)
+     for i in 0 ..< affNeeded:
+       comms_by_challenges[idxmap[i]] = tmpAff[i]
+ 
+diff --git a/constantine/commitments/kzg.nim b/constantine/commitments/kzg.nim
+index aac8ff31..91dacb8c 100644
+--- a/constantine/commitments/kzg.nim
++++ b/constantine/commitments/kzg.nim
+@@ -360,7 +360,7 @@ func kzg_verify_batch*[bits: static int, F2; Name: static Algebra](
+     boxed_eval.scalarMul_vartime(evals_at_challenges[i])
+     commits_min_evals_jac[i].diff_vartime(commits_min_evals_jac[i], boxed_eval)
+ 
+-  commits_min_evals.batchAffine(commits_min_evals_jac, n)
++  commits_min_evals.batchAffine_vartime(commits_min_evals_jac, n)
+   freeHeapAligned(commits_min_evals_jac)
+   sum_commit_minus_evals_G1.multiScalarMul_vartime(coefs, commits_min_evals, n)
+   freeHeapAligned(commits_min_evals)
+diff --git a/constantine/commitments/kzg_multiproofs.nim b/constantine/commitments/kzg_multiproofs.nim
+index c631ea2c..6e333f17 100644
+--- a/constantine/commitments/kzg_multiproofs.nim
++++ b/constantine/commitments/kzg_multiproofs.nim
+@@ -227,7 +227,7 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
+        polyphaseSpectrum: var array[CDS, EC_ShortW_Jac[Fp[Name], G1]],
+        powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
+        ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
+-       offset: int = 0): FFT_Status {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
++       offset: int = 0): FFT_Status {.tags:[HeapAlloc, Vartime], meter.} =
+   ## Compute FFT of one polyphase component of the SRS (Toeplitz input spectrum).
+   ##
+   ## DSP Terminology (Crypto ↔ Signal Processing Mapping)
+@@ -276,37 +276,33 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
+   ##     "The coefficients v can be computed using 2r log 2r scalar multiplications"
+   ##   - DSP: Polyphase decomposition + circulant embedding FFT
+   ##   - Toeplitz matrix-vector multiplication: http://www.netlib.org/utk/people/JackDongarra/etemplates/node384.html
+-
++  ##
+   const CDSdiv2 = CDS shr 1
+-  const L = N div CDSdiv2
+-
+-  static:
+-    doAssert CDS.isPowerOf2_vartime(), "CDS must be a power of two"
+-    doAssert CDS >= 4, "CDS must be >= 4 for the polyphase stride to stay in range"
++  const L = (2 * N) div CDS
++  static: doAssert CDS.isPowerOf2_vartime(), "CDS must be a power of two"
+   doAssert ecfft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
+-  doAssert N >= L + 1 + offset, "N must be >= L + 1 + offset for valid polyphase extraction"
+-
+-  let polyphaseComponent = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
+ 
+-  # Extract polyphase component with stride L and given offset (convert affine to projective for FFT)
++  # Extract polyphase component directly into output buffer (convert affine to Jacobian for FFT)
+   # This is the polyphase decomposition: x_i[m] = x[m·L + offset] with reversal
+   let start = N - L - 1 - offset
+   var j = start
+   for i in 0 ..< CDSdiv2 - 1:
+-    polyphaseComponent[i].fromAffine(powers_of_tau.coefs[j])
++    polyphaseSpectrum[i].fromAffine(powers_of_tau.coefs[j])
+     j -= L
+-  polyphaseComponent[CDSdiv2 - 1].setNeutral()
++  # j is always < 0 here: CDS*L == 2*N (invariant at line 353), so CDSdiv2*L = N.
++  # After the loop: j = start - (CDSdiv2-1)*L = N - CDSdiv2*L - 1 - offset = -1 - offset < 0.
++  doAssert j < 0, "Internal error: polyphase extraction index should be negative at CDSdiv2-1 (CDS*L must equal 2*N)"
++  polyphaseSpectrum[CDSdiv2 - 1].setNeutral()
+   for j in CDSdiv2 ..< CDS:
+-    polyphaseComponent[j].setNeutral()
++    polyphaseSpectrum[j].setNeutral()
+ 
+-  # FFT the polyphase component to get its spectrum (frequency-domain representation)
+-  result = ec_fft_nn(ecfft_desc, polyphaseSpectrum, polyphaseComponent.toOpenArray(CDS))
+-  freeHeapAligned(polyphaseComponent)
++  # FFT in-place to get polyphase spectrum (frequency-domain representation)
++  result = ec_fft_nn(ecfft_desc, polyphaseSpectrum, polyphaseSpectrum)
+ 
+ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static Algebra](
+-       polyphaseSpectrumBank: var array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]],
++       polyphaseSpectrumBank: var array[L, array[CDS, EC_ShortW_Aff[Fp[Name], G1]]],
+        powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
+-       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]]) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
++       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]]) {.tags:[HeapAlloc, Vartime], meter.} =
+   ## Compute polyphase decomposition Fourier transform for all L phases (complete polyphase filter bank).
+   ##
+   ## DSP Terminology (Crypto ↔ Signal Processing Mapping)
+@@ -315,7 +311,7 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
+   ## This is the complete FK20 preprocessing phase that builds a polyphase filter bank:
+   ##
+   ##   Crypto Name               DSP Equivalent                    Mathematical Object
+-  ##   ─────────────────────────────────────────────────────────────────────────────────
++  ##   ─────────────────────────────────────────────────────────────────────
+   ##   polyphaseSpectrumBank     Polyphase spectrum bank      {X_i(ω)} for i in 0..L-1
+   ##   L                         Number of phases             decimation factor
+   ##   CDS                       FFT size per phase           circulant embedding size
+@@ -327,6 +323,7 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
+   ## For each phase (offset) i in 0..L-1:
+   ##   1. Extract polyphase component (stride L, offset i)
+   ##   2. Compute FFT → one column of polyphaseSpectrumBank
++  ##   3. Batch convert Jacobian to affine (single batch inversion for all L×CDS points)
+   ##
+   ## The result is a bank of L precomputed spectra used for fast Toeplitz matrix-vector
+   ## multiplication. This corresponds to the "analysis filter bank" in multirate DSP.
+@@ -342,7 +339,7 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
+   ##
+   ## The result can be cached and reused for multiple polynomials.
+   ##
+-  ## @param polyphaseSpectrumBank: Output array[L][CDS] - bank of polyphase spectra
++  ## @param polyphaseSpectrumBank: Output array[L][CDS] - bank of polyphase spectra (affine form)
+   ## @param powers_of_tau: SRS in coefficient form [G, τG, τ²G, ..., τⁿ⁻¹G] (affine, length N)
+   ## @param ecfft_desc: Precomputed EC FFT descriptor (order >= CDS, uses stride)
+   ##
+@@ -355,17 +352,30 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
+   static: doAssert CDS * L == 2 * N
+   doAssert ecfft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
+ 
++  # Compute all phases in Jacobian form first
++  let polyphaseSpectrumBankJac = allocHeapArrayAligned(array[CDS, EC_ShortW_Jac[Fp[Name], G1]], L, alignment = 64)
++
+   for offset in 0 ..< L:
+-    let status = computePolyphaseDecompositionFourierOffset(polyphaseSpectrumBank[offset], powers_of_tau, ecfft_desc, offset)
+-    doAssert status == FFT_Success, "Polyphase decomposition FFT failed at offset " & $offset
++    let status = computePolyphaseDecompositionFourierOffset(polyphaseSpectrumBankJac[offset], powers_of_tau, ecfft_desc, offset)
++    doAssert status == FFT_Success, "Internal error: Polyphase decomposition FFT failed at offset " & $offset
++
++  # Half the points are points at infinity. A vartime batch inversion
++  # saves a lot of compute, 3*L*CDS
++  batchAffine_vartime(
++    polyphaseSpectrumBank[0].asUnchecked(),
++    polyphaseSpectrumBankJac[0].asUnchecked(),
++    L * CDS
++  )
++
++  freeHeapAligned(polyphaseSpectrumBankJac)
+ 
+ func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
+        proofs: var array[CDS, EC_ShortW_Aff[Fp[Name], G1]],
+        poly: openArray[Fr[Name]],
+        fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
+        ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
+-       polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]]
+-      ) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
++       polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Aff[Fp[Name], G1]]]
++      ): void {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
+   ## Compute KZG multi-proofs for EIP-7594 cell proofs using FK20 algorithm.
+   ##
+   ## This implements the FK20 amortized KZG proofs from c-kzg-4844.
+@@ -375,7 +385,7 @@ func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
+   ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   ##
+   ##   Crypto Name               DSP Equivalent                    Role
+-  ##   ─────────────────────────────────────────────────────────────────────────
++  ##   ─────────────────────────────────────────────────────────────────────
+   ##   polyphaseSpectrumBank     Polyphase filter bank          Precomputed input spectra
+   ##   poly                      Filter coefficients            Toeplitz kernel f_i
+   ##   proofs                    Output evaluations             Convolution result
+@@ -388,10 +398,8 @@ func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
+   ## Uses stride to handle smaller sizes from larger descriptors (e.g., 8192 descriptor for 128-size FFT).
+   ##
+   ## Algorithm (Phase 1 + Phase 2 from FK20):
+-  ##   For each stride offset in [0, L):
+-  ##     1. Extract toeplitz coefficients from poly
+-  ##     2. toeplitzMatVecMul: FFT coeffs + FFT kernel + pointwise multiply + IFFT
+-  ##     3. Accumulate result
++  ##   Use ToeplitzAccumulator to accumulate L Hadamard products in Fourier domain
++  ##   MSM per output position, then one amortized EC IFFT
+   ##   Zero upper half
+   ##   FFT → proofs
+   ##
+@@ -399,57 +407,55 @@ func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
+   ##   - If L == 1 (single evaluation per coset): Use regular `kzg_verify`
+   ##   - If L > 1 (multiple evaluations per coset): Use `kzg_coset_verify`
+   ##
+-  ## @param polyphaseSpectrumBank: Precomputed polyphase spectra bank (L × CDS)
++  ## @param polyphaseSpectrumBank: Precomputed polyphase spectra bank (L × CDS, affine form)
+   ## @param proofs: Output array for CDS proofs (affine form)
+   ## @param poly: Polynomial coefficients to prove (length N = L*CDS/2, coefficient/monomial form)
+   ##              Can be a slice of a larger polynomial array.
+   ## @param fr_fft_desc: Precomputed Fr FFT descriptor (order >= CDS, uses stride)
+   ## @param ec_fft_desc: Precomputed EC FFT descriptor (order >= CDS, uses stride)
+-
+   const CDSdiv2 = CDS shr 1
+-  doAssert poly.len == L * CDSdiv2
++  const N = L * CDSdiv2
++  doAssert poly.len == N
+ 
+   static:
+     doAssert CDS.isPowerOf2_vartime(), "CDS must be a power of two"
+   doAssert fr_fft_desc.order >= CDS, "Fr FFT descriptor order must be >= CDS"
+   doAssert ec_fft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
+ 
+-  let u = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
+-  for i in 0 ..< CDS:
+-    u[i].setNeutral()
++  # Use Toeplitz accumulator with MSM for FK20
++  var accum: ToeplitzAccumulator[EC_ShortW_Jac[Fp[Name], G1], EC_ShortW_Aff[Fp[Name], G1], Fr[Name]]
++  let status = accum.init(fr_fft_desc, ec_fft_desc, CDS, L)
++  doAssert status == Toeplitz_Success, "Internal error: Toeplitz accumulator init failed: " & $status
+ 
+   let circulant = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
+ 
+   for offset in 0 ..< L:
+     makeCirculantMatrix(circulant.toOpenArray(CDS), poly, offset, L)
+ 
+-    # Use toeplitzMatVecMulPreFFT with accumulate=true
+-    # This does: FFT(toeplitzCoeffs) ⊙ kernelFft, then IFFT → result
+-    # Results are accumulated in time domain
+-    let status = toeplitzMatVecMulPreFFT(
+-      u.toOpenArray(CDS),
++    # Accumulate FFT of circulant coefficients with affine points (already affine from setup)
++    # Offset is tracked automatically inside accumulator
++    let status = accum.accumulate(
+       circulant.toOpenArray(CDS),
+-      polyphaseSpectrumBank[offset],
+-      fr_fft_desc,
+-      ec_fft_desc,
+-      accumulate = (offset > 0)
++      polyphaseSpectrumBank[offset]
+     )
+-    doAssert status == FFT_Success, "FK20 toeplitzMatVecMulPreFFT failed at offset " & $offset
++    doAssert status == Toeplitz_Success, "Internal error: Toeplitz accumulator failed at offset " & $offset & ": " & $status
++
++  freeHeapAligned(circulant)
++
++  # MSM per position + one amortized IFFT at the end
++  let u = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
++  let status2 = accum.finish(u.toOpenArray(CDS))
++  doAssert status2 == Toeplitz_Success, "Internal error: Toeplitz accumulator finish failed: " & $status2
+ 
+-  # u is already in time domain (toeplitzMatVecMulPreFFT did IFFT)
+   # Zero upper half, degree is CDS/2 - 1
+   for i in CDSdiv2 ..< CDS:
+     u[i].setNeutral()
+ 
+-  # FFT to get proofs
+-  let proofsJac = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
+-  let status3 = ec_fft_desc.ec_fft_nn(proofsJac.toOpenArray(CDS), u.toOpenArray(CDS))
+-  doAssert status3 == FFT_Success, "FK20 final ec_fft_nn failed"
++  # FFT in-place to get proofs — reuse u buffer
++  let status3 = ec_fft_desc.ec_fft_nn(u.toOpenArray(CDS), u.toOpenArray(CDS))
++  doAssert status3 == FFT_Success, "Internal error: EC FFT failed: " & $status3
+ 
+-  proofs.asUnchecked().batchAffine(proofsJac, proofs.len)
+-
+-  freeHeapAligned(proofsJac)
+-  freeHeapAligned(circulant)
++  proofs.asUnchecked().batchAffine_vartime(u, proofs.len)
+   freeHeapAligned(u)
+ 
+ # ############################################################
+@@ -499,7 +505,7 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
+       evalsCols: openArray[int],
+       domain: FrFFT_Descriptor[Fr[Name]],
+       linearIndepRandNumbers: openArray[Fr[Name]],
+-      N: static int): bool {.meter.} =
++      N: static int) {.meter.} =
+   ## Compute ∑ₖrᵏIₖ(X)
+   ##
+   ## Input is a "sparse bunch of evals" and their corresponding column.
+@@ -519,14 +525,13 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
+     doAssert linearIndepRandNumbers.len >= evalsCols.len
+ 
+   # Runtime validation: prevent out-of-bounds indexing of agg_cols heap allocation
+-  if evals.len != evalsCols.len or linearIndepRandNumbers.len < evalsCols.len:
+-    return false
++  doAssert evals.len == evalsCols.len, "Internal error: evals and evalsCols must have same length"
++  doAssert linearIndepRandNumbers.len >= evalsCols.len, "Internal error: linearIndepRandNumbers must cover all evals"
+ 
+   const NumCols = N div L
+   for k in 0 ..< evalsCols.len:
+     let c = evalsCols[k]
+-    if c < 0 or c >= NumCols:
+-      return false
++    doAssert c >= 0 and c < NumCols, "Internal error: Column index out of bounds: " & $c
+ 
+   const logNumCols = log2_vartime(uint32(NumCols))
+ 
+@@ -558,21 +563,20 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
+     if not agg_cols_used[c]:
+       continue
+ 
+-    # Compute the per-column interpolation polynomial
+-    var col_interpoly {.noInit.}: PolynomialCoef[L, Fr[Name]]
++    # Compute the per-column interpolation polynomial (IFFT in-place)
+     let domainPos = reverseBits(uint32(c), logNumCols)
+     let hk = domain.rootsOfUnity[domainPos]
+ 
+     # agg_cols[c] is in bit-reversed order
+-    let status = domain.coset_ifft_rn(col_interpoly.coefs, agg_cols[c], hk)
++    let status = domain.coset_ifft_rn(agg_cols[c], agg_cols[c], hk)
+     doAssert status == FFT_Success, "Internal error: coset_ifft_rn failed: " & $status
+ 
+-    # Accumulate
+-    interpoly += col_interpoly
++    # Accumulate directly from agg_cols[c] (now in coefficient form)
++    for i in 0 ..< L:
++      interpoly.coefs[i] += agg_cols[c][i]
+ 
+   freeHeapAligned(agg_cols_used)
+   freeHeapAligned(agg_cols)
+-  return true
+ 
+ func kzg_coset_verify_batch*[L: static int, Name: static Algebra](
+       uniqueCommitments: openArray[EC_ShortW_Aff[Fp[Name], G1]],
+@@ -693,14 +697,13 @@ func kzg_coset_verify_batch*[L: static int, Name: static Algebra](
+   #                  ∑ₖrᵏIₖ(X)
+   #         and evaluate it at trusted setup secret τ
+   #                 [∑ₖrᵏIₖ(τ)]₁
+-  if not interpoly.computeAggRandScaledInterpoly(
++  interpoly.computeAggRandScaledInterpoly(
+     evals,
+     evalsCols,
+     domain,
+     linearIndepRandNumbers,
+     N
+-  ):
+-    return false
++  )
+   rli.multiScalarMul_vartime(interpoly.coefs.asUnchecked(), powers_of_tau.asUnchecked(), L)
+   rl -= rli
+ 
+diff --git a/constantine/commitments/kzg_parallel.nim b/constantine/commitments/kzg_parallel.nim
+index a535da21..1fccde21 100644
+--- a/constantine/commitments/kzg_parallel.nim
++++ b/constantine/commitments/kzg_parallel.nim
+@@ -167,7 +167,7 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; Name: static Algebra](
+         boxed_eval.scalarMul_vartime(evals_at_challenges[i])
+         commits_min_evals_jac[i].diff_vartime(commits_min_evals_jac[i], boxed_eval)
+ 
+-    commits_min_evals.batchAffine(commits_min_evals_jac, n)
++    commits_min_evals.batchAffine_vartime(commits_min_evals_jac, n)
+     freeHeapAligned(commits_min_evals_jac)
+     tp.multiScalarMul_vartime_parallel(sum_commit_minus_evals_G1, coefs, commits_min_evals, n)
+     freeHeapAligned(commits_min_evals)
+diff --git a/constantine/commitments_setups/ethereum_kzg_srs.nim b/constantine/commitments_setups/ethereum_kzg_srs.nim
+index ed74896a..1d1c86ee 100644
+--- a/constantine/commitments_setups/ethereum_kzg_srs.nim
++++ b/constantine/commitments_setups/ethereum_kzg_srs.nim
+@@ -203,11 +203,11 @@ type
+     # The extended domain roots are stored in fft_desc_ext.rootsOfUnity
+     # and can be accessed when needed (e.g., in recover functions).
+ 
+-    polyphaseSpectrumBank*{.align: 64.}: array[FIELD_ELEMENTS_PER_CELL, array[CELLS_PER_EXT_BLOB, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
+-    # Precomputed polyphase decomposition of the SRS in the Fourier domain.
++    polyphaseSpectrumBank*{.align: 64.}: array[FIELD_ELEMENTS_PER_CELL, array[CELLS_PER_EXT_BLOB, EC_ShortW_Aff[Fp[BLS12_381], G1]]]
++    # Precomputed polyphase decomposition of the SRS in the Fourier domain (affine form).
+     #
+     # This is computed once during trusted setup and reused for all KZG multiproofs.
+-    # Size: L × CDS = 64 × 128 = 8192 EC points in Jacobian form
++    # Size: L × CDS = 64 × 128 = 8192 EC points in affine form
+     #
+     # References:
+     #   - FK23 Paper (Feist-Khovratovich 2023), Proposition 4: https://eprint.iacr.org/2023/033
+diff --git a/constantine/data_availability_sampling/eth_peerdas.nim b/constantine/data_availability_sampling/eth_peerdas.nim
+index 3f222197..0b65bd70 100644
+--- a/constantine/data_availability_sampling/eth_peerdas.nim
++++ b/constantine/data_availability_sampling/eth_peerdas.nim
+@@ -196,10 +196,8 @@ func recoverPolynomialCoeff*[N, N2, L, CDS: static int](
+     extended_times_zero[i].prod(extended_evaluation_brp[i], zero_poly_eval_fft[i])
+ 
+   # Step 4: Convert (E*Z) to coefficient form via IFFT [Domain: 2*N roots of unity, natural to natural]
+-  let ext_times_zero_coeffs = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
+-  defer: freeHeapAligned(ext_times_zero_coeffs)
+-
+-  check fft_desc.ifft_rn(ext_times_zero_coeffs.toOpenArray(ext_size), extended_times_zero.toOpenArray(ext_size))
++  # ifft_rn supports in-place — reuse extended_times_zero buffer
++  check fft_desc.ifft_rn(extended_times_zero.toOpenArray(ext_size), extended_times_zero.toOpenArray(ext_size))
+ 
+   # Step 5: Evaluate on coset domain
+   # Coset shift = 5 (same as c-kzg-4844)
+@@ -208,7 +206,7 @@ func recoverPolynomialCoeff*[N, N2, L, CDS: static int](
+   let ext_eval_over_coset = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
+   defer: freeHeapAligned(ext_eval_over_coset)
+ 
+-  check fft_desc.coset_fft_nr(ext_eval_over_coset.toOpenArray(ext_size), ext_times_zero_coeffs.toOpenArray(ext_size), cosetShift)
++  check fft_desc.coset_fft_nr(ext_eval_over_coset.toOpenArray(ext_size), extended_times_zero.toOpenArray(ext_size), cosetShift)
+ 
+   let zero_poly_over_coset = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
+   defer: freeHeapAligned(zero_poly_over_coset)
+diff --git a/constantine/lowlevel_elliptic_curves.nim b/constantine/lowlevel_elliptic_curves.nim
+index 03577ae5..bb131dd6 100644
+--- a/constantine/lowlevel_elliptic_curves.nim
++++ b/constantine/lowlevel_elliptic_curves.nim
+@@ -78,6 +78,7 @@ export ec_shortweierstrass.cneg
+ export ec_shortweierstrass.affine
+ export ec_shortweierstrass.fromAffine
+ export ec_shortweierstrass.batchAffine
++export ec_shortweierstrass.batchAffine_vartime
+ 
+ export ec_shortweierstrass.sum
+ export ec_shortweierstrass.sum_vartime
+@@ -115,6 +116,7 @@ export ec_twistededwards.affine
+ export ec_twistededwards.projective
+ export ec_twistededwards.fromAffine
+ export ec_twistededwards.batchAffine
++export ec_twistededwards.batchAffine_vartime
+ export ec_twistededwards.sum_vartime
+ export ec_twistededwards.mixedSum_vartime
+ export ec_twistededwards.diff_vartime
+diff --git a/constantine/math/elliptic/ec_scalar_mul_vartime.nim b/constantine/math/elliptic/ec_scalar_mul_vartime.nim
+index 3c265de3..61f47c1f 100644
+--- a/constantine/math/elliptic/ec_scalar_mul_vartime.nim
++++ b/constantine/math/elliptic/ec_scalar_mul_vartime.nim
+@@ -335,7 +335,7 @@ func accumNAF[precompSize, NafMax: static int, EC, ECaff](
+     elif digit < 0:
+       P ~-= tab[-digit shr 1]
+ 
+-func scalarMul_wNAF_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime, Alloca], meter.} =
++func scalarMul_wNAF_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime], meter.} =
+   ## **Variable-time** Elliptic Curve Scalar Multiplication
+   ##
+   ##   P <- [k] P
+@@ -359,7 +359,7 @@ func scalarMul_wNAF_vartime*[EC](P: var EC, scalar: BigInt, window: static int)
+     tabEC[i].sum_vartime(tabEC[i-1], P2)
+ 
+   var tab {.noinit.}: array[precompSize, affine(EC)]
+-  tab.batchAffine(tabEC)
++  tab.batchAffine_vartime(tabEC)
+ 
+   var naf {.noInit.}: array[BigInt.bits+1, int8]
+   let nafLen = naf.recode_r2l_signed_window_vartime(scalar, window)
+@@ -375,7 +375,7 @@ func scalarMul_wNAF_vartime*[EC](P: var EC, scalar: BigInt, window: static int)
+ func scalarMulEndo_wNAF_vartime*[scalBits: static int; EC](
+        P: var EC,
+        scalar: BigInt[scalBits],
+-       window: static int) {.tags:[VarTime, Alloca], meter.} =
++       window: static int) {.tags:[VarTime], meter.} =
+   ## Endomorphism-accelerated windowed vartime scalar multiplication
+   ##
+   ##   P <- [k] P
+@@ -427,7 +427,7 @@ func scalarMulEndo_wNAF_vartime*[scalBits: static int; EC](
+       tabEC[m][i].sum_vartime(tabEC[m][i-1], P2)
+ 
+   var tab {.noinit.}: array[M, array[precompSize, affine(EC)]]
+-  tab.batchAffine(tabEC)
++  tab.batchAffine_vartime(tabEC)
+ 
+   # 5. wNAF precomputed tables
+   const NafLen = L+1
+diff --git a/constantine/math/elliptic/ec_shortweierstrass_batch_ops.nim b/constantine/math/elliptic/ec_shortweierstrass_batch_ops.nim
+index 6d45d26a..ee125c4d 100644
+--- a/constantine/math/elliptic/ec_shortweierstrass_batch_ops.nim
++++ b/constantine/math/elliptic/ec_shortweierstrass_batch_ops.nim
+@@ -30,6 +30,9 @@ func batchAffine*[F, G](
+        affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
+        projs: ptr UncheckedArray[EC_ShortW_Prj[F, G]],
+        N: int) {.meter.} =
++  if N <= 0:
++    return
++
+   # Algorithm: Montgomery's batch inversion
+   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
+   #   Section 10.3.1
+@@ -95,6 +98,9 @@ func batchAffine*[F, G](
+        affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
+        jacs: ptr UncheckedArray[EC_ShortW_Jac[F, G]],
+        N: int) {.meter.} =
++  if N <= 0:
++    return
++
+   # Algorithm: Montgomery's batch inversion
+   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
+   #   Section 10.3.1
+@@ -173,6 +179,170 @@ func batchAffine*[M, N: static int, F, G](
+        projs: array[M, array[N, EC_ShortW_Jac[F, G]]]) {.inline.} =
+   batchAffine(affs[0].asUnchecked(), projs[0].asUnchecked(), M*N)
+ 
++# Variable-time batch conversion
++# ---------------------------------------------------------------
++
++func batchAffine_vartime*[F, G](
++       affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
++       projs: ptr UncheckedArray[EC_ShortW_Prj[F, G]],
++       N: int) {.tags:[VarTime], meter.} =
++  if N <= 0:
++    return
++
++  # Algorithm: Montgomery's batch inversion
++  # - Speeding the Pollard and Elliptic Curve Methods of Factorization
++  #   Section 10.3.1
++  #   Peter L. Montgomery
++  #   https://www.ams.org/journals/mcom/1987-48-177/S0025-5718-1987-0866113-7/S0025-5718-1987-0866113-7.pdf
++  # - Modern Computer Arithmetic
++  #   Section 2.5.1 Several inversions at once
++  #   Richard P. Brent and Paul Zimmermann
++  #   https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf
++
++  # To avoid temporaries, we store partial accumulations
++  # in affs[i].x and affs[i].y will store if the input was 0
++  template zero(i: int): SecretWord =
++    when F is Fp:
++      affs[i].y.mres.limbs[0]
++    else:
++      affs[i].y.coords[0].mres.limbs[0]
++
++  zero(0) = SecretWord projs[0].z.isZero()
++  if zero(0).bool():
++    affs[0].x.setOne()
++  else:
++    affs[0].x = projs[0].z
++
++  for i in 1 ..< N:
++    # Skip zero z-coordinates (infinity points)
++    zero(i) = SecretWord projs[i].z.isZero()
++    if zero(i).bool():
++      # Maintain the product chain: multiply by 1
++      affs[i].x = affs[i-1].x
++    else:
++      if i != N-1:
++        affs[i].x.prod(affs[i-1].x, projs[i].z, lazyReduce = true)
++      else:
++        affs[i].x.prod(affs[i-1].x, projs[i].z, lazyReduce = false)
++
++  var accInv {.noInit.}: F
++  accInv.inv_vartime(affs[N-1].x)
++
++  for i in countdown(N-1, 1):
++    # Extract 1/Pᵢ
++    var invi {.noInit.}: F
++    if zero(i).bool():
++      # accInv is unchanged
++      affs[i].setNeutral()
++    else:
++      invi.prod(accInv, affs[i-1].x, lazyReduce = true)
++      accInv.prod(accInv, projs[i].z, lazyReduce = true)
++
++      # Now convert Pᵢ to affine
++      affs[i].x.prod(projs[i].x, invi)
++      affs[i].y.prod(projs[i].y, invi)
++
++  block: # tail
++    if zero(0).bool():
++      affs[0].setNeutral()
++    else:
++      affs[0].x.prod(projs[0].x, accInv)
++      affs[0].y.prod(projs[0].y, accInv)
++
++func batchAffine_vartime*[N: static int, F, G](
++       affs: var array[N, EC_ShortW_Aff[F, G]],
++       projs: array[N, EC_ShortW_Prj[F, G]]) {.inline.} =
++  batchAffine_vartime(affs.asUnchecked(), projs.asUnchecked(), N)
++
++func batchAffine_vartime*[M, N: static int, F, G](
++       affs: var array[M, array[N, EC_ShortW_Aff[F, G]]],
++       projs: array[M, array[N, EC_ShortW_Prj[F, G]]]) {.inline.} =
++  batchAffine_vartime(affs[0].asUnchecked(), projs[0].asUnchecked(), M*N)
++
++func batchAffine_vartime*[F, G](
++       affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
++       jacs: ptr UncheckedArray[EC_ShortW_Jac[F, G]],
++       N: int) {.tags:[VarTime], meter.} =
++  if N <= 0:
++    return
++
++  # Algorithm: Montgomery's batch inversion
++  # - Speeding the Pollard and Elliptic Curve Methods of Factorization
++  #   Section 10.3.1
++  #   Peter L. Montgomery
++  #   https://www.ams.org/journals/mcom/1987-48-177/S0025-5718-1987-0866113-7/S0025-5718-1987-0866113-7.pdf
++  # - Modern Computer Arithmetic
++  #   Section 2.5.1 Several inversions at once
++  #   Richard P. Brent and Paul Zimmermann
++  #   https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf
++
++  # To avoid temporaries, we store partial accumulations
++  # in affs[i].x and whether z == 0 in affs[i].y
++  template zero(i: int): SecretWord =
++    when F is Fp:
++      affs[i].y.mres.limbs[0]
++    else:
++      affs[i].y.coords[0].mres.limbs[0]
++
++  zero(0) = SecretWord jacs[0].z.isZero()
++  if zero(0).bool():
++    affs[0].x.setOne()
++  else:
++    affs[0].x = jacs[0].z
++
++  for i in 1 ..< N:
++    # Skip zero z-coordinates (infinity points)
++    zero(i) = SecretWord jacs[i].z.isZero()
++    if zero(i).bool():
++      # Maintain the product chain: multiply by 1
++      affs[i].x = affs[i-1].x
++    else:
++      if i != N-1:
++        affs[i].x.prod(affs[i-1].x, jacs[i].z, lazyReduce = true)
++      else:
++        affs[i].x.prod(affs[i-1].x, jacs[i].z, lazyReduce = false)
++
++  var accInv {.noInit.}: F
++  accInv.inv_vartime(affs[N-1].x)
++
++  for i in countdown(N-1, 1):
++    # Extract 1/Pᵢ
++    var invi {.noInit.}: F
++    if zero(i).bool():
++      # accInv is unchanged
++      affs[i].setNeutral()
++    else:
++      invi.prod(accInv, affs[i-1].x, lazyReduce = true)
++      accInv.prod(accInv, jacs[i].z, lazyReduce = true)
++
++      # Now convert Pᵢ to affine
++      var invi2 {.noinit.}: F
++      invi2.square(invi, lazyReduce = true)
++      affs[i].x.prod(jacs[i].x, invi2)
++      invi.prod(invi, invi2, lazyReduce = true)
++      affs[i].y.prod(jacs[i].y, invi)
++
++
++  block: # tail
++    var invi2 {.noinit.}: F
++    if zero(0).bool():
++      affs[0].setNeutral()
++    else:
++      invi2.square(accInv, lazyReduce = true)
++      affs[0].x.prod(jacs[0].x, invi2)
++      accInv.prod(accInv, invi2, lazyReduce = true)
++      affs[0].y.prod(jacs[0].y, accInv)
++
++func batchAffine_vartime*[N: static int, F, G](
++       affs: var array[N, EC_ShortW_Aff[F, G]],
++       jacs: array[N, EC_ShortW_Jac[F, G]]) {.inline.} =
++  batchAffine_vartime(affs.asUnchecked(), jacs.asUnchecked(), N)
++
++func batchAffine_vartime*[M, N: static int, F, G](
++       affs: var array[M, array[N, EC_ShortW_Aff[F, G]]],
++       jacs: array[M, array[N, EC_ShortW_Jac[F, G]]]) {.inline.} =
++  batchAffine_vartime(affs[0].asUnchecked(), jacs[0].asUnchecked(), M*N)
++
+ func batchFromAffine*[F, G](
+        jacs: ptr UncheckedArray[EC_ShortW_Jac[F, G]],
+        affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
+diff --git a/constantine/math/elliptic/ec_shortweierstrass_batch_ops_parallel.nim b/constantine/math/elliptic/ec_shortweierstrass_batch_ops_parallel.nim
+index 66c608dc..a87f6a84 100644
+--- a/constantine/math/elliptic/ec_shortweierstrass_batch_ops_parallel.nim
++++ b/constantine/math/elliptic/ec_shortweierstrass_batch_ops_parallel.nim
+@@ -63,7 +63,7 @@ proc sum_reduce_vartime_parallelChunks[F; G: static Subgroup](
+       r.sum_vartime(r, partialResults[i])
+   else:
+     let partialResultsAffine = allocStackArray(EC_ShortW_Aff[F, G], chunkDesc.numChunks)
+-    partialResultsAffine.batchAffine(partialResults, chunkDesc.numChunks)
++    partialResultsAffine.batchAffine_vartime(partialResults, chunkDesc.numChunks)
+     r.sum_reduce_vartime(partialResultsAffine, chunkDesc.numChunks)
+ 
+ proc sum_reduce_vartime_parallelAccums[F; G: static Subgroup](
+diff --git a/constantine/math/elliptic/ec_twistededwards_batch_ops.nim b/constantine/math/elliptic/ec_twistededwards_batch_ops.nim
+index b4566b02..56fd610d 100644
+--- a/constantine/math/elliptic/ec_twistededwards_batch_ops.nim
++++ b/constantine/math/elliptic/ec_twistededwards_batch_ops.nim
+@@ -25,7 +25,10 @@ import
+ func batchAffine*[F](
+        affs: ptr UncheckedArray[EC_TwEdw_Aff[F]],
+        projs: ptr UncheckedArray[EC_TwEdw_Prj[F]],
+-       N: int) {.noInline, tags:[Alloca].} =
++       N: int) {.meter.} =
++  if N <= 0:
++    return
++
+   # Algorithm: Montgomery's batch inversion
+   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
+   #   Section 10.3.1
+@@ -37,17 +40,19 @@ func batchAffine*[F](
+   #   https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf
+ 
+   # To avoid temporaries, we store partial accumulations
+-  # in affs[i].x
+-  let zeroes = allocStackArray(SecretBool, N)
++  # in affs[i].x and zero-tracking in affs[i].y
++  template zero(i: int): SecretWord =
++    affs[i].y.mres.limbs[0]
++
+   affs[0].x = projs[0].z
+-  zeroes[0] = affs[0].x.isZero()
+-  affs[0].x.csetOne(zeroes[0])
++  zero(0) = SecretWord affs[0].x.isZero()
++  affs[0].x.csetOne(SecretBool zero(0))
+ 
+   for i in 1 ..< N:
+     # Skip zero z-coordinates (infinity points)
+     var z = projs[i].z
+-    zeroes[i] = z.isZero()
+-    z.csetOne(zeroes[i])
++    zero(i) = SecretWord z.isZero()
++    z.csetOne(SecretBool zero(i))
+ 
+     if i != N-1:
+       affs[i].x.prod(affs[i-1].x, z, lazyReduce = true)
+@@ -59,21 +64,21 @@ func batchAffine*[F](
+ 
+   for i in countdown(N-1, 1):
+     # Extract 1/Pᵢ
+-    var invi {.noInit.}: F
++    var invi {.noInit.}, invi_next {.noInit.}: F
+     invi.prod(accInv, affs[i-1].x, lazyReduce = true)
+-    invi.csetZero(zeroes[i])
++    invi.csetZero(SecretBool zero(i))
++
++    # next iteration
++    invi_next = projs[i].z
++    invi_next.csetOne(SecretBool zero(i))
++    accInv.prod(accInv, invi_next, lazyReduce = true)
+ 
+     # Now convert Pᵢ to affine
+     affs[i].x.prod(projs[i].x, invi)
+     affs[i].y.prod(projs[i].y, invi)
+ 
+-    # next iteration
+-    invi = projs[i].z
+-    invi.csetOne(zeroes[i])
+-    accInv.prod(accInv, invi, lazyReduce = true)
+-
+   block: # tail
+-    accInv.csetZero(zeroes[0])
++    accInv.csetZero(SecretBool zero(0))
+     affs[0].x.prod(projs[0].x, accInv)
+     affs[0].y.prod(projs[0].y, accInv)
+ 
+@@ -86,3 +91,80 @@ func batchAffine*[M, N: static int, F](
+        affs: var array[M, array[N, EC_TwEdw_Aff[F]]],
+        projs: array[M, array[N, EC_TwEdw_Prj[F]]]) {.inline.} =
+   batchAffine(affs[0].asUnchecked(), projs[0].asUnchecked(), M*N)
++
++# Variable-time batch conversion
++# ---------------------------------------------------------------
++
++func batchAffine_vartime*[F](
++       affs: ptr UncheckedArray[EC_TwEdw_Aff[F]],
++       projs: ptr UncheckedArray[EC_TwEdw_Prj[F]],
++       N: int) {.tags:[VarTime], meter.} =
++  if N <= 0:
++    return
++
++  # Algorithm: Montgomery's batch inversion (variable-time version)
++  # - Speeding the Pollard and Elliptic Curve Methods of Factorization
++  #   Section 10.3.1
++  #   Peter L. Montgomery
++  #   https://www.ams.org/journals/mcom/1987-48-177/S0025-5718-1987-0866113-7/S0025-5718-1987-0866113-7.pdf
++  # - Modern Computer Arithmetic
++  #   Section 2.5.1 Several inversions at once
++  #   Richard P. Brent and Paul Zimmermann
++  #   https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf
++
++  # To avoid temporaries, we store partial accumulations
++  # in affs[i].x and zero-tracking in affs[i].y
++  template zero(i: int): SecretWord =
++    affs[i].y.mres.limbs[0]
++
++  zero(0) = SecretWord projs[0].z.isZero()
++  if zero(0).bool():
++    affs[0].x.setOne()
++  else:
++    affs[0].x = projs[0].z
++
++  for i in 1 ..< N:
++    # Skip zero z-coordinates (infinity points)
++    zero(i) = SecretWord projs[i].z.isZero()
++    if zero(i).bool():
++      # Maintain the product chain: multiply by 1
++      affs[i].x = affs[i-1].x
++    else:
++      if i != N-1:
++        affs[i].x.prod(affs[i-1].x, projs[i].z, lazyReduce = true)
++      else:
++        affs[i].x.prod(affs[i-1].x, projs[i].z, lazyReduce = false)
++
++  var accInv {.noInit.}: F
++  accInv.inv_vartime(affs[N-1].x)
++
++  for i in countdown(N-1, 1):
++    # Extract 1/Pᵢ
++    var invi {.noInit.}: F
++    if zero(i).bool():
++      # accInv is unchanged
++      affs[i].setNeutral()
++    else:
++      invi.prod(accInv, affs[i-1].x, lazyReduce = true)
++      accInv.prod(accInv, projs[i].z, lazyReduce = true)
++
++      # Now convert Pᵢ to affine
++      affs[i].x.prod(projs[i].x, invi)
++      affs[i].y.prod(projs[i].y, invi)
++
++  block: # tail
++    if zero(0).bool():
++      affs[0].setNeutral()
++    else:
++      affs[0].x.prod(projs[0].x, accInv)
++      affs[0].y.prod(projs[0].y, accInv)
++
++func batchAffine_vartime*[N: static int, F](
++       affs: var array[N, EC_TwEdw_Aff[F]],
++       projs: array[N, EC_TwEdw_Prj[F]]) {.inline.} =
++  batchAffine_vartime(affs.asUnchecked(), projs.asUnchecked(), N)
++
++func batchAffine_vartime*[M, N: static int, F](
++       affs: var array[M, array[N, EC_TwEdw_Aff[F]]],
++       projs: array[M, array[N, EC_TwEdw_Prj[F]]]) {.inline.} =
++  batchAffine_vartime(affs[0].asUnchecked(), projs[0].asUnchecked(), M*N)
+diff --git a/constantine/math/matrix/toeplitz.nim b/constantine/math/matrix/toeplitz.nim
+index 4d38a237..fffa890a 100644
+--- a/constantine/math/matrix/toeplitz.nim
++++ b/constantine/math/matrix/toeplitz.nim
+@@ -8,6 +8,7 @@
+ 
+ import
+   constantine/math/[arithmetic, ec_shortweierstrass],
++  constantine/math/elliptic/ec_multi_scalar_mul,
+   constantine/math/polynomials/[fft_fields, fft_ec],
+   constantine/platforms/[allocs, views, abstractions]
+ 
+@@ -24,9 +25,9 @@ export FFT_Status
+ #
+ # For FK20, the Toeplitz matrix has a SPECIAL SPARSE structure:
+ # The circulant coefficients are:
+-#   c[0] = poly[n-1]
+-#   c[1..n+1] = 0
+-#   c[n+2..2n-1] = poly[1..n-2]
++#   c[0] = poly[r-1]
++#   c[1..r+1] = 0
++#   c[r+2..2r-1] = poly[1..r-2]
+ #
+ # General algorithm for O(n log n) Toeplitz matrix-vector multiplication:
+ # 1. Build circulant vector a_2n from Toeplitz entries
+@@ -47,8 +48,9 @@ func checkCirculant*[F](
+   ##
+   ## Checks:
+   ## - circulant[0] == poly[n-1-offset]
+-  ## - circulant[1..r+1] are all zero (r+1 zeros)
+-  ## - circulant[r+2..2r-1] match poly values at stride intervals (r-2 non-zero elements)
++  ## - circulant[1..r] are all zero
++  ## - circulant[r+1] is zero when r+1 < 2*r (bounds-checked for r >= 2)
++  ## - circulant[r+2..2r-1] match poly values at stride intervals
+   ##
+   ## @param circulant: circulant matrix to validate (length 2*r)
+   ## @param poly: polynomial coefficients (length n)
+@@ -69,9 +71,12 @@ func checkCirculant*[F](
+     return false
+ 
+   # Check zero padding (indices 1 to r+1)
+-  for i in 1 .. r + 1:
++  for i in 1 .. r:
+     if not circulant[i].isZero().bool:
+       return false
++  # Also check index r+1 when it is in bounds (r >= 2)
++  if r + 1 < k2 and not circulant[r + 1].isZero().bool:
++    return false
+ 
+   # Check strided elements: output[2r-j] = poly[d-offset-j*stride] for j=1..r-2
+   for j in 1 ..< r - 1:
+@@ -103,8 +108,9 @@ proc makeCirculantMatrix*[F](
+   ##
+   ## Output structure (length 2r = 128) - c-kzg convention:
+   ##   output[0]      = poly[n - 1 - offset]
+-  ##   output[1..r+1] = 0 (zero padding, r+1 zeros)
+-  ##   output[r+2..2r-1] = poly values at stride intervals (r-2 non-zero elements)
++  ##   output[1..r]   = 0 (zero padding)
++  ##   output[r+1]    = 0 (from zero-init)
++  ##   output[r+2..2r-1] = poly values at stride intervals
+   ##
+   ## @param output: output array of length 2*r
+   ## @param poly: polynomial coefficients of length n
+@@ -126,103 +132,178 @@ proc makeCirculantMatrix*[F](
+ 
+   output[0] = poly[d - offset]
+ 
+-  # Fill non-zero elements matching c-kzg and rust-kzg:
++  # Fill non-zero elements:
+   #   output[2r-j] = poly[d - offset - j*stride] for j = 1..r-2
+   # This puts non-zero values at indices 2r-1 down to r+2
+-  # Total: r-2 non-zero elements (matches rust's loop: i from k+2 to k2-1)
++  # Total: r-2 non-zero elements
+   for j in 1 ..< r - 1:
+     output[2 * r - j] = poly[d - offset - j * stride]
+ 
+-  debug: doAssert checkCirculant(output, poly, offset, stride), "Invalid circulant matrix"
+-
+-# Note: deriveCirculant was removed - use computeFK20TauExt in kzg_multiprove.nim instead
+-
+-proc toeplitzMatVecMulPreFFT*[EC, F](
+-  output: var openArray[EC],
+-  circulant: openArray[F],
+-  vFft: openArray[EC],
++  debug: doAssert checkCirculant(output, poly, offset, stride)
++
++
++type
++  ToeplitzStatus* = enum
++    Toeplitz_Success
++    Toeplitz_SizeNotPowerOfTwo
++    Toeplitz_TooManyValues
++    Toeplitz_MismatchedSizes
++
++# Error handling templates
++# ------------------------------------------------------------
++
++template checkReturn*(evalExpr: untyped): untyped {.dirty.} =
++  ## Check ToeplitzStatus or FFTStatus and return early on failure
++  ## Use in functions that return ToeplitzStatus directly
++  block:
++    let status = evalExpr
++    when status is ToeplitzStatus:
++      if status != Toeplitz_Success:
++        return status
++    elif status is FFTStatus:
++      if status != FFT_Success:
++        return case status
++          of FFT_SizeNotPowerOfTwo: Toeplitz_SizeNotPowerOfTwo
++          of FFT_TooManyValues: Toeplitz_TooManyValues
++          else: Toeplitz_MismatchedSizes
++
++template check*(Section: untyped, evalExpr: untyped): untyped {.dirty.} =
++  ## Check ToeplitzStatus or FFTStatus and break to labeled section on failure
++  ## Use when cleanup/resource deallocation is needed
++  block:
++    let status = evalExpr
++    when status is ToeplitzStatus:
++      if status != Toeplitz_Success:
++        result = status
++        break Section
++    elif status is FFTStatus:
++      if status != FFT_Success:
++        result = case status
++          of FFT_SizeNotPowerOfTwo: Toeplitz_SizeNotPowerOfTwo
++          of FFT_TooManyValues: Toeplitz_TooManyValues
++          else: Toeplitz_MismatchedSizes
++        break Section
++
++type
++  ToeplitzAccumulator*[EC, ECaff, F] = object
++    ## Accumulator for Toeplitz matrix-vector multiplication with MSM
++    ## Following c-kzg-4844 fk20.c algorithm
++    frFftDesc: FrFFT_Descriptor[F]          # FFT descriptor for field element transforms (user-owned, not freed by =destroy)
++    ecFftDesc: ECFFT_Descriptor[EC]         # FFT descriptor for EC point transforms (user-owned, not freed by =destroy)
++    coeffs: ptr UncheckedArray[F]           # [size*L] transposed coeffs
++    points: ptr UncheckedArray[ECaff]       # [size*L] points for each position
++    # Pre-allocated scratch buffer — avoids heap alloc in accumulate/finish hot paths
++    scratchScalars: ptr UncheckedArray[F]   # [max(size,L)] union buffer (sizeof(F) == sizeof(F.getBigInt()))
++    size: int
++    L: int
++    offset: int
++
++proc `=destroy`*[EC, ECaff, F](ctx: var ToeplitzAccumulator[EC, ECaff, F]) {.raises: [].} =
++  if not ctx.coeffs.isNil():
++    freeHeapAligned(ctx.coeffs)
++  if not ctx.points.isNil():
++    freeHeapAligned(ctx.points)
++  if not ctx.scratchScalars.isNil():
++    freeHeapAligned(ctx.scratchScalars)
++  ctx.coeffs = nil
++  ctx.points = nil
++  ctx.scratchScalars = nil
++proc `=copy`*[EC, ECaff, F](dst: var ToeplitzAccumulator[EC, ECaff, F], src: ToeplitzAccumulator[EC, ECaff, F]) {.error.}
++
++proc init*[EC, ECaff, F](
++  ctx: var ToeplitzAccumulator[EC, ECaff, F],
+   frFftDesc: FrFFT_Descriptor[F],
+   ecFftDesc: ECFFT_Descriptor[EC],
+-  accumulate: bool = false
+-): FFTStatus {.meter.} =
+-
+-  ## Multiply Toeplitz matrix (via circulant coefficients) by pre-FFT'd vector for FK20.
+-  ##
+-  ## This is the core FK20 multiplication routine where the setup FFT is already precomputed.
+-  ##
+-  ## Algorithm:
+-  ## 1. FFT of circulant coefficients (field elements)
+-  ## 2. Hadamard product: vFft[i] * circulantFft[i]
+-  ## 3. Inverse FFT (EC points)
+-  ## 4. Optionally accumulate into output
+-  ##
+-  ## For general Toeplitz multiplication:
+-  ##   - circulant has length 2n (zero-padded embedding)
+-  ##   - vFft has length 2n (zero-extended vector FFT)
+-  ##   - output has length n (first n elements of IFFT result)
+-  ##
+-  ## For FK20 (same-size multiplication):
+-  ##   - circulant has length K2
+-  ##   - vFft has length K2 (precomputed setup FFT)
+-  ##   - output has length K2
+-  ##
+-  ## @param output: result vector (EC points)
+-  ## @param circulant: Circulant matrix coefficients
+-  ## @param vFft: Precomputed vector FFT (EC points)
+-  ## @param frFftDesc: Field element FFT descriptor
+-  ## @param ecFftDesc: EC FFT descriptor
+-  ## @param accumulate: If true, accumulate into output; otherwise overwrite
+-  ## @return: FFTStatus indicating success or failure
+-
+-  let n = circulant.len
+-  let outputSize = if output.len < n: output.len else: n
+-
+-  if vFft.len != n:
+-    return FFT_SizeNotPowerOfTwo
+-  if n > frFftDesc.order:
+-    return FFT_TooManyValues
+-  if n > ecFftDesc.order:
+-    return FFT_TooManyValues
+-
+-  let coeffsFft = allocHeapArrayAligned(F, n, 64)
+-  let coeffsFftBig = allocHeapArrayAligned(F.getBigInt(), n, 64)
+-  let product = allocHeapArrayAligned(EC, n, 64)
+-
+-  let status1 = frFftDesc.fft_nn(coeffsFft.toOpenArray(n), circulant)
+-  if status1 != FFT_Success:
+-    freeHeapAligned(coeffsFft)
+-    freeHeapAligned(product)
+-    freeHeapAligned(coeffsFftBig)
+-    return status1
+-
+-  coeffsFftBig.batchFromField(coeffsFft, n)
++  size: int,
++  L: int
++): ToeplitzStatus {.raises: [], meter.} =
++  # Free existing allocations (defensive: handles accidental double-init)
++  if not ctx.coeffs.isNil():
++    freeHeapAligned(ctx.coeffs)
++  if not ctx.points.isNil():
++    freeHeapAligned(ctx.points)
++  if not ctx.scratchScalars.isNil():
++    freeHeapAligned(ctx.scratchScalars)
++  ctx.size = 0
++  ctx.offset = 0
++  ctx.L = 0
++  ctx.coeffs = nil
++  ctx.points = nil
++  ctx.scratchScalars = nil
++  ctx.frFftDesc = frFftDesc
++  ctx.ecFftDesc = ecFftDesc
++
++  if size <= 0 or L <= 0 or not size.isPowerOf2_vartime():
++    return Toeplitz_SizeNotPowerOfTwo
++
++  ctx.size = size
++  ctx.L = L
++  ctx.offset = 0
++  # Allocate transposed buffers: [size*L]
++  ctx.coeffs = allocHeapArrayAligned(F, size * L, alignment = 64)
++  ctx.points = allocHeapArrayAligned(ECaff, size * L, alignment = 64)
++  # Allocate scratch buffer for zero-alloc hot path
++  ctx.scratchScalars = allocHeapArrayAligned(F, max(size, L), alignment = 64)
++
++  return Toeplitz_Success
++proc accumulate*[EC, ECaff, F](
++  ctx: var ToeplitzAccumulator[EC, ECaff, F],
++  circulant: openArray[F],
++  vFft: openArray[ECaff]
++): ToeplitzStatus {.raises: [], meter.} =
++  ## Accumulate FFT(circulant) and vFft for position ctx.offset
++  let n = ctx.size
++  if n == 0 or circulant.len != n or vFft.len != n or ctx.offset >= ctx.L:
++    return Toeplitz_MismatchedSizes
++
++  block HappyPath:
++    check HappyPath, fft_nn(ctx.frFftDesc, ctx.scratchScalars.toOpenArray(n), circulant)
++
++    # Store transposed: coeffs[i*L + offset] and points[i*L + offset]
++    for i in 0 ..< n:
++      ctx.coeffs[i * ctx.L + ctx.offset] = ctx.scratchScalars[i]
++      ctx.points[i * ctx.L + ctx.offset] = vFft[i]
++
++    ctx.offset += 1
++    result = Toeplitz_Success
++
++  return result
++
++proc finish*[EC, ECaff, F](
++  ctx: var ToeplitzAccumulator[EC, ECaff, F],
++  output: var openArray[EC]
++): ToeplitzStatus {.raises: [], meter.} =
++  ## MSM per position, then IFFT
++  let n = ctx.size
++  if n == 0 or output.len != n or ctx.offset != ctx.L:
++    return Toeplitz_MismatchedSizes
++
++  # Invariant: scratchScalars is typed as F but re-interpreted as F.getBigInt() below.
++  # This requires sizeof(F) == sizeof(F.getBigInt()), which holds for all production
++  # field types (e.g. Fr[BLS12_381] is 32 bytes in both representations).
++  static: doAssert sizeof(F) == sizeof(F.getBigInt()), "scratchScalars cast requires sizeof(F) == sizeof(F.getBigInt())"
++
++  let scalars = cast[ptr UncheckedArray[F.getBigInt()]](ctx.scratchScalars)
+ 
+   for i in 0 ..< n:
+-    product[i].scalarMul_vartime(coeffsFftBig[i], vFft[i])
+-
+-  let convolutionResult = allocHeapArrayAligned(EC, n, 64)
+-  let status2 = ecFftDesc.ec_ifft_nn(convolutionResult.toOpenArray(n), product.toOpenArray(n))
+-  if status2 != FFT_Success:
+-    freeHeapAligned(convolutionResult)
+-    freeHeapAligned(coeffsFft)
+-    freeHeapAligned(product)
+-    freeHeapAligned(coeffsFftBig)
+-    return status2
+-
+-  # Toeplitz MatMul = Truncated Convolution
+-  if accumulate:
+-    for i in 0 ..< outputSize:
+-      output[i] ~+= convolutionResult[i]
+-  else:
+-    for i in 0 ..< outputSize:
+-      output[i] = convolutionResult[i]
+-
+-  freeHeapAligned(convolutionResult)
+-  freeHeapAligned(coeffsFft)
+-  freeHeapAligned(product)
+-  freeHeapAligned(coeffsFftBig)
+-
+-  return FFT_Success
++    # Load L scalars for position i
++    for offset in 0 ..< ctx.L:
++      scalars[offset].fromField(ctx.coeffs[i * ctx.L + offset])
++
++    # MSM: output[i] = Σ scalars[offset] * points[offset]
++    let pointsPtr = cast[ptr UncheckedArray[ECaff]](addr ctx.points[i * ctx.L])
++    output[i].multiScalarMul_vartime(scalars, pointsPtr, ctx.L)
++
++  # IFFT in-place — bit_reversal_permutation handles aliasing internally
++  checkReturn ec_ifft_nn(ctx.ecFftDesc, output, output)
++  return Toeplitz_Success
++
++
++# ############################################################
++#
++#           High-level Toeplitz API (for tests)
++#
++# ############################################################
+ 
+ proc toeplitzMatVecMul*[EC, F](
+   output: var openArray[EC],
+@@ -230,62 +311,68 @@ proc toeplitzMatVecMul*[EC, F](
+   v: openArray[EC],
+   frFftDesc: FrFFT_Descriptor[F],
+   ecFftDesc: ECFFT_Descriptor[EC]
+-): FFTStatus {.meter.} =
+-
++): ToeplitzStatus {.meter.} =
+   ## Multiply a Toeplitz matrix by a vector using FFT-based O(n log n) algorithm.
+   ##
+-  ## This implements the circulant embedding method:
++  ## This implements the circulant embedding method using the ToeplitzAccumulator API:
+   ## 1. FFT of zero-extended vector (EC points)
+   ## 2. FFT of circulant coefficients (field elements)
+-  ## 3. Hadamard product: EC_point[i] * Fr_scalar[i]
+-  ## 4. Inverse FFT (EC) and truncate to first n entries
+-  ##
+-  ## This calls toeplitzMatVecMulPreFFT after FFT'ing the vector.
++  ## 3. Accumulate into ToeplitzAccumulator (stores FFT results transposed)
++  ## 4. MSM per output position, then IFFT
+   ##
+   ## @param output: result vector of length n (EC points)
+   ## @param circulant: Circulant coefficients of length 2n
+   ## @param v: vector of length n (EC points)
+   ## @param frFftDesc: Field element FFT descriptor with order >= 2*n
+   ## @param ecFftDesc: EC FFT descriptor with order >= 2*n
+-  ## @return: FFTStatus indicating success or failure
++  ## @return: ToeplitzStatus indicating success or failure
++  type ECaff = EC.affine
+ 
+   let n = v.len
+   let n2 = 2 * n
+ 
+   if output.len != n:
+-    return FFT_SizeNotPowerOfTwo
++    return Toeplitz_MismatchedSizes
+   if circulant.len != n2:
+-    return FFT_SizeNotPowerOfTwo
++    return Toeplitz_MismatchedSizes
+   if n2 > frFftDesc.order:
+-    return FFT_TooManyValues
++    return Toeplitz_TooManyValues
+   if n2 > ecFftDesc.order:
+-    return FFT_TooManyValues
++    return Toeplitz_TooManyValues
+ 
+   let vExt = allocHeapArrayAligned(EC, n2, 64)
+-
+   for i in 0 ..< n:
+     vExt[i] = v[i]
+   for i in n ..< n2:
+     vExt[i].setNeutral()
+ 
+-  let vExtFft = allocHeapArrayAligned(EC, n2, 64)
+-  let status1 = ecFftDesc.ec_fft_nn(vExtFft.toOpenArray(n2), vExt.toOpenArray(n2))
+-  if status1 != FFT_Success:
+-    freeHeapAligned(vExtFft)
+-    freeHeapAligned(vExt)
+-    return status1
+-
+-  # Call PreFFT version
+-  let status2 = toeplitzMatVecMulPreFFT(
+-    output,
+-    circulant,
+-    vExtFft.toOpenArray(n2),
+-    frFftDesc,
+-    ecFftDesc,
+-    accumulate = false
+-  )
+-
+-  freeHeapAligned(vExtFft)
++  # ec_fft_nn supports in-place operation — reuse vExt buffer
++  var vExtFftAff: ptr UncheckedArray[ECaff] = nil
++  var ifftResult: ptr UncheckedArray[EC] = nil
++  # Default-init is safe: =destroy nil-checks all ptr fields and type is not large
++  var acc: ToeplitzAccumulator[EC, ECaff, F]
++
++  block HappyPath:
++    check HappyPath, ec_fft_nn(ecFftDesc, vExt.toOpenArray(n2), vExt.toOpenArray(n2))
++
++    vExtFftAff = allocHeapArrayAligned(ECaff, n2, 64)
++    batchAffine_vartime(vExtFftAff, vExt, n2)
++
++    check HappyPath, acc.init(frFftDesc, ecFftDesc, n2, L = 1)
++    check HappyPath, acc.accumulate(circulant, vExtFftAff.toOpenArray(n2))
++
++    ifftResult = allocHeapArrayAligned(EC, n2, 64)
++    check HappyPath, acc.finish(ifftResult.toOpenArray(n2))
++
++    for i in 0 ..< n:
++      output[i] = ifftResult[i]
++
++    result = Toeplitz_Success
++
++  if vExtFftAff != nil:
++    freeHeapAligned(vExtFftAff)
++  if ifftResult != nil:
++    freeHeapAligned(ifftResult)
+   freeHeapAligned(vExt)
+ 
+-  return status2
+\ No newline at end of file
++  return result
+\ No newline at end of file
+diff --git a/constantine/math/matrix/transpose.nim b/constantine/math/matrix/transpose.nim
+new file mode 100644
+index 00000000..6dcccec5
+--- /dev/null
++++ b/constantine/math/matrix/transpose.nim
+@@ -0,0 +1,79 @@
++# Constantine
++# Copyright (c) 2020-Present Mamy André-Ratsimbazafy
++# Licensed and distributed under either of
++#   * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
++#   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
++# at your option. This file may not be copied, modified, or distributed except according to those terms.
++
++# ############################################################
++#
++#              Optimized Matrix Transposition
++#
++# Optimized for large field elements (e.g., Fr[BLS12_381] - 32 bytes)
++#
++# Benchmark results (512x512 matrix, 32-byte elements):
++# - 2D Blocked (block=16):   20.4 GB/s  [WINNER]
++# - 2D Blocked (block=32):   20.1 GB/s
++# - 2D Blocked (block=8):    19.8 GB/s
++# - Naive sequential:        10.1 GB/s
++#
++# See benchmarks/bench_matrix_transpose.nim for full comparison
++#
++# ############################################################
++
++import
++  std/[math],
++  ../../platforms/views
++
++export views
++
++# ############################################################
++#
++#         2D Blocked (Tiled) Transposition
++#
++# ############################################################
++
++proc transpose*[T](dst, src: ptr UncheckedArray[T], M, N: int, blockSize: static int = 16) {.inline.} =
++  ## 2D tiled transposition for optimal cache utilization
++  ##
++  ## Processes matrix in blockSize x blockSize tiles.
++  ## Optimal block size depends on element size:
++  ## - 32-byte elements (Fr[BLS12_381]): block=16 or 32
++  ## - 8-byte elements (float64): block=32 or 64
++  ## - 4-byte elements (float32): block=64
++  ##
++  ## Performance: ~20 GB/s for 32-byte elements (2x naive)
++  ##
++  ## Parameters:
++  ## - dst: output buffer (N x M elements)
++  ## - src: input buffer (M x N elements)
++  ## - M: number of rows in source matrix
++  ## - N: number of columns in source matrix
++  ## - blockSize: tile size (default 16, optimized for 32-byte elements)
++  const blck = blockSize
++  for jj in countup(0, N - 1, blck):
++    for ii in countup(0, M - 1, blck):
++      for j in jj ..< min(jj + blck, N):
++        for i in ii ..< min(ii + blck, M):
++          dst[j * M + i] = src[i * N + j]
++
++# ############################################################
++#
++#              openArray-based convenience wrappers
++#
++# ############################################################
++
++proc transpose*[T](dst: var openArray[T], src: openArray[T], M, N: int, blockSize: static int = 16) {.inline.} =
++  ## Transpose M x N matrix from src to dst
++  ##
++  ## Both dst and src must be pre-allocated:
++  ## - src: M * N elements
++  ## - dst: N * M elements
++  ##
++  ## No heap allocations - uses ptr UncheckedArray internally
++  doAssert dst.len >= N * M, "dst too small"
++  doAssert src.len >= M * N, "src too small"
++  
++  let srcPtr = cast[ptr UncheckedArray[T]](unsafeAddr(src[0]))
++  let dstPtr = cast[ptr UncheckedArray[T]](unsafeAddr(dst[0]))
++  dstPtr.transpose(srcPtr, M, N, blockSize)
+\ No newline at end of file
+diff --git a/constantine/math/polynomials/fft_common.nim b/constantine/math/polynomials/fft_common.nim
+index c8bd5b66..cc340b1b 100644
+--- a/constantine/math/polynomials/fft_common.nim
++++ b/constantine/math/polynomials/fft_common.nim
+@@ -287,8 +287,8 @@ func bit_reversal_permutation_cobra[T](buf: var openArray[T]) {.used.} =
+ 
+   freeHeap(t)
+ 
+-func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) {.inline.} =
+-  ## Out-of-place bit reversal permutation.
++func bit_reversal_permutation_noalias*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) {.inline.} =
++  ## Out-of-place bit reversal permutation (no aliasing between dst and src).
+   ##
+   ## Automatically selects between naive and COBRA algorithms based on size.
+   ## For small sizes (< 2^7 elements), the naive algorithm is faster.
+@@ -304,12 +304,30 @@ func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias
+     # Use naive algorithm for small sizes
+     bit_reversal_permutation_naive(dst, src)
+ 
+-func bit_reversal_permutation*[T](buf: var openArray[T]) {.inline.} =
++func bit_reversal_permutation*[T](dst: var openArray[T], src: openArray[T]) =
++  ## Out-of-place bit reversal permutation with aliasing detection.
++  ##
++  ## If dst and src are the same array (aliasing), a temporary buffer is allocated.
++  debug: doAssert dst.len.uint.isPowerOf2_vartime()
++  debug: doAssert dst.len == src.len
++  debug: doAssert dst.len > 0
++
++  if dst[0].addr == src[0].addr:
++    # Alias: allocate temp, permute to temp, copy back
++    var tmp = allocHeapArrayAligned(T, src.len, alignment = 64)
++    bit_reversal_permutation_noalias(tmp.toOpenArray(0, src.len-1), src)
++    copyMem(dst[0].addr, tmp[0].addr, src.len * sizeof(T))
++    freeHeapAligned(tmp)
++  else:
++    bit_reversal_permutation_noalias(dst, src)
++
++func bit_reversal_permutation*[T](buf: var openArray[T]) =
+   ## In-place bit reversal permutation.
+   ##
+   ## Out-of-place is at least 2x faster than in-place so dispatch to out-of-place
++  debug: doAssert buf.len.uint.isPowerOf2_vartime()
+   debug: doAssert buf.len > 0
+   var tmp = allocHeapArrayAligned(T, buf.len, alignment = 64)
+-  bit_reversal_permutation(tmp.toOpenArray(0, buf.len-1), buf)
+-  buf[0].addr.copyMem(tmp[0].addr, buf.len * sizeof(buf[0]))
++  bit_reversal_permutation_noalias(tmp.toOpenArray(0, buf.len-1), buf)
++  copyMem(buf[0].addr, tmp[0].addr, buf.len * sizeof(buf[0]))
+   freeHeapAligned(tmp)
+\ No newline at end of file
+diff --git a/constantine/math/polynomials/fft_ec.nim b/constantine/math/polynomials/fft_ec.nim
+index c0b7c83f..4de507de 100644
+--- a/constantine/math/polynomials/fft_ec.nim
++++ b/constantine/math/polynomials/fft_ec.nim
+@@ -67,7 +67,7 @@ func new*(T: type ECFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
+ func ec_fft_nn_impl_recursive[EC; bits: static int](
+        output: var StridedView[EC],
+        vals: StridedView[EC],
+-       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime, Alloca].} =
++       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime].} =
+   ## Recursive Cooley-Tukey EC FFT (natural to natural)
+   if output.len == 1:
+     output[0] = vals[0]
+@@ -93,7 +93,7 @@ func ec_fft_nn_impl_recursive[EC; bits: static int](
+ func ec_fft_nn_recursive[EC](
+        desc: ECFFT_Descriptor[EC],
+        output: var openarray[EC],
+-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
++       vals: openarray[EC]): FFTStatus {.tags: [VarTime], meter.} =
+   ## EC FFT from natural order to natural order (Recursive Cooley-Tukey).
+   checkSizesReturnEarly(desc, output, vals)
+ 
+@@ -108,7 +108,7 @@ func ec_fft_nn_recursive[EC](
+ func ec_ifft_nn_recursive[EC](
+        desc: ECFFT_Descriptor[EC],
+        output: var openarray[EC],
+-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
++       vals: openarray[EC]): FFTStatus {.tags: [VarTime], meter.} =
+   ## Inverse FFT from natural order to natural order
+   checkSizesReturnEarly(desc, output, vals)
+ 
+@@ -134,7 +134,7 @@ func ec_ifft_nn_recursive[EC](
+ 
+ func ec_fft_nr_impl_iterative_dif[EC; bits: static int](
+        output: var StridedView[EC],
+-       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime, Alloca].} =
++       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime].} =
+   ## In-place iterative EC FFT (Cooley-Tukey DIF - Decimation-In-Frequency)
+   ## Input: natural order values
+   ## Output: bit-reversed order values in Fourier domain
+@@ -163,7 +163,7 @@ func ec_fft_nr_impl_iterative_dif[EC; bits: static int](
+ 
+ func ec_fft_rn_impl_iterative_dit[EC; bits: static int](
+        output: var StridedView[EC],
+-       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime, Alloca].} =
++       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime].} =
+   ## In-place iterative EC FFT (Cooley-Tukey DIT - Decimation-In-Time)
+   ## Input: bit-reversed order values
+   ## Output: natural order values in Fourier domain
+@@ -193,7 +193,7 @@ func ec_fft_rn_impl_iterative_dit[EC; bits: static int](
+ func ec_fft_nr_iterative[EC](
+        desc: ECFFT_Descriptor[EC],
+        output: var openarray[EC],
+-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
++       vals: openarray[EC]): FFTStatus {.tags: [VarTime], meter.} =
+   ## EC FFT from natural order to bit-reversed order using iterative Cooley-Tukey DIF.
+   ## Input: natural order values
+   ## Output: bit-reversed order values in Fourier domain
+@@ -229,7 +229,7 @@ func ec_fft_nr_iterative[EC](
+ func ec_fft_rn_iterative_dit[EC](
+        desc: ECFFT_Descriptor[EC],
+        output: var openarray[EC],
+-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
++       vals: openarray[EC]): FFTStatus {.tags: [VarTime], meter.} =
+   ## EC FFT from bit-reversed order to natural order using iterative Cooley-Tukey DIT.
+   ## Input: bit-reversed order values
+   ## Output: natural order values in Fourier domain
+@@ -259,7 +259,7 @@ func ec_fft_rn_iterative_dit[EC](
+ 
+ func ec_ifft_rn_impl_iterative[EC; bits: static int](
+        output: var StridedView[EC],
+-       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime, Alloca].} =
++       rootsOfUnity: StridedView[BigInt[bits]]) {.tags: [VarTime].} =
+   ## In-place iterative EC IFFT (Cooley-Tukey DIT - Decimation-In-Time)
+   ## Input: bit-reversed order values in Fourier domain
+   ## Output: natural order values
+@@ -297,7 +297,7 @@ func ec_ifft_rn_impl_iterative[EC; bits: static int](
+ func ec_ifft_rn_iterative_dit[EC](
+        desc: ECFFT_Descriptor[EC],
+        output: var openarray[EC],
+-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
++       vals: openarray[EC]): FFTStatus {.tags: [VarTime], meter.} =
+   ## EC IFFT from bit-reversed order to natural order using iterative DIT.
+   ## Input: bit-reversed order values in Fourier domain
+   ## Output: natural order values
+@@ -339,7 +339,7 @@ func ec_ifft_rn_iterative_dit[EC](
+ proc ec_fft_nn_via_iterative_dif_and_bitrev[EC](
+        desc: ECFFT_Descriptor[EC],
+        output: var openarray[EC],
+-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca], meter.} =
++       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+   ## Natural → Natural via: Iterative DIF (NR) + BitRev
+   let status = ec_fft_nr_iterative(desc, output, vals)
+   if status != FFT_Success: return status
+@@ -349,7 +349,7 @@ proc ec_fft_nn_via_iterative_dif_and_bitrev[EC](
+ proc ec_fft_nn_via_bitrev_and_iterative_dit[EC](
+        desc: ECFFT_Descriptor[EC],
+        output: var openarray[EC],
+-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca], meter.} =
++       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+   ## Natural → Natural via: BitRev + Iterative DIT (RN)
+   checkSizesReturnEarly(desc, output, vals)
+ 
+@@ -362,7 +362,7 @@ proc ec_fft_nn_via_bitrev_and_iterative_dit[EC](
+ proc ec_ifft_nn_via_bitrev_and_iterative_dit[EC](
+        desc: ECFFT_Descriptor[EC],
+        output: var openarray[EC],
+-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc, Alloca], meter.} =
++       vals: openarray[EC]): FFTStatus {.tags: [VarTime, HeapAlloc], meter.} =
+   ## Natural → Natural via: BitRev + Iterative DIT (RN)
+   ## Input: natural order values in Fourier domain
+   ## Output: natural order values
+@@ -382,7 +382,7 @@ proc ec_ifft_nn_via_bitrev_and_iterative_dit[EC](
+ func ec_fft_nr*[EC](
+        desc: ECFFT_Descriptor[EC],
+        output: var openarray[EC],
+-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
++       vals: openarray[EC]): FFTStatus {.tags: [VarTime], meter.} =
+   ## EC FFT from natural order to bit-reversed order.
+   ## Dispatches to: Iterative DIF directly
+   ##
+@@ -392,7 +392,7 @@ func ec_fft_nr*[EC](
+ func ec_fft_nn*[EC](
+        desc: ECFFT_Descriptor[EC],
+        output: var openarray[EC],
+-       vals: openarray[EC]): FFTStatus {.inline, tags: [VarTime, HeapAlloc, Alloca], meter.} =
++       vals: openarray[EC]): FFTStatus {.inline, tags: [VarTime, HeapAlloc], meter.} =
+   ## EC FFT from natural order to natural order.
+   ## Dispatches to: Iterative DIF (NR) + BitRev
+   ##
+@@ -405,7 +405,7 @@ func ec_fft_nn*[EC](
+ func ec_ifft_nn*[EC](
+        desc: ECFFT_Descriptor[EC],
+        output: var openarray[EC],
+-       vals: openarray[EC]): FFTStatus {.inline, tags: [VarTime, HeapAlloc, Alloca], meter.} =
++       vals: openarray[EC]): FFTStatus {.inline, tags: [VarTime, HeapAlloc], meter.} =
+   ## EC IFFT from natural order to natural order.
+   ## Dispatches to: BitRev + Iterative DIT
+   ##
+@@ -415,7 +415,7 @@ func ec_ifft_nn*[EC](
+ func ec_ifft_rn*[EC](
+        desc: ECFFT_Descriptor[EC],
+        output: var openarray[EC],
+-       vals: openarray[EC]): FFTStatus {.tags: [VarTime, Alloca], meter.} =
++       vals: openarray[EC]): FFTStatus {.tags: [VarTime], meter.} =
+   ## EC IFFT from bit-reversed order to natural order.
+   ## Dispatches to: Iterative DIT directly
+   ##
+diff --git a/metering/m_kzg_multiproofs.nim b/metering/m_kzg_multiproofs.nim
+index a5da79ec..cc63d3dc 100644
+--- a/metering/m_kzg_multiproofs.nim
++++ b/metering/m_kzg_multiproofs.nim
+@@ -8,30 +8,24 @@
+ 
+ # ############################################################
+ #
+-#        FK20 Multiproof Metering - Phase Breakdown
++#        FK20 Multiproof Metering - PeerDAS Parameters
+ #
+ # ############################################################
+ #
+-# This file provides detailed metering of the FK20 algorithm
+-# to identify the exact bottleneck causing 10x slowdown vs C-kzg.
+-#
+ # Compile with:
+ #   nim c -r --hints:off --warnings:off --verbosity:0 -d:danger -d:CTT_METER --outdir:build metering/m_kzg_multiproofs.nim
+ #
+ 
+ import
+-  std/[times, monotimes, strformat, os, strutils],
++  std/[times, strformat, os, strutils],
+   constantine/named/algebras,
+-  constantine/named/zoo_generators,
+   constantine/math/[arithmetic, extension_fields, ec_shortweierstrass],
+-  constantine/math/polynomials/[polynomials, fft_ec],
+-  constantine/math/matrix/toeplitz,
++  constantine/math/polynomials/[polynomials, fft_fields, fft_ec],
+   constantine/commitments/kzg_multiproofs,
+   constantine/commitments_setups/ethereum_kzg_srs,
+-  constantine/platforms/[abstractions, allocs, bithacks, views, primitives],
++  constantine/platforms/[abstractions, allocs, bithacks, views],
+   constantine/platforms/metering/[reports, tracer],
+-  helpers/prng_unsafe,
+-  constantine/platforms/views  # For .toOpenArray(len) convenience template
++  helpers/prng_unsafe
+ 
+ const
+   # PeerDAS production parameters (from ethereum_kzg_srs)
+@@ -51,56 +45,10 @@ let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1))
+ rng.seed(seed)
+ echo "metering FK20 xoshiro512** seed: ", seed
+ 
+-# Random polynomial with fixed seed
+ proc randomPoly(rng: var RngState): PolynomialCoef[N, Fr[BLS12_381]] =
+   for i in 0 ..< N:
+     result.coefs[i] = rng.random_unsafe(Fr[BLS12_381])
+ 
+-# Metered FK20 Phase 1 - Toeplitz accumulation loop
+-proc fk20Phase1Meter*[Name: static Algebra](
+-  u: var array[CDS, EC_ShortW_Jac[Fp[Name], G1]],
+-  poly: PolynomialCoef[N, Fr[Name]],
+-  fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
+-  ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
+-  polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]]
+-) {.meter.} =
+-  let circulant = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
+-
+-  for offset in 0 ..< L:
+-    makeCirculantMatrix(circulant.toOpenArray(0, CDS - 1), poly.coefs, offset, L)
+-
+-    let status = toeplitzMatVecMulPreFFT(
+-      u.toOpenArray(0, CDS - 1),
+-      circulant.toOpenArray(0, CDS - 1),
+-      polyphaseSpectrumBank[offset],
+-      fr_fft_desc,
+-      ec_fft_desc,
+-      accumulate = (offset > 0)
+-    )
+-    if status != FFT_Success:
+-      freeHeapAligned(circulant)
+-      return
+-
+-  freeHeapAligned(circulant)
+-
+-# Metered FK20 Phase 2 - Final FFT
+-proc fk20Phase2Meter*[Name: static Algebra](
+-  proofs: var array[CDS, EC_ShortW_Aff[Fp[Name], G1]],
+-  u: array[CDS, EC_ShortW_Jac[Fp[Name], G1]],
+-  ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]]
+-) {.meter.} =
+-  let proofsJac = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
+-
+-  let status = ec_fft_desc.ec_fft_nr(proofsJac.toOpenArray(0, CDS - 1), u.toOpenArray(0, CDS - 1))
+-  if status != FFT_Success:
+-    freeHeapAligned(proofsJac)
+-    return
+-
+-  proofs.asUnchecked().batchAffine(proofsJac, proofs.len)
+-  freeHeapAligned(proofsJac)
+-
+-
+-
+ proc loadTrustedSetup(): ptr EthereumKZGContext =
+   var ctx: ptr EthereumKZGContext
+   let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+@@ -108,13 +56,11 @@ proc loadTrustedSetup(): ptr EthereumKZGContext =
+   return ctx
+ 
+ proc main() =
+-  # Initialize metering system FIRST before any metered code runs
+   resetMetering()
+ 
+   echo "\n=== FK20 Multiproof Metering (PeerDAS Parameters) ==="
+-  echo fmt"Polynomial size: {N}, Coset size: {L}, CDS: {CDS}\n"
++  echo fmt"Polynomial size: {N}, Coset size: {L}, CDS: {CDS}"
+ 
+-  # Load trusted setup
+   echo "Loading trusted setup from file..."
+   let ctx = loadTrustedSetup()
+   if ctx == nil:
+@@ -124,53 +70,27 @@ proc main() =
+   echo fmt"  - Field FFT order: {ctx.fft_desc_ext.order}"
+   echo fmt"  - EC FFT order: {ctx.ecfft_desc_ext.order}\n"
+ 
+-  # Generate random polynomial
+   var poly = rng.randomPoly()
+   echo "Generated random polynomial (seed=", seed, ")\n"
+ 
+-  # Use precomputed polyphase spectrum bank from context (FK20 preprocessing - done ONCE in setup)
+   echo "Using precomputed polyphase spectrum bank from context"
+   echo fmt"  - Bank size: {L} × {CDS} = {L * CDS} EC points\n"
+ 
+-  # Phase 1: Toeplitz accumulation loop
+-  echo "=== Phase 1: Toeplitz Accumulation Loop ==="
+-  var u: array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]
+-  for i in 0 ..< CDS:
+-    u[i].setNeutral()
+-
+-  resetMetering()
+-  fk20Phase1Meter[BLS12_381](u, poly, ctx.fft_desc_ext, ctx.ecfft_desc_ext, ctx.polyphaseSpectrumBank)
+-  echo "Phase 1 complete\n"
+-
+-  const flags = if UseASM_X86_64 or UseASM_X86_32: "UseAssembly" else: "NoAssembly"
+-  reportCli(Metrics, flags)
+-  resetMetering()
+-
+-  echo "\n=== Phase 2: Final FFT ==="
+   var proofs: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
+ 
+   resetMetering()
+-  fk20Phase2Meter[BLS12_381](proofs, u, ctx.ecfft_desc_ext)
+-  echo "Phase 2 complete\n"
+-
+-  reportCli(Metrics, flags)
+-  resetMetering()
+-
+-  echo "\n=== Complete FK20 (End-to-End) ==="
+-  resetMetering()
+-
+-  # Re-run Phase 1
+-  for i in 0 ..< CDS:
+-    u[i].setNeutral()
+-  fk20Phase1Meter[BLS12_381](u, poly, ctx.fft_desc_ext, ctx.ecfft_desc_ext, ctx.polyphaseSpectrumBank)
++  kzg_coset_prove[L, CDS, BLS12_381](
++    proofs,
++    poly.coefs,
++    ctx.fft_desc_ext,
++    ctx.ecfft_desc_ext,
++    ctx.polyphaseSpectrumBank
++  )
++  echo "FK20 multiproof computation complete\n"
+ 
+-  # Run Phase 2
+-  fk20Phase2Meter[BLS12_381](proofs, u, ctx.ecfft_desc_ext)
+-
+-  echo "Complete FK20 computation finished\n"
++  const flags = if UseASM_X86_64 or UseASM_X86_32: "UseAssembly" else: "NoAssembly"
+   reportCli(Metrics, flags)
+ 
+-  # Cleanup
+   ctx.trusted_setup_delete()
+ 
+ when isMainModule:
+diff --git a/tests/commitments/t_kzg_multiproofs.nim b/tests/commitments/t_kzg_multiproofs.nim
+index 6d33b3e5..3c0250b1 100644
+--- a/tests/commitments/t_kzg_multiproofs.nim
++++ b/tests/commitments/t_kzg_multiproofs.nim
+@@ -18,6 +18,7 @@ import
+   constantine/math/[ec_shortweierstrass, extension_fields],
+   constantine/math/polynomials/[polynomials, fft_fields, fft_ec],
+   constantine/math/arithmetic/finite_fields,
++  constantine/math/matrix/toeplitz,
+   constantine/commitments/kzg_multiproofs,
+   constantine/commitments/kzg,
+   constantine/math/io/[io_fields, io_bigints],
+@@ -27,7 +28,7 @@ import
+ from trusted_setup_generator import
+   BLS12_381_G1_Aff, BLS12_381_G1_Jac
+ 
+-type FK20PolyphaseSpectrumBank[N, L, CDS: static int, Name: static Algebra] = array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]]
++type FK20PolyphaseSpectrumBank[N, L, CDS: static int, Name: static Algebra] = array[L, array[CDS, EC_ShortW_Aff[Fp[Name], G1]]]
+ 
+ func pow(omegaMax: Fr[BLS12_381], domainPos: uint32): Fr[BLS12_381] =
+   var exp: Fr[BLS12_381]
+@@ -53,7 +54,7 @@ proc testFK20SingleProofs() =
+   let ecfft_desc = ECFFT_Descriptor[BLS12_381_G1_Jac].new(order = CDS, setup.omegaForFFT)
+   let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.omegaForFFT)
+ 
+-  var polyphaseSpectrumBank: array[L, array[CDS, BLS12_381_G1_Jac]]
++  var polyphaseSpectrumBank: array[L, array[CDS, BLS12_381_G1_Aff]]
+   computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
+ 
+   var fk20Proofs: array[CDS, BLS12_381_G1_Aff]
+@@ -107,7 +108,7 @@ proc testFK20MultiProofs(L: static int) =
+   let ecfft_desc = ECFFT_Descriptor[BLS12_381_G1_Jac].new(order = CDS, setup.omegaForFFT)
+   let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.omegaForFFT)
+ 
+-  var polyphaseSpectrumBank: array[L, array[CDS, BLS12_381_G1_Jac]]
++  var polyphaseSpectrumBank: array[L, array[CDS, BLS12_381_G1_Aff]]
+   computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
+ 
+   var fk20Proofs: array[CDS, BLS12_381_G1_Aff]
+@@ -174,7 +175,7 @@ proc testNonOptimizedCosetProofs*(L: static int) =
+   let ecfft_desc = ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]].new(order = CDS, setup.omegaForFFT)
+   let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.omegaForFFT)
+ 
+-  var polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
++  var polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]]
+   computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
+ 
+   var fk20Proofs: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
+diff --git a/tests/math_elliptic_curves/t_ec_conversion.nim b/tests/math_elliptic_curves/t_ec_conversion.nim
+index ea632a6d..db0200b7 100644
+--- a/tests/math_elliptic_curves/t_ec_conversion.nim
++++ b/tests/math_elliptic_curves/t_ec_conversion.nim
+@@ -9,7 +9,12 @@
+ import
+   # Internals
+   constantine/named/algebras,
+-  constantine/math/elliptic/[ec_shortweierstrass_jacobian, ec_shortweierstrass_projective],
++  constantine/math/elliptic/[
++    ec_shortweierstrass_jacobian,
++    ec_shortweierstrass_projective,
++    ec_twistededwards_projective,
++    ec_shortweierstrass_batch_ops
++  ],
+   constantine/math/extension_fields,
+   # Test utilities
+   ./t_ec_template
+@@ -61,3 +66,78 @@ run_EC_affine_conversion(
+     Iters = Iters,
+     moduleName = "test_ec_conversion_shortw_affine_projective_g2_" & $BLS12_381
+   )
++run_EC_affine_conversion(
++    ec = EC_ShortW_Jac[Fp[BN254_Snarks], G1],
++    Iters = Iters,
++    moduleName = "test_ec_conversion_shortw_affine_jacobian_g1_" & $BN254_Snarks & "_vartime",
++    isVartime = true
++  )
++run_EC_affine_conversion(
++    ec = EC_ShortW_Prj[Fp[BN254_Snarks], G1],
++    Iters = Iters,
++    moduleName = "test_ec_conversion_shortw_affine_projective_g1_" & $BN254_Snarks & "_vartime",
++    isVartime = true
++  )
++run_EC_affine_conversion(
++    ec = EC_ShortW_Jac[Fp2[BN254_Snarks], G2],
++    Iters = Iters,
++    moduleName = "test_ec_conversion_shortw_affine_jacobian_g2_" & $BN254_Snarks & "_vartime",
++    isVartime = true
++  )
++run_EC_affine_conversion(
++    ec = EC_ShortW_Prj[Fp2[BN254_Snarks], G2],
++    Iters = Iters,
++    moduleName = "test_ec_conversion_shortw_affine_projective_g2_" & $BN254_Snarks & "_vartime",
++    isVartime = true
++  )
++run_EC_affine_conversion(
++    ec = EC_ShortW_Jac[Fp[BLS12_381], G1],
++    Iters = Iters,
++    moduleName = "test_ec_conversion_shortw_affine_jacobian_g1_" & $BLS12_381 & "_vartime",
++    isVartime = true
++  )
++run_EC_affine_conversion(
++    ec = EC_ShortW_Prj[Fp[BLS12_381], G1],
++    Iters = Iters,
++    moduleName = "test_ec_conversion_shortw_affine_projective_g1_" & $BLS12_381 & "_vartime",
++    isVartime = true
++  )
++run_EC_affine_conversion(
++    ec = EC_ShortW_Jac[Fp2[BLS12_381], G2],
++    Iters = Iters,
++    moduleName = "test_ec_conversion_shortw_affine_jacobian_g2_" & $BLS12_381 & "_vartime",
++    isVartime = true
++  )
++run_EC_affine_conversion(
++    ec = EC_ShortW_Prj[Fp2[BLS12_381], G2],
++    Iters = Iters,
++    moduleName = "test_ec_conversion_shortw_affine_projective_g2_" & $BLS12_381 & "_vartime",
++    isVartime = true
++  )
++
++# Twisted Edwards batch affine conversion tests
++run_EC_affine_conversion(
++    ec = EC_TwEdw_Prj[Fp[Bandersnatch]],
++    Iters = Iters,
++    moduleName = "test_ec_conversion_twedwards_projective_" & $Bandersnatch
++  )
++
++run_EC_affine_conversion(
++    ec = EC_TwEdw_Prj[Fp[Banderwagon]],
++    Iters = Iters,
++    moduleName = "test_ec_conversion_twedwards_projective_" & $Banderwagon
++  )
++
++run_EC_affine_conversion(
++    ec = EC_TwEdw_Prj[Fp[Bandersnatch]],
++    Iters = Iters,
++    moduleName = "test_ec_conversion_twedwards_projective_" & $Bandersnatch & "_vartime",
++    isVartime = true
++  )
++
++run_EC_affine_conversion(
++    ec = EC_TwEdw_Prj[Fp[Banderwagon]],
++    Iters = Iters,
++    moduleName = "test_ec_conversion_twedwards_projective_" & $Banderwagon & "_vartime",
++    isVartime = true
++  )
+diff --git a/tests/math_elliptic_curves/t_ec_template.nim b/tests/math_elliptic_curves/t_ec_template.nim
+index 197a1a77..3c57c2b6 100644
+--- a/tests/math_elliptic_curves/t_ec_template.nim
++++ b/tests/math_elliptic_curves/t_ec_template.nim
+@@ -27,6 +27,7 @@ import
+     ec_shortweierstrass_batch_ops,
+     ec_twistededwards_affine,
+     ec_twistededwards_projective,
++    ec_twistededwards_batch_ops,
+     ec_scalar_mul,
+     ec_multi_scalar_mul],
+   constantine/math/io/[io_bigints, io_fields, io_ec],
+@@ -1115,103 +1116,149 @@ proc run_EC_subgroups_cofactors_impl*(
+               offSubgroup, " points on curve but not in subgroup (before cofactor clearing)"
+ 
+ proc run_EC_affine_conversion*(
+-       ec: typedesc,
+-       Iters: static int,
+-       moduleName: string) =
+-  # Random seed for reproducibility
++    ec: typedesc,
++    Iters: static int,
++    moduleName: string,
++    isVartime: bool = false) =
+   var rng: RngState
+-  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
++  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1))
+   rng.seed(seed)
++
++  let
++    vSuffix = if isVartime: " (vartime)" else: ""
++    suiteDesc = "Elliptic curve in " & $ec.getName().getEquationForm() & " form" & vSuffix
++    testName = "batchAffine" & (if isVartime: "_vartime" else: "")
++
+   echo "\n------------------------------------------------------\n"
+   echo moduleName, " xoshiro512** seed: ", seed
+ 
+-  const testSuiteDesc = "Elliptic curve in " & $ec.getName().getEquationForm() & " form"
+-
+-  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
+-    test "EC " & $ec.G & " batchAffine is consistent with single affine conversion":
+-      proc test(EC: typedesc, gen: RandomGen) =
++  suite suiteDesc & " - " & $ec & vSuffix & " - [" & $WordBitWidth & "-bit mode]":
++    test testName & " is consistent with single affine conversion":
++      for gen in [Uniform, HighHammingWeight, Long01Sequence]:
+         const batchSize = 10
+         for _ in 0 ..< Iters:
+-          var Ps: array[batchSize, EC]
++          var Ps: array[batchSize, ec]
+           for i in 0 ..< batchSize:
+-            Ps[i] = rng.random_point(EC, randZ = true, gen)
+-
+-          var Qs, Rs: array[batchSize, affine(EC)]
++            Ps[i] = rng.random_point(ec, randZ = true, gen)
++          var Qs, Rs: array[batchSize, affine(ec)]
+           for i in 0 ..< batchSize:
+             Qs[i].affine(Ps[i])
+-          Rs.batchAffine(Ps)
+-
++          if isVartime:
++            Rs.batchAffine_vartime(Ps)
++          else:
++            Rs.batchAffine(Ps)
+           for i in countdown(batchSize-1, 0):
+             doAssert bool(Qs[i] == Rs[i]), block:
+               var s: string
+-              s &= "Mismatch on iteration " & $i
+-              s &= "\nFailing batch for " & $EC & " (" & $WordBitWidth & "-bit)"
+-              s &= "\n  ["
+-              for i in 0 ..< batchSize:
+-                s &= "\n" & Ps[i].toHex(indent = 4)
+-                if i != batchSize-1: s &= ","
+-              s &= "\n  ]"
+-              s &= "\nFailing inversions for " & $EC & " (" & $WordBitWidth & "-bit)"
+-              s &= "\n  ["
+-              for i in 0 ..< batchSize:
+-                s &= "\n" & Rs[i].toHex(indent = 4)
+-                if i != batchSize-1: s &= ","
+-              s &= "\n  ]"
+-              s &= "\nExpected inversions for " & $EC & " (" & $WordBitWidth & "-bit)"
+-              s &= "\n  ["
+-              for i in 0 ..< batchSize:
+-                s &= "\n" & Qs[i].toHex(indent = 4)
+-                if i != batchSize-1: s &= ","
+-              s &= "\n  ]"
++              s &= "Mismatch at " & $i & " on iteration \n"
++              s &= "Failing batch for " & $ec & " (" & $WordBitWidth & "-bit)\n"
++              s &= "  Input points [\n"
++              for j in 0 ..< batchSize:
++                s &= Ps[j].toHex(indent = 4)
++                if j != batchSize-1: s &= ",\n"
++              s &= "  ]\n"
++              s &= "  batchAffine results [\n"
++              for j in 0 ..< batchSize:
++                s &= Rs[j].toHex(indent = 4)
++                if j != batchSize-1: s &= ",\n"
++              s &= "  ]\n"
++              s &= "  Expected (single .affine) [\n"
++              for j in 0 ..< batchSize:
++                s &= Qs[j].toHex(indent = 4)
++                if j != batchSize-1: s &= ",\n"
++              s &= "  ]"
+               s
+ 
+-      test(ec, gen = Uniform)
+-      test(ec, gen = HighHammingWeight)
+-      test(ec, gen = Long01Sequence)
+-
+-    test "EC " & $ec.G & " batchAffine with infinite points":
+-      proc test(EC: typedesc, gen: RandomGen) =
++    test testName & " with infinite points":
++      for gen in [Uniform, HighHammingWeight, Long01Sequence]:
+         const batchSize = 10
+         for _ in 0 ..< Iters:
+-          var Ps: array[batchSize, EC]
++          var Ps: array[batchSize, ec]
+           for i in 0 ..< batchSize:
+-            if rng.sample_unsafe([0, 1, 2]) != 0: # 33% chance of infinite point
+-              Ps[i] = rng.random_point(EC, randZ = true, gen)
++            if rng.sample_unsafe([0, 1, 2]) != 0:
++              Ps[i] = rng.random_point(ec, randZ = true, gen)
+             else:
+               Ps[i].setNeutral()
+-
+-          var Qs, Rs: array[batchSize, affine(EC)]
++          var Qs, Rs: array[batchSize, affine(ec)]
+           for i in 0 ..< batchSize:
+             Qs[i].affine(Ps[i])
+-          Rs.batchAffine(Ps)
+-
++          if isVartime:
++            Rs.batchAffine_vartime(Ps)
++          else:
++            Rs.batchAffine(Ps)
+           for i in countdown(batchSize-1, 0):
+             doAssert bool(Qs[i] == Rs[i]), block:
+               var s: string
+-              s &= "Mismatch on iteration " & $i
+-              s &= "\nFailing batch for " & $EC & " (" & $WordBitWidth & "-bit)"
+-              s &= "\n  ["
+-              for i in 0 ..< batchSize:
+-                s &= "\n" & Ps[i].toHex(indent = 4)
+-                if i != batchSize-1: s &= ","
+-              s &= "\n  ]"
+-              s &= "\nFailing inversions for " & $EC & " (" & $WordBitWidth & "-bit)"
+-              s &= "\n  ["
+-              for i in 0 ..< batchSize:
+-                s &= "\n" & Rs[i].toHex(indent = 4)
+-                if i != batchSize-1: s &= ","
+-              s &= "\n  ]"
+-              s &= "\nExpected inversions for " & $EC & " (" & $WordBitWidth & "-bit)"
+-              s &= "\n  ["
+-              for i in 0 ..< batchSize:
+-                s &= "\n" & Qs[i].toHex(indent = 4)
+-                if i != batchSize-1: s &= ","
+-              s &= "\n  ]"
++              s &= "Mismatch at " & $i & " on iteration \n"
++              s &= "Failing batch for " & $ec & " (" & $WordBitWidth & "-bit)\n"
++              s &= "  Input points [\n"
++              for j in 0 ..< batchSize:
++                s &= Ps[j].toHex(indent = 4)
++                if j != batchSize-1: s &= ",\n"
++              s &= "  ]\n"
++              s &= "  batchAffine results [\n"
++              for j in 0 ..< batchSize:
++                s &= Rs[j].toHex(indent = 4)
++                if j != batchSize-1: s &= ",\n"
++              s &= "  ]\n"
++              s &= "  Expected (single .affine) [\n"
++              for j in 0 ..< batchSize:
++                s &= Qs[j].toHex(indent = 4)
++                if j != batchSize-1: s &= ",\n"
++              s &= "  ]"
+               s
+ 
+-      test(ec, gen = Uniform)
+-      test(ec, gen = HighHammingWeight)
+-      test(ec, gen = Long01Sequence)
++    test testName & " with single element":
++      for gen in [Uniform, HighHammingWeight, Long01Sequence]:
++        for _ in 0 ..< Iters:
++          var P: array[1, ec]
++          P[0] = rng.random_point(ec, randZ = true, gen)
++          var Qs, Rs: array[1, affine(ec)]
++          Qs[0].affine(P[0])
++          if isVartime:
++            Rs.batchAffine_vartime(P)
++          else:
++            Rs.batchAffine(P)
++          doAssert bool(Qs[0] == Rs[0]), testName & " single-element mismatch"
++
++    test testName & " with all neutral points":
++      for _ in 0 ..< Iters:
++        const batchSize = 10
++        var Ps: array[batchSize, ec]
++        var Qs, Rs: array[batchSize, affine(ec)]
++        for i in 0 ..< batchSize:
++          Ps[i].setNeutral()
++          Qs[i].setNeutral()
++        if isVartime:
++          Rs.batchAffine_vartime(Ps)
++        else:
++          Rs.batchAffine(Ps)
++        for i in 0 ..< batchSize:
++          doAssert bool(Qs[i] == Rs[i]), testName & " all-neutral mismatch at " & $i
++
++    test testName & " with varied batch sizes":
++      proc testSize(EC: typedesc, batchSize: static int, gen: RandomGen, vtime: bool) =
++        for _ in 0 ..< Iters:
++          var Ps: array[batchSize, EC]
++          for i in 0 ..< batchSize:
++            Ps[i] = rng.random_point(EC, randZ = true, gen)
++          var Qs, Rs: array[batchSize, affine(EC)]
++          for i in 0 ..< batchSize:
++            Qs[i].affine(Ps[i])
++          if vtime:
++            Rs.batchAffine_vartime(Ps)
++          else:
++            Rs.batchAffine(Ps)
++          for i in 0 ..< batchSize:
++            doAssert bool(Qs[i] == Rs[i]), testName & " size-" & $batchSize & " mismatch at " & $i
++
++      testSize(ec, 2, gen = Uniform, vtime = isVartime)
++      testSize(ec, 2, gen = HighHammingWeight, vtime = isVartime)
++      testSize(ec, 2, gen = Long01Sequence, vtime = isVartime)
++      testSize(ec, 16, gen = Uniform, vtime = isVartime)
++      testSize(ec, 16, gen = HighHammingWeight, vtime = isVartime)
++      testSize(ec, 16, gen = Long01Sequence, vtime = isVartime)
++
+ 
+ proc run_EC_conversion_failures*(
+        moduleName: string
+diff --git a/tests/math_matrix/t_toeplitz.nim b/tests/math_matrix/t_toeplitz.nim
+index 6e51d37b..8d258422 100644
+--- a/tests/math_matrix/t_toeplitz.nim
++++ b/tests/math_matrix/t_toeplitz.nim
+@@ -6,6 +6,9 @@
+ #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
+ # at your option. This file may not be copied, modified, or distributed except according to those terms.
+ 
++# Run with
++#   nim c -r -d:CTT_DEBUG -d:release --hints:off --warnings:off --outdir:build/wip --nimcache:nimcache/wip tests/math_matrix/t_toeplitz.nim
++
+ import
+   constantine/named/algebras,
+   constantine/named/zoo_generators,
+@@ -15,13 +18,13 @@ import
+   constantine/math/arithmetic/finite_fields,
+   ../math_polynomials/fft_utils
+ 
+-type BLS12_381_G1 = EC_ShortW_Prj[Fp[BLS12_381], G1]
++type BLS12_381_G1_Prj = EC_ShortW_Prj[Fp[BLS12_381], G1]
+ type BLS12_381_Fr = Fr[BLS12_381]
+ 
+ proc toeplitzMatVecMulNaive(
+-  output: var openArray[BLS12_381_G1],
++  output: var openArray[BLS12_381_G1_Prj],
+   coeffs: openArray[BLS12_381_Fr],
+-  input: openArray[BLS12_381_G1]
++  input: openArray[BLS12_381_G1_Prj]
+ ) {.raises: [].} =
+   ## Naive O(n²) Toeplitz matrix-vector multiplication for testing.
+   let n = input.len
+@@ -30,12 +33,12 @@ proc toeplitzMatVecMulNaive(
+   doAssert n2 == 2 * n
+ 
+   for i in 0 ..< n:
+-    var sum: BLS12_381_G1
++    var sum: BLS12_381_G1_Prj
+     sum.setNeutral()
+ 
+     for j in 0 ..< n:
+       let coeffIdx = if i >= j: i - j else: n2 - (j - i)
+-      var term: BLS12_381_G1
++      var term: BLS12_381_G1_Prj
+       term.scalarMul_vartime(coeffs[coeffIdx].toBig(), input[j])
+ 
+       if j == 0:
+@@ -96,13 +99,13 @@ proc testToeplitz(n: static int) =
+ 
+   let fftSize = 2 * n
+   let frFftDesc = createFFTDescriptor(Fr[BLS12_381], fftSize)
+-  let ecFftDesc = createFFTDescriptor(BLS12_381_G1, Fr[BLS12_381], fftSize)
++  let ecFftDesc = createFFTDescriptor(BLS12_381_G1_Prj, Fr[BLS12_381], fftSize)
+ 
+   var poly = newSeq[BLS12_381_Fr](n)
+   var coeffs = newSeq[BLS12_381_Fr](2 * n)
+-  var input = newSeq[BLS12_381_G1](n)
+-  var outputNaive = newSeq[BLS12_381_G1](n)
+-  var outputFft = newSeq[BLS12_381_G1](n)
++  var input = newSeq[BLS12_381_G1_Prj](n)
++  var outputNaive = newSeq[BLS12_381_G1_Prj](n)
++  var outputFft = newSeq[BLS12_381_G1_Prj](n)
+ 
+   for i in 0 ..< n:
+     poly[i].fromUint((i + 1).uint64)
+@@ -115,8 +118,8 @@ proc testToeplitz(n: static int) =
+ 
+   toeplitzMatVecMulNaive(outputNaive, coeffs, input)
+ 
+-  let status = toeplitzMatVecMul[BLS12_381_G1, BLS12_381_Fr](outputFft, coeffs, input, frFftDesc, ecFftDesc)
+-  doAssert status == FFT_Success, "FFT-based multiplication failed: " & $status
++  let status = toeplitzMatVecMul[BLS12_381_G1_Prj, BLS12_381_Fr](outputFft, coeffs, input, frFftDesc, ecFftDesc)
++  doAssert status == Toeplitz_Success, "FFT-based multiplication failed: " & $status
+ 
+   for i in 0 ..< n:
+     if bool(outputNaive[i] != outputFft[i]):
+@@ -126,9 +129,73 @@ proc testToeplitz(n: static int) =
+       quit 1
+   echo "✓ ", n, "x", n, " Toeplitz test PASSED"
+ 
++proc testToeplitzAccumulatorInitErrors() =
++  echo "Testing ToeplitzAccumulator.init error paths..."
++  type BLS12_381_G1_aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
++  let fftSize = 128
++  let frDesc = createFFTDescriptor(Fr[BLS12_381], fftSize)
++  let ecDesc = createFFTDescriptor(BLS12_381_G1_Prj, Fr[BLS12_381], fftSize)
++
++  var acc: ToeplitzAccumulator[BLS12_381_G1_Prj, BLS12_381_G1_aff, Fr[BLS12_381]]
++
++  # size = 0 → Toeplitz_SizeNotPowerOfTwo
++  doAssert acc.init(frDesc, ecDesc, size = 0, L = 1) == Toeplitz_SizeNotPowerOfTwo
++
++  # L = 0 → Toeplitz_SizeNotPowerOfTwo
++  doAssert acc.init(frDesc, ecDesc, size = 4, L = 0) == Toeplitz_SizeNotPowerOfTwo
++
++  # non-power-of-2 → Toeplitz_SizeNotPowerOfTwo
++  doAssert acc.init(frDesc, ecDesc, size = 6, L = 1) == Toeplitz_SizeNotPowerOfTwo
++
++  # negative size
++  doAssert acc.init(frDesc, ecDesc, size = -1, L = 1) == Toeplitz_SizeNotPowerOfTwo
++
++  # Valid init should succeed
++  doAssert acc.init(frDesc, ecDesc, size = 4, L = 2) == Toeplitz_Success
++  # (acc will be destroyed on scope exit, freeing buffers)
++
++  echo "✓ ToeplitzAccumulator.init errors PASSED"
++
++proc testToeplitzAccumulatorFinishErrors() =
++  echo "Testing ToeplitzAccumulator.finish error paths..."
++  type G1Aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
++  let fftSize = 128
++  let frDesc = createFFTDescriptor(Fr[BLS12_381], fftSize)
++  let ecDesc = createFFTDescriptor(BLS12_381_G1_Prj, Fr[BLS12_381], fftSize)
++
++  var acc: ToeplitzAccumulator[BLS12_381_G1_Prj, G1Aff, Fr[BLS12_381]]
++  doAssert acc.init(frDesc, ecDesc, size = 4, L = 2) == Toeplitz_Success
++
++  # finish without any accumulate → Toeplitz_MismatchedSizes (offset != L)
++  var output: array[4, BLS12_381_G1_Prj]
++  doAssert acc.finish(output.toOpenArray(0, 3)) == Toeplitz_MismatchedSizes
++
++  echo "✓ ToeplitzAccumulator.finish errors PASSED"
++
++proc testCheckCirculantR1() =
++  echo "Testing checkCirculant with r=1 (circulant length 2)..."
++  var poly = newSeq[Fr[BLS12_381]](2)  # n=2, so circulant = 2*r where r = CDS/2
++  var circ = newSeq[Fr[BLS12_381]](2)  # 2*r = 2, so r=1
++
++  poly[0].fromUint(1)
++  poly[1].fromUint(2)
++
++  makeCirculantMatrix(circ, poly, 0, 1)
++  doAssert checkCirculant(circ, poly, 0, 1), "Valid r=1 circulant should pass"
++
++  # Corrupt
++  circ[0].fromUint(999)
++  doAssert not checkCirculant(circ, poly, 0, 1), "Corrupted r=1 circulant should fail"
++
++  echo "✓ checkCirculant r=1 PASSED"
++
+ when isMainModule:
++  testToeplitzAccumulatorInitErrors()
++  testToeplitzAccumulatorFinishErrors()
++  testCheckCirculantR1()
+   testCheckCirculant()
+   testMakeCirculantMatrix()
+   testToeplitz(4)
+   testToeplitz(8)
++  testToeplitz(16)
+   echo "\nAll Toeplitz tests PASSED ✓"
+\ No newline at end of file

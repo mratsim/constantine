@@ -152,7 +152,7 @@ type
 # Error handling templates
 # ------------------------------------------------------------
 
-template checkReturn*(evalExpr: untyped): untyped {.dirty.} =
+template checkReturn(evalExpr: untyped): untyped {.dirty.} =
   ## Check ToeplitzStatus or FFTStatus and return early on failure
   ## Use in functions that return ToeplitzStatus directly
   block:

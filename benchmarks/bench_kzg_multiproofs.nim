@@ -30,7 +30,7 @@ import
   # PRNG for polynomial generation
   helpers/prng_unsafe,
   # Standard library
-  std/[os, strutils, monotimes]
+  std/[os, strutils, monotimes, importutils]
 
 const
   # PeerDAS production parameters (from ethereum_kzg_srs)
@@ -101,17 +101,26 @@ proc benchFK20_Phase1_Full(ctx: ptr EthereumKZGContext,
 
   var u: array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]
 
+  # Type aliases matching ToeplitzAccumulator
+  type BLS12_381_G1_aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+  type BLS12_381_G1_jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
+
+  # Allow direct access to private 'offset' field for benchmark reuse
+  privateAccess(toeplitz.ToeplitzAccumulator)
+
+  # Initialize accumulator once outside the benchmark loop to avoid
+  # allocation overhead (3 x allocHeapAligned, ~772 KB total) in timing.
+  var accum: ToeplitzAccumulator[BLS12_381_G1_jac, BLS12_381_G1_aff, Fr[BLS12_381]]
+  doAssert accum.init(ctx.fft_desc_ext, ctx.ecfft_desc_ext, CDS, L) == Toeplitz_Success
+
   bench("fk20_phase1_accumulation_loop", CDS, iters):
-    type BLS12_381_G1_aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
-    type BLS12_381_G1_jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
-    var accum: ToeplitzAccumulator[BLS12_381_G1_jac, BLS12_381_G1_aff, Fr[BLS12_381]]
-    doAssert accum.init(ctx.fft_desc_ext, ctx.ecfft_desc_ext, CDS, L) == Toeplitz_Success
+    # Reset accumulator state for this iteration (avoids free+alloc)
+    accum.offset = 0
     var circulant: array[CDS, Fr[BLS12_381]]
     for offset in 0 ..< L:
       makeCirculantMatrix(circulant.toOpenArray(0, CDS-1), poly.coefs, offset, L)
       doAssert accum.accumulate(circulant.toOpenArray(0, CDS-1), ctx.polyphaseSpectrumBank[offset]) == Toeplitz_Success
     doAssert accum.finish(u.toOpenArray(0, CDS-1)) == Toeplitz_Success
-
 proc benchFK20_Phase2(u: var array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]],
                       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]],
                       iters: int) =
