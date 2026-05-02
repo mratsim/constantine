@@ -370,7 +370,7 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
 
   freeHeapAligned(polyphaseSpectrumBankJac)
 
-proc kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
+func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
        proofs: var array[CDS, EC_ShortW_Aff[Fp[Name], G1]],
        poly: openArray[Fr[Name]],
        fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
