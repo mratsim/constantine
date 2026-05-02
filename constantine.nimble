@@ -736,6 +736,7 @@ const benchDesc = [
   "bench_eth_eip4844_kzg",
   "bench_eth_eip7594_peerdas",
   "bench_kzg_multiproofs",
+  "bench_matrix_toeplitz",
   "eth_eip7594/benchset_generation",
   "eth_eip7594/perf_compute_cells",
   "eth_eip7594/perf_compute_cells_and_kzg_proofs",
@@ -1208,6 +1209,8 @@ task bench_eth_eip7594_peerdas, "Run Ethereum EIP7594 PeerDAS (Data Availability
 task bench_kzg_multiproofs, "Run KZG Multiproof benchmarks (FK20 vs Naive) - CC compiler":
   runBench("bench_kzg_multiproofs")
 
+task bench_matrix_toeplitz, "Run Toeplitz matrix benchmarks (FK20 accumulation, 64 accumulates) - CC compiler":
+  runBench("bench_matrix_toeplitz")
 # EIP7594 PeerDAS - Individual perf benchmarks (for VTune/perf profiling)
 # ------------------------------------------
 task bench_eth_eip7594_generate_benchset, "Generate PeerDAS benchset.dat for perf benchmarks - CC compiler":

@@ -14,6 +14,7 @@
 #   - Automatic threshold selection
 #   - Involution property (BRP(BRP(x)) = x)
 #   - Correctness across threshold boundaries
+#   - Two-arg aliasing detection (dst == src)
 
 import
   std/strutils,
@@ -238,6 +239,34 @@ proc testLargeSizes*[T]() =
     
     echo "  ✓ logN=" & $logN & " (N=" & $N & ") PASSED (spot check)"
 
+proc testAliasingTwoArg*[T](maxLogN: int) =
+  ## Test the aliasing detection branch in two-arg `bit_reversal_permutation(dst, src)`.
+  ##
+  ## When dst and src are the same array, the function should allocate a temporary
+  ## buffer, permute into it, and copy back. This test covers the path at
+  ## fft_common.nim line 315: `if dst[0].addr == src[0].addr`.
+  echo "Testing two-arg aliasing detection (dst == src) for logN=1.." & $maxLogN & "..."
+  
+  for logN in 1 .. maxLogN:
+    let N = 1 shl logN
+    
+    var buf = newSeq[T](N)
+    for i in 0 ..< N:
+      buf[i] = T(i)
+    
+    # Pass same array as both dst and src to trigger aliasing branch
+    bit_reversal_permutation(buf, buf)
+    
+    for i in 0 ..< N:
+      let rev_i = reverseBits(uint32(i), uint32(logN))
+      doAssert buf[i] == T(rev_i),
+        "Aliasing two-arg failed at logN=" & $logN & " index=" & $i &
+        " (expected " & $rev_i & " but got " & $buf[i] & ")"
+    
+    echo "  ✓ logN=" & $logN & " (N=" & $N & ") PASSED"
+
+  echo "  ✓ Aliasing two-arg test PASSED (logN=1.." & $maxLogN & ")"
+
 when isMainModule:
   echo "========================================"
   echo "    Bit-Reversal Permutation Tests"
@@ -269,6 +298,9 @@ when isMainModule:
   echo ""
   
   testLargeSizes[int64]()
+  echo ""
+  
+  testAliasingTwoArg[int64](14)
   echo ""
   
   echo ""

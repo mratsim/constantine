@@ -227,7 +227,7 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
        polyphaseSpectrum: var array[CDS, EC_ShortW_Jac[Fp[Name], G1]],
        powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
        ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
-       offset: int = 0): FFT_Status {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
+       offset: int = 0): FFT_Status {.tags:[HeapAlloc, Vartime], meter.} =
   ## Compute FFT of one polyphase component of the SRS (Toeplitz input spectrum).
   ##
   ## DSP Terminology (Crypto ↔ Signal Processing Mapping)
@@ -276,37 +276,33 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
   ##     "The coefficients v can be computed using 2r log 2r scalar multiplications"
   ##   - DSP: Polyphase decomposition + circulant embedding FFT
   ##   - Toeplitz matrix-vector multiplication: http://www.netlib.org/utk/people/JackDongarra/etemplates/node384.html
-
+  ##
   const CDSdiv2 = CDS shr 1
-  const L = N div CDSdiv2
-
-  static:
-    doAssert CDS.isPowerOf2_vartime(), "CDS must be a power of two"
-    doAssert CDS >= 4, "CDS must be >= 4 for the polyphase stride to stay in range"
+  const L = (2 * N) div CDS
+  static: doAssert CDS.isPowerOf2_vartime(), "CDS must be a power of two"
   doAssert ecfft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
-  doAssert N >= L + 1 + offset, "N must be >= L + 1 + offset for valid polyphase extraction"
 
-  let polyphaseComponent = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
-
-  # Extract polyphase component with stride L and given offset (convert affine to projective for FFT)
+  # Extract polyphase component directly into output buffer (convert affine to Jacobian for FFT)
   # This is the polyphase decomposition: x_i[m] = x[m·L + offset] with reversal
   let start = N - L - 1 - offset
   var j = start
   for i in 0 ..< CDSdiv2 - 1:
-    polyphaseComponent[i].fromAffine(powers_of_tau.coefs[j])
+    polyphaseSpectrum[i].fromAffine(powers_of_tau.coefs[j])
     j -= L
-  polyphaseComponent[CDSdiv2 - 1].setNeutral()
+  # j is always < 0 here: CDS*L == 2*N (invariant at line 353), so CDSdiv2*L = N.
+  # After the loop: j = start - (CDSdiv2-1)*L = N - CDSdiv2*L - 1 - offset = -1 - offset < 0.
+  doAssert j < 0, "Internal error: polyphase extraction index should be negative at CDSdiv2-1 (CDS*L must equal 2*N)"
+  polyphaseSpectrum[CDSdiv2 - 1].setNeutral()
   for j in CDSdiv2 ..< CDS:
-    polyphaseComponent[j].setNeutral()
+    polyphaseSpectrum[j].setNeutral()
 
-  # FFT the polyphase component to get its spectrum (frequency-domain representation)
-  result = ec_fft_nn(ecfft_desc, polyphaseSpectrum, polyphaseComponent.toOpenArray(CDS))
-  freeHeapAligned(polyphaseComponent)
+  # FFT in-place to get polyphase spectrum (frequency-domain representation)
+  result = ec_fft_nn(ecfft_desc, polyphaseSpectrum, polyphaseSpectrum)
 
 func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static Algebra](
-       polyphaseSpectrumBank: var array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]],
+       polyphaseSpectrumBank: var array[L, array[CDS, EC_ShortW_Aff[Fp[Name], G1]]],
        powers_of_tau: PolynomialCoef[N, EC_ShortW_Aff[Fp[Name], G1]],
-       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]]) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
+       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]]) {.tags:[HeapAlloc, Vartime], meter.} =
   ## Compute polyphase decomposition Fourier transform for all L phases (complete polyphase filter bank).
   ##
   ## DSP Terminology (Crypto ↔ Signal Processing Mapping)
@@ -315,7 +311,7 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
   ## This is the complete FK20 preprocessing phase that builds a polyphase filter bank:
   ##
   ##   Crypto Name               DSP Equivalent                    Mathematical Object
-  ##   ─────────────────────────────────────────────────────────────────────────────────
+  ##   ─────────────────────────────────────────────────────────────────────
   ##   polyphaseSpectrumBank     Polyphase spectrum bank      {X_i(ω)} for i in 0..L-1
   ##   L                         Number of phases             decimation factor
   ##   CDS                       FFT size per phase           circulant embedding size
@@ -327,6 +323,7 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
   ## For each phase (offset) i in 0..L-1:
   ##   1. Extract polyphase component (stride L, offset i)
   ##   2. Compute FFT → one column of polyphaseSpectrumBank
+  ##   3. Batch convert Jacobian to affine (single batch inversion for all L×CDS points)
   ##
   ## The result is a bank of L precomputed spectra used for fast Toeplitz matrix-vector
   ## multiplication. This corresponds to the "analysis filter bank" in multirate DSP.
@@ -342,7 +339,7 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
   ##
   ## The result can be cached and reused for multiple polynomials.
   ##
-  ## @param polyphaseSpectrumBank: Output array[L][CDS] - bank of polyphase spectra
+  ## @param polyphaseSpectrumBank: Output array[L][CDS] - bank of polyphase spectra (affine form)
   ## @param powers_of_tau: SRS in coefficient form [G, τG, τ²G, ..., τⁿ⁻¹G] (affine, length N)
   ## @param ecfft_desc: Precomputed EC FFT descriptor (order >= CDS, uses stride)
   ##
@@ -355,17 +352,30 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
   static: doAssert CDS * L == 2 * N
   doAssert ecfft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
 
+  # Compute all phases in Jacobian form first
+  let polyphaseSpectrumBankJac = allocHeapArrayAligned(array[CDS, EC_ShortW_Jac[Fp[Name], G1]], L, alignment = 64)
+
   for offset in 0 ..< L:
-    let status = computePolyphaseDecompositionFourierOffset(polyphaseSpectrumBank[offset], powers_of_tau, ecfft_desc, offset)
-    doAssert status == FFT_Success, "Polyphase decomposition FFT failed at offset " & $offset
+    let status = computePolyphaseDecompositionFourierOffset(polyphaseSpectrumBankJac[offset], powers_of_tau, ecfft_desc, offset)
+    doAssert status == FFT_Success, "Internal error: Polyphase decomposition FFT failed at offset " & $offset
+
+  # Half the points are points at infinity. A vartime batch inversion
+  # saves a lot of compute, 3*L*CDS
+  batchAffine_vartime(
+    polyphaseSpectrumBank[0].asUnchecked(),
+    polyphaseSpectrumBankJac[0].asUnchecked(),
+    L * CDS
+  )
+
+  freeHeapAligned(polyphaseSpectrumBankJac)
 
 func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
        proofs: var array[CDS, EC_ShortW_Aff[Fp[Name], G1]],
        poly: openArray[Fr[Name]],
        fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
        ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
-       polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]]
-      ) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
+       polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Aff[Fp[Name], G1]]]
+      ): void {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
   ## Compute KZG multi-proofs for EIP-7594 cell proofs using FK20 algorithm.
   ##
   ## This implements the FK20 amortized KZG proofs from c-kzg-4844.
@@ -375,7 +385,7 @@ func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
   ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ##
   ##   Crypto Name               DSP Equivalent                    Role
-  ##   ─────────────────────────────────────────────────────────────────────────
+  ##   ─────────────────────────────────────────────────────────────────────
   ##   polyphaseSpectrumBank     Polyphase filter bank          Precomputed input spectra
   ##   poly                      Filter coefficients            Toeplitz kernel f_i
   ##   proofs                    Output evaluations             Convolution result
@@ -388,10 +398,8 @@ func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
   ## Uses stride to handle smaller sizes from larger descriptors (e.g., 8192 descriptor for 128-size FFT).
   ##
   ## Algorithm (Phase 1 + Phase 2 from FK20):
-  ##   For each stride offset in [0, L):
-  ##     1. Extract toeplitz coefficients from poly
-  ##     2. toeplitzMatVecMul: FFT coeffs + FFT kernel + pointwise multiply + IFFT
-  ##     3. Accumulate result
+  ##   Use ToeplitzAccumulator to accumulate L Hadamard products in Fourier domain
+  ##   MSM per output position, then one amortized EC IFFT
   ##   Zero upper half
   ##   FFT → proofs
   ##
@@ -399,57 +407,55 @@ func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
   ##   - If L == 1 (single evaluation per coset): Use regular `kzg_verify`
   ##   - If L > 1 (multiple evaluations per coset): Use `kzg_coset_verify`
   ##
-  ## @param polyphaseSpectrumBank: Precomputed polyphase spectra bank (L × CDS)
+  ## @param polyphaseSpectrumBank: Precomputed polyphase spectra bank (L × CDS, affine form)
   ## @param proofs: Output array for CDS proofs (affine form)
   ## @param poly: Polynomial coefficients to prove (length N = L*CDS/2, coefficient/monomial form)
   ##              Can be a slice of a larger polynomial array.
   ## @param fr_fft_desc: Precomputed Fr FFT descriptor (order >= CDS, uses stride)
   ## @param ec_fft_desc: Precomputed EC FFT descriptor (order >= CDS, uses stride)
-
   const CDSdiv2 = CDS shr 1
-  doAssert poly.len == L * CDSdiv2
+  const N = L * CDSdiv2
+  doAssert poly.len == N
 
   static:
     doAssert CDS.isPowerOf2_vartime(), "CDS must be a power of two"
   doAssert fr_fft_desc.order >= CDS, "Fr FFT descriptor order must be >= CDS"
   doAssert ec_fft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
 
-  let u = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
-  for i in 0 ..< CDS:
-    u[i].setNeutral()
+  # Use Toeplitz accumulator with MSM for FK20
+  var accum: ToeplitzAccumulator[EC_ShortW_Jac[Fp[Name], G1], EC_ShortW_Aff[Fp[Name], G1], Fr[Name]]
+  let status = accum.init(fr_fft_desc, ec_fft_desc, CDS, L)
+  doAssert status == Toeplitz_Success, "Internal error: Toeplitz accumulator init failed: " & $status
 
   let circulant = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
 
   for offset in 0 ..< L:
     makeCirculantMatrix(circulant.toOpenArray(CDS), poly, offset, L)
 
-    # Use toeplitzMatVecMulPreFFT with accumulate=true
-    # This does: FFT(toeplitzCoeffs) ⊙ kernelFft, then IFFT → result
-    # Results are accumulated in time domain
-    let status = toeplitzMatVecMulPreFFT(
-      u.toOpenArray(CDS),
+    # Accumulate FFT of circulant coefficients with affine points (already affine from setup)
+    # Offset is tracked automatically inside accumulator
+    let status = accum.accumulate(
       circulant.toOpenArray(CDS),
-      polyphaseSpectrumBank[offset],
-      fr_fft_desc,
-      ec_fft_desc,
-      accumulate = (offset > 0)
+      polyphaseSpectrumBank[offset]
     )
-    doAssert status == FFT_Success, "FK20 toeplitzMatVecMulPreFFT failed at offset " & $offset
+    doAssert status == Toeplitz_Success, "Internal error: Toeplitz accumulator failed at offset " & $offset & ": " & $status
 
-  # u is already in time domain (toeplitzMatVecMulPreFFT did IFFT)
+  freeHeapAligned(circulant)
+
+  # MSM per position + one amortized IFFT at the end
+  let u = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
+  let status2 = accum.finish(u.toOpenArray(CDS))
+  doAssert status2 == Toeplitz_Success, "Internal error: Toeplitz accumulator finish failed: " & $status2
+
   # Zero upper half, degree is CDS/2 - 1
   for i in CDSdiv2 ..< CDS:
     u[i].setNeutral()
 
-  # FFT to get proofs
-  let proofsJac = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
-  let status3 = ec_fft_desc.ec_fft_nn(proofsJac.toOpenArray(CDS), u.toOpenArray(CDS))
-  doAssert status3 == FFT_Success, "FK20 final ec_fft_nn failed"
+  # FFT in-place to get proofs — reuse u buffer
+  let status3 = ec_fft_desc.ec_fft_nn(u.toOpenArray(CDS), u.toOpenArray(CDS))
+  doAssert status3 == FFT_Success, "Internal error: EC FFT failed: " & $status3
 
-  proofs.asUnchecked().batchAffine(proofsJac, proofs.len)
-
-  freeHeapAligned(proofsJac)
-  freeHeapAligned(circulant)
+  proofs.asUnchecked().batchAffine_vartime(u, proofs.len)
   freeHeapAligned(u)
 
 # ############################################################
@@ -499,7 +505,7 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
       evalsCols: openArray[int],
       domain: FrFFT_Descriptor[Fr[Name]],
       linearIndepRandNumbers: openArray[Fr[Name]],
-      N: static int): bool {.meter.} =
+      N: static int) {.meter.} =
   ## Compute ∑ₖrᵏIₖ(X)
   ##
   ## Input is a "sparse bunch of evals" and their corresponding column.
@@ -519,14 +525,13 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
     doAssert linearIndepRandNumbers.len >= evalsCols.len
 
   # Runtime validation: prevent out-of-bounds indexing of agg_cols heap allocation
-  if evals.len != evalsCols.len or linearIndepRandNumbers.len < evalsCols.len:
-    return false
+  doAssert evals.len == evalsCols.len, "Internal error: evals and evalsCols must have same length"
+  doAssert linearIndepRandNumbers.len >= evalsCols.len, "Internal error: linearIndepRandNumbers must cover all evals"
 
   const NumCols = N div L
   for k in 0 ..< evalsCols.len:
     let c = evalsCols[k]
-    if c < 0 or c >= NumCols:
-      return false
+    doAssert c >= 0 and c < NumCols, "Internal error: Column index out of bounds: " & $c
 
   const logNumCols = log2_vartime(uint32(NumCols))
 
@@ -558,21 +563,20 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
     if not agg_cols_used[c]:
       continue
 
-    # Compute the per-column interpolation polynomial
-    var col_interpoly {.noInit.}: PolynomialCoef[L, Fr[Name]]
+    # Compute the per-column interpolation polynomial (IFFT in-place)
     let domainPos = reverseBits(uint32(c), logNumCols)
     let hk = domain.rootsOfUnity[domainPos]
 
     # agg_cols[c] is in bit-reversed order
-    let status = domain.coset_ifft_rn(col_interpoly.coefs, agg_cols[c], hk)
+    let status = domain.coset_ifft_rn(agg_cols[c], agg_cols[c], hk)
     doAssert status == FFT_Success, "Internal error: coset_ifft_rn failed: " & $status
 
-    # Accumulate
-    interpoly += col_interpoly
+    # Accumulate directly from agg_cols[c] (now in coefficient form)
+    for i in 0 ..< L:
+      interpoly.coefs[i] += agg_cols[c][i]
 
   freeHeapAligned(agg_cols_used)
   freeHeapAligned(agg_cols)
-  return true
 
 func kzg_coset_verify_batch*[L: static int, Name: static Algebra](
       uniqueCommitments: openArray[EC_ShortW_Aff[Fp[Name], G1]],
@@ -693,14 +697,13 @@ func kzg_coset_verify_batch*[L: static int, Name: static Algebra](
   #                  ∑ₖrᵏIₖ(X)
   #         and evaluate it at trusted setup secret τ
   #                 [∑ₖrᵏIₖ(τ)]₁
-  if not interpoly.computeAggRandScaledInterpoly(
+  interpoly.computeAggRandScaledInterpoly(
     evals,
     evalsCols,
     domain,
     linearIndepRandNumbers,
     N
-  ):
-    return false
+  )
   rli.multiScalarMul_vartime(interpoly.coefs.asUnchecked(), powers_of_tau.asUnchecked(), L)
   rl -= rli
 

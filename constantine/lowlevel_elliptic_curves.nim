@@ -78,6 +78,7 @@ export ec_shortweierstrass.cneg
 export ec_shortweierstrass.affine
 export ec_shortweierstrass.fromAffine
 export ec_shortweierstrass.batchAffine
+export ec_shortweierstrass.batchAffine_vartime
 
 export ec_shortweierstrass.sum
 export ec_shortweierstrass.sum_vartime
@@ -115,6 +116,7 @@ export ec_twistededwards.affine
 export ec_twistededwards.projective
 export ec_twistededwards.fromAffine
 export ec_twistededwards.batchAffine
+export ec_twistededwards.batchAffine_vartime
 export ec_twistededwards.sum_vartime
 export ec_twistededwards.mixedSum_vartime
 export ec_twistededwards.diff_vartime

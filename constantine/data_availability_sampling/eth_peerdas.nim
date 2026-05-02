@@ -196,10 +196,8 @@ func recoverPolynomialCoeff*[N, N2, L, CDS: static int](
     extended_times_zero[i].prod(extended_evaluation_brp[i], zero_poly_eval_fft[i])
 
   # Step 4: Convert (E*Z) to coefficient form via IFFT [Domain: 2*N roots of unity, natural to natural]
-  let ext_times_zero_coeffs = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
-  defer: freeHeapAligned(ext_times_zero_coeffs)
-
-  check fft_desc.ifft_rn(ext_times_zero_coeffs.toOpenArray(ext_size), extended_times_zero.toOpenArray(ext_size))
+  # ifft_rn supports in-place — reuse extended_times_zero buffer
+  check fft_desc.ifft_rn(extended_times_zero.toOpenArray(ext_size), extended_times_zero.toOpenArray(ext_size))
 
   # Step 5: Evaluate on coset domain
   # Coset shift = 5 (same as c-kzg-4844)
@@ -208,7 +206,7 @@ func recoverPolynomialCoeff*[N, N2, L, CDS: static int](
   let ext_eval_over_coset = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
   defer: freeHeapAligned(ext_eval_over_coset)
 
-  check fft_desc.coset_fft_nr(ext_eval_over_coset.toOpenArray(ext_size), ext_times_zero_coeffs.toOpenArray(ext_size), cosetShift)
+  check fft_desc.coset_fft_nr(ext_eval_over_coset.toOpenArray(ext_size), extended_times_zero.toOpenArray(ext_size), cosetShift)
 
   let zero_poly_over_coset = allocHeapArrayAligned(Fr[BLS12_381], ext_size, alignment = 64)
   defer: freeHeapAligned(zero_poly_over_coset)

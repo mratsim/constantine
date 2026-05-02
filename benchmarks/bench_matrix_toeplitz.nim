@@ -34,7 +34,7 @@ import
   constantine/math/[arithmetic, ec_shortweierstrass],
   constantine/math/io/io_fields,
   # Standard library
-  std/[os, strutils, monotimes]
+  std/[os, strutils, monotimes, importutils]
 
 const
   # PeerDAS production parameters
@@ -111,68 +111,87 @@ proc benchMakeCirculantMatrix_VaryingOffset(poly: openArray[F],
     bench(&"makeCirculantMatrix_offset{offset}", CDS, iters):
       makeCirculantMatrix(coeffs.toOpenArray(0, CDS-1), poly, offset, L)
 
-proc benchToeplitzMatVecMulPreFFT_Size128(circulant: openArray[F], 
-                                          vFft: openArray[EC_G1], 
-                                          frDesc: FrFFT_Descriptor[F], 
-                                          ecDesc: ECFFT_Descriptor[EC_G1], 
-                                          iters: int) =
-  ## Core FK20 multiplication: size 128, no accumulation
-  
-  var output: array[CDS, EC_G1]
-  
-  bench("toeplitzMatVecMulPreFFT_size128", CDS, iters):
-    let status = toeplitzMatVecMulPreFFT(
-      output.toOpenArray(0, CDS-1),
-      circulant,
-      vFft,
-      frDesc,
-      ecDesc,
-      accumulate = false
-    )
-    doAssert status == FFT_Success
+proc benchToeplitzMatVecMul_Size128(circulant: openArray[F], 
+                                    v: openArray[EC_G1], 
+                                    frDesc: FrFFT_Descriptor[F], 
+                                    ecDesc: ECFFT_Descriptor[EC_G1], 
+                                    iters: int) =
+  ## Core FK20 multiplication: size 128
+  ## Uses toeplitzMatVecMul which handles FFT internally
 
-proc benchToeplitzMatVecMulPreFFT_Accumulate(circulant: openArray[F], 
-                                             vFft: openArray[EC_G1], 
-                                             frDesc: FrFFT_Descriptor[F], 
-                                             ecDesc: ECFFT_Descriptor[EC_G1], 
-                                             iters: int) =
-  ## With accumulation (accumulate=true)
-  
   var output: array[CDS, EC_G1]
-  # Initialize output
-  for i in 0 ..< CDS:
-    output[i].setNeutral()
-  
-  bench("toeplitzMatVecMulPreFFT_accumulate", CDS, iters):
-    let status = toeplitzMatVecMulPreFFT(
-      output.toOpenArray(0, CDS-1),
-      circulant,
-      vFft,
-      frDesc,
-      ecDesc,
-      accumulate = true
-    )
-    doAssert status == FFT_Success
 
-proc benchToeplitzMatVecMulPreFFT_NoAccumulate(circulant: openArray[F], 
-                                               vFft: openArray[EC_G1], 
-                                               frDesc: FrFFT_Descriptor[F], 
-                                               ecDesc: ECFFT_Descriptor[EC_G1], 
-                                               iters: int) =
-  ## Without accumulation (accumulate=false)
-  
-  var output: array[CDS, EC_G1]
-  
-  bench("toeplitzMatVecMulPreFFT_noAccumulate", CDS, iters):
-    let status = toeplitzMatVecMulPreFFT(
+  bench("toeplitzMatVecMul_size128", CDS, iters):
+    let status = toeplitzMatVecMul(
       output.toOpenArray(0, CDS-1),
       circulant,
-      vFft,
+      v,
       frDesc,
-      ecDesc,
-      accumulate = false
+      ecDesc
     )
-    doAssert status == FFT_Success
+    doAssert status == Toeplitz_Success
+
+proc benchToeplitzAccumulator_64Accumulates(poly: openArray[F], iters: int) =
+  ## Benchmark ToeplitzAccumulator with 64 accumulate calls (PeerDAS L=64)
+  ## This is the core FK20 accumulation pattern used in multi-proof generation
+  ##
+  ## Each accumulate:
+  ## 1. Computes FFT of circulant (size 128)
+  ## 2. Stores result in transposed layout
+  ##
+  ## After 64 accumulates, finish() performs MSM + IFFT
+  
+  const size = CDS  # 128
+  const L = 64
+  
+  # Type aliases matching ToeplitzAccumulator (following bench_kzg_multiproofs.nim pattern)
+  type BLS12_381_G1_aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+  type BLS12_381_G1_jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
+  
+  # Setup FFT descriptors
+  let descs = createFFTDescriptors(2 * size)
+  
+  # Generate random input vectors for each accumulate (affine coordinates)
+  var vFftList: array[L, seq[BLS12_381_G1_aff]]
+  for i in 0 ..< L:
+    vFftList[i].setLen(size)
+    var rng: RngState
+    rng.seed(RngSeed + uint32(i))
+    rng.random_unsafe(vFftList[i])
+  
+  # Generate random circulants for each accumulate
+  var circulantList: array[L, seq[F]]
+  for i in 0 ..< L:
+    circulantList[i].setLen(size)
+    var rng: RngState
+    rng.seed(RngSeed + uint32(i) + 1000)
+    rng.random_unsafe(circulantList[i])
+  
+  # Allow direct access to private 'offset' field for benchmark reuse
+  privateAccess(toeplitz.ToeplitzAccumulator)
+
+  # Initialize accumulator once outside the benchmark loop to avoid
+  # allocation overhead (3 x allocHeapAligned, ~772 KB total) in timing.
+  var acc: ToeplitzAccumulator[BLS12_381_G1_jac, BLS12_381_G1_aff, F]
+  let statusInit = acc.init(descs.frDesc, descs.ecDesc, size, L)
+  doAssert statusInit == Toeplitz_Success
+
+  bench("ToeplitzAccumulator_64accumulates", size, iters):
+    # Reset accumulator state for this iteration (avoids free+alloc)
+    acc.offset = 0
+
+    # 64 accumulate calls
+    for i in 0 ..< L:
+      let status = acc.accumulate(
+        circulantList[i].toOpenArray(0, size-1),
+        vFftList[i].toOpenArray(0, size-1)
+      )
+      doAssert status == Toeplitz_Success
+
+    # Finish with MSM + IFFT
+    var output: array[size, EC_G1]
+    let statusFinish = acc.finish(output.toOpenArray(0, size-1))
+    doAssert statusFinish == Toeplitz_Success
 
 proc benchToeplitz_Scaling(sizes: openArray[int], iters: int) =
   ## Scaling analysis for different Toeplitz sizes
@@ -200,7 +219,7 @@ proc benchToeplitz_Scaling(sizes: openArray[int], iters: int) =
         descs.frDesc,
         descs.ecDesc
       )
-      doAssert status == FFT_Success
+      doAssert status == Toeplitz_Success
 
 proc main() =
   echo "Toeplitz Matrix-Vector Multiplication Benchmarks (FK20)"
@@ -226,29 +245,23 @@ proc main() =
   separator(145)
   
   # Setup for size 128 benchmarks
-  let descs128 = createFFTDescriptors(CDS)
-  var circulant128 = newSeq[F](CDS)
-  makeCirculantMatrix(circulant128.toOpenArray(0, CDS-1), polyFull.toOpenArray(0, N-1), 0, L)
-  
+  # toeplitzMatVecMul needs circulant of size 2*n and FFT descriptors of order >= 2*n
+  let descs128 = createFFTDescriptors(2 * CDS)
+  var circulant128 = newSeq[F](2 * CDS)
+  makeCirculantMatrix(circulant128.toOpenArray(0, 2*CDS-1), polyFull.toOpenArray(0, N-1), 0, 1)
+
   var v128 = newSeq[EC_G1](CDS)
   v128[0].setGenerator()
   for i in 1 ..< CDS:
     v128[i].mixedSum(v128[i-1], BLS12_381.getGenerator("G1"))
+
+  benchToeplitzMatVecMul_Size128(circulant128.toOpenArray(0, 2*CDS-1), v128.toOpenArray(0, CDS-1), descs128.frDesc, descs128.ecDesc, ItersLarge)
   
-  # For PreFFT benchmarks, FFT the vector directly (no zero-extension needed)
-  var vFft128 = newSeq[EC_G1](CDS)
-  discard ec_fft_nr(descs128.ecDesc, vFft128.toOpenArray(0, CDS-1), v128.toOpenArray(0, CDS-1))
+  separator(145)
+  echo "Toeplitz Accumulator (64 Accumulates)"
+  separator(145)
   
-  benchToeplitzMatVecMulPreFFT_Size128(circulant128.toOpenArray(0, CDS-1), vFft128.toOpenArray(0, CDS-1), descs128.frDesc, descs128.ecDesc, ItersLarge)
-  echo ""
-  
-  benchToeplitzMatVecMulPreFFT_Accumulate(circulant128.toOpenArray(0, CDS-1), vFft128.toOpenArray(0, CDS-1), descs128.frDesc, descs128.ecDesc, ItersLarge)
-  echo ""
-  
-  benchToeplitzMatVecMulPreFFT_NoAccumulate(circulant128.toOpenArray(0, CDS-1), vFft128.toOpenArray(0, CDS-1), descs128.frDesc, descs128.ecDesc, ItersLarge)
-  echo ""
-  
-  echo "  [Skipping toeplitzMatVecMul_Full - FK20 uses PreFFT version]"
+  benchToeplitzAccumulator_64Accumulates(polyFull.toOpenArray(0, N-1), ItersLarge)
   echo ""
   
   separator(145)
@@ -262,8 +275,8 @@ proc main() =
   separator(145)
   echo "- All benchmarks use random polynomials (seed=42)"
   echo "- PeerDAS parameters: N=4096, L=64, CDS=128"
-  echo "- Accumulation mode shows sum_vartime overhead"
-  echo "- Full toeplitzMatVecMul includes vector FFT"
+  echo "- Accumulator benchmark: 64 accumulate calls + MSM + IFFT"
+  echo "- toeplitzMatVecMul includes forward FFT on input vector"
 
 when isMainModule:
   main()

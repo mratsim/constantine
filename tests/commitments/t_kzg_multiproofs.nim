@@ -18,6 +18,7 @@ import
   constantine/math/[ec_shortweierstrass, extension_fields],
   constantine/math/polynomials/[polynomials, fft_fields, fft_ec],
   constantine/math/arithmetic/finite_fields,
+  constantine/math/matrix/toeplitz,
   constantine/commitments/kzg_multiproofs,
   constantine/commitments/kzg,
   constantine/math/io/[io_fields, io_bigints],
@@ -27,7 +28,7 @@ import
 from trusted_setup_generator import
   BLS12_381_G1_Aff, BLS12_381_G1_Jac
 
-type FK20PolyphaseSpectrumBank[N, L, CDS: static int, Name: static Algebra] = array[L, array[CDS, EC_ShortW_Jac[Fp[Name], G1]]]
+type FK20PolyphaseSpectrumBank[N, L, CDS: static int, Name: static Algebra] = array[L, array[CDS, EC_ShortW_Aff[Fp[Name], G1]]]
 
 func pow(omegaMax: Fr[BLS12_381], domainPos: uint32): Fr[BLS12_381] =
   var exp: Fr[BLS12_381]
@@ -53,7 +54,7 @@ proc testFK20SingleProofs() =
   let ecfft_desc = ECFFT_Descriptor[BLS12_381_G1_Jac].new(order = CDS, setup.omegaForFFT)
   let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.omegaForFFT)
 
-  var polyphaseSpectrumBank: array[L, array[CDS, BLS12_381_G1_Jac]]
+  var polyphaseSpectrumBank: array[L, array[CDS, BLS12_381_G1_Aff]]
   computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
 
   var fk20Proofs: array[CDS, BLS12_381_G1_Aff]
@@ -107,7 +108,7 @@ proc testFK20MultiProofs(L: static int) =
   let ecfft_desc = ECFFT_Descriptor[BLS12_381_G1_Jac].new(order = CDS, setup.omegaForFFT)
   let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.omegaForFFT)
 
-  var polyphaseSpectrumBank: array[L, array[CDS, BLS12_381_G1_Jac]]
+  var polyphaseSpectrumBank: array[L, array[CDS, BLS12_381_G1_Aff]]
   computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
 
   var fk20Proofs: array[CDS, BLS12_381_G1_Aff]
@@ -174,7 +175,7 @@ proc testNonOptimizedCosetProofs*(L: static int) =
   let ecfft_desc = ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]].new(order = CDS, setup.omegaForFFT)
   let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.omegaForFFT)
 
-  var polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]]
+  var polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]]
   computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
 
   var fk20Proofs: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]

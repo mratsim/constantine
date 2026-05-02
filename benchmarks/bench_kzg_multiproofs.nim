@@ -30,7 +30,7 @@ import
   # PRNG for polynomial generation
   helpers/prng_unsafe,
   # Standard library
-  std/[os, strutils, monotimes]
+  std/[os, strutils, monotimes, importutils]
 
 const
   # PeerDAS production parameters (from ethereum_kzg_srs)
@@ -88,7 +88,7 @@ proc benchPolyphasePrecomputation(srs_monomial_g1: PolynomialCoef[N, EC_ShortW_A
   ## Measure one-time polyphase spectrum bank computation cost
   ## This runs once during trusted setup initialization
 
-  let polyphaseSpectrumBank = allocHeapAligned(array[L, array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]], 64)
+  let polyphaseSpectrumBank = allocHeapAligned(array[L, array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]], 64)
   defer: freeHeapAligned(polyphaseSpectrumBank)
 
   bench("computePolyphaseDecompositionFourier", CDS*L, iters):
@@ -96,31 +96,31 @@ proc benchPolyphasePrecomputation(srs_monomial_g1: PolynomialCoef[N, EC_ShortW_A
 proc benchFK20_Phase1_Full(ctx: ptr EthereumKZGContext,
                            poly: PolynomialCoef[N, Fr[BLS12_381]],
                            iters: int) =
-  ## Complete FK20 Phase 1: 64 iterations of toeplitzMatVecMulPreFFT with accumulation
+  ## Complete FK20 Phase 1: 64 iterations of ToeplitzAccumulator accumulate+finish
   ## This is the main FK20 proving loop
 
   var u: array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]
-  var circulant: array[CDS, Fr[BLS12_381]]
+
+  # Type aliases matching ToeplitzAccumulator
+  type BLS12_381_G1_aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+  type BLS12_381_G1_jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
+
+  # Allow direct access to private 'offset' field for benchmark reuse
+  privateAccess(toeplitz.ToeplitzAccumulator)
+
+  # Initialize accumulator once outside the benchmark loop to avoid
+  # allocation overhead (3 x allocHeapAligned, ~772 KB total) in timing.
+  var accum: ToeplitzAccumulator[BLS12_381_G1_jac, BLS12_381_G1_aff, Fr[BLS12_381]]
+  doAssert accum.init(ctx.fft_desc_ext, ctx.ecfft_desc_ext, CDS, L) == Toeplitz_Success
 
   bench("fk20_phase1_accumulation_loop", CDS, iters):
-    # Zero u
-    for i in 0 ..< CDS:
-      u[i].setNeutral()
-
-    # Accumulation loop (matches production kzg_coset_prove)
+    # Reset accumulator state for this iteration (avoids free+alloc)
+    accum.offset = 0
+    var circulant: array[CDS, Fr[BLS12_381]]
     for offset in 0 ..< L:
       makeCirculantMatrix(circulant.toOpenArray(0, CDS-1), poly.coefs, offset, L)
-
-      let status = toeplitzMatVecMulPreFFT(
-        u.toOpenArray(0, CDS-1),
-        circulant.toOpenArray(0, CDS-1),
-        ctx.polyphaseSpectrumBank[offset],
-        ctx.fft_desc_ext,
-        ctx.ecfft_desc_ext,
-        accumulate = (offset > 0)
-      )
-      doAssert status == FFT_Success
-
+      doAssert accum.accumulate(circulant.toOpenArray(0, CDS-1), ctx.polyphaseSpectrumBank[offset]) == Toeplitz_Success
+    doAssert accum.finish(u.toOpenArray(0, CDS-1)) == Toeplitz_Success
 proc benchFK20_Phase2(u: var array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]],
                       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]],
                       iters: int) =

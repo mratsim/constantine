@@ -63,7 +63,7 @@ proc sum_reduce_vartime_parallelChunks[F; G: static Subgroup](
       r.sum_vartime(r, partialResults[i])
   else:
     let partialResultsAffine = allocStackArray(EC_ShortW_Aff[F, G], chunkDesc.numChunks)
-    partialResultsAffine.batchAffine(partialResults, chunkDesc.numChunks)
+    partialResultsAffine.batchAffine_vartime(partialResults, chunkDesc.numChunks)
     r.sum_reduce_vartime(partialResultsAffine, chunkDesc.numChunks)
 
 proc sum_reduce_vartime_parallelAccums[F; G: static Subgroup](

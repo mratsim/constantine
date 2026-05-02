@@ -27,6 +27,7 @@ import
     ec_shortweierstrass_batch_ops,
     ec_twistededwards_affine,
     ec_twistededwards_projective,
+    ec_twistededwards_batch_ops,
     ec_scalar_mul,
     ec_multi_scalar_mul],
   constantine/math/io/[io_bigints, io_fields, io_ec],
@@ -1115,103 +1116,149 @@ proc run_EC_subgroups_cofactors_impl*(
               offSubgroup, " points on curve but not in subgroup (before cofactor clearing)"
 
 proc run_EC_affine_conversion*(
-       ec: typedesc,
-       Iters: static int,
-       moduleName: string) =
-  # Random seed for reproducibility
+    ec: typedesc,
+    Iters: static int,
+    moduleName: string,
+    isVartime: bool = false) =
   var rng: RngState
-  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1))
   rng.seed(seed)
+
+  let
+    vSuffix = if isVartime: " (vartime)" else: ""
+    suiteDesc = "Elliptic curve in " & $ec.getName().getEquationForm() & " form" & vSuffix
+    testName = "batchAffine" & (if isVartime: "_vartime" else: "")
+
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.getName().getEquationForm() & " form"
-
-  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
-    test "EC " & $ec.G & " batchAffine is consistent with single affine conversion":
-      proc test(EC: typedesc, gen: RandomGen) =
+  suite suiteDesc & " - " & $ec & vSuffix & " - [" & $WordBitWidth & "-bit mode]":
+    test testName & " is consistent with single affine conversion":
+      for gen in [Uniform, HighHammingWeight, Long01Sequence]:
         const batchSize = 10
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, ec]
+          for i in 0 ..< batchSize:
+            Ps[i] = rng.random_point(ec, randZ = true, gen)
+          var Qs, Rs: array[batchSize, affine(ec)]
+          for i in 0 ..< batchSize:
+            Qs[i].affine(Ps[i])
+          if isVartime:
+            Rs.batchAffine_vartime(Ps)
+          else:
+            Rs.batchAffine(Ps)
+          for i in countdown(batchSize-1, 0):
+            doAssert bool(Qs[i] == Rs[i]), block:
+              var s: string
+              s &= "Mismatch at " & $i & " on iteration \n"
+              s &= "Failing batch for " & $ec & " (" & $WordBitWidth & "-bit)\n"
+              s &= "  Input points [\n"
+              for j in 0 ..< batchSize:
+                s &= Ps[j].toHex(indent = 4)
+                if j != batchSize-1: s &= ",\n"
+              s &= "  ]\n"
+              s &= "  batchAffine results [\n"
+              for j in 0 ..< batchSize:
+                s &= Rs[j].toHex(indent = 4)
+                if j != batchSize-1: s &= ",\n"
+              s &= "  ]\n"
+              s &= "  Expected (single .affine) [\n"
+              for j in 0 ..< batchSize:
+                s &= Qs[j].toHex(indent = 4)
+                if j != batchSize-1: s &= ",\n"
+              s &= "  ]"
+              s
+
+    test testName & " with infinite points":
+      for gen in [Uniform, HighHammingWeight, Long01Sequence]:
+        const batchSize = 10
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, ec]
+          for i in 0 ..< batchSize:
+            if rng.sample_unsafe([0, 1, 2]) != 0:
+              Ps[i] = rng.random_point(ec, randZ = true, gen)
+            else:
+              Ps[i].setNeutral()
+          var Qs, Rs: array[batchSize, affine(ec)]
+          for i in 0 ..< batchSize:
+            Qs[i].affine(Ps[i])
+          if isVartime:
+            Rs.batchAffine_vartime(Ps)
+          else:
+            Rs.batchAffine(Ps)
+          for i in countdown(batchSize-1, 0):
+            doAssert bool(Qs[i] == Rs[i]), block:
+              var s: string
+              s &= "Mismatch at " & $i & " on iteration \n"
+              s &= "Failing batch for " & $ec & " (" & $WordBitWidth & "-bit)\n"
+              s &= "  Input points [\n"
+              for j in 0 ..< batchSize:
+                s &= Ps[j].toHex(indent = 4)
+                if j != batchSize-1: s &= ",\n"
+              s &= "  ]\n"
+              s &= "  batchAffine results [\n"
+              for j in 0 ..< batchSize:
+                s &= Rs[j].toHex(indent = 4)
+                if j != batchSize-1: s &= ",\n"
+              s &= "  ]\n"
+              s &= "  Expected (single .affine) [\n"
+              for j in 0 ..< batchSize:
+                s &= Qs[j].toHex(indent = 4)
+                if j != batchSize-1: s &= ",\n"
+              s &= "  ]"
+              s
+
+    test testName & " with single element":
+      for gen in [Uniform, HighHammingWeight, Long01Sequence]:
+        for _ in 0 ..< Iters:
+          var P: array[1, ec]
+          P[0] = rng.random_point(ec, randZ = true, gen)
+          var Qs, Rs: array[1, affine(ec)]
+          Qs[0].affine(P[0])
+          if isVartime:
+            Rs.batchAffine_vartime(P)
+          else:
+            Rs.batchAffine(P)
+          doAssert bool(Qs[0] == Rs[0]), testName & " single-element mismatch"
+
+    test testName & " with all neutral points":
+      for _ in 0 ..< Iters:
+        const batchSize = 10
+        var Ps: array[batchSize, ec]
+        var Qs, Rs: array[batchSize, affine(ec)]
+        for i in 0 ..< batchSize:
+          Ps[i].setNeutral()
+          Qs[i].setNeutral()
+        if isVartime:
+          Rs.batchAffine_vartime(Ps)
+        else:
+          Rs.batchAffine(Ps)
+        for i in 0 ..< batchSize:
+          doAssert bool(Qs[i] == Rs[i]), testName & " all-neutral mismatch at " & $i
+
+    test testName & " with varied batch sizes":
+      proc testSize(EC: typedesc, batchSize: static int, gen: RandomGen, vtime: bool) =
         for _ in 0 ..< Iters:
           var Ps: array[batchSize, EC]
           for i in 0 ..< batchSize:
             Ps[i] = rng.random_point(EC, randZ = true, gen)
-
           var Qs, Rs: array[batchSize, affine(EC)]
           for i in 0 ..< batchSize:
             Qs[i].affine(Ps[i])
-          Rs.batchAffine(Ps)
-
-          for i in countdown(batchSize-1, 0):
-            doAssert bool(Qs[i] == Rs[i]), block:
-              var s: string
-              s &= "Mismatch on iteration " & $i
-              s &= "\nFailing batch for " & $EC & " (" & $WordBitWidth & "-bit)"
-              s &= "\n  ["
-              for i in 0 ..< batchSize:
-                s &= "\n" & Ps[i].toHex(indent = 4)
-                if i != batchSize-1: s &= ","
-              s &= "\n  ]"
-              s &= "\nFailing inversions for " & $EC & " (" & $WordBitWidth & "-bit)"
-              s &= "\n  ["
-              for i in 0 ..< batchSize:
-                s &= "\n" & Rs[i].toHex(indent = 4)
-                if i != batchSize-1: s &= ","
-              s &= "\n  ]"
-              s &= "\nExpected inversions for " & $EC & " (" & $WordBitWidth & "-bit)"
-              s &= "\n  ["
-              for i in 0 ..< batchSize:
-                s &= "\n" & Qs[i].toHex(indent = 4)
-                if i != batchSize-1: s &= ","
-              s &= "\n  ]"
-              s
-
-      test(ec, gen = Uniform)
-      test(ec, gen = HighHammingWeight)
-      test(ec, gen = Long01Sequence)
-
-    test "EC " & $ec.G & " batchAffine with infinite points":
-      proc test(EC: typedesc, gen: RandomGen) =
-        const batchSize = 10
-        for _ in 0 ..< Iters:
-          var Ps: array[batchSize, EC]
+          if vtime:
+            Rs.batchAffine_vartime(Ps)
+          else:
+            Rs.batchAffine(Ps)
           for i in 0 ..< batchSize:
-            if rng.sample_unsafe([0, 1, 2]) != 0: # 33% chance of infinite point
-              Ps[i] = rng.random_point(EC, randZ = true, gen)
-            else:
-              Ps[i].setNeutral()
+            doAssert bool(Qs[i] == Rs[i]), testName & " size-" & $batchSize & " mismatch at " & $i
 
-          var Qs, Rs: array[batchSize, affine(EC)]
-          for i in 0 ..< batchSize:
-            Qs[i].affine(Ps[i])
-          Rs.batchAffine(Ps)
+      testSize(ec, 2, gen = Uniform, vtime = isVartime)
+      testSize(ec, 2, gen = HighHammingWeight, vtime = isVartime)
+      testSize(ec, 2, gen = Long01Sequence, vtime = isVartime)
+      testSize(ec, 16, gen = Uniform, vtime = isVartime)
+      testSize(ec, 16, gen = HighHammingWeight, vtime = isVartime)
+      testSize(ec, 16, gen = Long01Sequence, vtime = isVartime)
 
-          for i in countdown(batchSize-1, 0):
-            doAssert bool(Qs[i] == Rs[i]), block:
-              var s: string
-              s &= "Mismatch on iteration " & $i
-              s &= "\nFailing batch for " & $EC & " (" & $WordBitWidth & "-bit)"
-              s &= "\n  ["
-              for i in 0 ..< batchSize:
-                s &= "\n" & Ps[i].toHex(indent = 4)
-                if i != batchSize-1: s &= ","
-              s &= "\n  ]"
-              s &= "\nFailing inversions for " & $EC & " (" & $WordBitWidth & "-bit)"
-              s &= "\n  ["
-              for i in 0 ..< batchSize:
-                s &= "\n" & Rs[i].toHex(indent = 4)
-                if i != batchSize-1: s &= ","
-              s &= "\n  ]"
-              s &= "\nExpected inversions for " & $EC & " (" & $WordBitWidth & "-bit)"
-              s &= "\n  ["
-              for i in 0 ..< batchSize:
-                s &= "\n" & Qs[i].toHex(indent = 4)
-                if i != batchSize-1: s &= ","
-              s &= "\n  ]"
-              s
-
-      test(ec, gen = Uniform)
-      test(ec, gen = HighHammingWeight)
-      test(ec, gen = Long01Sequence)
 
 proc run_EC_conversion_failures*(
        moduleName: string

@@ -335,7 +335,7 @@ func accumNAF[precompSize, NafMax: static int, EC, ECaff](
     elif digit < 0:
       P ~-= tab[-digit shr 1]
 
-func scalarMul_wNAF_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime, Alloca], meter.} =
+func scalarMul_wNAF_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime], meter.} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
@@ -359,7 +359,7 @@ func scalarMul_wNAF_vartime*[EC](P: var EC, scalar: BigInt, window: static int) 
     tabEC[i].sum_vartime(tabEC[i-1], P2)
 
   var tab {.noinit.}: array[precompSize, affine(EC)]
-  tab.batchAffine(tabEC)
+  tab.batchAffine_vartime(tabEC)
 
   var naf {.noInit.}: array[BigInt.bits+1, int8]
   let nafLen = naf.recode_r2l_signed_window_vartime(scalar, window)
@@ -375,7 +375,7 @@ func scalarMul_wNAF_vartime*[EC](P: var EC, scalar: BigInt, window: static int) 
 func scalarMulEndo_wNAF_vartime*[scalBits: static int; EC](
        P: var EC,
        scalar: BigInt[scalBits],
-       window: static int) {.tags:[VarTime, Alloca], meter.} =
+       window: static int) {.tags:[VarTime], meter.} =
   ## Endomorphism-accelerated windowed vartime scalar multiplication
   ##
   ##   P <- [k] P
@@ -427,7 +427,7 @@ func scalarMulEndo_wNAF_vartime*[scalBits: static int; EC](
       tabEC[m][i].sum_vartime(tabEC[m][i-1], P2)
 
   var tab {.noinit.}: array[M, array[precompSize, affine(EC)]]
-  tab.batchAffine(tabEC)
+  tab.batchAffine_vartime(tabEC)
 
   # 5. wNAF precomputed tables
   const NafLen = L+1

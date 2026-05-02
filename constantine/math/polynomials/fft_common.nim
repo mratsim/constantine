@@ -287,8 +287,8 @@ func bit_reversal_permutation_cobra[T](buf: var openArray[T]) {.used.} =
 
   freeHeap(t)
 
-func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) {.inline.} =
-  ## Out-of-place bit reversal permutation.
+func bit_reversal_permutation_noalias[T](dst{.noalias.}: var openArray[T], src{.noalias.}: openArray[T]) {.inline.} =
+  ## Out-of-place bit reversal permutation (no aliasing between dst and src).
   ##
   ## Automatically selects between naive and COBRA algorithms based on size.
   ## For small sizes (< 2^7 elements), the naive algorithm is faster.
@@ -304,12 +304,30 @@ func bit_reversal_permutation*[T](dst{.noalias.}: var openArray[T], src{.noalias
     # Use naive algorithm for small sizes
     bit_reversal_permutation_naive(dst, src)
 
-func bit_reversal_permutation*[T](buf: var openArray[T]) {.inline.} =
+func bit_reversal_permutation*[T](dst: var openArray[T], src: openArray[T]) =
+  ## Out-of-place bit reversal permutation with aliasing detection.
+  ##
+  ## If dst and src are the same array (aliasing), a temporary buffer is allocated.
+  debug: doAssert dst.len.uint.isPowerOf2_vartime()
+  debug: doAssert dst.len == src.len
+  debug: doAssert dst.len > 0
+
+  if dst[0].addr == src[0].addr:
+    # Alias: allocate temp, permute to temp, copy back
+    var tmp = allocHeapArrayAligned(T, src.len, alignment = 64)
+    bit_reversal_permutation_noalias(tmp.toOpenArray(0, src.len-1), src)
+    copyMem(dst[0].addr, tmp[0].addr, src.len * sizeof(T))
+    freeHeapAligned(tmp)
+  else:
+    bit_reversal_permutation_noalias(dst, src)
+
+func bit_reversal_permutation*[T](buf: var openArray[T]) =
   ## In-place bit reversal permutation.
   ##
   ## Out-of-place is at least 2x faster than in-place so dispatch to out-of-place
+  debug: doAssert buf.len.uint.isPowerOf2_vartime()
   debug: doAssert buf.len > 0
   var tmp = allocHeapArrayAligned(T, buf.len, alignment = 64)
-  bit_reversal_permutation(tmp.toOpenArray(0, buf.len-1), buf)
-  buf[0].addr.copyMem(tmp[0].addr, buf.len * sizeof(buf[0]))
+  bit_reversal_permutation_noalias(tmp.toOpenArray(0, buf.len-1), buf)
+  copyMem(buf[0].addr, tmp[0].addr, buf.len * sizeof(buf[0]))
   freeHeapAligned(tmp)

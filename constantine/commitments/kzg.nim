@@ -360,7 +360,7 @@ func kzg_verify_batch*[bits: static int, F2; Name: static Algebra](
     boxed_eval.scalarMul_vartime(evals_at_challenges[i])
     commits_min_evals_jac[i].diff_vartime(commits_min_evals_jac[i], boxed_eval)
 
-  commits_min_evals.batchAffine(commits_min_evals_jac, n)
+  commits_min_evals.batchAffine_vartime(commits_min_evals_jac, n)
   freeHeapAligned(commits_min_evals_jac)
   sum_commit_minus_evals_G1.multiScalarMul_vartime(coefs, commits_min_evals, n)
   freeHeapAligned(commits_min_evals)
