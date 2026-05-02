@@ -191,6 +191,8 @@ type
     ecFftDesc: ECFFT_Descriptor[EC]         # FFT descriptor for EC point transforms (user-owned, not freed by =destroy)
     coeffs: ptr UncheckedArray[F]           # [size*L] transposed coeffs
     points: ptr UncheckedArray[ECaff]       # [size*L] points for each position
+    # Pre-allocated scratch buffer — avoids heap alloc in accumulate/finish hot paths
+    scratchScalars: ptr UncheckedArray[F]   # [max(size,L)] union buffer (sizeof(F) == sizeof(F.getBigInt()))
     size: int
     L: int
     offset: int
@@ -200,10 +202,12 @@ proc `=destroy`*[EC, ECaff, F](ctx: var ToeplitzAccumulator[EC, ECaff, F]) {.rai
     freeHeapAligned(ctx.coeffs)
   if not ctx.points.isNil():
     freeHeapAligned(ctx.points)
+  if not ctx.scratchScalars.isNil():
+    freeHeapAligned(ctx.scratchScalars)
   ctx.coeffs = nil
   ctx.points = nil
-
-proc `=copy`*[EC, ECaff, F](dst: var ToeplitzAccumulator[EC, ECaff, F], src: ToeplitzAccumulator[EC, ECaff, F]) {.error: "ToeplitzAccumulator cannot be copied".}
+  ctx.scratchScalars = nil
+proc `=copy`*[EC, ECaff, F](dst: var ToeplitzAccumulator[EC, ECaff, F], src: ToeplitzAccumulator[EC, ECaff, F]) {.error.}
 
 proc init*[EC, ECaff, F](
   ctx: var ToeplitzAccumulator[EC, ECaff, F],
@@ -217,12 +221,14 @@ proc init*[EC, ECaff, F](
     freeHeapAligned(ctx.coeffs)
   if not ctx.points.isNil():
     freeHeapAligned(ctx.points)
-
+  if not ctx.scratchScalars.isNil():
+    freeHeapAligned(ctx.scratchScalars)
   ctx.size = 0
   ctx.offset = 0
   ctx.L = 0
   ctx.coeffs = nil
   ctx.points = nil
+  ctx.scratchScalars = nil
   ctx.frFftDesc = frFftDesc
   ctx.ecFftDesc = ecFftDesc
 
@@ -235,9 +241,10 @@ proc init*[EC, ECaff, F](
   # Allocate transposed buffers: [size*L]
   ctx.coeffs = allocHeapArrayAligned(F, size * L, alignment = 64)
   ctx.points = allocHeapArrayAligned(ECaff, size * L, alignment = 64)
+  # Allocate scratch buffer for zero-alloc hot path
+  ctx.scratchScalars = allocHeapArrayAligned(F, max(size, L), alignment = 64)
 
   return Toeplitz_Success
-
 proc accumulate*[EC, ECaff, F](
   ctx: var ToeplitzAccumulator[EC, ECaff, F],
   circulant: openArray[F],
@@ -248,19 +255,17 @@ proc accumulate*[EC, ECaff, F](
   if n == 0 or circulant.len != n or vFft.len != n or ctx.offset >= ctx.L:
     return Toeplitz_MismatchedSizes
 
-  let coeffsFft = allocHeapArrayAligned(F, n, 64)
   block HappyPath:
-    check HappyPath, fft_nn(ctx.frFftDesc, coeffsFft.toOpenArray(n), circulant)
+    check HappyPath, fft_nn(ctx.frFftDesc, ctx.scratchScalars.toOpenArray(n), circulant)
 
     # Store transposed: coeffs[i*L + offset] and points[i*L + offset]
     for i in 0 ..< n:
-      ctx.coeffs[i * ctx.L + ctx.offset] = coeffsFft[i]
+      ctx.coeffs[i * ctx.L + ctx.offset] = ctx.scratchScalars[i]
       ctx.points[i * ctx.L + ctx.offset] = vFft[i]
 
     ctx.offset += 1
     result = Toeplitz_Success
 
-  freeHeapAligned(coeffsFft)
   return result
 
 proc finish*[EC, ECaff, F](
@@ -272,7 +277,8 @@ proc finish*[EC, ECaff, F](
   if n == 0 or output.len != n or ctx.offset != ctx.L:
     return Toeplitz_MismatchedSizes
 
-  let scalars = allocHeapArrayAligned(F.getBigInt(), ctx.L, alignment = 64)
+  # Cast scratchScalars (type F) to F.getBigInt() — same sizeof per field convention
+  let scalars = cast[ptr UncheckedArray[F.getBigInt()]](ctx.scratchScalars)
 
   for i in 0 ..< n:
     # Load L scalars for position i
@@ -281,21 +287,12 @@ proc finish*[EC, ECaff, F](
 
     # MSM: output[i] = Σ scalars[offset] * points[offset]
     let pointsPtr = cast[ptr UncheckedArray[ECaff]](addr ctx.points[i * ctx.L])
-    # SAFE: all inputs are public data per FK20 construction — no secret-dependent branching risk
     output[i].multiScalarMul_vartime(scalars, pointsPtr, ctx.L)
 
-  freeHeapAligned(scalars)
+  # IFFT in-place — bit_reversal_permutation handles aliasing internally
+  checkReturn ec_ifft_nn(ctx.ecFftDesc, output, output)
+  return Toeplitz_Success
 
-  let ifftInput = allocHeapArrayAligned(EC, n, 64)
-  block HappyPath:
-    for i in 0 ..< n:
-      ifftInput[i] = output[i]
-
-    check HappyPath, ec_ifft_nn(ctx.ecFftDesc, output, ifftInput.toOpenArray(0, n - 1))
-    result = Toeplitz_Success
-
-  freeHeapAligned(ifftInput)
-  return result
 
 # ############################################################
 #
