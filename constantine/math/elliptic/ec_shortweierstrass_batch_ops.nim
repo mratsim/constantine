@@ -179,7 +179,7 @@ func batchAffine*[M, N: static int, F, G](
 func batchAffine_vartime*[F, G](
        affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
        projs: ptr UncheckedArray[EC_ShortW_Prj[F, G]],
-       N: int) {.meter.} =
+       N: int) {.tags:[VarTime], meter.} =
   # Algorithm: Montgomery's batch inversion
   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
   #   Section 10.3.1
@@ -254,7 +254,7 @@ func batchAffine_vartime*[M, N: static int, F, G](
 func batchAffine_vartime*[F, G](
        affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
        jacs: ptr UncheckedArray[EC_ShortW_Jac[F, G]],
-       N: int) {.meter.} =
+       N: int) {.tags:[VarTime], meter.} =
   # Algorithm: Montgomery's batch inversion
   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
   #   Section 10.3.1
