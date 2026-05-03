@@ -15,6 +15,8 @@
 import
   benchset_serialization,
   constantine/eth_eip7594_peerdas,
+  constantine/platforms/primitives,
+  constantine/platforms/views,
   constantine/ethereum_eip4844_kzg_parallel,
   ../bench_blueprint,
   std/[os, strutils, monotimes]
@@ -39,8 +41,8 @@ proc benchComputeCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, ite
 
   bench("compute_cells_and_kzg_proofs", iters):
     doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
-      cast[ptr UncheckedArray[Cell]](cells),
-      cast[ptr UncheckedArray[KZGProofBytes]](proofs),
+      cells[].asUnchecked(),
+      proofs[].asUnchecked(),
       b.blobs[0])
 
 proc main() =

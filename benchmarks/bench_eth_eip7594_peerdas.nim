@@ -81,8 +81,8 @@ proc computeBlobParallel(
 
   # Compute all cells and proofs (this is the expensive part!)
   doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
-    cast[ptr UncheckedArray[Cell]](tempCells),
-    cast[ptr UncheckedArray[KZGProofBytes]](tempProofs),
+    tempCells[].asUnchecked(),
+    tempProofs[].asUnchecked(),
     tempBlobs[])
   
 proc new(T: type BenchSet, ctx: ptr EthereumKZGContext): T =
@@ -184,8 +184,8 @@ proc benchComputeCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, ite
     new(cells)
     new(proofs)
     doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
-      cast[ptr UncheckedArray[Cell]](cells),
-      cast[ptr UncheckedArray[KZGProofBytes]](proofs),
+      cells[].asUnchecked(),
+      proofs[].asUnchecked(),
       b.blobs[0])
 
 proc benchVerifyCellKZGProofBatch_SingleBlob(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
@@ -218,10 +218,10 @@ proc benchVerifyCellKZGProofBatch_SingleBlob(b: BenchSet, ctx: ptr EthereumKZGCo
 
       discard verify_cell_kzg_proof_batch(
         ctx,
-        cast[ptr UncheckedArray[array[48, byte]]](commitments_bytes),
-        cast[ptr UncheckedArray[CellIndex]](cell_indices),
-        cast[ptr UncheckedArray[Cell]](cells_array),
-        cast[ptr UncheckedArray[KZGProofBytes]](proofs_bytes),
+        commitments_bytes[].asUnchecked(),
+        cell_indices[].asUnchecked(),
+        cells_array[].asUnchecked(),
+        proofs_bytes[].asUnchecked(),
         count,
         secureRandomBytes)
 
@@ -258,10 +258,10 @@ proc benchVerifyCellKZGProofBatch_MultiBlob(b: BenchSet, ctx: ptr EthereumKZGCon
           inc idx
       discard verify_cell_kzg_proof_batch(
         ctx,
-        cast[ptr UncheckedArray[array[48, byte]]](commitments_bytes),
-        cast[ptr UncheckedArray[CellIndex]](cell_indices),
-        cast[ptr UncheckedArray[Cell]](cells_array),
-        cast[ptr UncheckedArray[KZGProofBytes]](proofs_bytes),
+        commitments_bytes[].asUnchecked(),
+        cell_indices[].asUnchecked(),
+        cells_array[].asUnchecked(),
+        proofs_bytes[].asUnchecked(),
         totalCount,
         secureRandomBytes)
 
@@ -281,10 +281,10 @@ proc benchRecoverCellsAndKZGProofs_WorstCase(b: BenchSet, ctx: ptr EthereumKZGCo
     new(recovered_proofs)
     doAssert cttEthKzg_Success == recover_cells_and_kzg_proofs(
       ctx,
-      cast[ptr UncheckedArray[KZGProofBytes]](recovered_proofs),
-      cast[ptr UncheckedArray[Cell]](recovered_cells),
-      cast[ptr UncheckedArray[CellIndex]](b.halfCellIndices[0][0].unsafeAddr),
-      cast[ptr UncheckedArray[Cell]](b.halfCells[0][0].unsafeAddr),
+      recovered_proofs[].asUnchecked(),
+      recovered_cells[].asUnchecked(),
+      b.halfCellIndices[0].asUnchecked(),
+      b.halfCells[0].asUnchecked(),
       b.halfCells[0].len)
 
 proc benchRecoverCellsAndKZGProofs_VaryingAvailability(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
@@ -313,10 +313,10 @@ proc benchRecoverCellsAndKZGProofs_VaryingAvailability(b: BenchSet, ctx: ptr Eth
       new(recovered_proofs)
       doAssert cttEthKzg_Success == recover_cells_and_kzg_proofs(
         ctx,
-        cast[ptr UncheckedArray[KZGProofBytes]](recovered_proofs),
-        cast[ptr UncheckedArray[Cell]](recovered_cells),
-        cast[ptr UncheckedArray[CellIndex]](cell_indices[0].unsafeAddr),
-        cast[ptr UncheckedArray[Cell]](cells[0].unsafeAddr),
+        recovered_proofs[].asUnchecked(),
+        recovered_cells[].asUnchecked(),
+        cell_indices.asUnchecked(),
+        cells.asUnchecked(),
         numCells)
 
 proc benchFK20_Proving(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
@@ -334,8 +334,8 @@ proc benchFK20_Proving(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
     new(cells)
     new(proofs)
     doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
-      cast[ptr UncheckedArray[Cell]](cells),
-      cast[ptr UncheckedArray[KZGProofBytes]](proofs),
+      cells[].asUnchecked(),
+      proofs[].asUnchecked(),
       b.blobs[0])
 
 proc benchBatchVerification_ChallengeComputation(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =

@@ -9,6 +9,7 @@
 import
   benchset_serialization,
   constantine/eth_eip7594_peerdas,
+  constantine/platforms/views,
   constantine/ethereum_eip4844_kzg_parallel,
   constantine/named/algebras,
   constantine/math/[ec_shortweierstrass, io/io_fields],
@@ -59,10 +60,10 @@ proc benchVerifyCellKZGProofBatch_64Blobs(b: BenchSet, ctx: ptr EthereumKZGConte
   bench("verify_cell_kzg_proof_batch (" & $NumBlobs & " blobs, " & $MaxTotal & " cells)", iters):
     discard verify_cell_kzg_proof_batch(
       ctx,
-      cast[ptr UncheckedArray[array[48, byte]]](commitments_bytes),
-      cast[ptr UncheckedArray[CellIndex]](cell_indices),
-      cast[ptr UncheckedArray[Cell]](cells_array),
-      cast[ptr UncheckedArray[KZGProofBytes]](proofs_bytes),
+      commitments_bytes[].asUnchecked(),
+      cell_indices[].asUnchecked(),
+      cells_array[].asUnchecked(),
+      proofs_bytes[].asUnchecked(),
       MaxTotal,
       secureRandomBytes)
 

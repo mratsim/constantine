@@ -9,6 +9,8 @@
 import
   benchset_serialization,
   constantine/eth_eip7594_peerdas,
+  constantine/platforms/primitives,
+  constantine/platforms/views,
   constantine/ethereum_eip4844_kzg_parallel,
   constantine/threadpool/threadpool,
   constantine/platforms/allocs,
@@ -49,8 +51,8 @@ proc computeBlobParallel(
   rng[].randomize(tempBlobs[])
   doAssert cttEthKzg_Success == ctx.blob_to_kzg_commitment(tempCommitments[], tempBlobs[])
   doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
-    cast[ptr UncheckedArray[Cell]](tempCells),
-    cast[ptr UncheckedArray[KZGProofBytes]](tempProofs),
+    tempCells[].asUnchecked(),
+    tempProofs[].asUnchecked(),
     tempBlobs[])
 
 proc new*(T: type BenchSet, ctx: ptr EthereumKZGContext): T =

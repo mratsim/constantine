@@ -9,6 +9,8 @@
 import
   benchset_serialization,
   constantine/eth_eip7594_peerdas,
+  constantine/platforms/primitives,
+  constantine/platforms/views,
   constantine/ethereum_eip4844_kzg_parallel,
   ../bench_blueprint,
   std/[os, strutils, monotimes]
@@ -34,10 +36,10 @@ proc benchRecoverCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, ite
 
     doAssert cttEthKzg_Success == recover_cells_and_kzg_proofs(
       ctx,
-      cast[ptr UncheckedArray[KZGProofBytes]](recovered_proofs),
-      cast[ptr UncheckedArray[Cell]](recovered_cells),
-      cast[ptr UncheckedArray[CellIndex]](b.halfCellIndices[0][0].unsafeAddr),
-      cast[ptr UncheckedArray[Cell]](b.halfCells[0][0].unsafeAddr),
+      recovered_proofs[].asUnchecked(),
+      recovered_cells[].asUnchecked(),
+      b.halfCellIndices[0].asUnchecked(),
+      b.halfCells[0].asUnchecked(),
       b.halfCells[0].len)
 
 proc main() =
