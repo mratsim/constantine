@@ -25,6 +25,7 @@ import
   constantine/commitments_setups/ethereum_kzg_srs,
   constantine/ethereum_eip4844_kzg,
   constantine/ethereum_eip4844_kzg_parallel,
+  constantine/eth_eip7594_peerdas,
 
   constantine/ethereum_evm_precompiles,
 
