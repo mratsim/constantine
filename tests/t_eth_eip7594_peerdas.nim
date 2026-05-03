@@ -202,88 +202,111 @@ suite "deduplicateCommitments":
 
   test "Empty input":
     var commitmentIdx: array[0, int]
+    var firstOccurrence: array[0, int]
     var commitments: array[0, array[BYTES_PER_COMMITMENT, byte]]
-    check deduplicateCommitments(commitmentIdx, commitments) == 0
+    check deduplicateCommitments(commitmentIdx, commitments, firstOccurrence) == 0
 
   test "Single commitment":
     var commitmentIdx: array[1, int]
+    var firstOccurrence: array[1, int]
     var commitments = [makeTestCommitment(1)]
-    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments, firstOccurrence)
     check numUnique == 1
     check commitmentIdx[0] == 0
+    check firstOccurrence[0] == 0
 
   test "All identical commitments":
     var commitmentIdx: array[4, int]
+    var firstOccurrence: array[4, int]
     var commitments = [
       makeTestCommitment(1),
       makeTestCommitment(1),
       makeTestCommitment(1),
       makeTestCommitment(1)
     ]
-    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments, firstOccurrence)
     check numUnique == 1
     check commitmentIdx == [0, 0, 0, 0]
+    check firstOccurrence[0] == 0
 
   test "All unique commitments":
     var commitmentIdx: array[4, int]
+    var firstOccurrence: array[4, int]
     var commitments = [
       makeTestCommitment(1),
       makeTestCommitment(2),
       makeTestCommitment(3),
       makeTestCommitment(4)
     ]
-    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments, firstOccurrence)
     check numUnique == 4
     check commitmentIdx == [0, 1, 2, 3]
+    check firstOccurrence == [0, 1, 2, 3]
 
   test "Non-consecutive duplicates":
     # Input: [A, A, B, B] should produce unique=[A, B], indices=[0, 0, 1, 1]
     var commitmentIdx: array[4, int]
+    var firstOccurrence: array[4, int]
     let A = makeTestCommitment(1)
     let B = makeTestCommitment(2)
     var commitments = [A, A, B, B]
-    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments, firstOccurrence)
     check numUnique == 2
     check commitmentIdx == [0, 0, 1, 1]
+    check firstOccurrence[0] == 0
+    check firstOccurrence[1] == 2
 
   test "Interleaved duplicates":
     # Input: [A, B, A, B, C, A] should produce unique=[A, B, C], indices=[0, 1, 0, 1, 2, 0]
     var commitmentIdx: array[6, int]
+    var firstOccurrence: array[6, int]
     let A = makeTestCommitment(1)
     let B = makeTestCommitment(2)
     let C = makeTestCommitment(3)
     var commitments = [A, B, A, B, C, A]
-    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments, firstOccurrence)
     check numUnique == 3
     check commitmentIdx == [0, 1, 0, 1, 2, 0]
+    check firstOccurrence[0] == 0
+    check firstOccurrence[1] == 1
+    check firstOccurrence[2] == 4
 
   test "Duplicates at end":
     # Input: [A, B, C, A, A] should produce unique=[A, B, C], indices=[0, 1, 2, 0, 0]
     var commitmentIdx: array[5, int]
+    var firstOccurrence: array[5, int]
     let A = makeTestCommitment(1)
     let B = makeTestCommitment(2)
     let C = makeTestCommitment(3)
     var commitments = [A, B, C, A, A]
-    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments, firstOccurrence)
     check numUnique == 3
     check commitmentIdx == [0, 1, 2, 0, 0]
+    check firstOccurrence[0] == 0
+    check firstOccurrence[1] == 1
+    check firstOccurrence[2] == 2
 
   test "Large input with many duplicates":
     # Simulate realistic PeerDAS scenario: 32 cells, 8 unique commitments
     const N = 32
     const M = 8
     var commitmentIdx: array[N, int]
+    var firstOccurrence: array[N, int]
     var commitments: array[N, array[BYTES_PER_COMMITMENT, byte]]
 
     # Create pattern: each commitment repeated 4 times
     for i in 0 ..< N:
       commitments[i] = makeTestCommitment(uint8(i mod M))
-    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments, firstOccurrence)
     check numUnique == M
 
     # Verify indices are correct
     for i in 0 ..< N:
       check commitmentIdx[i] == (i mod M)
+
+    # Verify first occurrence indices
+    for j in 0 ..< M:
+      check firstOccurrence[j] == j
 
 
 block:

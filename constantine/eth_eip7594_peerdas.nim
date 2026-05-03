@@ -334,10 +334,12 @@ func compute_cells_and_kzg_proofs*(
   return cttEthKzg_Success
 
 func deduplicateCommitments(
-     commitmentIdx: var openArray[int],
-     commitments: openArray[array[BYTES_PER_COMMITMENT, byte]]): int =
+    commitmentIdx: var openArray[int],
+    commitments: openArray[array[BYTES_PER_COMMITMENT, byte]],
+    firstOccurrence: var openArray[int]): int =
   ## Deduplicate commitments and return the number of unique commitments.
   ## commitmentIdx[i] stores the index of the unique commitment for cell i.
+  ## firstOccurrence[j] stores the cell index of the first occurrence of unique commitment j.
   ##
   ## ## Algorithm Complexity
   ##
@@ -359,7 +361,7 @@ func deduplicateCommitments(
   ## # - i=2: scan all 4 items to find first B → 4 comparisons
   ## # - i=3: scan all 4 items to find first B → 4 comparisons
   ## # Total: 16 comparisons (N²)
-  ##
+  ## #
   ## # Pass 2: indices = [deduplicated.index(c) for c in commitments]
   ## # - Each scans unique list (size M=2) → 2 comparisons each
   ## # Total: 8 comparisons (N×M)
@@ -409,7 +411,7 @@ func deduplicateCommitments(
   ##
   ## ```nim
   ## Input:  [A, A, B, B]  (each is array[48, byte])
-  ## Output: numUnique=2, commitmentIdx=[0, 0, 1, 1]
+  ## Output: numUnique=2, commitmentIdx=[0, 0, 1, 1], firstOccurrence=[0, 2]
   ## Unique commitments: [A, B] (stored in uniqueBuffer[0..numUnique-1])
   ## ```
   ##
@@ -417,6 +419,7 @@ func deduplicateCommitments(
   ##
   ## - Order preserved: first occurrence of each commitment wins
   ## - commitmentIdx[i] ∈ [0, numUniqueCommitments-1]
+  ## - firstOccurrence[j] ∈ [0, N-1] for j ∈ [0, numUniqueCommitments-1]
   ## - uniqueBuffer[0..numUniqueCommitments-1] contains all distinct commitments
   ## - Semantically equivalent to Ethereum spec, but O(N×M) instead of O(N²)
   ##
@@ -435,6 +438,7 @@ func deduplicateCommitments(
   ## - No slots/modulos bookkeeping vs Open-Addressing Map
   debug:
     doAssert commitmentIdx.len == commitments.len
+    doAssert firstOccurrence.len >= commitments.len  # Caller ensures capacity
 
   var numUniqueCommitments = 0
   # Allocate buffer for unique commitments - size matches input (all could be unique)
@@ -455,7 +459,10 @@ func deduplicateCommitments(
     if not found:
       uniqueBuffer[numUniqueCommitments] = commitments[i]
       commitmentIdx[i] = numUniqueCommitments
+      firstOccurrence[numUniqueCommitments] = i  # Track first occurrence
       inc numUniqueCommitments
+
+  return numUniqueCommitments
 
   return numUniqueCommitments
 
@@ -530,21 +537,21 @@ func verify_cell_kzg_proof_batch*(
   # This is faster: byte comparison exits early, and we only deserialize uniques
   let commitmentIdx = allocHeapArrayAligned(int, n, alignment = 64)
   defer: freeHeapAligned(commitmentIdx)
+  let firstOccurrence = allocHeapArrayAligned(int, n, alignment = 64)  # Max unique = n
+  defer: freeHeapAligned(firstOccurrence)
   let numUniqueCommitments = deduplicateCommitments(
     commitmentIdx.toOpenArray(n),
-    commitments_bytes.toOpenArray(0, n-1)
+    commitments_bytes.toOpenArray(0, n-1),
+    firstOccurrence.toOpenArray(n)
   )
 
   # Allocate and deserialize only unique commitments
   let uniqueCommitments = allocHeapArrayAligned(
     EC_ShortW_Aff[Fp[BLS12_381], G1], numUniqueCommitments, alignment = 64)
   defer: freeHeapAligned(uniqueCommitments)
+  # O(M) deserialization using tracked first-occurrence indices
   for i in 0 ..< numUniqueCommitments:
-    # Find first occurrence of this unique commitment
-    for j in 0 ..< n:
-      if commitmentIdx[j] == i:
-        ?uniqueCommitments[i].deserialize_g1_compressed(commitments_bytes[j])
-        break
+    ?uniqueCommitments[i].deserialize_g1_compressed(commitments_bytes[firstOccurrence[i]])
 
   let cosets_evals = allocHeapArrayAligned(
     array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]], n, alignment = 64)
