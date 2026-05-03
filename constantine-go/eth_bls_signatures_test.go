@@ -120,6 +120,9 @@ func TestDeserializeG1(t *testing.T) {
 			test := Test{}
 			defer testFile.Close()
 			err = json.NewDecoder(testFile).Decode(&test)
+			if err != nil {
+				t.Fatalf("failed to decode test vector: %v", err)
+			}
 
 			var rawPk EthBlsPubKeyRaw
 			err = rawPk.UnmarshalText([]byte(test.Input.PubKey))
@@ -137,6 +140,7 @@ func TestDeserializeG1(t *testing.T) {
 				s, err := pk.SerializeCompressed()
 				if err != nil {
 				require.False(t, test.Output)
+				return
 				}
 				require.Equal(t, s[:], rawPk[:])
 				// Indicates test is supposed to pass
@@ -166,12 +170,15 @@ func TestDeserializeG2(t *testing.T) {
 			test := Test{}
 			defer testFile.Close()
 			err = json.NewDecoder(testFile).Decode(&test)
+			if err != nil {
+				t.Fatalf("failed to decode test vector: %v", err)
+			}
 
 			var rawSig EthBlsSignatureRaw
 			err = rawSig.UnmarshalText([]byte(test.Input.Signature))
 			if strings.HasSuffix(testPath, "deserialization_fails_too_few_bytes.json") ||
 				strings.HasSuffix(testPath, "deserialization_fails_too_many_bytes.json") {
-				require.True(t, test.Output)
+				require.False(t, test.Output)
 			} else if err != nil {
 				require.False(t, test.Output)
 				return
@@ -183,6 +190,7 @@ func TestDeserializeG2(t *testing.T) {
 				s, err := sig.SerializeCompressed()
 				if err != nil {
 				require.False(t, test.Output)
+				return
 				}
 				require.Equal(t, s[:], rawSig[:])
 				// Indicates test intends to pass
@@ -213,6 +221,9 @@ func TestSign(t *testing.T) {
 			test := Test{}
 			defer testFile.Close()
 			err = json.NewDecoder(testFile).Decode(&test)
+			if err != nil {
+				t.Fatalf("failed to decode test vector: %v", err)
+			}
 
 			var rawSecKey EthBlsSecKeyRaw
 			err = rawSecKey.UnmarshalText([]byte(test.Input.PrivKey))
@@ -300,6 +311,9 @@ func TestVerify(t *testing.T) {
 			test := Test{}
 			defer testFile.Close()
 			err = json.NewDecoder(testFile).Decode(&test)
+			if err != nil {
+				t.Fatalf("failed to decode test vector: %v", err)
+			}
 
 			var rawPk EthBlsPubKeyRaw
 			err = rawPk.UnmarshalText([]byte(test.Input.PubKey))
@@ -386,6 +400,9 @@ func TestFastAggregateVerify(t *testing.T) {
 			test := Test{}
 			defer testFile.Close()
 			err = json.NewDecoder(testFile).Decode(&test)
+			if err != nil {
+				t.Fatalf("failed to decode test vector: %v", err)
+			}
 
 			var rawPks []EthBlsPubKeyRaw
 			for _, s := range test.Input.PubKeys {
@@ -428,14 +445,8 @@ func TestFastAggregateVerify(t *testing.T) {
 				}
 				status, err = FastAggregateVerify(pks, msg[:], sig)
 			}
-			require.Equal(t, status, test.Output)
-			if status != test.Output {
-				fmt.Println("Verification differs from expected \n",
-					"   valid sig? ", status, "\n",
-					"   expected: ", test.Output,
-				)
-				return
-			}
+		require.Equal(t, test.Output, status,
+			"Verification differs: valid sig? %v", status)
 		})
 	}
 }
@@ -539,16 +550,20 @@ func TestBatchVerify(t *testing.T) {
 	tests, _ := filepath.Glob(batch_verifyTests)
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
-			testFile, err := os.Open(testPath)
-			test := Test{}
-			err = json.NewDecoder(testFile).Decode(&test)
-
+		testFile, err := os.Open(testPath)
+		require.NoError(t, err)
+		test := Test{}
+		defer testFile.Close()
+		err = json.NewDecoder(testFile).Decode(&test)
+		if err != nil {
+			t.Fatalf("failed to decode test vector: %v", err)
+		}
 			var rawPks []EthBlsPubKeyRaw
 			for _, s := range test.Input.PubKeys {
 				var rawPk EthBlsPubKeyRaw
 				err = rawPk.UnmarshalText([]byte(s))
 				if err != nil {
-					require.Nil(t, test.Output)
+					require.False(t, test.Output)
 					return
 				}
 				rawPks = append(rawPks, rawPk)
@@ -558,7 +573,7 @@ func TestBatchVerify(t *testing.T) {
 				var rawSig EthBlsSignatureRaw
 				err = rawSig.UnmarshalText([]byte(s))
 				if err != nil {
-					require.Nil(t, test.Output)
+					require.False(t, test.Output)
 					return
 				}
 				rawSigs = append(rawSigs, rawSig)
@@ -589,7 +604,7 @@ func TestBatchVerify(t *testing.T) {
 					var msg EthBlsMessage
 					err = msg.UnmarshalText([]byte(rawMsg))
 					if err != nil {
-						require.Nil(t, test.Output)
+					require.False(t, test.Output)
 						return
 					}
 					msgs = append(msgs, msg[:])
@@ -613,14 +628,8 @@ func TestBatchVerify(t *testing.T) {
 				// parallelStatus, _ := BatchVerifyParallel(tp, pks, msgs[:], sigs, randomBytes)
 				// require.Equal(t, parallelStatus, test.Output)
 			}
-			require.Equal(t, status, test.Output)
-			if status != test.Output {
-				fmt.Println("Verification differs from expected \n",
-					"   valid sig? ", status, "\n",
-					"   expected: ", test.Output,
-				)
-				return
-			}
+		require.Equal(t, test.Output, status,
+			"Verification differs: valid sig? %v", status)
 		})
 	}
 }

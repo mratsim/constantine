@@ -33,19 +33,11 @@ func TestSha256(t *testing.T) {
 	var expectedBytes []byte
 	expectedBytes = make([]byte, len(expected)/2, len(expected)/2)
 
-	err := fromHexImpl(inputBytes[:], []byte(input))
-	if err != nil {
-		require.True(t, false)
-	}
-	err = fromHexImpl(expectedBytes[:], []byte(expected))
-	if err != nil {
-		require.True(t, false)
-	}
+	require.NoError(t, fromHexImpl(inputBytes[:], []byte(input)), "hex-decode input")
+	require.NoError(t, fromHexImpl(expectedBytes[:], []byte(expected)), "hex-decode expected")
 
 	r, err := EvmSha256(inputBytes)
-	if err != nil {
-		require.True(t, false)
-	}
+	require.NoError(t, err, "EvmSha256")
 
 	require.Equal(t, r[:], expectedBytes[:])
 	fmt.Println("Success")
@@ -158,7 +150,7 @@ func runTestSlice(t *testing.T, testPath string, fn TF) {
 				r, err := fn(inputBytes)
 				if err != nil {
 					// in this case expected should be empty
-					require.Equal(t, expectedBytes[:], r[:])
+					require.Equal(t, 0, len(expectedBytes))
 				} else {
 					require.Equal(t, expectedBytes[:], r[:])
 				}

@@ -511,9 +511,9 @@ func verify_cell_kzg_proof_batch*(
   ##
   ## Public method following the EIP-7594 spec.
 
-  # Edge case: n < 0 is verification failure, n == 0 is trivially valid
+  # Edge case: n < 0 is malformed input, n == 0 is trivially valid
   if n < 0:
-    return cttEthKzg_VerificationFailure
+    return cttEthKzg_InputsLengthsMismatch
   if n == 0:
     return cttEthKzg_Success
   

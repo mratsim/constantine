@@ -237,7 +237,7 @@ proc test_duplicate_indices_error*(ctx: ptr EthereumKZGContext) =
     available_cells.asUnchecked(),
     available_cells.len
   )
-  doAssert recover_status == cttEthKzg_InputsLengthsMismatch
+  doAssert recover_status == cttEthKzg_CellIndicesNotAscending
 
   echo "  ✓ Duplicate indices error handling PASSED"
 
