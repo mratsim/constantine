@@ -68,6 +68,7 @@ type computeTest struct {
 }
 
 func TestComputeCellsAndKzgProofs(t *testing.T) {
+	fmt.Println("Running test for path: ", computeCellsAndProofsTests)
 	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
 	require.NoError(t, tsErr)
 	defer ctx.Delete()
@@ -87,21 +88,18 @@ func TestComputeCellsAndKzgProofs(t *testing.T) {
 		// Invalid input -> no output
 		if test.Input == nil || test.Input.Blob == nil {
 			require.Nil(t, test.Output, "expected no output for missing input in %s", testName)
-			t.Logf("    PASS: %s - missing input, no output expected", testName)
 			continue
 		}
 
 		var blob EthBlob
 		if err := hexUnmarshal(blob[:], *test.Input.Blob); err != nil {
 			require.Nil(t, test.Output, "expected no output for invalid blob in %s", testName)
-			t.Logf("    PASS: %s - invalid blob, no output expected", testName)
 			continue
 		}
 
 		cells, proofs, err := ctx.ComputeCellsAndKzgProofs(blob)
 		if err != nil {
 			require.Nil(t, test.Output, "expected failure for %s", testName)
-			t.Logf("    PASS: %s - expected failure", testName)
 			continue
 		}
 
@@ -118,14 +116,13 @@ func TestComputeCellsAndKzgProofs(t *testing.T) {
 			require.Equal(t, expCell, cells[i][:], "cell %d mismatch in %s", i, testName)
 			require.Equal(t, expProof, proofs[i][:], "proof %d mismatch in %s", i, testName)
 		}
-
-		t.Logf("    PASS: %s", testName)
 	}
 }
 
 // ---- verify_cell_kzg_proof_batch ----
 
 func TestVerifyCellKzgProofBatch(t *testing.T) {
+	fmt.Println("Running test for path: ", verifyCellKzgProofTests)
 	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
 	require.NoError(t, tsErr)
 	defer ctx.Delete()
@@ -173,7 +170,6 @@ func TestVerifyCellKzgProofBatch(t *testing.T) {
 		// No input at all -> no output
 		if test.Input == nil {
 			require.Nil(t, output, "expected no output for missing input in %s", testName)
-			t.Logf("    PASS: %s - missing input", testName)
 			continue
 		}
 
@@ -181,7 +177,6 @@ func TestVerifyCellKzgProofBatch(t *testing.T) {
 		if len(commitments) == 0 && len(cellIndices) == 0 && len(cellsRaw) == 0 && len(proofsRaw) == 0 {
 			require.NotNil(t, output, "expected output for empty arrays in %s", testName)
 			require.True(t, *output, "empty batch should verify as true in %s", testName)
-			t.Logf("    PASS: %s - empty arrays, output is true", testName)
 			continue
 		}
 
@@ -196,7 +191,6 @@ func TestVerifyCellKzgProofBatch(t *testing.T) {
 		}
 		if badCommitment {
 			require.Nil(t, output, "expected no output for invalid commitment in %s", testName)
-			t.Logf("    PASS: %s - invalid commitment", testName)
 			continue
 		}
 
@@ -211,7 +205,6 @@ func TestVerifyCellKzgProofBatch(t *testing.T) {
 		}
 		if badCell {
 			require.Nil(t, output, "expected no output for invalid cell in %s", testName)
-			t.Logf("    PASS: %s - invalid cell", testName)
 			continue
 		}
 
@@ -226,7 +219,6 @@ func TestVerifyCellKzgProofBatch(t *testing.T) {
 		}
 		if badProof {
 			require.Nil(t, output, "expected no output for invalid proof in %s", testName)
-			t.Logf("    PASS: %s - invalid proof", testName)
 			continue
 		}
 
@@ -235,14 +227,12 @@ func TestVerifyCellKzgProofBatch(t *testing.T) {
 			len(commitmentsDec) != len(cellsDec) ||
 			len(commitmentsDec) != len(proofsDec) {
 			require.Nil(t, output, "expected no output for length mismatch in %s", testName)
-			t.Logf("    PASS: %s - input length mismatch", testName)
 			continue
 		}
 
 		// Empty arrays -> special case
 		if len(commitmentsDec) == 0 {
 			require.Nil(t, output, "expected no output for empty arrays in %s", testName)
-			t.Logf("    PASS: %s - empty arrays", testName)
 			continue
 		}
 
@@ -252,13 +242,11 @@ func TestVerifyCellKzgProofBatch(t *testing.T) {
 
 		if err != nil {
 			require.Nil(t, output, "expected failure for %s: %v", testName, err)
-			t.Logf("    PASS: %s - expected failure: %v", testName, err)
 			continue
 		}
 
 		require.NotNil(t, output, "expected output for %s", testName)
 		require.Equal(t, *output, valid, "verification result mismatch in %s", testName)
-		t.Logf("    PASS: %s", testName)
 	}
 }
 
@@ -275,6 +263,7 @@ type recoverTest struct {
 }
 
 func TestRecoverCellsAndKzgProofs(t *testing.T) {
+	fmt.Println("Running test for path: ", recoverCellsAndProofsTests)
 	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
 	require.NoError(t, tsErr)
 	defer ctx.Delete()
@@ -302,21 +291,18 @@ func TestRecoverCellsAndKzgProofs(t *testing.T) {
 		}
 		if badCell {
 			require.Nil(t, test.Output, "expected no output for invalid cell in %s", testName)
-			t.Logf("    PASS: %s - invalid cell", testName)
 			continue
 		}
 
 		// Length mismatch
 		if len(cellsDec) != len(test.Input.CellIndices) {
 			require.Nil(t, test.Output, "expected no output for length mismatch in %s", testName)
-			t.Logf("    PASS: %s - length mismatch", testName)
 			continue
 		}
 
 		// Empty arrays
 		if len(cellsDec) == 0 {
 			require.Nil(t, test.Output, "expected no output for empty input in %s", testName)
-			t.Logf("    PASS: %s - empty input", testName)
 			continue
 		}
 
@@ -326,7 +312,6 @@ func TestRecoverCellsAndKzgProofs(t *testing.T) {
 
 		if err != nil {
 			require.Nil(t, test.Output, "expected failure for %s: %v", testName, err)
-			t.Logf("    PASS: %s - expected failure: %v", testName, err)
 			continue
 		}
 
@@ -343,8 +328,6 @@ func TestRecoverCellsAndKzgProofs(t *testing.T) {
 			require.Equal(t, expCell, recoveredCells[i][:], "recovered cell %d mismatch in %s", i, testName)
 			require.Equal(t, expProof, recoveredProofs[i][:], "recovered proof %d mismatch in %s", i, testName)
 		}
-
-		t.Logf("    PASS: %s", testName)
 	}
 }
 
