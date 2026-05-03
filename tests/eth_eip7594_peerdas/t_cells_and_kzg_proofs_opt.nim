@@ -268,9 +268,9 @@ proc main() =
         blob[].fromHex(blobHex)
 
         var cells_opt: array[CELLS_PER_EXT_BLOB, Cell]
-        var proofs_opt: array[CELLS_PER_EXT_BLOB, KZGProof]
+        var proofs_opt: array[CELLS_PER_EXT_BLOB, KZGProofBytes]
 
-        let status_opt = compute_cells_and_kzg_proofs(ctx, cells_opt, proofs_opt, blob[])
+        let status_opt = compute_cells_and_kzg_proofs(ctx, cells_opt.asUnchecked(), proofs_opt.asUnchecked(), blob[])
 
         if status_opt != cttEthKzg_Success:
           echo "❌ compute_cells_and_kzg_proofs failed: " & $status_opt & " [" & testCaseName & "]"

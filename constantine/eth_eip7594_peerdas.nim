@@ -280,11 +280,11 @@ func compute_cells_and_kzg_proofs*(
   ## 3. Compute cells via zero-padding (no FFT!) [stays in evaluation form]
   ## 4. Compute FK20 proofs from monomial polynomial [4096 coeffs] + bit-reverse
   ## 5. Serialize cells and proofs to bytes
-  
+
   # Validate FFI pointers before dereferencing
   if ctx.isNil or cells.isNil or proofs.isNil:
     return cttEthKzg_InputsLengthsMismatch
-  
+
   # Step 1: Deserialize blob to polynomial (Lagrange form)
   ## Compute all cells and proofs for an extended blob using FK20 algorithm.
   ##
@@ -514,13 +514,14 @@ func verify_cell_kzg_proof_batch*(
   # Edge case: n < 0 is malformed input, n == 0 is trivially valid
   if n < 0:
     return cttEthKzg_InputsLengthsMismatch
+  if ctx.isNil:
+    return cttEthKzg_InputsLengthsMismatch
   if n == 0:
     return cttEthKzg_Success
-  
   # Validate FFI pointers before dereferencing
   if ctx.isNil or commitments_bytes.isNil or cell_indices.isNil or cells.isNil or proofs_bytes.isNil:
     return cttEthKzg_InputsLengthsMismatch
-  
+
   # Validate cell indices are in bounds
   for i in 0 ..< n:
     if cell_indices[i] >= CELLS_PER_EXT_BLOB:
@@ -621,18 +622,18 @@ func recover_cells_and_kzg_proofs*(
   ##    [Domain: 2*N roots of unity, Coset shift: SCALE_FACTOR=5]
   ## 4. Recompute all cells from recovered polynomial
   ## 5. Convert cells to bytes [Serialization]
-  
+
   # Validate FFI pointers before dereferencing
   if ctx.isNil or recovered_cells.isNil or recovered_proofs.isNil or cell_indices.isNil or cells.isNil:
     return cttEthKzg_InputsLengthsMismatch
-  
+
   # Step 1: Validation
   if n < CELLS_PER_EXT_BLOB div 2:
     return cttEthKzg_InputsLengthsMismatch
-  
+
   if n > CELLS_PER_EXT_BLOB:
     return cttEthKzg_InputsLengthsMismatch
-  
+
   # Validate bounds and uniqueness (strict ordering enforces both)
   for i in 0 ..< n:
     if uint64(cell_indices[i]) >= uint64(CELLS_PER_EXT_BLOB):

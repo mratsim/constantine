@@ -75,8 +75,8 @@ ctt_eth_kzg_status ctt_eth_kzg_verify_cell_kzg_proof_batch(
  *  Requires at least 64 out of 128 cells (≥50% of the extended blob).
  *
  *  @param ctx              KZG context (trusted setup)
- *  @param recovered_proofs Output: array of 128 recovered KZG proofs (caller-allocated)
  *  @param recovered_cells  Output: array of 128 recovered cells (caller-allocated)
+ *  @param recovered_proofs Output: array of 128 recovered KZG proofs (caller-allocated)
  *  @param cell_indices     Array of indices for the provided cells (sorted, unique)
  *  @param cells            Array of available cells
  *  @param num_cells        Number of available cells (must be in [64, 128])

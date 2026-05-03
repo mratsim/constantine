@@ -312,74 +312,83 @@ func (ctx EthKzgContext) VerifyBlobKzgProofBatchParallel(blobs []EthBlob, commit
 type EthKzgCell [2048]byte
 
 func (ctx EthKzgContext) ComputeCellsAndKzgProofs(
-    blob *EthBlob,
- ) (cells [128]EthKzgCell, proofs [128]EthKzgProof, err error) {
-    status := C.ctt_eth_kzg_compute_cells_and_kzg_proofs(
-        ctx.cCtx,
-        (*C.ctt_eth_kzg_cell)(unsafe.Pointer(&cells)),
-        (*C.ctt_eth_kzg_proof)(unsafe.Pointer(&proofs)),
-        (*C.ctt_eth_kzg_blob)(unsafe.Pointer(blob)),
-    )
-    if status != C.cttEthKzg_Success {
-        err = errors.New(
-            C.GoString(C.ctt_eth_kzg_status_to_string(status)),
-        )
-    }
-    return cells, proofs, err
+	blob *EthBlob,
+) (cells *[128]EthKzgCell, proofs *[128]EthKzgProof, err error) {
+	if blob == nil {
+		return nil, nil, errors.New("ComputeCellsAndKzgProofs: blob is nil")
+	}
+	cells = new([128]EthKzgCell)
+	proofs = new([128]EthKzgProof)
+	status := C.ctt_eth_kzg_compute_cells_and_kzg_proofs(
+		ctx.cCtx,
+		(*C.ctt_eth_kzg_cell)(unsafe.Pointer(cells)),
+		(*C.ctt_eth_kzg_proof)(unsafe.Pointer(proofs)),
+		(*C.ctt_eth_kzg_blob)(unsafe.Pointer(blob)),
+	)
+	if status != C.cttEthKzg_Success {
+		err = errors.New(
+			C.GoString(C.ctt_eth_kzg_status_to_string(status)),
+		)
+		return nil, nil, err
+	}
+	return cells, proofs, nil
 }
 
 func (ctx EthKzgContext) VerifyCellKzgProofBatch(
-    commitments []EthKzgCommitment,
-    cellIndices []uint64,
-    cells []EthKzgCell,
-    proofs []EthKzgProof,
-    secureRandomBytes [32]byte,
- ) (bool, error) {
-    if len(commitments) != len(cellIndices) || len(commitments) != len(cells) || len(commitments) != len(proofs) {
-        return false, errors.New("VerifyCellKzgProofBatch: Lengths of inputs do not match.")
-    }
-    status := C.ctt_eth_kzg_verify_cell_kzg_proof_batch(
-        ctx.cCtx,
-        (*C.ctt_eth_kzg_commitment)(getAddr(commitments)),
-        (*C.uint64_t)(getAddr(cellIndices)),
-        (*C.ctt_eth_kzg_cell)(getAddr(cells)),
-        (*C.ctt_eth_kzg_proof)(getAddr(proofs)),
-        (C.size_t)(len(cells)),
-        (*C.uint8_t)(unsafe.Pointer(&secureRandomBytes)),
-    )
-    if status != C.cttEthKzg_Success {
-        if status == C.cttEthKzg_VerificationFailure {
-            return false, nil
-        }
-        err := errors.New(
-            C.GoString(C.ctt_eth_kzg_status_to_string(status)),
-        )
-        return false, err
-    }
-    return true, nil
- }
- 
- func (ctx EthKzgContext) RecoverCellsAndKzgProofs(
-    cells []EthKzgCell,
-    cellIndices []uint64,
- ) (recoveredCells [128]EthKzgCell, recoveredProofs [128]EthKzgProof, err error) {
-    if len(cells) != len(cellIndices) {
-        return recoveredCells, recoveredProofs, errors.New("RecoverCellsAndKzgProofs: Lengths of inputs do not match.")
-    }
-    status := C.ctt_eth_kzg_recover_cells_and_kzg_proofs(
-        ctx.cCtx,
-        (*C.ctt_eth_kzg_cell)(unsafe.Pointer(&recoveredCells)),
-        (*C.ctt_eth_kzg_proof)(unsafe.Pointer(&recoveredProofs)),
-        (*C.uint64_t)(getAddr(cellIndices)),
-        (*C.ctt_eth_kzg_cell)(getAddr(cells)),
-        (C.size_t)(len(cells)),
-    )
-    if status != C.cttEthKzg_Success {
-        err = errors.New(
-            C.GoString(C.ctt_eth_kzg_status_to_string(status)),
-        )
-    }
-    return recoveredCells, recoveredProofs, err
+	commitments []EthKzgCommitment,
+	cellIndices []uint64,
+	cells []EthKzgCell,
+	proofs []EthKzgProof,
+	secureRandomBytes [32]byte,
+) (bool, error) {
+	if len(commitments) != len(cellIndices) || len(commitments) != len(cells) || len(commitments) != len(proofs) {
+		return false, errors.New("VerifyCellKzgProofBatch: Lengths of inputs do not match.")
+	}
+	status := C.ctt_eth_kzg_verify_cell_kzg_proof_batch(
+		ctx.cCtx,
+		(*C.ctt_eth_kzg_commitment)(getAddr(commitments)),
+		(*C.uint64_t)(getAddr(cellIndices)),
+		(*C.ctt_eth_kzg_cell)(getAddr(cells)),
+		(*C.ctt_eth_kzg_proof)(getAddr(proofs)),
+		(C.size_t)(len(cells)),
+		(*C.uint8_t)(unsafe.Pointer(&secureRandomBytes)),
+	)
+	if status != C.cttEthKzg_Success {
+		if status == C.cttEthKzg_VerificationFailure {
+			return false, nil
+		}
+		err := errors.New(
+			C.GoString(C.ctt_eth_kzg_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (ctx EthKzgContext) RecoverCellsAndKzgProofs(
+	cells []EthKzgCell,
+	cellIndices []uint64,
+) (recoveredCells *[128]EthKzgCell, recoveredProofs *[128]EthKzgProof, err error) {
+	if len(cells) != len(cellIndices) {
+		return nil, nil, errors.New("RecoverCellsAndKzgProofs: Lengths of inputs do not match.")
+	}
+	recoveredCells = new([128]EthKzgCell)
+	recoveredProofs = new([128]EthKzgProof)
+	status := C.ctt_eth_kzg_recover_cells_and_kzg_proofs(
+		ctx.cCtx,
+		(*C.ctt_eth_kzg_cell)(unsafe.Pointer(recoveredCells)),
+		(*C.ctt_eth_kzg_proof)(unsafe.Pointer(recoveredProofs)),
+		(*C.uint64_t)(getAddr(cellIndices)),
+		(*C.ctt_eth_kzg_cell)(getAddr(cells)),
+		(C.size_t)(len(cells)),
+	)
+	if status != C.cttEthKzg_Success {
+		err = errors.New(
+			C.GoString(C.ctt_eth_kzg_status_to_string(status)),
+		)
+		return nil, nil, err
+	}
+	return recoveredCells, recoveredProofs, nil
 }
 
 // Ethereum BLS signatures

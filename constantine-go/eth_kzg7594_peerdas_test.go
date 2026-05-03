@@ -12,7 +12,6 @@ package constantine
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -33,27 +32,8 @@ var (
 	recoverCellsAndProofsTests = filepath.Join(peerdasTestDir, "recover_cells_and_kzg_proofs/kzg-mainnet/*/data.yaml")
 )
 
-// hexUnmarshal decodes a hex string (with optional 0x prefix) into dst.
-// Returns ErrInvalidHex if the length doesn't match.
-var ErrInvalidHex = fmt.Errorf("invalid hex length")
-
-func hexUnmarshal(dst []byte, s string) error {
-	if len(s) >= 2 && s[0:2] == "0x" {
-		s = s[2:]
-	}
-	decoded, err := hex.DecodeString(s)
-	if err != nil {
-		return err
-	}
-	if len(decoded) != len(dst) {
-		return ErrInvalidHex
-	}
-	copy(dst, decoded)
-	return nil
-}
-
 func (dst *EthKzgCell) UnmarshalText(input []byte) error {
-	return hexUnmarshal(dst[:], string(input))
+	return fromHexImpl(dst[:], input)
 }
 
 // ---- compute_cells_and_kzg_proofs ----
@@ -68,7 +48,6 @@ type computeTest struct {
 }
 
 func TestComputeCellsAndKzgProofs(t *testing.T) {
-	fmt.Println("Running test for path: ", computeCellsAndProofsTests)
 	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
 	require.NoError(t, tsErr)
 	defer ctx.Delete()
@@ -92,7 +71,7 @@ func TestComputeCellsAndKzgProofs(t *testing.T) {
 		}
 
 		var blob EthBlob
-		if err := hexUnmarshal(blob[:], *test.Input.Blob); err != nil {
+		if err := fromHexImpl(blob[:], []byte(*test.Input.Blob)); err != nil {
 			require.Nil(t, test.Output, "expected no output for invalid blob in %s", testName)
 			continue
 		}
@@ -122,7 +101,6 @@ func TestComputeCellsAndKzgProofs(t *testing.T) {
 // ---- verify_cell_kzg_proof_batch ----
 
 func TestVerifyCellKzgProofBatch(t *testing.T) {
-	fmt.Println("Running test for path: ", verifyCellKzgProofTests)
 	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
 	require.NoError(t, tsErr)
 	defer ctx.Delete()
@@ -184,7 +162,7 @@ func TestVerifyCellKzgProofBatch(t *testing.T) {
 		commitmentsDec := make([]EthKzgCommitment, len(commitments))
 		badCommitment := false
 		for i, c := range commitments {
-			if err := hexUnmarshal(commitmentsDec[i][:], c); err != nil {
+			if err := fromHexImpl(commitmentsDec[i][:], []byte(c)); err != nil {
 				badCommitment = true
 				break
 			}
@@ -198,7 +176,7 @@ func TestVerifyCellKzgProofBatch(t *testing.T) {
 		cellsDec := make([]EthKzgCell, len(cellsRaw))
 		badCell := false
 		for i, c := range cellsRaw {
-			if err := hexUnmarshal(cellsDec[i][:], c); err != nil {
+			if err := fromHexImpl(cellsDec[i][:], []byte(c)); err != nil {
 				badCell = true
 				break
 			}
@@ -212,7 +190,7 @@ func TestVerifyCellKzgProofBatch(t *testing.T) {
 		proofsDec := make([]EthKzgProof, len(proofsRaw))
 		badProof := false
 		for i, p := range proofsRaw {
-			if err := hexUnmarshal(proofsDec[i][:], p); err != nil {
+			if err := fromHexImpl(proofsDec[i][:], []byte(p)); err != nil {
 				badProof = true
 				break
 			}
@@ -258,7 +236,6 @@ type recoverTest struct {
 }
 
 func TestRecoverCellsAndKzgProofs(t *testing.T) {
-	fmt.Println("Running test for path: ", recoverCellsAndProofsTests)
 	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
 	require.NoError(t, tsErr)
 	defer ctx.Delete()
@@ -279,7 +256,7 @@ func TestRecoverCellsAndKzgProofs(t *testing.T) {
 		cellsDec := make([]EthKzgCell, len(test.Input.Cells))
 		badCell := false
 		for i, c := range test.Input.Cells {
-			if err := hexUnmarshal(cellsDec[i][:], c); err != nil {
+			if err := fromHexImpl(cellsDec[i][:], []byte(c)); err != nil {
 				badCell = true
 				break
 			}
@@ -368,13 +345,13 @@ func TestRecoverCellsAndKzgProofs_CellIndicesNotAscending(t *testing.T) {
 	defer ctx.Delete()
 
 	// Provide 64 cells (minimum for recovery) with descending indices — should return error
-	cels := make([]EthKzgCell, 64)
+	cells := make([]EthKzgCell, 64)
 	// indices [64, 63, ..., 1] is not in ascending order
 	indices := make([]uint64, 64)
 	for i := 0; i < 64; i++ {
 		indices[i] = uint64(64 - i)
 	}
-    _, _, err := ctx.RecoverCellsAndKzgProofs(cels, indices)
+    _, _, err := ctx.RecoverCellsAndKzgProofs(cells, indices)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "CellIndicesNotAscending")
 }

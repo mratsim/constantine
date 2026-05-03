@@ -129,7 +129,6 @@ type TF128 func([]byte) (Bytes128, error)
 type TF256 func([]byte) (Bytes256, error)
 
 // Helper function to simplify the test generation. No need to duplicate test logic, all the same
-// Helper function to simplify the test generation. No need to duplicate test logic, all the same
 func runTestSlice(t *testing.T, testPath string, fn TF) {
 	fmt.Println("Running test for path: ", testPath)
 	tests, _ := filepath.Glob(testPath)

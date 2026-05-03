@@ -377,8 +377,9 @@ impl<'tp> EthKzgContext<'tp> {
         &self,
         blob: &[u8; 131_072],
     ) -> Result<(Box<[u8; 262_144]>, Box<[u8; 6_144]>), ctt_eth_kzg_status> {
-        let mut cells = Box::<[u8; 262_144]>::new_uninit();
-        let mut proofs = Box::<[u8; 6_144]>::new_uninit();
+        use std::mem::ManuallyDrop;
+        let mut cells = ManuallyDrop::new(Box::<[u8; 262_144]>::new_uninit());
+        let mut proofs = ManuallyDrop::new(Box::<[u8; 6_144]>::new_uninit());
         let status = unsafe {
             ctt_eth_kzg_compute_cells_and_kzg_proofs(
                 self.ctx,
@@ -389,9 +390,16 @@ impl<'tp> EthKzgContext<'tp> {
         };
         match status {
             ctt_eth_kzg_status::cttEthKzg_Success => {
-                Ok(unsafe { (cells.assume_init(), proofs.assume_init()) })
+                Ok(unsafe { (ManuallyDrop::into_inner(cells).assume_init(),
+                            ManuallyDrop::into_inner(proofs).assume_init()) })
             }
-            _ => Err(status),
+            _ => {
+                unsafe {
+                    ManuallyDrop::drop(&mut cells);
+                    ManuallyDrop::drop(&mut proofs);
+                }
+                Err(status)
+            }
         }
     }
 
@@ -433,8 +441,9 @@ impl<'tp> EthKzgContext<'tp> {
         if cells.len() != cell_indices.len() {
             return Err(ctt_eth_kzg_status::cttEthKzg_InputsLengthsMismatch);
         }
-        let mut recovered_cells = Box::<[u8; 262_144]>::new_uninit();
-        let mut recovered_proofs = Box::<[u8; 6_144]>::new_uninit();
+        use std::mem::ManuallyDrop;
+        let mut recovered_cells = ManuallyDrop::new(Box::<[u8; 262_144]>::new_uninit());
+        let mut recovered_proofs = ManuallyDrop::new(Box::<[u8; 6_144]>::new_uninit());
         let status = unsafe {
             ctt_eth_kzg_recover_cells_and_kzg_proofs(
                 self.ctx,
@@ -447,10 +456,17 @@ impl<'tp> EthKzgContext<'tp> {
         };
         match status {
             ctt_eth_kzg_status::cttEthKzg_Success => {
-                Ok(unsafe { (recovered_cells.assume_init(), recovered_proofs.assume_init()) })
+                Ok(unsafe { (ManuallyDrop::into_inner(recovered_cells).assume_init(),
+                            ManuallyDrop::into_inner(recovered_proofs).assume_init()) })
             }
-            _ => Err(status),
+            _ => {
+                unsafe {
+                    ManuallyDrop::drop(&mut recovered_cells);
+                    ManuallyDrop::drop(&mut recovered_proofs);
+                }
+                Err(status)
+            }
         }
     }
-}
 
+}
