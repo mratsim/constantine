@@ -347,3 +347,37 @@ func TestRecoverCellsAndKzgProofs(t *testing.T) {
 		t.Logf("    PASS: %s", testName)
 	}
 }
+
+// ---- Unit tests for error paths (not covered by test vectors) ----
+
+func TestVerifyCellKzgProofBatch_LengthMismatch(t *testing.T) {
+	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
+	require.NoError(t, tsErr)
+	defer ctx.Delete()
+
+	var secRand [32]byte
+	// commitments has 1 element, cellIndices has 2 — should return length mismatch error
+	_, err := ctx.VerifyCellKzgProofBatch(
+		[]EthKzgCommitment{{}},
+		[]uint64{0, 1}, // different length
+		[]EthKzgCell{{}},
+		[]EthKzgProof{{}},
+		secRand,
+	)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Lengths of inputs do not match")
+}
+
+func TestRecoverCellsAndKzgProofs_LengthMismatch(t *testing.T) {
+	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
+	require.NoError(t, tsErr)
+	defer ctx.Delete()
+
+	// cells has 1 element, cellIndices has 2 — should return length mismatch error
+	_, _, err := ctx.RecoverCellsAndKzgProofs(
+		[]EthKzgCell{{}},
+		[]uint64{0, 1}, // different length
+	)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Lengths of inputs do not match")
+}

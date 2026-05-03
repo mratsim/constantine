@@ -8,6 +8,7 @@
 
 use constantine_core::csprngs;
 use constantine_ethereum_kzg::EthKzgContext;
+use constantine_sys::ctt_eth_kzg_status;
 
 use std::fs;
 use std::path::Path;
@@ -161,7 +162,7 @@ fn t_verify_cell_kzg_proof_batch() {
 
     #[derive(Deserialize)]
     struct Test {
-        input: Input,
+        input: Option<Input>,
         #[serde(default)]
         output: Option<bool>,
     }
@@ -194,32 +195,53 @@ fn t_verify_cell_kzg_proof_batch() {
             &test_name
         ));
 
+        // Handle input: null test vectors
+        let Some(input) = test.input else {
+            assert!(test.output.is_none());
+            println!("{}=> SUCCESS - expected missing input", tv);
+            continue;
+        };
+
+        // Capture original lengths before into_iter() consumes them.
+        // If ANY field had unparseable entries, the entire test case is invalid input.
+        // (matches c-kzg-4844 pattern: field-by-field parse validation).
+        let commitments_orig_len = input.commitments.len();
+        let cells_orig_len = input.cells.len();
+        let proofs_orig_len = input.proofs.len();
+        let cell_indices = input.cell_indices;
+
         // Collect only valid commitments/cells/proofs
-        let commitments: Vec<_> = test
-            .input
+        let commitments_raw: Vec<_> = input
             .commitments
             .into_iter()
             .filter_map(|v| v.opt_bytes.0)
             .map(|v| *v)
             .collect();
-        let cells: Vec<_> = test
-            .input
+        let cells_raw: Vec<_> = input
             .cells
             .into_iter()
             .filter_map(|v| v.opt_bytes.0)
             .map(|v| *v)
             .collect();
-        let proofs: Vec<_> = test
-            .input
+        let proofs_raw: Vec<_> = input
             .proofs
             .into_iter()
             .filter_map(|v| v.opt_bytes.0)
             .map(|v| *v)
             .collect();
 
+        if commitments_raw.len() != commitments_orig_len
+            || cells_raw.len() != cells_orig_len
+            || proofs_raw.len() != proofs_orig_len
+        {
+            assert!(test.output.is_none());
+            println!("{}=> SUCCESS - expected parse failure", tv);
+            continue;
+        }
+
         // Length mismatch means invalid input
-        if commitments.len() != cells.len() || commitments.len() != proofs.len()
-            || commitments.len() != test.input.cell_indices.len()
+        if commitments_raw.len() != cells_raw.len() || commitments_raw.len() != proofs_raw.len()
+            || commitments_raw.len() != cell_indices.len()
         {
             assert!(test.output.is_none());
             println!("{}=> SUCCESS - expected input length mismatch", tv);
@@ -227,10 +249,10 @@ fn t_verify_cell_kzg_proof_batch() {
         }
 
         match ctx.verify_cell_kzg_proof_batch(
-            &commitments,
-            &test.input.cell_indices,
-            &cells,
-            &proofs,
+            &commitments_raw,
+            &cell_indices,
+            &cells_raw,
+            &proofs_raw,
             &secure_random_bytes,
         ) {
             Ok(valid) => {
@@ -263,7 +285,7 @@ fn t_recover_cells_and_kzg_proofs() {
 
     #[derive(Deserialize)]
     struct Test {
-        input: Input,
+        input: Option<Input>,
         #[serde(default)]
         output: Option<(Vec<OptBytes<2048>>, Vec<OptBytes<48>>)>,
     }
@@ -292,23 +314,40 @@ fn t_recover_cells_and_kzg_proofs() {
             &test_name
         ));
 
+        // Handle input: null test vectors
+        let Some(input) = test.input else {
+            assert!(test.output.is_none());
+            println!("{}=> SUCCESS - expected missing input", tv);
+            continue;
+        };
+
+        // Capture original length before into_iter() consumes it.
+        let cells_orig_len = input.cells.len();
+        let cell_indices = input.cell_indices;
+
         // Collect only valid cells
-        let cells: Vec<_> = test
-            .input
+        let cells_raw: Vec<_> = input
             .cells
             .into_iter()
             .filter_map(|v| v.opt_bytes.0)
             .map(|v| *v)
             .collect();
 
+        // If any cells had unparseable entries, the entire test case is invalid input.
+        if cells_raw.len() != cells_orig_len {
+            assert!(test.output.is_none());
+            println!("{}=> SUCCESS - expected parse failure", tv);
+            continue;
+        }
+
         // Length mismatch means invalid input
-        if cells.len() != test.input.cell_indices.len() {
+        if cells_raw.len() != cell_indices.len() {
             assert!(test.output.is_none());
             println!("{}=> SUCCESS - expected input length mismatch", tv);
             continue;
         }
 
-        match ctx.recover_cells_and_kzg_proofs(&cells, &test.input.cell_indices) {
+        match ctx.recover_cells_and_kzg_proofs(&cells_raw, &cell_indices) {
             Ok((proofs_bytes, cells_bytes)) => {
                 let (expected_cells, expected_proofs) = test.output.unwrap();
                 assert_eq!(expected_cells.len(), 128);
@@ -342,4 +381,54 @@ fn t_recover_cells_and_kzg_proofs() {
             }
         }
     }
+}
+
+// ============================================================================
+// Unit tests for error paths (not covered by test vectors)
+// ============================================================================
+
+#[test]
+fn t_verify_cell_kzg_proof_batch_length_mismatch() {
+    // FIX-5 (COV-B-003): Directly test the Rust-level length mismatch error.
+    // Test vectors with mismatched lengths are filtered by the harness,
+    // so the Rust-level Err(cttEthKzg_InputsLengthsMismatch) was never hit.
+    let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
+        .expect("Trusted setup should be loaded without error.");
+
+    let commitments = vec![[0u8; 48]];
+    let cell_indices = vec![0u64, 1u64]; // different length
+    let cells = vec![[0u8; 2048]];
+    let proofs = vec![[0u8; 48]];
+    let sec = [0u8; 32];
+
+    let result = ctx.verify_cell_kzg_proof_batch(
+        &commitments,
+        &cell_indices,
+        &cells,
+        &proofs,
+        &sec,
+    );
+
+    assert_eq!(
+        result,
+        Err(ctt_eth_kzg_status::cttEthKzg_InputsLengthsMismatch)
+    );
+}
+
+#[test]
+fn t_recover_cells_and_kzg_proofs_length_mismatch() {
+    // FIX-5 (COV-B-003): Directly test the Rust-level length mismatch error
+    // for recover_cells_and_kzg_proofs.
+    let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
+        .expect("Trusted setup should be loaded without error.");
+
+    let cells = vec![[0u8; 2048]];
+    let cell_indices = vec![0u64, 1u64]; // different length
+
+    let result = ctx.recover_cells_and_kzg_proofs(&cells, &cell_indices);
+
+    assert_eq!(
+        result,
+        Err(ctt_eth_kzg_status::cttEthKzg_InputsLengthsMismatch)
+    );
 }
