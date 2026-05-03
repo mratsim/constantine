@@ -61,11 +61,6 @@ TestVectorsDir.testGen(compute_cells_and_kzg_proofs, "kzg-mainnet", testVector):
     doAssert testVector["output"].content == "null"
 
 TestVectorsDir.testGen(recover_cells_and_kzg_proofs, "kzg-mainnet", testVector):
-  # Skip tests without cell data
-  if testVector["input"]["cell_indices"].len == 0 or testVector["input"]["cells"].len == 0:
-    stdout.write "[Skipped - no cell data]\n"
-    return
-
   var cellIndices: seq[CellIndex] = @[]
   for idx in testVector["input"]["cell_indices"]:
     cellIndices.add(CellIndex(parseInt(idx.content)))
@@ -79,15 +74,8 @@ TestVectorsDir.testGen(recover_cells_and_kzg_proofs, "kzg-mainnet", testVector):
       "Expected null output for length mismatch"
     return
 
-  # Empty cells = invalid input (can't recover with zero cells)
-  if cells.len == 0:
-    stdout.write "[ cttEthKzg_InputsLengthsMismatch]\n"
-    doAssert testVector["output"].content == "null", "Expected null output for empty cells"
-    return
-
   var recoveredCells: array[CELLS_PER_EXT_BLOB, Cell]
   var recoveredProofs: array[CELLS_PER_EXT_BLOB, KZGProofBytes]
-
 
   let status = recover_cells_and_kzg_proofs(ctx, recoveredProofs.asUnchecked(), recoveredCells.asUnchecked(), cellIndices.asUnchecked(), cells.asUnchecked(), cellIndices.len)
   stdout.write "[" & $status & "]\n"
@@ -97,7 +85,6 @@ TestVectorsDir.testGen(recover_cells_and_kzg_proofs, "kzg-mainnet", testVector):
     parseAssignList(testVector, expectedProofs, BYTES_PER_PROOF, testVector["output"][1])
     doAssert @recoveredCells == expectedCells
     doAssert @recoveredProofs == expectedProofs
-
   else:
     doAssert testVector["output"].content == "null"
 
@@ -113,6 +100,7 @@ TestVectorsDir.testGen(verify_cell_kzg_proof_batch, "kzg-mainnet", testVector):
   parseAssignList(testVector, proofsBytes, BYTES_PER_PROOF, testVector["input"]["proofs"])
 
   # Input length mismatch = invalid input
+  # Library receives ptr UncheckedArray and cannot know multiple array lengths
   if commitmentsBytes.len != cellIndices.len or
      commitmentsBytes.len != cells.len or
      commitmentsBytes.len != proofsBytes.len:
@@ -123,18 +111,11 @@ TestVectorsDir.testGen(verify_cell_kzg_proof_batch, "kzg-mainnet", testVector):
       "\nActual: length mismatch detected in test harness\n"
     return
 
-  # Zero cells edge case - library expects non-null pointers
-  if cells.len == 0:
-    stdout.write "[cttEthKzg_Success]\n"
-    doAssert testVector["output"].content == "true", "Expected success for zero cells"
-    return
-
   # Generate secure random bytes for batch verification
   var secureRandomBytes: array[32, byte]
   for i in 0..31:
     secureRandomBytes[i] = byte(i + 1)  # Deterministic for testing
 
-  # Call verify_cell_kzg_proof_batch
   let status = verify_cell_kzg_proof_batch(
     ctx,
     commitmentsBytes.asUnchecked(),
@@ -144,7 +125,6 @@ TestVectorsDir.testGen(verify_cell_kzg_proof_batch, "kzg-mainnet", testVector):
     cells.len,
     secureRandomBytes
   )
-
   stdout.write "[" & $status & "]\n"
 
   # Check output - tri-state: "true" (success), "false" (verification failure), "null" (invalid input)
