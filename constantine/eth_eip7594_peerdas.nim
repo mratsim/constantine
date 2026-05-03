@@ -617,7 +617,7 @@ func recover_cells_and_kzg_proofs*(
       return cttEthKzg_InputsLengthsMismatch
   for i in 1 ..< n:
     if uint64(cell_indices[i-1]) >= uint64(cell_indices[i]):
-      return cttEthKzg_InputsLengthsMismatch
+      return cttEthKzg_CellIndicesNotAscending
 
   # Step 2: Convert cells to coset evaluations [Deserialization]
   var cosets_evals = allocHeapArrayAligned(array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]], n, alignment = 64)

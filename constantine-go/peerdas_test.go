@@ -381,3 +381,22 @@ func TestRecoverCellsAndKzgProofs_LengthMismatch(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Lengths of inputs do not match")
 }
+
+// ---- Unit tests for ascending order check ----
+
+func TestRecoverCellsAndKzgProofs_CellIndicesNotAscending(t *testing.T) {
+	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
+	require.NoError(t, tsErr)
+	defer ctx.Delete()
+
+	// Provide 64 cells (minimum for recovery) with descending indices — should return error
+	cels := make([]EthKzgCell, 64)
+	// indices [64, 63, ..., 1] is not in ascending order
+	indices := make([]uint64, 64)
+	for i := 0; i < 64; i++ {
+		indices[i] = uint64(64 - i)
+	}
+	_, _, err := ctx.RecoverCellsAndKzgProofs(cels, indices)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "CellIndicesNotAscending")
+}

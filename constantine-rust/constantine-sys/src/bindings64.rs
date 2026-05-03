@@ -4681,6 +4681,7 @@ pub enum ctt_eth_kzg_status {
     cttEthKzg_EccCoordinateGreaterThanOrEqualModulus = 6,
     cttEthKzg_EccPointNotOnCurve = 7,
     cttEthKzg_EccPointNotInSubgroup = 8,
+    cttEthKzg_CellIndicesNotAscending = 9,
 }
 #[repr(u8)]
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]

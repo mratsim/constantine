@@ -93,6 +93,7 @@ type
     cttEthKzg_EccCoordinateGreaterThanOrEqualModulus
     cttEthKzg_EccPointNotOnCurve
     cttEthKzg_EccPointNotInSubGroup
+    cttEthKzg_CellIndicesNotAscending
 
 # Fiat-Shamir challenges
 # ------------------------------------------------------------

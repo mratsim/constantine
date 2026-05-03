@@ -432,3 +432,22 @@ fn t_recover_cells_and_kzg_proofs_length_mismatch() {
         Err(ctt_eth_kzg_status::cttEthKzg_InputsLengthsMismatch)
     );
 }
+
+#[test]
+fn t_recover_cells_and_kzg_proofs_cell_indices_not_ascending() {
+    // Verify that non-ascending cell indices are rejected.
+    let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
+        .expect("Trusted setup should be loaded without error.");
+
+    // 64 cells (minimum for recovery) with descending indices [64, 63, ..., 1]
+    let cells = vec![[0u8; 2048]; 64];
+    let cell_indices: Vec<u64> = (1..=64).rev().collect();
+
+    let result = ctx.recover_cells_and_kzg_proofs(&cells, &cell_indices);
+
+    assert_eq!(
+        result,
+        Err(ctt_eth_kzg_status::cttEthKzg_CellIndicesNotAscending)
+    );
+}
+
