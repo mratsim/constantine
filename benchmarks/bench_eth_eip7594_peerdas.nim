@@ -29,9 +29,9 @@ import
   # Standard library
   std/[os, strutils, sequtils, monotimes]
 
-const NumBlobs* = 4  # Number of blobs for benchmarks (reduced from 64 for faster init)
+const NumBlobs* = 64  # Number of blobs for benchmarks (matches c-kzg-4844 config)
                       # Parallel initialization uses all available threads (~20 on modern CPUs)
-                      # Initialization time: ~2s for 4 blobs (vs ~8s serial)
+                      # Initialization time: ~2-3s for 64 blobs
 
 proc separator*() = separator(180)
 
@@ -84,7 +84,7 @@ proc computeBlobParallel(
     tempCells[].asUnchecked(),
     tempProofs[].asUnchecked(),
     tempBlobs[])
-  
+
 proc new(T: type BenchSet, ctx: ptr EthereumKZGContext): T =
   new(result)
 
