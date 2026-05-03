@@ -17,9 +17,6 @@ import
   ../bench_blueprint,
   std/[os, strutils, monotimes]
 
-func proofToBytes(proof: KZGProof): array[48, byte] =
-  doAssert result.serialize_g1_compressed(EC_ShortW_Aff[Fp[BLS12_381], G1](proof)) == cttCodecEcc_Success
-
 proc report(op: string, startTime, stopTime: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stopTime-startTime) div iters)
   let throughput = 1e9 / float64(ns)
@@ -44,7 +41,7 @@ proc benchVerifyCellKZGProofBatch_64Blobs(b: BenchSet, ctx: ptr EthereumKZGConte
   var commitments_bytes: ref array[MaxTotal, array[48, byte]]
   var cell_indices: ref array[MaxTotal, CellIndex]
   var cells_array: ref array[MaxTotal, Cell]
-  var proofs_bytes: ref array[MaxTotal, array[48, byte]]
+  var proofs_bytes: ref array[MaxTotal, KZGProofBytes]
   new(commitments_bytes)
   new(cell_indices)
   new(cells_array)
@@ -56,18 +53,18 @@ proc benchVerifyCellKZGProofBatch_64Blobs(b: BenchSet, ctx: ptr EthereumKZGConte
       commitments_bytes[idx] = b.commitments[blobIdx]
       cell_indices[idx] = CellIndex(cellIdx)
       cells_array[idx] = b.cells[blobIdx][cellIdx]
-      proofs_bytes[idx] = proofToBytes(b.proofs[blobIdx][cellIdx])
+      proofs_bytes[idx] = b.proofs[blobIdx][cellIdx]
       inc idx
 
   bench("verify_cell_kzg_proof_batch (" & $NumBlobs & " blobs, " & $MaxTotal & " cells)", iters):
     discard verify_cell_kzg_proof_batch(
       ctx,
-      commitments_bytes[],
-      cell_indices[],
-      cells_array[],
-      proofs_bytes[],
-      secureRandomBytes
-    )
+      cast[ptr UncheckedArray[array[48, byte]]](commitments_bytes),
+      cast[ptr UncheckedArray[CellIndex]](cell_indices),
+      cast[ptr UncheckedArray[Cell]](cells_array),
+      cast[ptr UncheckedArray[KZGProofBytes]](proofs_bytes),
+      MaxTotal,
+      secureRandomBytes)
 
 proc main() =
   echo "PeerDAS (EIP-7594) - verify_cell_kzg_proof_batch Benchmark"

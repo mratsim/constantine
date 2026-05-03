@@ -30,7 +30,7 @@ type
     blobs*: array[NumBlobs, Blob]
     commitments*: array[NumBlobs, array[48, byte]]
     cells*: array[NumBlobs, array[CELLS_PER_EXT_BLOB, Cell]]
-    proofs*: array[NumBlobs, array[CELLS_PER_EXT_BLOB, KZGProof]]
+    proofs*: array[NumBlobs, array[CELLS_PER_EXT_BLOB, KZGProofBytes]]
     # For recovery benchmarks - half cells
     halfCellIndices*: array[NumBlobs, seq[CellIndex]]
     halfCells*: array[NumBlobs, seq[Cell]]

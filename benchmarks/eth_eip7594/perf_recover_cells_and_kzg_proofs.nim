@@ -28,17 +28,17 @@ template bench(op: string, iters: int, body: untyped): untyped =
 proc benchRecoverCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   bench("recover_cells_and_kzg_proofs (50% availability)", iters):
     var recovered_cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-    var recovered_proofs: ref array[CELLS_PER_EXT_BLOB, KZGProof]
+    var recovered_proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
     new(recovered_cells)
     new(recovered_proofs)
 
     doAssert cttEthKzg_Success == recover_cells_and_kzg_proofs(
       ctx,
-      recovered_proofs[],
-      recovered_cells[],
-      b.halfCells[0],
-      b.halfCellIndices[0]
-    )
+      cast[ptr UncheckedArray[KZGProofBytes]](recovered_proofs),
+      cast[ptr UncheckedArray[Cell]](recovered_cells),
+      cast[ptr UncheckedArray[CellIndex]](b.halfCellIndices[0][0].unsafeAddr),
+      cast[ptr UncheckedArray[Cell]](b.halfCells[0][0].unsafeAddr),
+      b.halfCells[0].len)
 
 proc main() =
   echo "PeerDAS (EIP-7594) - recover_cells_and_kzg_proofs Benchmark"

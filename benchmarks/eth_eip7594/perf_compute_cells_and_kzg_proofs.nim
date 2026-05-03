@@ -33,12 +33,15 @@ template bench(op: string, iters: int, body: untyped): untyped =
 
 proc benchComputeCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   var cells : ref array[CELLS_PER_EXT_BLOB, Cell]
-  var proofs : ref array[CELLS_PER_EXT_BLOB, KZGProof]
+  var proofs : ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
   new(cells)
   new(proofs)
 
   bench("compute_cells_and_kzg_proofs", iters):
-    doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(cells[], proofs[], b.blobs[0])
+    doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
+      cast[ptr UncheckedArray[Cell]](cells),
+      cast[ptr UncheckedArray[KZGProofBytes]](proofs),
+      b.blobs[0])
 
 proc main() =
   echo "PeerDAS (EIP-7594) - compute_cells_and_kzg_proofs Benchmark"
