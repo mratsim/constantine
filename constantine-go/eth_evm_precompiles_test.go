@@ -131,7 +131,13 @@ type TF256 func([]byte) (Bytes256, error)
 // Helper function to simplify the test generation. No need to duplicate test logic, all the same
 func runTestSlice(t *testing.T, testPath string, fn TF) {
 	fmt.Println("Running test for path: ", testPath)
-	tests, _ := filepath.Glob(testPath)
+	tests, err := filepath.Glob(testPath)
+	if err != nil {
+		t.Fatalf("filepath.Glob(%q) failed: %v", testPath, err)
+	}
+	if len(tests) == 0 {
+		t.Fatalf("no test files matched: %s", testPath)
+	}
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			// Load from the given path
@@ -160,7 +166,13 @@ func runTestSlice(t *testing.T, testPath string, fn TF) {
 
 func runTestB32(t *testing.T, testPath string, fn TF32) {
 	fmt.Println("Running test for path: ", testPath)
-	tests, _ := filepath.Glob(testPath)
+	tests, err := filepath.Glob(testPath)
+	if err != nil {
+		t.Fatalf("filepath.Glob(%q) failed: %v", testPath, err)
+	}
+	if len(tests) == 0 {
+		t.Fatalf("no test files matched: %s", testPath)
+	}
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			// Load from the given path
@@ -189,7 +201,13 @@ func runTestB32(t *testing.T, testPath string, fn TF32) {
 
 func runTestB64(t *testing.T, testPath string, fn TF64) {
 	fmt.Println("Running test for path: ", testPath)
-	tests, _ := filepath.Glob(testPath)
+	tests, err := filepath.Glob(testPath)
+	if err != nil {
+		t.Fatalf("filepath.Glob(%q) failed: %v", testPath, err)
+	}
+	if len(tests) == 0 {
+		t.Fatalf("no test files matched: %s", testPath)
+	}
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			// Load from the given path
@@ -218,7 +236,13 @@ func runTestB64(t *testing.T, testPath string, fn TF64) {
 
 func runTestB128(t *testing.T, testPath string, fn TF128) {
 	fmt.Println("Running test for path: ", testPath)
-	tests, _ := filepath.Glob(testPath)
+	tests, err := filepath.Glob(testPath)
+	if err != nil {
+		t.Fatalf("filepath.Glob(%q) failed: %v", testPath, err)
+	}
+	if len(tests) == 0 {
+		t.Fatalf("no test files matched: %s", testPath)
+	}
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			// Load from the given path
@@ -247,7 +271,13 @@ func runTestB128(t *testing.T, testPath string, fn TF128) {
 
 func runTestB256(t *testing.T, testPath string, fn TF256) {
 	fmt.Println("Running test for path: ", testPath)
-	tests, _ := filepath.Glob(testPath)
+	tests, err := filepath.Glob(testPath)
+	if err != nil {
+		t.Fatalf("filepath.Glob(%q) failed: %v", testPath, err)
+	}
+	if len(tests) == 0 {
+		t.Fatalf("no test files matched: %s", testPath)
+	}
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			// Load from the given path

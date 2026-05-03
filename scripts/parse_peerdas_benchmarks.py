@@ -178,15 +178,15 @@ def generate_report(const_eip4844, const_peerdas, ckzg_eip4844, ckzg_peerdas, ou
     
     # compute_cells_and_kzg_proofs - multiple precompute levels
     for pre in [0, 2, 4, 8]:
+        ckzg_val = ckzg_peerdas.get(f'compute_cells_and_kzg_proofs_pre{pre}')
         ckzg_str = f"{ns_to_ms(ckzg_val):.3f} ms" if ckzg_val else "-"
-            if pre == 0:
+        if pre == 0:
             const_val = const_peerdas.get('compute_cells_and_kzg_proofs')
             const_str = f"{ns_to_ms(const_val):.3f} ms" if const_val else "-"
             pct = calc_pct_diff(ckzg_val, const_val) if ckzg_val and const_val else None
             pct_str = f"{pct:+.1f}%" if pct is not None else "-"
             lines.append(f"| compute_cells_and_kzg_proofs (pre={pre}) | {ckzg_str:>19} | {const_str:>20} | {pct_str:>8} |")
         else:
-            ckzg_str = f"{ns_to_ms(ckzg_val):.3f} ms" if ckzg_val else "-"
             lines.append(f"| compute_cells_and_kzg_proofs (pre={pre}) | {ckzg_str:>19} | {'-':>20} | {'-':>8} |")
     
     # recover_cells_and_kzg_proofs - pre=0 and pre=8

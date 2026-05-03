@@ -90,8 +90,10 @@ func TestComputeCellsAndKzgProofs(t *testing.T) {
 		require.Len(t, expProofs, 128)
 
 		for i := 0; i < 128; i++ {
-			expCell, _ := hex.DecodeString(expCells[i][2:])
-			expProof, _ := hex.DecodeString(expProofs[i][2:])
+			expCell, err := hex.DecodeString(expCells[i][2:])
+			require.NoError(t, err, "failed to decode expected cell %d in %s", i, testName)
+			expProof, err := hex.DecodeString(expProofs[i][2:])
+			require.NoError(t, err, "failed to decode expected proof %d in %s", i, testName)
 			require.Equal(t, expCell, cells[i][:], "cell %d mismatch in %s", i, testName)
 			require.Equal(t, expProof, proofs[i][:], "proof %d mismatch in %s", i, testName)
 		}
@@ -152,11 +154,7 @@ func TestVerifyCellKzgProofBatch(t *testing.T) {
 		}
 
 		// Empty arrays (all zero-length) -> spec says verification succeeds
-		if len(commitments) == 0 && len(cellIndices) == 0 && len(cellsRaw) == 0 && len(proofsRaw) == 0 {
-			require.NotNil(t, output, "expected output for empty arrays in %s", testName)
-			require.True(t, *output, "empty batch should verify as true in %s", testName)
-			continue
-		}
+		// Don't short-circuit; let the implementation handle it
 
 		// Decode commitments
 		commitmentsDec := make([]EthKzgCommitment, len(commitments))
@@ -295,8 +293,10 @@ func TestRecoverCellsAndKzgProofs(t *testing.T) {
 		require.Len(t, expProofs, 128)
 
 		for i := 0; i < 128; i++ {
-			expCell, _ := hex.DecodeString(expCells[i][2:])
-			expProof, _ := hex.DecodeString(expProofs[i][2:])
+			expCell, err := hex.DecodeString(expCells[i][2:])
+			require.NoError(t, err, "failed to decode expected cell %d in %s", i, testName)
+			expProof, err := hex.DecodeString(expProofs[i][2:])
+			require.NoError(t, err, "failed to decode expected proof %d in %s", i, testName)
 			require.Equal(t, expCell, recoveredCells[i][:], "recovered cell %d mismatch in %s", i, testName)
 			require.Equal(t, expProof, recoveredProofs[i][:], "recovered proof %d mismatch in %s", i, testName)
 		}

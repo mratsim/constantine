@@ -112,7 +112,9 @@ func TestDeserializeG1(t *testing.T) {
 		Output bool `json:"output"`
 	}
 
-	tests, _ := filepath.Glob(deserialization_G1Tests)
+	tests, err := filepath.Glob(deserialization_G1Tests)
+	require.NoError(t, err)
+	require.NotEmpty(t, tests)
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			testFile, err := os.Open(testPath)
@@ -129,6 +131,7 @@ func TestDeserializeG1(t *testing.T) {
 			if strings.HasSuffix(testPath, "deserialization_fails_too_few_bytes.json") ||
 				strings.HasSuffix(testPath, "deserialization_fails_too_many_bytes.json") {
 				require.False(t, test.Output)
+				return
 			} else if err != nil {
 				require.False(t, test.Output)
 				return
@@ -162,7 +165,9 @@ func TestDeserializeG2(t *testing.T) {
 		Output bool `json:"output"`
 	}
 
-	tests, _ := filepath.Glob(deserialization_G2Tests)
+	tests, err := filepath.Glob(deserialization_G2Tests)
+	require.NoError(t, err)
+	require.NotEmpty(t, tests)
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			testFile, err := os.Open(testPath)
@@ -179,6 +184,7 @@ func TestDeserializeG2(t *testing.T) {
 			if strings.HasSuffix(testPath, "deserialization_fails_too_few_bytes.json") ||
 				strings.HasSuffix(testPath, "deserialization_fails_too_many_bytes.json") {
 				require.False(t, test.Output)
+				return
 			} else if err != nil {
 				require.False(t, test.Output)
 				return
@@ -213,7 +219,9 @@ func TestSign(t *testing.T) {
 		Output string `json:"output"`
 	}
 
-	tests, _ := filepath.Glob(signTests)
+	tests, err := filepath.Glob(signTests)
+	require.NoError(t, err)
+	require.NotEmpty(t, tests)
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			testFile, err := os.Open(testPath)
@@ -303,7 +311,9 @@ func TestVerify(t *testing.T) {
 		Output bool `json:"output"`
 	}
 
-	tests, _ := filepath.Glob(verifyTests)
+	tests, err := filepath.Glob(verifyTests)
+	require.NoError(t, err)
+	require.NotEmpty(t, tests)
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			testFile, err := os.Open(testPath)
@@ -392,7 +402,9 @@ func TestFastAggregateVerify(t *testing.T) {
 		Output bool `json:"output"`
 	}
 
-	tests, _ := filepath.Glob(fast_aggregate_verifyTests)
+	tests, err := filepath.Glob(fast_aggregate_verifyTests)
+	require.NoError(t, err)
+	require.NotEmpty(t, tests)
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			testFile, err := os.Open(testPath)
@@ -547,7 +559,9 @@ func TestBatchVerify(t *testing.T) {
 		Output bool `json:"output"`
 	}
 
-	tests, _ := filepath.Glob(batch_verifyTests)
+	tests, err := filepath.Glob(batch_verifyTests)
+	require.NoError(t, err)
+	require.NotEmpty(t, tests)
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 		testFile, err := os.Open(testPath)
@@ -613,6 +627,7 @@ func TestBatchVerify(t *testing.T) {
 
 				// Now batch verify using SoA API
 				status, err = BatchVerifySoA(pks, msgs[:], sigs, randomBytes)
+				require.NoError(t, err)
 				require.Equal(t, status, test.Output)
 
 				// And using triplets of the data and use `BatchVerifyAoS`
@@ -621,6 +636,7 @@ func TestBatchVerify(t *testing.T) {
 					trp[i] = BatchVerifyTriplet{pub: pks[i], message: msgs[i], sig: sigs[i]}
 				}
 				status, err = BatchVerifyAoS(trp, randomBytes)
+				require.NoError(t, err)
 				require.Equal(t, status, test.Output)
 
 				// TODO: The parallel API needs to be reimplemented using parallelism on the Go side
