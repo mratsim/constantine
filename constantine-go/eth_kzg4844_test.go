@@ -730,7 +730,7 @@ func TestVerifyBlobKzgProofBatchParallel(t *testing.T) {
 			err = blob.UnmarshalText([]byte(b))
 			if err != nil {
 				require.Nil(t, test.Output)
-				continue
+				return
 			}
 			blobs = append(blobs, blob)
 		}
@@ -741,7 +741,7 @@ func TestVerifyBlobKzgProofBatchParallel(t *testing.T) {
 			err = commitment.UnmarshalText([]byte(c))
 			if err != nil {
 				require.Nil(t, test.Output)
-				continue
+				return
 			}
 			commitments = append(commitments, commitment)
 		}
@@ -752,7 +752,7 @@ func TestVerifyBlobKzgProofBatchParallel(t *testing.T) {
 			err = proof.UnmarshalText([]byte(p))
 			if err != nil {
 				require.Nil(t, test.Output)
-				continue
+				return
 			}
 			proofs = append(proofs, proof)
 		}

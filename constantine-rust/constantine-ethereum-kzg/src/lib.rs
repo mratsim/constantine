@@ -429,17 +429,17 @@ impl<'tp> EthKzgContext<'tp> {
         &self,
         cells: &[[u8; 2048]],
         cell_indices: &[u64],
-    ) -> Result<(Box<[u8; 6_144]>, Box<[u8; 262_144]>), ctt_eth_kzg_status> {
+    ) -> Result<(Box<[u8; 262_144]>, Box<[u8; 6_144]>), ctt_eth_kzg_status> {
         if cells.len() != cell_indices.len() {
             return Err(ctt_eth_kzg_status::cttEthKzg_InputsLengthsMismatch);
         }
-        let mut recovered_proofs = Box::<[u8; 6_144]>::new_uninit();
         let mut recovered_cells = Box::<[u8; 262_144]>::new_uninit();
+        let mut recovered_proofs = Box::<[u8; 6_144]>::new_uninit();
         let status = unsafe {
             ctt_eth_kzg_recover_cells_and_kzg_proofs(
                 self.ctx,
-                recovered_proofs.as_mut_ptr() as *mut ctt_eth_kzg_proof,
                 recovered_cells.as_mut_ptr() as *mut ctt_eth_kzg_cell,
+                recovered_proofs.as_mut_ptr() as *mut ctt_eth_kzg_proof,
                 cell_indices.as_ptr(),
                 cells.as_ptr() as *const ctt_eth_kzg_cell,
                 cells.len(),
@@ -447,7 +447,7 @@ impl<'tp> EthKzgContext<'tp> {
         };
         match status {
             ctt_eth_kzg_status::cttEthKzg_Success => {
-                Ok(unsafe { (recovered_proofs.assume_init(), recovered_cells.assume_init()) })
+                Ok(unsafe { (recovered_cells.assume_init(), recovered_proofs.assume_init()) })
             }
             _ => Err(status),
         }

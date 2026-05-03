@@ -98,6 +98,11 @@ func loadVectors(fname string) (result []PrecompileTest, status bool) {
 	var test []PrecompileTest
 
 	testFile, err := os.Open(fname)
+	if err != nil {
+		return nil, false
+	}
+	defer testFile.Close()
+
 	err = json.NewDecoder(testFile).Decode(&test)
 	if err != nil {
 		return test, false

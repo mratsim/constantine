@@ -281,8 +281,8 @@ proc benchRecoverCellsAndKZGProofs_WorstCase(b: BenchSet, ctx: ptr EthereumKZGCo
     new(recovered_proofs)
     doAssert cttEthKzg_Success == recover_cells_and_kzg_proofs(
       ctx,
-      recovered_proofs[].asUnchecked(),
       recovered_cells[].asUnchecked(),
+      recovered_proofs[].asUnchecked(),
       b.halfCellIndices[0].asUnchecked(),
       b.halfCells[0].asUnchecked(),
       b.halfCells[0].len)
@@ -313,8 +313,8 @@ proc benchRecoverCellsAndKZGProofs_VaryingAvailability(b: BenchSet, ctx: ptr Eth
       new(recovered_proofs)
       doAssert cttEthKzg_Success == recover_cells_and_kzg_proofs(
         ctx,
-        recovered_proofs[].asUnchecked(),
         recovered_cells[].asUnchecked(),
+        recovered_proofs[].asUnchecked(),
         cell_indices.asUnchecked(),
         cells.asUnchecked(),
         numCells)

@@ -4865,11 +4865,11 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     #[must_use]
-    #[doc = " Recover all cells and KZG proofs from a subset of available cells.\n\n  Requires at least 64 out of 128 cells (≥50% of the extended blob).\n\n  @param ctx              KZG context (trusted setup)\n  @param recovered_proofs Output: array of 128 recovered KZG proofs (caller-allocated)\n  @param recovered_cells  Output: array of 128 recovered cells (caller-allocated)\n  @param cell_indices     Array of indices for the provided cells (sorted, unique)\n  @param cells            Array of available cells\n  @param num_cells        Number of available cells (must be in [64, 128])\n  @return                 cttEthKzg_Success on success, error status otherwise"]
+    #[doc = " Recover all cells and KZG proofs from a subset of available cells.\n\n  Requires at least 64 out of 128 cells (≥50% of the extended blob).\n\n  @param ctx              KZG context (trusted setup)\n  @param recovered_proofs Output: array of 128 recovered KZG proofs (caller-allocated)\n  @param recovered_cells  Output: array of 128 recovered cells (caller-allocated)\n  @param cell_indices     Array of indices for the provided cells (sorted, unique)\n  @param cells            Array of available cells\n  @param num_cells        Number of available cells (must be in [64, 128])\n  @note Precondition: The caller must ensure that `cells` and `cell_indices`\n        arrays are allocated with at least `num_cells` elements, and that\n        `recovered_proofs` and `recovered_cells` are allocated with exactly\n        CELLS_PER_EXT_BLOB (128) elements each.\n        The `cell_indices` array must be sorted in strictly ascending order\n        with values in [0, CELLS_PER_EXT_BLOB).\n  @return                 cttEthKzg_Success on success, error status otherwise"]
     pub fn ctt_eth_kzg_recover_cells_and_kzg_proofs(
         ctx: *const ctt_eth_kzg_context,
-        recovered_proofs: *mut ctt_eth_kzg_proof,
         recovered_cells: *mut ctt_eth_kzg_cell,
+        recovered_proofs: *mut ctt_eth_kzg_proof,
         cell_indices: *const u64,
         cells: *const ctt_eth_kzg_cell,
         num_cells: usize,

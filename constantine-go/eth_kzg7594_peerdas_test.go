@@ -97,7 +97,7 @@ func TestComputeCellsAndKzgProofs(t *testing.T) {
 			continue
 		}
 
-		cells, proofs, err := ctx.ComputeCellsAndKzgProofs(blob)
+        cells, proofs, err := ctx.ComputeCellsAndKzgProofs(&blob)
 		if err != nil {
 			require.Nil(t, test.Output, "expected failure for %s", testName)
 			continue
@@ -230,11 +230,6 @@ func TestVerifyCellKzgProofBatch(t *testing.T) {
 			continue
 		}
 
-		// Empty arrays -> special case
-		if len(commitmentsDec) == 0 {
-			require.Nil(t, output, "expected no output for empty arrays in %s", testName)
-			continue
-		}
 
 		valid, err := ctx.VerifyCellKzgProofBatch(
 			commitmentsDec, cellIndices, cellsDec, proofsDec, secureRandomBytes,
@@ -306,9 +301,9 @@ func TestRecoverCellsAndKzgProofs(t *testing.T) {
 			continue
 		}
 
-		recoveredProofs, recoveredCells, err := ctx.RecoverCellsAndKzgProofs(
-			cellsDec, test.Input.CellIndices,
-		)
+        recoveredCells, recoveredProofs, err := ctx.RecoverCellsAndKzgProofs(
+            cellsDec, test.Input.CellIndices,
+        )
 
 		if err != nil {
 			require.Nil(t, test.Output, "expected failure for %s: %v", testName, err)
@@ -357,10 +352,10 @@ func TestRecoverCellsAndKzgProofs_LengthMismatch(t *testing.T) {
 	defer ctx.Delete()
 
 	// cells has 1 element, cellIndices has 2 — should return length mismatch error
-	_, _, err := ctx.RecoverCellsAndKzgProofs(
-		[]EthKzgCell{{}},
-		[]uint64{0, 1}, // different length
-	)
+    _, _, err := ctx.RecoverCellsAndKzgProofs(
+        []EthKzgCell{{}},
+        []uint64{0, 1}, // different length
+    )
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Lengths of inputs do not match")
 }
@@ -379,7 +374,7 @@ func TestRecoverCellsAndKzgProofs_CellIndicesNotAscending(t *testing.T) {
 	for i := 0; i < 64; i++ {
 		indices[i] = uint64(64 - i)
 	}
-	_, _, err := ctx.RecoverCellsAndKzgProofs(cels, indices)
+    _, _, err := ctx.RecoverCellsAndKzgProofs(cels, indices)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "CellIndicesNotAscending")
 }

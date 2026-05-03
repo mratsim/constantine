@@ -116,7 +116,9 @@ func TestDeserializeG1(t *testing.T) {
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			testFile, err := os.Open(testPath)
+			require.NoError(t, err)
 			test := Test{}
+			defer testFile.Close()
 			err = json.NewDecoder(testFile).Decode(&test)
 
 			var rawPk EthBlsPubKeyRaw
@@ -125,7 +127,7 @@ func TestDeserializeG1(t *testing.T) {
 				strings.HasSuffix(testPath, "deserialization_fails_too_many_bytes.json") {
 				require.False(t, test.Output)
 			} else if err != nil {
-				require.Nil(t, test.Output)
+				require.False(t, test.Output)
 				return
 			}
 
@@ -134,7 +136,7 @@ func TestDeserializeG1(t *testing.T) {
 			if err == nil {
 				s, err := pk.SerializeCompressed()
 				if err != nil {
-					require.Nil(t, test.Output)
+				require.False(t, test.Output)
 				}
 				require.Equal(t, s[:], rawPk[:])
 				// Indicates test is supposed to pass
@@ -160,16 +162,18 @@ func TestDeserializeG2(t *testing.T) {
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			testFile, err := os.Open(testPath)
+			require.NoError(t, err)
 			test := Test{}
+			defer testFile.Close()
 			err = json.NewDecoder(testFile).Decode(&test)
 
 			var rawSig EthBlsSignatureRaw
 			err = rawSig.UnmarshalText([]byte(test.Input.Signature))
 			if strings.HasSuffix(testPath, "deserialization_fails_too_few_bytes.json") ||
 				strings.HasSuffix(testPath, "deserialization_fails_too_many_bytes.json") {
-				require.NotNil(t, test.Output)
+				require.True(t, test.Output)
 			} else if err != nil {
-				require.Nil(t, test.Output)
+				require.False(t, test.Output)
 				return
 			}
 
@@ -178,7 +182,7 @@ func TestDeserializeG2(t *testing.T) {
 			if err == nil {
 				s, err := sig.SerializeCompressed()
 				if err != nil {
-					require.Nil(t, test.Output)
+				require.False(t, test.Output)
 				}
 				require.Equal(t, s[:], rawSig[:])
 				// Indicates test intends to pass
@@ -205,19 +209,21 @@ func TestSign(t *testing.T) {
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			testFile, err := os.Open(testPath)
+			require.NoError(t, err)
 			test := Test{}
+			defer testFile.Close()
 			err = json.NewDecoder(testFile).Decode(&test)
 
 			var rawSecKey EthBlsSecKeyRaw
 			err = rawSecKey.UnmarshalText([]byte(test.Input.PrivKey))
 			if err != nil {
-				require.Nil(t, test.Output)
+				require.Empty(t, test.Output)
 				return
 			}
 			var msg EthBlsMessage
 			err = msg.UnmarshalText([]byte(test.Input.Message))
 			if err != nil {
-				require.Nil(t, test.Output)
+				require.Empty(t, test.Output)
 				return
 			}
 			var tOut EthBlsTestOutput
@@ -226,7 +232,7 @@ func TestSign(t *testing.T) {
 			if strings.HasSuffix(testPath, "sign_case_zero_privkey.json") {
 				require.Equal(t, test.Output, "")
 			} else if err != nil {
-				require.Nil(t, test.Output)
+				require.Empty(t, test.Output)
 				return
 			}
 
@@ -242,7 +248,7 @@ func TestSign(t *testing.T) {
 				{ // deserialiaze output for extra codec testing
 					output, err := DeserializeSignatureCompressed(Bytes96(tOut))
 					if err != nil {
-						require.Nil(t, test.Output)
+					require.Empty(t, test.Output)
 						return
 					}
 					status := sig.AreEqual(output)
@@ -264,7 +270,7 @@ func TestSign(t *testing.T) {
 				{ // serialize result for extra codec testing
 					sigBytes, err := sig.SerializeCompressed()
 					if err != nil {
-						require.Nil(t, test.Output)
+					require.Empty(t, test.Output)
 						return
 					}
 					require.Equal(t, sigBytes[:], tOut[:])
@@ -290,19 +296,21 @@ func TestVerify(t *testing.T) {
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			testFile, err := os.Open(testPath)
+			require.NoError(t, err)
 			test := Test{}
+			defer testFile.Close()
 			err = json.NewDecoder(testFile).Decode(&test)
 
 			var rawPk EthBlsPubKeyRaw
 			err = rawPk.UnmarshalText([]byte(test.Input.PubKey))
 			if err != nil {
-				require.Nil(t, test.Output)
+				require.False(t, test.Output)
 				return
 			}
 			var rawSig EthBlsSignatureRaw
 			err = rawSig.UnmarshalText([]byte(test.Input.Signature))
 			if err != nil {
-				require.Nil(t, test.Output)
+				require.False(t, test.Output)
 				return
 			}
 
@@ -310,7 +318,7 @@ func TestVerify(t *testing.T) {
 			var status bool
 			pk, err := DeserializePubKeyCompressed(Bytes48(rawPk))
 			if err != nil {
-				require.Nil(t, test.Output)
+				require.False(t, test.Output)
 				return
 			}
 			sig, err := DeserializeSignatureCompressed(Bytes96(rawSig))
@@ -321,7 +329,7 @@ func TestVerify(t *testing.T) {
 			var msg EthBlsMessage
 			err = msg.UnmarshalText([]byte(test.Input.Message))
 			if err != nil {
-				require.Nil(t, test.Output)
+				require.False(t, test.Output)
 				return
 			}
 			status, err = pk.Verify(msg[:], sig)
@@ -341,7 +349,7 @@ func TestVerify(t *testing.T) {
 				{
 					output, err := pk.SerializeCompressed()
 					if err != nil {
-						require.Nil(t, test.Output)
+					require.False(t, test.Output)
 						return
 					}
 					require.Equal(t, output[:], rawPk[:])
@@ -349,7 +357,7 @@ func TestVerify(t *testing.T) {
 				{
 					output, err := sig.SerializeCompressed()
 					if err != nil {
-						require.Nil(t, test.Output)
+					require.False(t, test.Output)
 						return
 					}
 					require.Equal(t, output[:], rawSig[:])
@@ -374,7 +382,9 @@ func TestFastAggregateVerify(t *testing.T) {
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			testFile, err := os.Open(testPath)
+			require.NoError(t, err)
 			test := Test{}
+			defer testFile.Close()
 			err = json.NewDecoder(testFile).Decode(&test)
 
 			var rawPks []EthBlsPubKeyRaw
@@ -382,7 +392,7 @@ func TestFastAggregateVerify(t *testing.T) {
 				var rawPk EthBlsPubKeyRaw
 				err = rawPk.UnmarshalText([]byte(s))
 				if err != nil {
-					require.Nil(t, test.Output)
+					require.False(t, test.Output)
 					return
 				}
 				rawPks = append(rawPks, rawPk)
@@ -390,7 +400,7 @@ func TestFastAggregateVerify(t *testing.T) {
 			var rawSig EthBlsSignatureRaw
 			err = rawSig.UnmarshalText([]byte(test.Input.Signature))
 			if err != nil {
-				require.Nil(t, test.Output)
+				require.False(t, test.Output)
 				return
 			}
 
@@ -413,7 +423,7 @@ func TestFastAggregateVerify(t *testing.T) {
 				var msg EthBlsMessage
 				err = msg.UnmarshalText([]byte(test.Input.Message))
 				if err != nil {
-					require.Nil(t, test.Output)
+					require.False(t, test.Output)
 					return
 				}
 				status, err = FastAggregateVerify(pks, msg[:], sig)

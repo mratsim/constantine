@@ -77,7 +77,7 @@ TestVectorsDir.testGen(recover_cells_and_kzg_proofs, "kzg-mainnet", testVector):
   var recoveredCells: array[CELLS_PER_EXT_BLOB, Cell]
   var recoveredProofs: array[CELLS_PER_EXT_BLOB, KZGProofBytes]
 
-  let status = recover_cells_and_kzg_proofs(ctx, recoveredProofs.asUnchecked(), recoveredCells.asUnchecked(), cellIndices.asUnchecked(), cells.asUnchecked(), cellIndices.len)
+  let status = recover_cells_and_kzg_proofs(ctx, recoveredCells.asUnchecked(), recoveredProofs.asUnchecked(), cellIndices.asUnchecked(), cells.asUnchecked(), cellIndices.len)
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:

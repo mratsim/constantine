@@ -36,8 +36,8 @@ proc benchRecoverCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, ite
 
     doAssert cttEthKzg_Success == recover_cells_and_kzg_proofs(
       ctx,
-      recovered_proofs[].asUnchecked(),
       recovered_cells[].asUnchecked(),
+      recovered_proofs[].asUnchecked(),
       b.halfCellIndices[0].asUnchecked(),
       b.halfCells[0].asUnchecked(),
       b.halfCells[0].len)

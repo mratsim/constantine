@@ -41,8 +41,12 @@ struct OptRawBytes<const N: usize>(Option<Box<[u8; N]>>);
 impl<const N: usize> hex::FromHex for OptRawBytes<N> {
     type Error = hex::FromHexError;
     fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
+        let raw = hex.as_ref();
+        if raw.len() < 2 || &raw[..2] != b"0x" {
+            return Ok(OptRawBytes::<N> { 0: None });
+        }
         let mut res = Box::new([0_; N]);
-        match hex::decode_to_slice(&hex.as_ref()[2..], &mut *res as &mut [u8]) {
+        match hex::decode_to_slice(&raw[2..], &mut *res as &mut [u8]) {
             Ok(_) => Ok(OptRawBytes::<N> { 0: Some(res) }),
             Err(_) => Ok(OptRawBytes::<N> { 0: None }),
         }
@@ -348,7 +352,7 @@ fn t_recover_cells_and_kzg_proofs() {
         }
 
         match ctx.recover_cells_and_kzg_proofs(&cells_raw, &cell_indices) {
-            Ok((proofs_bytes, cells_bytes)) => {
+            Ok((cells_bytes, proofs_bytes)) => {
                 let (expected_cells, expected_proofs) = test.output.unwrap();
                 assert_eq!(expected_cells.len(), 128);
                 assert_eq!(expected_proofs.len(), 128);

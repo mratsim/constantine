@@ -60,14 +60,15 @@ proc test_recover_from_64_cells*(ctx: ptr EthereumKZGContext) =
   echo "  Available cells: ", available_indices.len
 
   var recovered_cells: array[CELLS_PER_EXT_BLOB, Cell]
-  var recovered_proofs: array[CELLS_PER_EXT_BLOB, KZGProof]
+  var recovered_proofs: array[CELLS_PER_EXT_BLOB, KZGProofBytes]
 
   echo "  Calling recover_cells_and_kzg_proofs..."
   let recover_status = ctx.recover_cells_and_kzg_proofs(
-    recovered_proofs,
-    recovered_cells,
-    available_cells,
-    available_indices
+    recovered_cells.asUnchecked(),
+    recovered_proofs.asUnchecked(),
+    available_indices.asUnchecked(),
+    available_cells.asUnchecked(),
+    available_cells.len
   )
   doAssert recover_status == cttEthKzg_Success
 
@@ -96,13 +97,14 @@ proc test_recover_from_65_cells*(ctx: ptr EthereumKZGContext) =
       available_cells.add(cells[i])
 
   var recovered_cells: array[CELLS_PER_EXT_BLOB, Cell]
-  var recovered_proofs: array[CELLS_PER_EXT_BLOB, KZGProof]
+  var recovered_proofs: array[CELLS_PER_EXT_BLOB, KZGProofBytes]
 
   let recover_status = ctx.recover_cells_and_kzg_proofs(
-    recovered_proofs,
-    recovered_cells,
-    available_cells,
-    available_indices
+    recovered_cells.asUnchecked(),
+    recovered_proofs.asUnchecked(),
+    available_indices.asUnchecked(),
+    available_cells.asUnchecked(),
+    available_cells.len
   )
   doAssert recover_status == cttEthKzg_Success
 
@@ -128,13 +130,14 @@ proc test_recover_from_all_cells*(ctx: ptr EthereumKZGContext) =
     available_cells.add(cells[i])
 
   var recovered_cells: array[CELLS_PER_EXT_BLOB, Cell]
-  var recovered_proofs: array[CELLS_PER_EXT_BLOB, KZGProof]
+  var recovered_proofs: array[CELLS_PER_EXT_BLOB, KZGProofBytes]
 
   let recover_status = ctx.recover_cells_and_kzg_proofs(
-    recovered_proofs,
-    recovered_cells,
-    available_cells,
-    available_indices
+    recovered_cells.asUnchecked(),
+    recovered_proofs.asUnchecked(),
+    available_indices.asUnchecked(),
+    available_cells.asUnchecked(),
+    available_cells.len
   )
   doAssert recover_status == cttEthKzg_Success
 
@@ -161,13 +164,14 @@ proc test_recover_alternate_indices*(ctx: ptr EthereumKZGContext) =
       available_cells.add(cells[i])
 
   var recovered_cells: array[CELLS_PER_EXT_BLOB, Cell]
-  var recovered_proofs: array[CELLS_PER_EXT_BLOB, KZGProof]
+  var recovered_proofs: array[CELLS_PER_EXT_BLOB, KZGProofBytes]
 
   let recover_status = ctx.recover_cells_and_kzg_proofs(
-    recovered_proofs,
-    recovered_cells,
-    available_cells,
-    available_indices
+    recovered_cells.asUnchecked(),
+    recovered_proofs.asUnchecked(),
+    available_indices.asUnchecked(),
+    available_cells.asUnchecked(),
+    available_cells.len
   )
   doAssert recover_status == cttEthKzg_Success
 
@@ -193,13 +197,14 @@ proc test_too_few_cells_error*(ctx: ptr EthereumKZGContext) =
     available_cells.add(cells[i])
 
   var recovered_cells: array[CELLS_PER_EXT_BLOB, Cell]
-  var recovered_proofs: array[CELLS_PER_EXT_BLOB, KZGProof]
+  var recovered_proofs: array[CELLS_PER_EXT_BLOB, KZGProofBytes]
 
   let recover_status = ctx.recover_cells_and_kzg_proofs(
-    recovered_proofs,
-    recovered_cells,
-    available_cells,
-    available_indices
+    recovered_cells.asUnchecked(),
+    recovered_proofs.asUnchecked(),
+    available_indices.asUnchecked(),
+    available_cells.asUnchecked(),
+    available_cells.len
   )
   doAssert recover_status == cttEthKzg_InputsLengthsMismatch
 
@@ -223,13 +228,14 @@ proc test_duplicate_indices_error*(ctx: ptr EthereumKZGContext) =
   available_cells.add(cells[0])
 
   var recovered_cells: array[CELLS_PER_EXT_BLOB, Cell]
-  var recovered_proofs: array[CELLS_PER_EXT_BLOB, KZGProof]
+  var recovered_proofs: array[CELLS_PER_EXT_BLOB, KZGProofBytes]
 
   let recover_status = ctx.recover_cells_and_kzg_proofs(
-    recovered_proofs,
-    recovered_cells,
-    available_cells,
-    available_indices
+    recovered_cells.asUnchecked(),
+    recovered_proofs.asUnchecked(),
+    available_indices.asUnchecked(),
+    available_cells.asUnchecked(),
+    available_cells.len
   )
   doAssert recover_status == cttEthKzg_InputsLengthsMismatch
 

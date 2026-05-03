@@ -280,6 +280,20 @@ func compute_cells_and_kzg_proofs*(
   ## 3. Compute cells via zero-padding (no FFT!) [stays in evaluation form]
   ## 4. Compute FK20 proofs from monomial polynomial [4096 coeffs] + bit-reverse
   ## 5. Serialize cells and proofs to bytes
+  
+  # Validate FFI pointers before dereferencing
+  if ctx.isNil or cells.isNil or proofs.isNil:
+    return cttEthKzg_InputsLengthsMismatch
+  
+  # Step 1: Deserialize blob to polynomial (Lagrange form)
+  ## Compute all cells and proofs for an extended blob using FK20 algorithm.
+  ##
+  ## Algorithm:
+  ## 1. Convert blob to polynomial (Lagrange form) [Serialization]
+  ## 2. Convert to monomial form via IFFT [4096 roots of unity] (for FK20 proofs)
+  ## 3. Compute cells via zero-padding (no FFT!) [stays in evaluation form]
+  ## 4. Compute FK20 proofs from monomial polynomial [4096 coeffs] + bit-reverse
+  ## 5. Serialize cells and proofs to bytes
 
   # Step 1: Deserialize blob to polynomial (Lagrange form)
   let poly_lagrange = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381], kBitReversed], 64)
@@ -502,7 +516,11 @@ func verify_cell_kzg_proof_batch*(
     return cttEthKzg_VerificationFailure
   if n == 0:
     return cttEthKzg_Success
-
+  
+  # Validate FFI pointers before dereferencing
+  if ctx.isNil or commitments_bytes.isNil or cell_indices.isNil or cells.isNil or proofs_bytes.isNil:
+    return cttEthKzg_InputsLengthsMismatch
+  
   # Validate cell indices are in bounds
   for i in 0 ..< n:
     if cell_indices[i] >= CELLS_PER_EXT_BLOB:
@@ -588,8 +606,8 @@ func verify_cell_kzg_proof_batch*(
 
 func recover_cells_and_kzg_proofs*(
        ctx: ptr EthereumKZGContext,
-       recovered_proofs: ptr UncheckedArray[KZGProofBytes],
        recovered_cells: ptr UncheckedArray[Cell],
+       recovered_proofs: ptr UncheckedArray[KZGProofBytes],
        cell_indices: ptr UncheckedArray[CellIndex],
        cells: ptr UncheckedArray[Cell],
        n: int): cttEthKzgStatus {.libPrefix: prefix_eth_kzg, raises: [].} =
@@ -603,14 +621,18 @@ func recover_cells_and_kzg_proofs*(
   ##    [Domain: 2*N roots of unity, Coset shift: SCALE_FACTOR=5]
   ## 4. Recompute all cells from recovered polynomial
   ## 5. Convert cells to bytes [Serialization]
-
+  
+  # Validate FFI pointers before dereferencing
+  if ctx.isNil or recovered_cells.isNil or recovered_proofs.isNil or cell_indices.isNil or cells.isNil:
+    return cttEthKzg_InputsLengthsMismatch
+  
   # Step 1: Validation
   if n < CELLS_PER_EXT_BLOB div 2:
     return cttEthKzg_InputsLengthsMismatch
-
+  
   if n > CELLS_PER_EXT_BLOB:
     return cttEthKzg_InputsLengthsMismatch
-
+  
   # Validate bounds and uniqueness (strict ordering enforces both)
   for i in 0 ..< n:
     if uint64(cell_indices[i]) >= uint64(CELLS_PER_EXT_BLOB):

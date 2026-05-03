@@ -90,8 +90,8 @@ ctt_eth_kzg_status ctt_eth_kzg_verify_cell_kzg_proof_batch(
  */
 ctt_eth_kzg_status ctt_eth_kzg_recover_cells_and_kzg_proofs(
         const ctt_eth_kzg_context* ctx,
-        ctt_eth_kzg_proof* recovered_proofs,
         ctt_eth_kzg_cell* recovered_cells,
+        ctt_eth_kzg_proof* recovered_proofs,
         const uint64_t* cell_indices,
         const ctt_eth_kzg_cell* cells,
         size_t num_cells
