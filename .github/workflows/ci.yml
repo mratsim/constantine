@@ -402,7 +402,7 @@ jobs:
         # We need to deactivate the assembly (used by default for benches)
         run: |
           cd constantine
-          cargo test -- --nocapture
+          RUSTFLAGS="-C link-arg=-Wl,-z,stack-size=1048576" cargo test -- --nocapture
 
       - name: Compile Constantine Zkalc benchmark (no assembly)
         # Skip 32-bit as that would need clang-multilib or -m32

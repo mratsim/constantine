@@ -147,7 +147,6 @@ func compilerFlags(): string =
 
   " -d:danger " &
   # " --opt:size " &
-  " --passL:-Wl,-z,stack-size=1048576 " &
   " --panics:on -d:noSignalHandler " &
   " --mm:arc -d:useMalloc " &
   " --verbosity:0 --hints:off --warnings:off " &
@@ -219,6 +218,17 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
   # We thus need to embed the search path directly into our binary using runtime search path.
   let linkerOptions = if apple: " --passL:'-L/opt/homebrew/lib -Wl,-rpath,/opt/homebrew/lib' "
                       else: ""
+  # Stack size: Platform-specific linker flags
+  # Windows: /STACK (MSVC) or --stack (MinGW)
+  # macOS: -stack_size (ld64/ld_prime, hex)
+  # Linux: -z stack-size (GNU ld / lld, decimal)
+  let stackSizeFlag =
+    if defined(windows):
+      # Windows: MSVC uses /STACK, MinGW uses --stack
+      if defined(msvc): " --passL:/STACK:1048576 "
+      else: " --passL:-Wl,--stack,1048576 "
+    elif apple: " --passL:-Wl,-stack_size,0x100000 "  # ld64/ld_prime syntax (1MB)
+    else: " --passL:-Wl,-z,stack-size=1048576 "     # GNU ld / lld (1MB)
   let osSpecific =
     if defined(windows): "" # " --passC:-mno-stack-arg-probe "
       # Remove the auto __chkstk, which are: 1. slower, 2. not supported on Rust "stable-gnu" channel.
@@ -232,6 +242,7 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
     envASM & env32 &
     ltoOptions &
     linkerOptions &
+    stackSizeFlag &
     osSpecific &
     threadLocalStorage &
     compilerFlags()

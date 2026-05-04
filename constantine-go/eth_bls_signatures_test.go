@@ -103,7 +103,7 @@ func TestExampleCBlsSig(t *testing.T) {
 }
 
 func TestDeserializeG1(t *testing.T) {
-	fmt.Println("Running test for path: ", deserialization_G1Tests)
+	t.Logf("Running test for path: %s", deserialization_G1Tests)
 	type Test struct {
 		Input struct {
 			PubKey string `json:"pubkey"`
@@ -156,7 +156,7 @@ func TestDeserializeG1(t *testing.T) {
 }
 
 func TestDeserializeG2(t *testing.T) {
-	fmt.Println("Running test for path: ", deserialization_G2Tests)
+	t.Logf("Running test for path: %s", deserialization_G2Tests)
 	type Test struct {
 		Input struct {
 			Signature string `json:"signature"`
@@ -209,7 +209,7 @@ func TestDeserializeG2(t *testing.T) {
 }
 
 func TestSign(t *testing.T) {
-	fmt.Println("Running test for path: ", signTests)
+	t.Logf("Running test for path: %s", signTests)
 	type Test struct {
 		Input struct {
 			PrivKey string `json:"privkey"`
@@ -275,11 +275,11 @@ func TestSign(t *testing.T) {
 						var roundTrip Bytes96
 						sigBytes, sb_err := sig.SerializeCompressed()
 						roundTrip, rt_err := output.SerializeCompressed()
-						fmt.Println("\nResult signature differs from expected \n",
-							"   computed:  0x", sigBytes, " (", sb_err, ")\n",
-							"   roundtrip: 0x", roundTrip, " (", rt_err, ")\n",
-							"   expected:  0x", test.Output,
-						)
+						t.Logf("\nResult signature differs from expected \n"+
+							"   computed:  0x%v (%v)\n"+
+							"   roundtrip: 0x%v (%v)\n"+
+							"   expected:  0x%v",
+							sigBytes, sb_err, roundTrip, rt_err, test.Output)
 						require.True(t, false) // fail the test case
 						return
 					}
@@ -300,7 +300,7 @@ func TestSign(t *testing.T) {
 }
 
 func TestVerify(t *testing.T) {
-	fmt.Println("Running test for path: ", verifyTests)
+	t.Logf("Running test for path: %s", verifyTests)
 	type Test struct {
 		Input struct {
 			PubKey    string `json:"pubkey"`
@@ -358,10 +358,9 @@ func TestVerify(t *testing.T) {
 			status, err = pk.Verify(msg[:], sig)
 			require.NoError(t, err)
 			if status != test.Output {
-				fmt.Println("Verification differs from expected \n",
-					"   valid sig? ", status, "\n",
-					"   expected: ", test.Output,
-				)
+			t.Logf("Verification differs from expected \n"+
+				"   valid sig? %v\n"+
+				"   expected: %v", status, test.Output)
 				require.True(t, false)
 				return
 			} else if status {
@@ -387,7 +386,7 @@ func TestVerify(t *testing.T) {
 }
 
 func TestFastAggregateVerify(t *testing.T) {
-	fmt.Println("Running test for path: ", fast_aggregate_verifyTests)
+	t.Logf("Running test for path: %s", fast_aggregate_verifyTests)
 	type Test struct {
 		Input struct {
 			PubKeys   []string `json:"pubkeys"`
@@ -545,7 +544,7 @@ func TestFastAggregateVerify(t *testing.T) {
 //}
 
 func TestBatchVerify(t *testing.T) {
-	fmt.Println("Running test for path: ", batch_verifyTests)
+	t.Logf("Running test for path: %s", batch_verifyTests)
 	type Test struct {
 		Input struct {
 			PubKeys    []string `json:"pubkeys"`
