@@ -399,10 +399,17 @@ jobs:
       - name: Run Constantine as Rust library tests (with Assembly)
         if: matrix.target.ctt_backend == 'ASM' && matrix.target.cpu != 'i386'
         shell: bash
-        # We need to deactivate the assembly (used by default for benches)
+        # Stack size limit for debugging (platform-specific)
         run: |
           cd constantine
-          RUSTFLAGS="-C link-arg=-Wl,-z,stack-size=1048576" cargo test -- --nocapture
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            RUSTFLAGS="-C link-arg=-Wl,-stack_size,0x100000" cargo test -- --nocapture
+          elif [[ "${{ runner.os }}" == "Windows" ]]; then
+            # Windows MSVC uses /STACK (decimal)
+            RUSTFLAGS="-C link-arg=/STACK:1048576" cargo test -- --nocapture
+          else
+            RUSTFLAGS="-C link-arg=-Wl,-z,stack-size=1048576" cargo test -- --nocapture
+          fi
 
       - name: Compile Constantine Zkalc benchmark (no assembly)
         # Skip 32-bit as that would need clang-multilib or -m32
