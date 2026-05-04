@@ -11,7 +11,6 @@ package constantine
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -356,7 +355,10 @@ func TestVerify(t *testing.T) {
 				return
 			}
 			status, err = pk.Verify(msg[:], sig)
-			require.NoError(t, err)
+			if err != nil { // expected this verification fails?
+				require.Equal(t, false, test.Output)
+				return
+			}
 			if status != test.Output {
 			t.Logf("Verification differs from expected \n"+
 				"   valid sig? %v\n"+
@@ -450,10 +452,13 @@ func TestFastAggregateVerify(t *testing.T) {
 					return
 				}
 				status, err = FastAggregateVerify(pks, msg[:], sig)
-				require.NoError(t, err)
-			}
-			require.Equal(t, test.Output, status,
+				if err != nil { // expected this verification fails?
+					require.Equal(t, false, test.Output)
+					return
+				}
+				require.Equal(t, test.Output, status,
 				"Verification differs: valid sig? %v", status)
+			}
 		})
 	}
 }
