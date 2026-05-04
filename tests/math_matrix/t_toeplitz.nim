@@ -168,7 +168,9 @@ proc testToeplitzAccumulatorFinishErrors() =
 
   # finish without any accumulate → Toeplitz_MismatchedSizes (offset != L)
   var output: array[4, BLS12_381_G1_Prj]
-  doAssert acc.finish(output.toOpenArray(0, 3)) == Toeplitz_MismatchedSizes
+  var basisPts: array[4, array[2, G1Aff]]
+  let basis = cast[ptr UncheckedArray[array[2, G1Aff]]](addr basisPts[0])
+  doAssert acc.finish(output.toOpenArray(0, 3), basis.toOpenArray(0, 3)) == Toeplitz_MismatchedSizes
 
   echo "✓ ToeplitzAccumulator.finish errors PASSED"
 

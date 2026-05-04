@@ -79,7 +79,7 @@ proc main() =
   var proofs: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
 
   resetMetering()
-  kzg_coset_prove[L, CDS, BLS12_381](
+  kzg_coset_prove(
     proofs,
     poly.coefs,
     ctx.fft_desc_ext,

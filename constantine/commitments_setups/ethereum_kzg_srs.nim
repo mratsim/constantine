@@ -9,10 +9,10 @@
 import
   constantine/named/algebras,
   constantine/math/[arithmetic, extension_fields],
-  constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_batch_ops],
+  constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_batch_ops, ec_multi_scalar_mul_precomp],
   constantine/math/polynomials/[polynomials, fft_fields, fft_ec],
   constantine/math/io/io_fields,
-  constantine/platforms/[allocs, bithacks, fileio, views],
+  constantine/platforms/[allocs, bithacks, fileio, views, abstractions],
   constantine/serialization/[codecs, codecs_status_codes, codecs_bls12_381],
   constantine/commitments/kzg_multiproofs
 
@@ -203,19 +203,20 @@ type
     # The extended domain roots are stored in fft_desc_ext.rootsOfUnity
     # and can be accessed when needed (e.g., in recover functions).
 
-    polyphaseSpectrumBank*{.align: 64.}: array[FIELD_ELEMENTS_PER_CELL, array[CELLS_PER_EXT_BLOB, EC_ShortW_Aff[Fp[BLS12_381], G1]]]
-    # Precomputed polyphase decomposition of the SRS in the Fourier domain (affine form).
+    polyphaseSpectrumBank*{.align: 64.}: array[CELLS_PER_EXT_BLOB, PrecomputedMSM[EC_ShortW_Jac[Fp[BLS12_381], G1], FIELD_ELEMENTS_PER_CELL, 128, 12]]
+    # Precomputed MSM tables for FK20 KZG multiproofs (one table per output position).
+    # Each table contains the precomputed lookup for one MSM of size 64 (FIELD_ELEMENTS_PER_CELL).
+    # Window params: t=128 (doubling stride between precomputed layers),
+    # b=12 (window size 4096).
+    # Size: ~4.33 MiB per table × 128 tables ≈ 554 MB total
     #
-    # This is computed once during trusted setup and reused for all KZG multiproofs.
-    # Size: L × CDS = 64 × 128 = 8192 EC points in affine form
-    #
-    # References:
-    #   - FK23 Paper (Feist-Khovratovich 2023), Proposition 4: https://eprint.iacr.org/2023/033
-    #   - DSP: the SRS is seen as an input signal that undergoes multirate DSP
-
-    # ⚠️ WARNING: This field is ~1.18 MB (64 × 128 × 144 bytes).
-    # - MUST use alloc0HeapAligned for EthereumKZGContext (never stack allocate)
-    # - Language bindings (C/Rust): always use ptr semantics, avoid by-value moves/copies
+    # This combines
+    # - FK23: https://eprint.iacr.org/2023/033
+    #   for the base algorithm for KZG multiproofs via coset proofs
+    # - Herold-Hagopian precomputed MSMs
+    #   initially designed for Verkle Tries
+    #   - https://hackmd.io/WfIjm0icSmSoqy2cfqenhQ
+    #   - https://hackmd.io/@jsign/vkt-another-iteration-of-vkt-msms
 
   TrustedSetupStatus* = enum
     tsSuccess
@@ -345,8 +346,18 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
     )
 
   block:
-    computePolyphaseDecompositionFourier(ctx.polyphaseSpectrumBank, ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
+    # Compute polyphase decomposition (offset-major) as affine points.
+    type BLS12_381_G1_Aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+    let tmp = allocHeapAligned(array[FIELD_ELEMENTS_PER_CELL, array[CELLS_PER_EXT_BLOB, BLS12_381_G1_Aff]], 64)
+    defer: freeHeapAligned(tmp)
+    computePolyphaseDecompositionFourier(tmp[], ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
 
+    # Build PrecomputedMSM table for each output position (64 affine points per table).
+    for pos in 0 ..< CELLS_PER_EXT_BLOB:
+      var points {.noInit.}: array[FIELD_ELEMENTS_PER_CELL, BLS12_381_G1_Aff]
+      for offset in 0 ..< FIELD_ELEMENTS_PER_CELL:
+        points[offset] = tmp[offset][pos]
+      ctx.polyphaseSpectrumBank[pos].init(points)
   block:
     # Powers of tau: [G, [τ]G, [τ²]G, ... [τ⁴⁰⁹⁶]G]
 

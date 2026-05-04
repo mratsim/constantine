@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  constantine/math/[ec_shortweierstrass, ec_twistededwards],
   # Internals
   ./algebras,
   ./constants/bandersnatch_subgroups,
@@ -30,7 +31,7 @@ export
   vesta_subgroups,
   secp256k1_subgroups
 
-func clearCofactor*[EC](P: var EC) {.inline.} =
+func clearCofactor*[EC: EC_ShortW | EC_TwEdw](P: var EC) {.inline.} =
   ## Clear the cofactor of a point on the curve
   ## From a point on the curve, returns a point on the subgroup of order r
   when EC.F.Name in {BN254_Nogami, BN254_Snarks, BLS12_377, BLS12_381}:

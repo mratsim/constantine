@@ -16,6 +16,7 @@ import
   constantine/named/algebras,
   constantine/named/zoo_generators,
   constantine/math/[ec_shortweierstrass, extension_fields],
+  constantine/math/elliptic/ec_multi_scalar_mul_precomp,
   constantine/math/polynomials/[polynomials, fft_fields, fft_ec],
   constantine/math/arithmetic/finite_fields,
   constantine/math/matrix/toeplitz,
@@ -56,9 +57,13 @@ proc testFK20SingleProofs() =
 
   var polyphaseSpectrumBank: array[L, array[CDS, BLS12_381_G1_Aff]]
   computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
+  var polyphaseBasis: array[CDS, array[L, BLS12_381_G1_Aff]]
+  for offset in 0 ..< L:
+    for pos in 0 ..< CDS:
+      polyphaseBasis[pos][offset] = polyphaseSpectrumBank[offset][pos]
 
   var fk20Proofs: array[CDS, BLS12_381_G1_Aff]
-  kzg_coset_prove(fk20Proofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
+  kzg_coset_prove(fk20Proofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseBasis)
 
   # Compute commitment using pre-generated BigInt polynomial
   var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
@@ -110,10 +115,14 @@ proc testFK20MultiProofs(L: static int) =
 
   var polyphaseSpectrumBank: array[L, array[CDS, BLS12_381_G1_Aff]]
   computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
+  var polyphaseBasis: array[CDS, array[L, BLS12_381_G1_Aff]]
+  for offset in 0 ..< L:
+    for pos in 0 ..< CDS:
+      polyphaseBasis[pos][offset] = polyphaseSpectrumBank[offset][pos]
 
   var fk20Proofs: array[CDS, BLS12_381_G1_Aff]
   kzg_coset_prove(
-    fk20Proofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
+    fk20Proofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseBasis)
 
   fk20Proofs.bit_reversal_permutation()
 
@@ -177,10 +186,14 @@ proc testNonOptimizedCosetProofs*(L: static int) =
 
   var polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]]
   computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
+  var polyphaseBasis: array[CDS, array[L, EC_ShortW_Aff[Fp[BLS12_381], G1]]]
+  for offset in 0 ..< L:
+    for pos in 0 ..< CDS:
+      polyphaseBasis[pos][offset] = polyphaseSpectrumBank[offset][pos]
 
   var fk20Proofs: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
   kzg_coset_prove(
-    fk20Proofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseSpectrumBank)
+    fk20Proofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseBasis)
 
   fk20Proofs.bit_reversal_permutation()
 
@@ -814,6 +827,87 @@ proc testKzgCosetVerifyBatchMultipleCommitments*() =
 
   echo "✓ Multiple commitments tests all PASSED"
 
+
+proc testFK20PrecompMSM() =
+  ## Test kzg_coset_prove with PrecomputedMSM overload,
+  ## verify results match the affine-array version.
+  echo "Testing FK20 with PrecomputedMSM (L=2, t=64, b=8)..."
+  const N = 16
+  const CDS = 16
+  const L = 2
+  const t = 64
+  const b = 8
+  const maxWidth = 32
+  const tauHex = "0xa473319528c8b6ea4d08cc531800000000000000000000000000000000000000"
+
+  let setup = gen_setup(N, L, maxWidth, tauHex)
+  let ecfft_desc = ECFFT_Descriptor[BLS12_381_G1_Jac].new(order = CDS, setup.omegaForFFT)
+  let fr_fft_desc = FrFFT_Descriptor[Fr[BLS12_381]].new(order = CDS, setup.omegaForFFT)
+
+  # Build polyphase bank (offset-major -> position-major)
+  var polyphaseSpectrumBank: array[L, array[CDS, BLS12_381_G1_Aff]]
+  computePolyphaseDecompositionFourier(polyphaseSpectrumBank, setup.powers_of_tau_G1, ecfft_desc)
+  var polyphaseBasis: array[CDS, array[L, BLS12_381_G1_Aff]]
+  for offset in 0 ..< L:
+    for pos in 0 ..< CDS:
+      polyphaseBasis[pos][offset] = polyphaseSpectrumBank[offset][pos]
+
+  # 1. Compute proofs with affine-array overload (reference)
+  var affineProofs: array[CDS, BLS12_381_G1_Aff]
+  kzg_coset_prove(affineProofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseBasis)
+
+  # 2. Build PrecomputedMSM bank from the same data
+  var precompBank: array[CDS, PrecomputedMSM[BLS12_381_G1_Jac, L, t, b]]
+  for pos in 0 ..< CDS:
+    precompBank[pos].init(polyphaseBasis[pos])
+
+  # 3. Compute proofs with PrecomputedMSM overload
+  var precompProofs: array[CDS, BLS12_381_G1_Aff]
+  kzg_coset_prove(precompProofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, precompBank)
+
+  # 4. Bit-reverse both (FK20 convention)
+  affineProofs.bit_reversal_permutation()
+  precompProofs.bit_reversal_permutation()
+
+  # 5. Compare: PrecompMSM proofs must match affine proofs exactly
+  var matching = 0
+  for i in 0 ..< CDS:
+    if (affineProofs[i] == precompProofs[i]).bool:
+      inc matching
+    else:
+      echo "  MISMATCH at pos=", i
+      echo "    affine:  ", $affineProofs[i]
+      echo "    precomp: ", $precompProofs[i]
+  doAssert matching == CDS, "PrecompMSM proofs don't match affine proofs"
+  echo "  All ", CDS, " PrecompMSM proofs match affine references"
+
+  # 6. Verify each PrecompMSM proof with kzg_coset_verify
+  var commitmentAff: EC_ShortW_Aff[Fp[BLS12_381], G1]
+  kzg_commit(setup.powers_of_tau_G1, commitmentAff, setup.testPolyBig)
+  const chunkCount = N div L
+  const numProofs = 2 * chunkCount
+  const nBits = 4
+  var verified = 0
+  for pos in 0'u32 ..< numProofs:
+    let domainPos = reverseBits(pos, nBits)
+    let h = setup.rootsOfUnity.rootsOfUnity[domainPos]
+    var ys: array[L, Fr[BLS12_381]]
+    ys.computeEvalsAtCoset(setup.testPoly, h, setup.rootsOfUnity)
+    ys.bit_reversal_permutation()
+    let ok = fr_fft_desc.kzg_coset_verify(
+      commitmentAff,
+      proof = precompProofs[pos],
+      ys,
+      cosetShift = h,
+      setup.powers_of_tau_G1.coefs,
+      setup.powers_of_tau_G2.coefs[L])
+    if ok:
+      inc verified
+    else:
+      echo "  FAILED verification at pos=", pos
+  doAssert verified == numProofs, "Not all PrecompMSM proofs verified"
+  echo "  Verified ", verified, "/", numProofs, " proofs"
+  echo "PrecompMSM test PASSED"
 when isMainModule:
   echo "========================================"
   echo "    KZG Multi-Proof Tests"
@@ -831,6 +925,11 @@ when isMainModule:
 
   echo "Multiple proofs per coset (L=4) ... "
   testFK20MultiProofs(4)
+
+  echo "---------------------------"
+
+  echo "Precomputed MSM (PrecomputedMSM overload) ... "
+  testFK20PrecompMSM()
 
   echo "---------------------------"
 

@@ -24,6 +24,7 @@ import
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_batch_ops,
+    ec_multi_scalar_mul_precomp,
     ec_scalar_mul],
     constantine/named/zoo_subgroups,
   # Helpers
@@ -36,6 +37,7 @@ import
 export notes
 export abstractions # generic sandwich on SecretBool and SecretBool in Jacobian sum
 export bench_blueprint
+export arithmetic # generic sandwich with square from zoo_subgroups
 
 proc separator*() = separator(179)
 
@@ -66,6 +68,12 @@ proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int6
 template bench*(op: string, EC: typedesc, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
   report(op, fixEllipticDisplay(EC), startTime, stopTime, startClk, stopClk, iters)
+
+# ############################################################
+#
+#               Primitive operations
+#
+# ############################################################
 
 func `+=`[F; G: static Subgroup](P: var EC_ShortW_JacExt[F, G], Q: EC_ShortW_JacExt[F, G]) {.inline.}=
   P.sum_vartime(P, Q)
@@ -162,6 +170,49 @@ proc affFromJacBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, iter
       for i in 0 ..< numPoints:
         r[i].affine(points[i])
 
+
+proc subgroupCheckBench*(EC: typedesc, iters: int) {.noinline.} =
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
+
+  bench("Subgroup check", EC, iters):
+    discard P.isInSubgroup()
+
+proc subgroupCheckScalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iters: int) {.noinline.} =
+  var r {.noInit.}: EC
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
+
+  let exponent = rng.random_unsafe(BigInt[bits])
+
+  bench("EC subgroup check + ScalarMul " & $bits & "-bit " & $EC.G & " (vartime endo + wNAF-" & $window & ")", EC, iters):
+    r = P
+    discard r.isInSubgroup()
+    r.scalarMulEndo_wNAF_vartime(exponent, window)
+
+proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) {.noinline.} =
+  var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](numPoints)
+
+  for i in 0 ..< numPoints:
+    points[i] = rng.random_unsafe(EC_ShortW_Aff[EC.F, EC.G])
+
+  var r{.noInit.}: EC
+
+  if useBatching:
+    bench("EC Multi Add batched                  " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+      r.sum_reduce_vartime(points)
+  else:
+    bench("EC Multi Mixed-Add unbatched          " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+      r.setNeutral()
+      for i in 0 ..< numPoints:
+        r += points[i]
+
+# ############################################################
+#
+#               Scalar Multiplication
+#
+# ############################################################
+
 proc scalarMulGenericBench*(EC: typedesc, bits, window: static int, iters: int) {.noinline.} =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
@@ -242,42 +293,11 @@ proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iter
     r = P
     r.scalarMulEndo_wNAF_vartime(exponent, window)
 
-proc subgroupCheckBench*(EC: typedesc, iters: int) {.noinline.} =
-  var P = rng.random_unsafe(EC)
-  P.clearCofactor()
-
-  bench("Subgroup check", EC, iters):
-    discard P.isInSubgroup()
-
-proc subgroupCheckScalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iters: int) {.noinline.} =
-  var r {.noInit.}: EC
-  var P = rng.random_unsafe(EC)
-  P.clearCofactor()
-
-  let exponent = rng.random_unsafe(BigInt[bits])
-
-  bench("EC subgroup check + ScalarMul " & $bits & "-bit " & $EC.G & " (vartime endo + wNAF-" & $window & ")", EC, iters):
-    r = P
-    discard r.isInSubgroup()
-    r.scalarMulEndo_wNAF_vartime(exponent, window)
-
-proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) {.noinline.} =
-  var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](numPoints)
-
-  for i in 0 ..< numPoints:
-    points[i] = rng.random_unsafe(EC_ShortW_Aff[EC.F, EC.G])
-
-  var r{.noInit.}: EC
-
-  if useBatching:
-    bench("EC Multi Add batched                  " & $EC.G & " (" & $numPoints & " points)", EC, iters):
-      r.sum_reduce_vartime(points)
-  else:
-    bench("EC Multi Mixed-Add unbatched          " & $EC.G & " (" & $numPoints & " points)", EC, iters):
-      r.setNeutral()
-      for i in 0 ..< numPoints:
-        r += points[i]
-
+# ############################################################
+#
+#               Multi Scalar Multiplication
+#
+# ############################################################
 
 proc msmBench*(EC: typedesc, numPoints: int, iters: int) {.noinline.} =
   const bits = EC.getScalarField().bits()
@@ -329,3 +349,155 @@ proc msmBench*(EC: typedesc, numPoints: int, iters: int) {.noinline.} =
 
   let speedupOptBaseline = float(perfMSMbaseline) / float(perfMSMopt)
   echo &"Speedup ratio optimized over baseline linear combination: {speedupOptBaseline:>6.3f}x"
+
+# ############################################################
+#
+#             Precomputed Multi Scalar Multiplication
+#
+# ############################################################
+
+
+type
+  PrecompBenchContext[EC; N, t, b: static int] = ref object
+    precomp: PrecomputedMSM[EC, N, t, b]
+    basisJac: seq[EC]
+    basis: seq[EC.affine]
+    scalars: seq[BigInt[EC.getScalarField().bits()]]
+    rng: RngState
+    precompTimeMs: float64
+    precompMemMiB: float64
+
+
+proc benchPrecompMSM[EC; N, t, b: static int](
+      ctx: PrecompBenchContext[EC, N, t, b],
+      iters: int) {.noinline.}=
+  const bits = EC.getScalarField().bits()
+  var result: EC
+
+  # Track actual operation counts from runtime
+  var totalOps: tuple[add, dbl: int]
+
+  # Manual benchmark to control output format
+  let start = getMonotime()
+  when SupportsGetTicks:
+    let startClk = getTicks()
+
+  for _ in 0..<iters:
+    let ops = ctx.precomp.msm_vartime(result, ctx.scalars)
+    totalOps.add += ops.add
+    totalOps.dbl += ops.dbl
+
+  when SupportsGetTicks:
+    let stopClk = getTicks()
+  let stop = getMonotime()
+
+  let ns = inNanoseconds((stop-start) div iters)
+  let throughput = 1e9 / float64(ns)
+  let cycles = (stopClk - startClk) div iters
+
+  # Average ops per iteration
+  let avgDbl = totalOps.dbl div iters
+  let avgAdd = totalOps.add div iters
+
+  # Estimated ops for comparison
+  let (estAdd, estDbl) = msmPrecompEstimateOps(EC, N, t, b)
+
+  let configStr = fmt"t={t:>3}, b={b:>2}"
+  let c1 = (align(fmt"{ctx.precompTimeMs:7.3f} ms", 12), "  ",
+    align(fmt"{ctx.precompMemMiB:6.2f} MiB", 10), "  ",
+    align(fmt"{throughput:10.3f}", 12), "  ",
+    align(fmt"{ns:10}", 12))
+  let ops = (align(fmt"{avgDbl:3}", 6), " (", align(fmt"{estDbl:3}", 3), ")", "      ",
+    align(fmt"{avgAdd:5}", 7), " (", align(fmt"{estAdd:5}", 4), ")")
+
+  when SupportsGetTicks:
+    echo align(configStr, 20), "  ", c1, "  ", align(fmt"{cycles:10}", 14), "  ", ops
+  else:
+    echo align(configStr, 20), "  ", c1, ops
+
+proc benchPrecompMSMTable[EC](
+        _: typedesc[EC],
+        N: static int,
+        iters: int,
+        precompConfigs: static openarray[tuple[t, b: int]]) =
+  ## Run precomputed MSM benchmarks for a given curve and MSM size
+  const bits = EC.getScalarField().bits()
+
+  separator(130)
+  echo "MSM Size: " & $N & " points"
+  separator(130)
+  echo ""
+
+  # Column headers
+  echo align("Config", 20), "  ",
+       align("Precomp", 12), "  ",
+       align("Memory", 10), "  ",
+       align("Ops/s", 12), "  ",
+       align("ns/op", 12), "  ",
+       align("Cycles", 14), "  ",
+       align("Dbl real (est)", 16), "  ",
+       align("Add real (est)", 16)
+  echo repeat('-', 130)
+
+  proc doBench(_: typedesc[EC], N, t, b: static int, iters: int) {.noInline.} =
+    # Wrap in a proc to ensure destruction of the large context
+    let ctx = new(PrecompBenchContext[EC, N, t, b], seed = 42'u64)
+    ctx.benchPrecompMSM(iters div max(1, N div 10))
+
+  staticFor cfgIdx, 0, precompConfigs.len:
+    const (t, b) = precompConfigs[cfgIdx]
+    doBench(EC, N, t, b, iters)
+
+  echo ""
+  echo "Reference MSM (no precomputation):"
+  var rng2: RngState
+  rng2.seed(42)
+  var basisJac2 = newSeq[EC](N)
+  var basis2 = newSeq[EC.affine()](N)
+  var scalars2 = newSeq[BigInt[bits]](N)
+
+  for i in 0 ..< N:
+    basisJac2[i] = rng2.random_unsafe(EC)
+    basisJac2[i].clearCofactor()
+
+  basis2.asUnchecked().batchAffine_vartime(basisJac2.asUnchecked(), N)
+
+  for i in 0 ..< N:
+    scalars2[i] = rng2.random_unsafe(BigInt[bits])
+
+  var refResult: EC
+  let start2 = getMonotime()
+  for _ in 0 ..< iters div max(1, N div 10):
+    refResult.multiScalarMul_vartime(scalars2, basis2)
+  let stop2 = getMonotime()
+
+  let ns2 = inNanoseconds((stop2-start2) div (iters div max(1, N div 10)))
+  let throughput2 = 1e9 / float64(ns2)
+  echo align("Reference MSM", 20), "  ",
+       align("-", 12), "  ",
+       align("-", 10), "  ",
+       align(fmt"{throughput2:10.3f}", 12), "  ",
+       align(fmt"{ns2:10}", 12)
+  echo ""
+
+
+proc runPrecompMSMBench*[EC](
+      _: typedesc[EC],
+      listNumPoints: static openArray[int],
+      precompConfigs: static openarray[tuple[t, b: int]],
+      iters: int) =
+  ## Run complete precomputed MSM benchmark suite for a curve
+  separator(130)
+  echo "Precomputed MSM Benchmark"
+  separator(130)
+  echo ""
+  echo "Legend: t = stride (bits between precomp powers), b = window size (bits per bucket)"
+  echo ""
+
+  staticFor i, 0, listNumPoints.len:
+    const N = listNumPoints[i]
+    benchPrecompMSMTable(EC, N, iters, precompConfigs)
+
+  separator(130)
+  echo "Benchmark complete"
+  echo "Lower ns/op and Cycles is better. Higher Ops/s is better."

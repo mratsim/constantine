@@ -118,9 +118,10 @@ proc benchFK20_Phase1_Full(ctx: ptr EthereumKZGContext,
     accum.offset = 0
     var circulant: array[CDS, Fr[BLS12_381]]
     for offset in 0 ..< L:
-      makeCirculantMatrix(circulant.toOpenArray(0, CDS-1), poly.coefs, offset, L)
-      doAssert accum.accumulate(circulant.toOpenArray(0, CDS-1), ctx.polyphaseSpectrumBank[offset]) == Toeplitz_Success
-    doAssert accum.finish(u.toOpenArray(0, CDS-1)) == Toeplitz_Success
+      makeCirculantMatrix(circulant, poly.coefs, offset, L)
+      doAssert accum.accumulate(circulant) == Toeplitz_Success
+    doAssert accum.finish(u, ctx.polyphaseSpectrumBank) == Toeplitz_Success
+
 proc benchFK20_Phase2(u: var array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]],
                       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]],
                       iters: int) =
@@ -129,7 +130,7 @@ proc benchFK20_Phase2(u: var array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]],
   var proofsJac: array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]]
 
   bench("fk20_phase2_final_ec_fft", CDS, iters):
-    let status = ecfft_desc.ec_fft_nr(proofsJac.toOpenArray(0, CDS-1), u.toOpenArray(0, CDS-1))
+    let status = ecfft_desc.ec_fft_nr(proofsJac, u)
     doAssert status == FFT_Success
 
 proc benchKZGCosetProve_FK20(ctx: ptr EthereumKZGContext,
@@ -141,7 +142,7 @@ proc benchKZGCosetProve_FK20(ctx: ptr EthereumKZGContext,
   var proofs: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
 
   bench("kzg_coset_prove_fk20", CDS, iters):
-    kzg_coset_prove[L, CDS, BLS12_381](
+    kzg_coset_prove(
       proofs,
       poly.coefs,
       ctx.fft_desc_ext,
