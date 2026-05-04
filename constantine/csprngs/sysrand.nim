@@ -21,6 +21,21 @@ const prefix_ffi = "ctt_csprng_"
 import ../zoo_exports
 
 when defined(windows):
+  when (appType == "lib" or appType == "staticlib"):
+    import ../../bindings/lib_autoload
+
+    # Static libraries don't run initialization automatically
+    # This is problematic on Windows where initialization is needed
+    # for LoadLibraryA to load dlls.
+    proc check_lib_dependency_loaded() =
+      ## This prevents the linker from deleting our constructor function
+      ## that enforces calling ctt_init_NimMain() that will call LoadLibraryA.
+      ## We only need to have any symbol in the translation unit being used.
+      doAssert ctt_loader_addr() != nil, "Constantine: Dynlib autoloader failed"
+  else:
+    template check_lib_dependency_loader() =
+      discard
+
   # There are several Windows CSPRNG APIs:
   # - CryptGenRandom
   # - RtlGenRandom
@@ -57,6 +72,7 @@ when defined(windows):
   proc sysrand*(buffer: pointer, len: csize_t): bool {.libPrefix: prefix_ffi.} =
     ## Fills the buffer with cryptographically secure random data
     ## Returns true on success, false otherwise
+    check_lib_dependency_loader()
     return RtlGenRandom(buffer, culong len)
 
 elif defined(linux):
