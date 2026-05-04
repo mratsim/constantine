@@ -30,7 +30,7 @@ type
     blobs*: array[NumBlobs, Blob]
     commitments*: array[NumBlobs, array[48, byte]]
     cells*: array[NumBlobs, array[CELLS_PER_EXT_BLOB, Cell]]
-    proofs*: array[NumBlobs, array[CELLS_PER_EXT_BLOB, KZGProof]]
+    proofs*: array[NumBlobs, array[CELLS_PER_EXT_BLOB, KZGProofBytes]]
     # For recovery benchmarks - half cells
     halfCellIndices*: array[NumBlobs, seq[CellIndex]]
     halfCells*: array[NumBlobs, seq[Cell]]
@@ -45,7 +45,7 @@ proc serialize*(B: BenchSet, filename: string) =
   defer: stream.close()
 
   # Write header for validation
-  let header = "PEERDAS_BENCHSET_V1"
+  let header = "PEERDAS_BENCHSET_V2"
   stream.writeData(header[0].addr, header.len)
 
   # Write NumBlobs
@@ -102,7 +102,7 @@ proc load*(T: type BenchSet, filename: string): T =
   var headerStr = newStringOfCap(header.len)
   for i in 0 ..< header.len:
     headerStr.add(header[i])
-  doAssert headerStr == "PEERDAS_BENCHSET_V1", &"Invalid header: {headerStr}"
+  doAssert headerStr == "PEERDAS_BENCHSET_V2", &"Invalid header: {headerStr}"
 
   # Read NumBlobs
   var numBlobs: int

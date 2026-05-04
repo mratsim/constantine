@@ -23,6 +23,9 @@ import
   # stdlib - compile-time only
   std/typetraits
 
+const prefix_eth_kzg = "ctt_eth_kzg_"
+import ./zoo_exports
+
 ## ############################################################
 ##
 ##          EIP-7594 PeerDAS - Data Availability Sampling
@@ -89,6 +92,12 @@ type
   CosetEvals* = array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]]
     ## Evaluations of a polynomial over a coset (64 points).
     ## This is the internal representation of a cell's data.
+
+  KZGProofBytes* = array[BYTES_PER_PROOF, byte]
+      ## Serialized KZG proof as 48 compressed G1 bytes.
+      ## Use for I/O and FFI boundaries; convert to/from `KZGProof` (96 bytes)
+      ## using `serialize_g1_compressed` / `deserialize_g1_compressed`.
+
 
   Coset* = array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]]
     ## The evaluation domain for a cell (a coset of roots of unity).
@@ -260,9 +269,23 @@ func compute_cells*(
 
 func compute_cells_and_kzg_proofs*(
        ctx: ptr EthereumKZGContext,
-       cells: var array[CELLS_PER_EXT_BLOB, Cell],
-       proofs: var array[CELLS_PER_EXT_BLOB, KZGProof],
-       blob: Blob): cttEthKzgStatus {.raises: [].} =
+       cells: ptr UncheckedArray[Cell],
+       proofs: ptr UncheckedArray[KZGProofBytes],
+       blob: Blob): cttEthKzgStatus {.libPrefix: prefix_eth_kzg, raises: [].} =
+  ## Compute all cells and proofs for an extended blob using FK20 algorithm.
+  ##
+  ## Algorithm:
+  ## 1. Convert blob to polynomial (Lagrange form) [Serialization]
+  ## 2. Convert to monomial form via IFFT [4096 roots of unity] (for FK20 proofs)
+  ## 3. Compute cells via zero-padding (no FFT!) [stays in evaluation form]
+  ## 4. Compute FK20 proofs from monomial polynomial [4096 coeffs] + bit-reverse
+  ## 5. Serialize cells and proofs to bytes
+
+  # Validate FFI pointers before dereferencing
+  if ctx.isNil or cells.isNil or proofs.isNil:
+    return cttEthKzg_InputsLengthsMismatch
+
+  # Step 1: Deserialize blob to polynomial (Lagrange form)
   ## Compute all cells and proofs for an extended blob using FK20 algorithm.
   ##
   ## Algorithm:
@@ -285,7 +308,7 @@ func compute_cells_and_kzg_proofs*(
   poly_monomial[].lagrangeInterpolate(poly_lagrange[], ctx.fft_desc_ext)
 
   # Step 3: Compute cells using the optimized half-FFT algorithm (reuses poly_monomial)
-  ?compute_cells_impl(ctx, cells, poly_lagrange[], poly_monomial[])
+  ?compute_cells_impl(ctx, cast[ptr array[CELLS_PER_EXT_BLOB, Cell]](cells)[], poly_lagrange[], poly_monomial[])
 
   # Step 4: Compute FK20 proofs
   const N = FIELD_ELEMENTS_PER_BLOB
@@ -303,17 +326,20 @@ func compute_cells_and_kzg_proofs*(
   # Bit-reverse permutation on proofs (Ethereum PeerDAS convention)
   proofsAff[].bit_reversal_permutation()
 
-  # Convert proofs to KZGProof format
+  # Serialize proofs to compressed G1 format
   for i in 0 ..< CELLS_PER_EXT_BLOB:
-    proofs[i] = KZGProof(proofsAff[i])
+    ?serialize_g1_compressed(proofs[i], proofsAff[i])
+
 
   return cttEthKzg_Success
 
-func deduplicateCommitments*(
-     commitmentIdx: var openArray[int],
-     commitments: openArray[array[BYTES_PER_COMMITMENT, byte]]): int =
+func deduplicateCommitments(
+    commitmentIdx: var openArray[int],
+    commitments: openArray[array[BYTES_PER_COMMITMENT, byte]],
+    firstOccurrence: var openArray[int]): int =
   ## Deduplicate commitments and return the number of unique commitments.
   ## commitmentIdx[i] stores the index of the unique commitment for cell i.
+  ## firstOccurrence[j] stores the cell index of the first occurrence of unique commitment j.
   ##
   ## ## Algorithm Complexity
   ##
@@ -335,7 +361,7 @@ func deduplicateCommitments*(
   ## # - i=2: scan all 4 items to find first B → 4 comparisons
   ## # - i=3: scan all 4 items to find first B → 4 comparisons
   ## # Total: 16 comparisons (N²)
-  ##
+  ## #
   ## # Pass 2: indices = [deduplicated.index(c) for c in commitments]
   ## # - Each scans unique list (size M=2) → 2 comparisons each
   ## # Total: 8 comparisons (N×M)
@@ -385,7 +411,7 @@ func deduplicateCommitments*(
   ##
   ## ```nim
   ## Input:  [A, A, B, B]  (each is array[48, byte])
-  ## Output: numUnique=2, commitmentIdx=[0, 0, 1, 1]
+  ## Output: numUnique=2, commitmentIdx=[0, 0, 1, 1], firstOccurrence=[0, 2]
   ## Unique commitments: [A, B] (stored in uniqueBuffer[0..numUnique-1])
   ## ```
   ##
@@ -393,6 +419,7 @@ func deduplicateCommitments*(
   ##
   ## - Order preserved: first occurrence of each commitment wins
   ## - commitmentIdx[i] ∈ [0, numUniqueCommitments-1]
+  ## - firstOccurrence[j] ∈ [0, N-1] for j ∈ [0, numUniqueCommitments-1]
   ## - uniqueBuffer[0..numUniqueCommitments-1] contains all distinct commitments
   ## - Semantically equivalent to Ethereum spec, but O(N×M) instead of O(N²)
   ##
@@ -411,6 +438,7 @@ func deduplicateCommitments*(
   ## - No slots/modulos bookkeeping vs Open-Addressing Map
   debug:
     doAssert commitmentIdx.len == commitments.len
+    doAssert firstOccurrence.len >= commitments.len  # Caller ensures capacity
 
   var numUniqueCommitments = 0
   # Allocate buffer for unique commitments - size matches input (all could be unique)
@@ -431,15 +459,19 @@ func deduplicateCommitments*(
     if not found:
       uniqueBuffer[numUniqueCommitments] = commitments[i]
       commitmentIdx[i] = numUniqueCommitments
+      firstOccurrence[numUniqueCommitments] = i  # Track first occurrence
       inc numUniqueCommitments
 
   return numUniqueCommitments
-func compute_verify_cell_kzg_proof_batch_challenge*(
+
+  return numUniqueCommitments
+
+func compute_verify_cell_kzg_proof_batch_challenge(
        commitments: openArray[array[BYTES_PER_COMMITMENT, byte]],
        commitment_indices: openArray[int],
        cell_indices: openArray[CellIndex],
        cosets_evals: openArray[array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]]],
-       proofs: openArray[array[BYTES_PER_PROOF, byte]]): Fr[BLS12_381] =
+       proofs: openArray[KZGProofBytes]): Fr[BLS12_381] =
   ## Compute the Fiat-Shamir challenge r for batch verification.
   ## Follows the spec: hash all inputs with domain separator to get random field element.
   var transcript {.noInit.}: sha256
@@ -473,11 +505,12 @@ func compute_verify_cell_kzg_proof_batch_challenge*(
 
 func verify_cell_kzg_proof_batch*(
        ctx: ptr EthereumKZGContext,
-       commitments_bytes: openArray[array[BYTES_PER_COMMITMENT, byte]],
-       cell_indices: openArray[CellIndex],
-       cells: openArray[Cell],
-       proofs_bytes: openArray[array[BYTES_PER_PROOF, byte]],
-       secureRandomBytes: array[32, byte]): cttEthKzgStatus {.raises: [].} =
+       commitments_bytes: ptr UncheckedArray[array[BYTES_PER_COMMITMENT, byte]],
+       cell_indices: ptr UncheckedArray[CellIndex],
+       cells: ptr UncheckedArray[Cell],
+       proofs_bytes: ptr UncheckedArray[KZGProofBytes],
+       n: int,
+       secureRandomBytes: array[32, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg, raises: [].} =
   ## Verify that a set of cells belong to their corresponding commitments.
   ##
   ## This implements the universal verification equation from:
@@ -485,63 +518,61 @@ func verify_cell_kzg_proof_batch*(
   ##
   ## Public method following the EIP-7594 spec.
 
-  # Validate input lengths
-  if len(commitments_bytes) != len(cells) or
-     len(commitments_bytes) != len(proofs_bytes) or
-     len(commitments_bytes) != len(cell_indices):
+  # Edge case: n < 0 is malformed input, n == 0 is trivially valid
+  if n < 0:
+    return cttEthKzg_InputsLengthsMismatch
+  if ctx.isNil:
+    return cttEthKzg_InputsLengthsMismatch
+  if n == 0:
+    return cttEthKzg_Success
+  # Validate FFI pointers before dereferencing
+  if ctx.isNil or commitments_bytes.isNil or cell_indices.isNil or cells.isNil or proofs_bytes.isNil:
     return cttEthKzg_InputsLengthsMismatch
 
   # Validate cell indices are in bounds
-  for cell_idx in cell_indices:
-    if cell_idx >= CELLS_PER_EXT_BLOB:
+  for i in 0 ..< n:
+    if cell_indices[i] >= CELLS_PER_EXT_BLOB:
       return cttEthKzg_InputsLengthsMismatch
-
-  # Edge case: zero cells is trivially valid
-  if len(cell_indices) == 0:
-    return cttEthKzg_Success
-
-  let numCells = len(cell_indices)
-
   # Deduplicate commitments FIRST (on raw bytes, before deserialization)
   # This is faster: byte comparison exits early, and we only deserialize uniques
-  let commitmentIdx = allocHeapArrayAligned(int, numCells, alignment = 64)
+  let commitmentIdx = allocHeapArrayAligned(int, n, alignment = 64)
   defer: freeHeapAligned(commitmentIdx)
+  let firstOccurrence = allocHeapArrayAligned(int, n, alignment = 64)  # Max unique = n
+  defer: freeHeapAligned(firstOccurrence)
   let numUniqueCommitments = deduplicateCommitments(
-    commitmentIdx.toOpenArray(numCells),
-    commitments_bytes
+    commitmentIdx.toOpenArray(n),
+    commitments_bytes.toOpenArray(0, n-1),
+    firstOccurrence.toOpenArray(n)
   )
 
   # Allocate and deserialize only unique commitments
   let uniqueCommitments = allocHeapArrayAligned(
     EC_ShortW_Aff[Fp[BLS12_381], G1], numUniqueCommitments, alignment = 64)
   defer: freeHeapAligned(uniqueCommitments)
+  # O(M) deserialization using tracked first-occurrence indices
   for i in 0 ..< numUniqueCommitments:
-    # Find first occurrence of this unique commitment
-    for j in 0 ..< numCells:
-      if commitmentIdx[j] == i:
-        ?uniqueCommitments[i].deserialize_g1_compressed(commitments_bytes[j])
-        break
+    ?uniqueCommitments[i].deserialize_g1_compressed(commitments_bytes[firstOccurrence[i]])
 
   let cosets_evals = allocHeapArrayAligned(
-    array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]], numCells, alignment = 64)
+    array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]], n, alignment = 64)
   defer: freeHeapAligned(cosets_evals)
   let proofs = allocHeapArrayAligned(
-    EC_ShortW_Aff[Fp[BLS12_381], G1], numCells, alignment = 64)
+    EC_ShortW_Aff[Fp[BLS12_381], G1], n, alignment = 64)
   defer: freeHeapAligned(proofs)
-  let evalsCols = allocHeapArrayAligned(int, numCells, alignment = 64)
+  let evalsCols = allocHeapArrayAligned(int, n, alignment = 64)
   defer: freeHeapAligned(evalsCols)
-  let rPowers = allocHeapArrayAligned(Fr[BLS12_381], numCells, alignment = 64)
+  let rPowers = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
   defer: freeHeapAligned(rPowers)
 
 
   block HappyPath:
     # Deserialize cells to coset evaluations
-    for i in 0 ..< numCells:
+    for i in 0 ..< n:
       ?cellToCosetEvals(cosets_evals[i], cells[i])
       evalsCols[i] = int(cell_indices[i])
 
     # Deserialize proofs
-    for i in 0 ..< numCells:
+    for i in 0 ..< n:
       ?proofs[i].deserialize_g1_compressed(proofs_bytes[i])
     var r: Fr[BLS12_381]
     if not r.getBatchBlindingFactor(secureRandomBytes):
@@ -550,29 +581,29 @@ func verify_cell_kzg_proof_batch*(
       # Allocate unique commitments bytes for Fiat-Shamir challenge
       let uniqueCommitmentsBytes = allocHeapArrayAligned(
         array[BYTES_PER_COMMITMENT, byte], numUniqueCommitments, alignment = 64)
-      for i in 0 ..< numCells:
+      for i in 0 ..< n:
         uniqueCommitmentsBytes[commitmentIdx[i]] = commitments_bytes[i]
 
       r = compute_verify_cell_kzg_proof_batch_challenge(
         uniqueCommitmentsBytes.toOpenArray(numUniqueCommitments),
-        commitmentIdx.toOpenArray(numCells),
-        cell_indices,
-        cosets_evals.toOpenArray(numCells),
-        proofs_bytes)
+        commitmentIdx.toOpenArray(n),
+        cell_indices.toOpenArray(0, n-1),
+        cosets_evals.toOpenArray(n),
+        proofs_bytes.toOpenArray(0, n-1))
 
       freeHeapAligned(uniqueCommitmentsBytes)
 
-    # Compute powers of r: [r^1, r^2, ..., r^{numCells}]
-    rPowers.computePowers(r, numCells, skipOne = true)
+    # Compute powers of r: [r^1, r^2, ..., r^{n}]
+    rPowers.computePowers(r, n, skipOne = true)
 
     let verifyStatus = kzg_coset_verify_batch(
       uniqueCommitments = uniqueCommitments.toOpenArray(numUniqueCommitments),
-      commitmentIdx = commitmentIdx.toOpenArray(numCells),
-      proofs = proofs.toOpenArray(numCells),
-      evals = cosets_evals.toOpenArray(numCells),
-      evalsCols = evalsCols.toOpenArray(numCells),
+      commitmentIdx = commitmentIdx.toOpenArray(n),
+      proofs = proofs.toOpenArray(n),
+      evals = cosets_evals.toOpenArray(n),
+      evalsCols = evalsCols.toOpenArray(n),
       domain = ctx.fft_desc_ext,
-      linearIndepRandNumbers = rPowers.toOpenArray(numCells),
+      linearIndepRandNumbers = rPowers.toOpenArray(n),
       powers_of_tau = ctx.srs_monomial_g1.coefs,
       tau_pow_L_g2 = ctx.srs_monomial_g2.coefs[FIELD_ELEMENTS_PER_CELL],
       N = FIELD_ELEMENTS_PER_EXT_BLOB
@@ -583,10 +614,11 @@ func verify_cell_kzg_proof_batch*(
 
 func recover_cells_and_kzg_proofs*(
        ctx: ptr EthereumKZGContext,
-       recovered_proofs: var array[CELLS_PER_EXT_BLOB, KZGProof],
-       recovered_cells: var array[CELLS_PER_EXT_BLOB, Cell],
-       cells: openArray[Cell],
-       cell_indices: openArray[CellIndex]): cttEthKzgStatus {.raises: [].} =
+       recovered_cells: ptr UncheckedArray[Cell],
+       recovered_proofs: ptr UncheckedArray[KZGProofBytes],
+       cell_indices: ptr UncheckedArray[CellIndex],
+       cells: ptr UncheckedArray[Cell],
+       n: int): cttEthKzgStatus {.libPrefix: prefix_eth_kzg, raises: [].} =
   ## Given at least 50% of cells for a blob, recover all cells/proofs.
   ## This is the main entry point for recovery with serialization.
   ##
@@ -598,30 +630,29 @@ func recover_cells_and_kzg_proofs*(
   ## 4. Recompute all cells from recovered polynomial
   ## 5. Convert cells to bytes [Serialization]
 
-  let num_cells = cell_indices.len
+  # Validate FFI pointers before dereferencing
+  if ctx.isNil or recovered_cells.isNil or recovered_proofs.isNil or cell_indices.isNil or cells.isNil:
+    return cttEthKzg_InputsLengthsMismatch
 
   # Step 1: Validation
-  if num_cells != cells.len:
+  if n < CELLS_PER_EXT_BLOB div 2:
     return cttEthKzg_InputsLengthsMismatch
 
-  if num_cells < CELLS_PER_EXT_BLOB div 2:
-    return cttEthKzg_InputsLengthsMismatch
-
-  if num_cells > CELLS_PER_EXT_BLOB:
+  if n > CELLS_PER_EXT_BLOB:
     return cttEthKzg_InputsLengthsMismatch
 
   # Validate bounds and uniqueness (strict ordering enforces both)
-  for i in 0 ..< num_cells:
+  for i in 0 ..< n:
     if uint64(cell_indices[i]) >= uint64(CELLS_PER_EXT_BLOB):
       return cttEthKzg_InputsLengthsMismatch
-  for i in 1 ..< num_cells:
+  for i in 1 ..< n:
     if uint64(cell_indices[i-1]) >= uint64(cell_indices[i]):
-      return cttEthKzg_InputsLengthsMismatch
+      return cttEthKzg_CellIndicesNotAscending
 
   # Step 2: Convert cells to coset evaluations [Deserialization]
-  var cosets_evals = allocHeapArrayAligned(array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]], num_cells, alignment = 64)
+  var cosets_evals = allocHeapArrayAligned(array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]], n, alignment = 64)
   defer: freeHeapAligned(cosets_evals)
-  for i in 0 ..< num_cells:
+  for i in 0 ..< n:
     let status = cellToCosetEvals(cosets_evals[i], cells[i])
     if status != cttEthKzg_Success:
       return status
@@ -631,7 +662,7 @@ func recover_cells_and_kzg_proofs*(
   defer: freeHeapAligned(poly_coeff)
   recoverPolynomialCoeff[
     FIELD_ELEMENTS_PER_BLOB, FIELD_ELEMENTS_PER_EXT_BLOB, FIELD_ELEMENTS_PER_CELL, CELLS_PER_EXT_BLOB
-  ](poly_coeff[], cell_indices, cosets_evals.toOpenArray(num_cells), ctx.fft_desc_ext)
+  ](poly_coeff[], cell_indices.toOpenArray(0, n-1), cosets_evals.toOpenArray(n), ctx.fft_desc_ext)
 
   # Step 4: Recompute all cells from recovered polynomial
   # FFT: coefficient form -> evaluation form (bit-reversed order)
@@ -655,17 +686,21 @@ func recover_cells_and_kzg_proofs*(
   const CDS = CELLS_PER_EXT_BLOB
 
   # Compute FK20 proofs using precomputed SRS polyphase spectrum bank
+  let proofsAff = allocHeapAligned(array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]], 64)
+  defer: freeHeapAligned(proofsAff)
+
   kzg_coset_prove(
-    cast[var array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]](
-      # KZGProof is distinct EC_ShortW_Aff[Fp[BLS12_381], G1]
-      recovered_proofs.addr
-    ),
+    proofsAff[],
     poly_coeff.coefs.toOpenArray(0, N-1),
     ctx.fft_desc_ext,
     ctx.ecfft_desc_ext,
     ctx.polyphaseSpectrumBank)
 
   # Bit-reverse permutation on proofs
-  recovered_proofs.bit_reversal_permutation()
+  proofsAff[].bit_reversal_permutation()
+
+  # Serialize proofs to compressed G1 format
+  for i in 0 ..< CELLS_PER_EXT_BLOB:
+    ?serialize_g1_compressed(recovered_proofs[i], proofsAff[i])
 
   return cttEthKzg_Success

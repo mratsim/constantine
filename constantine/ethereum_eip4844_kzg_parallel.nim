@@ -41,7 +41,7 @@ import
 ## - Audited reference implementation
 ##   https://github.com/ethereum/c-kzg-4844
 
-const prefix_eth_kzg4844 = "ctt_eth_kzg_"
+const prefix_eth_kzg = "ctt_eth_kzg_"
 import ./zoo_exports
 
 proc blob_to_bigint_polynomial_parallel(
@@ -126,7 +126,7 @@ proc blob_to_kzg_commitment_parallel*(
        tp: Threadpool,
        ctx: ptr EthereumKZGContext,
        dst: var array[48, byte],
-       blob: Blob): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844.} =
+       blob: Blob): cttEthKzgStatus {.libPrefix: prefix_eth_kzg.} =
   ## Compute a commitment to the `blob`.
   ## The commitment can be verified without needing the full `blob`
   ##
@@ -164,7 +164,7 @@ proc compute_kzg_proof_parallel*(
        proof_bytes: var array[48, byte],
        y_bytes: var array[32, byte],
        blob: Blob,
-       z_bytes: array[32, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844.} =
+       z_bytes: array[32, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg.} =
   ## Generate:
   ## - A proof of correct evaluation.
   ## - y = p(z), the evaluation of p at the opening challenge z, with p being the Blob interpreted as a polynomial.
@@ -212,7 +212,7 @@ proc compute_blob_kzg_proof_parallel*(
        ctx: ptr EthereumKZGContext,
        proof_bytes: var array[48, byte],
        blob: Blob,
-       commitment_bytes: array[48, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844.} =
+       commitment_bytes: array[48, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg.} =
   ## Given a blob, return the KZG proof that is used to verify it against the commitment.
   ## This method does not verify that the commitment is correct with respect to `blob`.
 
@@ -256,7 +256,7 @@ proc verify_blob_kzg_proof_parallel*(
        ctx: ptr EthereumKZGContext,
        blob: Blob,
        commitment_bytes: array[48, byte],
-       proof_bytes: array[48, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844.} =
+       proof_bytes: array[48, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg.} =
   ## Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment.
 
   var commitment {.noInit.}: KZGCommitment
@@ -303,7 +303,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
        commitments_bytes: ptr UncheckedArray[array[48, byte]],
        proof_bytes: ptr UncheckedArray[array[48, byte]],
        n: int,
-       secureRandomBytes: array[32, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844.} =
+       secureRandomBytes: array[32, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg.} =
   ## Verify `n` (blob, commitment, proof) sets efficiently
   ##
   ## `n` is the number of verifications set

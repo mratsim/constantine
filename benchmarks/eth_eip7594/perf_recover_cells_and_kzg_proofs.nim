@@ -9,6 +9,8 @@
 import
   benchset_serialization,
   constantine/eth_eip7594_peerdas,
+  constantine/platforms/primitives,
+  constantine/platforms/views,
   constantine/ethereum_eip4844_kzg_parallel,
   ../bench_blueprint,
   std/[os, strutils, monotimes]
@@ -28,17 +30,17 @@ template bench(op: string, iters: int, body: untyped): untyped =
 proc benchRecoverCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   bench("recover_cells_and_kzg_proofs (50% availability)", iters):
     var recovered_cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-    var recovered_proofs: ref array[CELLS_PER_EXT_BLOB, KZGProof]
+    var recovered_proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
     new(recovered_cells)
     new(recovered_proofs)
 
     doAssert cttEthKzg_Success == recover_cells_and_kzg_proofs(
       ctx,
-      recovered_proofs[],
-      recovered_cells[],
-      b.halfCells[0],
-      b.halfCellIndices[0]
-    )
+      recovered_cells[].asUnchecked(),
+      recovered_proofs[].asUnchecked(),
+      b.halfCellIndices[0].asUnchecked(),
+      b.halfCells[0].asUnchecked(),
+      b.halfCells[0].len)
 
 proc main() =
   echo "PeerDAS (EIP-7594) - recover_cells_and_kzg_proofs Benchmark"

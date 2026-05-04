@@ -9,6 +9,8 @@
 import
   benchset_serialization,
   constantine/eth_eip7594_peerdas,
+  constantine/platforms/primitives,
+  constantine/platforms/views,
   constantine/ethereum_eip4844_kzg_parallel,
   constantine/threadpool/threadpool,
   constantine/platforms/allocs,
@@ -43,12 +45,15 @@ proc computeBlobParallel(
   tempBlobs: ptr Blob,
   tempCommitments: ptr array[48, byte],
   tempCells: ptr array[CELLS_PER_EXT_BLOB, Cell],
-  tempProofs: ptr array[CELLS_PER_EXT_BLOB, KZGProof],
+  tempProofs: ptr array[CELLS_PER_EXT_BLOB, KZGProofBytes],
   rng: ptr RngState
 ) {.raises: [].} =
   rng[].randomize(tempBlobs[])
   doAssert cttEthKzg_Success == ctx.blob_to_kzg_commitment(tempCommitments[], tempBlobs[])
-  doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(tempCells[], tempProofs[], tempBlobs[])
+  doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
+    tempCells[].asUnchecked(),
+    tempProofs[].asUnchecked(),
+    tempBlobs[])
 
 proc new*(T: type BenchSet, ctx: ptr EthereumKZGContext): T =
   result = newBenchSet()
@@ -68,7 +73,7 @@ proc new*(T: type BenchSet, ctx: ptr EthereumKZGContext): T =
   let tempBlobs = allocHeapArrayAligned(Blob, NumBlobs, 64)
   let tempCommitments = allocHeapArrayAligned(array[48, byte], NumBlobs, 64)
   let tempCells = allocHeapArrayAligned(array[CELLS_PER_EXT_BLOB, Cell], NumBlobs, 64)
-  let tempProofs = allocHeapArrayAligned(array[CELLS_PER_EXT_BLOB, KZGProof], NumBlobs, 64)
+  let tempProofs = allocHeapArrayAligned(array[CELLS_PER_EXT_BLOB, KZGProofBytes], NumBlobs, 64)
 
   echo "  Computing cells and proofs in parallel..."
   for i in 0 ..< NumBlobs:

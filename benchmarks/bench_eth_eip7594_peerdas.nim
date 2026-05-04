@@ -29,15 +29,11 @@ import
   # Standard library
   std/[os, strutils, sequtils, monotimes]
 
-const NumBlobs* = 4  # Number of blobs for benchmarks (reduced from 64 for faster init)
+const NumBlobs* = 64  # Number of blobs for benchmarks (matches c-kzg-4844 config)
                       # Parallel initialization uses all available threads (~20 on modern CPUs)
-                      # Initialization time: ~2s for 4 blobs (vs ~8s serial)
+                      # Initialization time: ~2-3s for 64 blobs
 
 proc separator*() = separator(180)
-
-func proofToBytes(proof: KZGProof): array[48, byte] =
-  ## Convert KZGProof to compressed bytes
-  discard result.serialize_g1_compressed(EC_ShortW_Aff[Fp[BLS12_381], G1](proof))
 
 proc report(op: string, startTime, stopTime: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stopTime-startTime) div iters)
@@ -56,7 +52,7 @@ type
     blobs: array[N, Blob]
     commitments: array[N, array[48, byte]]
     cells: array[N, array[CELLS_PER_EXT_BLOB, Cell]]
-    proofs: array[N, array[CELLS_PER_EXT_BLOB, KZGProof]]
+    proofs: array[N, array[CELLS_PER_EXT_BLOB, KZGProofBytes]]
     # For recovery benchmarks - half cells
     halfCellIndices: array[N, seq[CellIndex]]
     halfCells: array[N, seq[Cell]]
@@ -73,7 +69,7 @@ proc computeBlobParallel(
   tempBlobs: ptr Blob,
   tempCommitments: ptr array[48, byte],
   tempCells: ptr array[CELLS_PER_EXT_BLOB, Cell],
-  tempProofs: ptr array[CELLS_PER_EXT_BLOB, KZGProof],
+  tempProofs: ptr array[CELLS_PER_EXT_BLOB, KZGProofBytes],
   rng: ptr RngState
 ) {.raises: [].} =
   ## Compute blob, commitment, cells and proofs in parallel
@@ -84,7 +80,10 @@ proc computeBlobParallel(
   doAssert cttEthKzg_Success == ctx.blob_to_kzg_commitment(tempCommitments[], tempBlobs[])
 
   # Compute all cells and proofs (this is the expensive part!)
-  doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(tempCells[], tempProofs[], tempBlobs[])
+  doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
+    tempCells[].asUnchecked(),
+    tempProofs[].asUnchecked(),
+    tempBlobs[])
 
 proc new(T: type BenchSet, ctx: ptr EthereumKZGContext): T =
   new(result)
@@ -109,7 +108,7 @@ proc new(T: type BenchSet, ctx: ptr EthereumKZGContext): T =
   let tempBlobs = allocHeapArrayAligned(Blob, T.N, 64)
   let tempCommitments = allocHeapArrayAligned(array[48, byte], T.N, 64)
   let tempCells = allocHeapArrayAligned(array[CELLS_PER_EXT_BLOB, Cell], T.N, 64)
-  let tempProofs = allocHeapArrayAligned(array[CELLS_PER_EXT_BLOB, KZGProof], T.N, 64)
+  let tempProofs = allocHeapArrayAligned(array[CELLS_PER_EXT_BLOB, KZGProofBytes], T.N, 64)
 
   # Initialize blobs in parallel using spawnAwaitable pattern
   echo "  Computing cells and proofs in parallel..."
@@ -181,10 +180,13 @@ proc benchComputeCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, ite
 
   bench("compute_cells_and_kzg_proofs (FK20)", iters):
     var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-    var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProof]
+    var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
     new(cells)
     new(proofs)
-    doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(cells[], proofs[], b.blobs[0])
+    doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
+      cells[].asUnchecked(),
+      proofs[].asUnchecked(),
+      b.blobs[0])
 
 proc benchVerifyCellKZGProofBatch_SingleBlob(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## Verify cells from a single blob with varying batch sizes
@@ -202,7 +204,7 @@ proc benchVerifyCellKZGProofBatch_SingleBlob(b: BenchSet, ctx: ptr EthereumKZGCo
     var commitments_bytes: ref array[MaxCount, array[48, byte]]
     var cell_indices: ref array[MaxCount, CellIndex]
     var cells_array: ref array[MaxCount, Cell]
-    var proofs_bytes: ref array[MaxCount, array[48, byte]]
+    var proofs_bytes: ref array[MaxCount, KZGProofBytes]
     new(commitments_bytes)
     new(cell_indices)
     new(cells_array)
@@ -212,16 +214,16 @@ proc benchVerifyCellKZGProofBatch_SingleBlob(b: BenchSet, ctx: ptr EthereumKZGCo
         commitments_bytes[i] = b.commitments[0]
         cell_indices[i] = CellIndex(i)
         cells_array[i] = b.cells[0][i]
-        proofs_bytes[i] = proofToBytes(b.proofs[0][i])
+        proofs_bytes[i] = b.proofs[0][i]
 
       discard verify_cell_kzg_proof_batch(
         ctx,
-        commitments_bytes[].toOpenArray(0, count-1),
-        cell_indices[].toOpenArray(0, count-1),
-        cells_array[].toOpenArray(0, count-1),
-        proofs_bytes[].toOpenArray(0, count-1),
-        secureRandomBytes
-      )
+        commitments_bytes[].asUnchecked(),
+        cell_indices[].asUnchecked(),
+        cells_array[].asUnchecked(),
+        proofs_bytes[].asUnchecked(),
+        count,
+        secureRandomBytes)
 
 proc benchVerifyCellKZGProofBatch_MultiBlob(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## Verify cells from multiple blobs (scaling by number of blobs)
@@ -240,7 +242,7 @@ proc benchVerifyCellKZGProofBatch_MultiBlob(b: BenchSet, ctx: ptr EthereumKZGCon
     var commitments_bytes: ref array[MaxTotal, array[48, byte]]
     var cell_indices: ref array[MaxTotal, CellIndex]
     var cells_array: ref array[MaxTotal, Cell]
-    var proofs_bytes: ref array[MaxTotal, array[48, byte]]
+    var proofs_bytes: ref array[MaxTotal, KZGProofBytes]
     new(commitments_bytes)
     new(cell_indices)
     new(cells_array)
@@ -252,17 +254,16 @@ proc benchVerifyCellKZGProofBatch_MultiBlob(b: BenchSet, ctx: ptr EthereumKZGCon
           commitments_bytes[idx] = b.commitments[blobIdx]
           cell_indices[idx] = CellIndex(cellIdx)
           cells_array[idx] = b.cells[blobIdx][cellIdx]
-          proofs_bytes[idx] = proofToBytes(b.proofs[blobIdx][cellIdx])
+          proofs_bytes[idx] = b.proofs[blobIdx][cellIdx]
           inc idx
-
       discard verify_cell_kzg_proof_batch(
         ctx,
-        commitments_bytes[].toOpenArray(0, totalCount-1),
-        cell_indices[].toOpenArray(0, totalCount-1),
-        cells_array[].toOpenArray(0, totalCount-1),
-        proofs_bytes[].toOpenArray(0, totalCount-1),
-        secureRandomBytes
-      )
+        commitments_bytes[].asUnchecked(),
+        cell_indices[].asUnchecked(),
+        cells_array[].asUnchecked(),
+        proofs_bytes[].asUnchecked(),
+        totalCount,
+        secureRandomBytes)
 
     i *= 2
 
@@ -275,17 +276,16 @@ proc benchRecoverCellsAndKZGProofs_WorstCase(b: BenchSet, ctx: ptr EthereumKZGCo
 
   bench("recover_cells_and_kzg_proofs (50% cells)", iters):
     var recovered_cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-    var recovered_proofs: ref array[CELLS_PER_EXT_BLOB, KZGProof]
+    var recovered_proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
     new(recovered_cells)
     new(recovered_proofs)
-
     doAssert cttEthKzg_Success == recover_cells_and_kzg_proofs(
       ctx,
-      recovered_proofs[],
-      recovered_cells[],
-      b.halfCells[0],
-      b.halfCellIndices[0]
-    )
+      recovered_cells[].asUnchecked(),
+      recovered_proofs[].asUnchecked(),
+      b.halfCellIndices[0].asUnchecked(),
+      b.halfCells[0].asUnchecked(),
+      b.halfCells[0].len)
 
 proc benchRecoverCellsAndKZGProofs_VaryingAvailability(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## Recover with varying cell availability (50%, 75%, 87.5%)
@@ -308,17 +308,16 @@ proc benchRecoverCellsAndKZGProofs_VaryingAvailability(b: BenchSet, ctx: ptr Eth
         cells.add(b.cells[0][i])
 
       var recovered_cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-      var recovered_proofs: ref array[CELLS_PER_EXT_BLOB, KZGProof]
+      var recovered_proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
       new(recovered_cells)
       new(recovered_proofs)
-
       doAssert cttEthKzg_Success == recover_cells_and_kzg_proofs(
         ctx,
-        recovered_proofs[],
-        recovered_cells[],
-        cells,
-        cell_indices
-      )
+        recovered_cells[].asUnchecked(),
+        recovered_proofs[].asUnchecked(),
+        cell_indices.asUnchecked(),
+        cells.asUnchecked(),
+        numCells)
 
 proc benchFK20_Proving(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## FK20 multi-proof computation (internal component)
@@ -331,10 +330,13 @@ proc benchFK20_Proving(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
     # This is already tested via compute_cells_and_kzg_proofs
     # but we can measure it separately if needed
     var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-    var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProof]
+    var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
     new(cells)
     new(proofs)
-    doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(cells[], proofs[], b.blobs[0])
+    doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
+      cells[].asUnchecked(),
+      proofs[].asUnchecked(),
+      b.blobs[0])
 
 proc benchBatchVerification_ChallengeComputation(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## Fiat-Shamir challenge computation for batch verification
@@ -351,7 +353,7 @@ proc benchBatchVerification_ChallengeComputation(b: BenchSet, ctx: ptr EthereumK
   var commitment_indices: ref array[128, int]
   var cell_indices: ref array[128, CellIndex]
   var cosets_evals: ref array[128, array[FIELD_ELEMENTS_PER_CELL, Fr[BLS12_381]]]
-  var proofs_bytes: ref array[128, array[48, byte]]
+  var proofs_bytes: ref array[128, KZGProofBytes]
   new(commitments_bytes)
   new(commitment_indices)
   new(cell_indices)
@@ -362,7 +364,7 @@ proc benchBatchVerification_ChallengeComputation(b: BenchSet, ctx: ptr EthereumK
     commitments_bytes[i] = b.commitments[0]
     commitment_indices[i] = 0
     cell_indices[i] = CellIndex(i)
-    proofs_bytes[i] = proofToBytes(b.proofs[0][i])
+    proofs_bytes[i] = b.proofs[0][i]
 
   # Deserialize cells to coset evaluations
   for i in 0 ..< 128:

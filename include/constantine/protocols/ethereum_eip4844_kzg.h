@@ -36,6 +36,7 @@ typedef enum __attribute__((__packed__)) {
     cttEthKzg_EccCoordinateGreaterThanOrEqualModulus,
     cttEthKzg_EccPointNotOnCurve,
     cttEthKzg_EccPointNotInSubgroup,
+    cttEthKzg_CellIndicesNotAscending,
 } ctt_eth_kzg_status;
 
 static const char* ctt_eth_kzg_status_to_string(ctt_eth_kzg_status status) {
@@ -49,6 +50,7 @@ static const char* ctt_eth_kzg_status_to_string(ctt_eth_kzg_status status) {
     "cttEthKzg_EccCoordinateGreaterThanOrEqualModulus",
     "cttEthKzg_EccPointNotOnCurve",
     "cttEthKzg_EccPointNotInSubgroup",
+    "cttEthKzg_CellIndicesNotAscending",
   };
   size_t length = sizeof statuses / sizeof *statuses;
   if (0 <= status && status < length) {

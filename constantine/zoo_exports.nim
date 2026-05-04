@@ -25,7 +25,7 @@
 # By assigning to the prefix, in a static block **before** importing the module.
 
 var prefix_sha256* {.compileTime.} = "ctt_sha256_"
-var prefix_eth_kzg4844* {.compileTime.} = "ctt_eth_kzg4844_"
+var prefix_eth_kzg* {.compileTime.} = "ctt_eth_kzg_"
 
 # Conditional exports
 # ----------------------------------------------------------------------------------------------

@@ -147,7 +147,8 @@ func rotateLeft*[N: static int, T](a: var array[N, T]) {.inline.} =
 # ############################################################
 
 template asUnchecked*[T](a: openArray[T]): ptr UncheckedArray[T] =
-  cast[ptr UncheckedArray[T]](a[0].unsafeAddr)
+  if a.len == 0: nil
+  else: cast[ptr UncheckedArray[T]](a[0].unsafeAddr)
 
 # Warning for pointer arithmetics via inline C
 # be careful of not passing a `var ptr`

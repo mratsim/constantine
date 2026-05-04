@@ -15,6 +15,8 @@
 import
   benchset_serialization,
   constantine/eth_eip7594_peerdas,
+  constantine/platforms/primitives,
+  constantine/platforms/views,
   constantine/ethereum_eip4844_kzg_parallel,
   ../bench_blueprint,
   std/[os, strutils, monotimes]
@@ -33,12 +35,15 @@ template bench(op: string, iters: int, body: untyped): untyped =
 
 proc benchComputeCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   var cells : ref array[CELLS_PER_EXT_BLOB, Cell]
-  var proofs : ref array[CELLS_PER_EXT_BLOB, KZGProof]
+  var proofs : ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
   new(cells)
   new(proofs)
 
   bench("compute_cells_and_kzg_proofs", iters):
-    doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(cells[], proofs[], b.blobs[0])
+    doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
+      cells[].asUnchecked(),
+      proofs[].asUnchecked(),
+      b.blobs[0])
 
 proc main() =
   echo "PeerDAS (EIP-7594) - compute_cells_and_kzg_proofs Benchmark"

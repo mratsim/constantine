@@ -9,6 +9,7 @@
 import
   benchset_serialization,
   constantine/eth_eip7594_peerdas,
+  constantine/platforms/views,
   constantine/ethereum_eip4844_kzg_parallel,
   constantine/named/algebras,
   constantine/math/[ec_shortweierstrass, io/io_fields],
@@ -16,9 +17,6 @@ import
   constantine/csprngs/sysrand,
   ../bench_blueprint,
   std/[os, strutils, monotimes]
-
-func proofToBytes(proof: KZGProof): array[48, byte] =
-  doAssert result.serialize_g1_compressed(EC_ShortW_Aff[Fp[BLS12_381], G1](proof)) == cttCodecEcc_Success
 
 proc report(op: string, startTime, stopTime: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stopTime-startTime) div iters)
@@ -44,7 +42,7 @@ proc benchVerifyCellKZGProofBatch_64Blobs(b: BenchSet, ctx: ptr EthereumKZGConte
   var commitments_bytes: ref array[MaxTotal, array[48, byte]]
   var cell_indices: ref array[MaxTotal, CellIndex]
   var cells_array: ref array[MaxTotal, Cell]
-  var proofs_bytes: ref array[MaxTotal, array[48, byte]]
+  var proofs_bytes: ref array[MaxTotal, KZGProofBytes]
   new(commitments_bytes)
   new(cell_indices)
   new(cells_array)
@@ -56,18 +54,18 @@ proc benchVerifyCellKZGProofBatch_64Blobs(b: BenchSet, ctx: ptr EthereumKZGConte
       commitments_bytes[idx] = b.commitments[blobIdx]
       cell_indices[idx] = CellIndex(cellIdx)
       cells_array[idx] = b.cells[blobIdx][cellIdx]
-      proofs_bytes[idx] = proofToBytes(b.proofs[blobIdx][cellIdx])
+      proofs_bytes[idx] = b.proofs[blobIdx][cellIdx]
       inc idx
 
   bench("verify_cell_kzg_proof_batch (" & $NumBlobs & " blobs, " & $MaxTotal & " cells)", iters):
     discard verify_cell_kzg_proof_batch(
       ctx,
-      commitments_bytes[],
-      cell_indices[],
-      cells_array[],
-      proofs_bytes[],
-      secureRandomBytes
-    )
+      commitments_bytes[].asUnchecked(),
+      cell_indices[].asUnchecked(),
+      cells_array[].asUnchecked(),
+      proofs_bytes[].asUnchecked(),
+      MaxTotal,
+      secureRandomBytes)
 
 proc main() =
   echo "PeerDAS (EIP-7594) - verify_cell_kzg_proof_batch Benchmark"

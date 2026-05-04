@@ -45,7 +45,7 @@ export
 ## - Audited reference implementation
 ##   https://github.com/ethereum/c-kzg-4844
 
-const prefix_eth_kzg4844 = "ctt_eth_kzg_"
+const prefix_eth_kzg = "ctt_eth_kzg_"
 import ./zoo_exports
 
 # Constants
@@ -93,6 +93,7 @@ type
     cttEthKzg_EccCoordinateGreaterThanOrEqualModulus
     cttEthKzg_EccPointNotOnCurve
     cttEthKzg_EccPointNotInSubGroup
+    cttEthKzg_CellIndicesNotAscending
 
 # Fiat-Shamir challenges
 # ------------------------------------------------------------
@@ -295,7 +296,7 @@ template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.}
 func blob_to_kzg_commitment*(
        ctx: ptr EthereumKZGContext,
        dst: var array[48, byte],
-       blob: Blob): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844, tags:[Alloca, HeapAlloc, Vartime].} =
+       blob: Blob): cttEthKzgStatus {.libPrefix: prefix_eth_kzg, tags:[Alloca, HeapAlloc, Vartime].} =
   ## Compute a commitment to the `blob`.
   ## The commitment can be verified without needing the full `blob`
   ##
@@ -332,7 +333,7 @@ func compute_kzg_proof*(
        proof_bytes: var array[48, byte],
        y_bytes: var array[32, byte],
        blob: Blob,
-       z_bytes: array[32, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844, tags:[Alloca, HeapAlloc, Vartime].} =
+       z_bytes: array[32, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg, tags:[Alloca, HeapAlloc, Vartime].} =
   ## Generate:
   ## - A proof of correct evaluation.
   ## - y = p(z), the evaluation of p at the opening_challenge z, with p being the Blob interpreted as a polynomial.
@@ -380,7 +381,7 @@ func verify_kzg_proof*(
        commitment_bytes: array[48, byte],
        z_bytes: array[32, byte],
        y_bytes: array[32, byte],
-       proof_bytes: array[48, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844, tags:[Alloca, Vartime].} =
+       proof_bytes: array[48, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg, tags:[Alloca, Vartime].} =
   ## Verify KZG proof that p(z) == y where p(z) is the polynomial represented by "polynomial_kzg"
 
   var commitment {.noInit.}: KZGCommitment
@@ -408,7 +409,7 @@ func compute_blob_kzg_proof*(
        ctx: ptr EthereumKZGContext,
        proof_bytes: var array[48, byte],
        blob: Blob,
-       commitment_bytes: array[48, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844, tags:[Alloca, HeapAlloc, Vartime].} =
+       commitment_bytes: array[48, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg, tags:[Alloca, HeapAlloc, Vartime].} =
   ## Given a blob, return the KZG proof that is used to verify it against the commitment.
   ## This method does not verify that the commitment is correct with respect to `blob`.
 
@@ -448,7 +449,7 @@ func verify_blob_kzg_proof*(
        ctx: ptr EthereumKZGContext,
        blob: Blob,
        commitment_bytes: array[48, byte],
-       proof_bytes: array[48, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844, tags:[Alloca, HeapAlloc, Vartime].} =
+       proof_bytes: array[48, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg, tags:[Alloca, HeapAlloc, Vartime].} =
   ## Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment.
 
   var commitment {.noInit.}: KZGCommitment
@@ -488,7 +489,7 @@ func verify_blob_kzg_proof_batch*(
        commitments_bytes: ptr UncheckedArray[array[48, byte]],
        proof_bytes: ptr UncheckedArray[array[48, byte]],
        n: int,
-       secureRandomBytes: array[32, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844, tags:[Alloca, HeapAlloc, Vartime].} =
+       secureRandomBytes: array[32, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg, tags:[Alloca, HeapAlloc, Vartime].} =
   ## Verify `n` (blob, commitment, proof) sets efficiently
   ##
   ## `n` is the number of verifications set

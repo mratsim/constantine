@@ -368,3 +368,105 @@ impl<'tp> EthKzgContext<'tp> {
         }
     }
 }
+
+// PeerDAS (EIP-7594)
+// ------------------------------------------------------------
+
+impl<'tp> EthKzgContext<'tp> {
+    pub fn compute_cells_and_kzg_proofs(
+        &self,
+        blob: &[u8; 131_072],
+    ) -> Result<(Box<[u8; 262_144]>, Box<[u8; 6_144]>), ctt_eth_kzg_status> {
+        use std::mem::ManuallyDrop;
+        let mut cells = ManuallyDrop::new(Box::<[u8; 262_144]>::new_uninit());
+        let mut proofs = ManuallyDrop::new(Box::<[u8; 6_144]>::new_uninit());
+        let status = unsafe {
+            ctt_eth_kzg_compute_cells_and_kzg_proofs(
+                self.ctx,
+                cells.as_mut_ptr() as *mut ctt_eth_kzg_cell,
+                proofs.as_mut_ptr() as *mut ctt_eth_kzg_proof,
+                blob.as_ptr() as *const ctt_eth_kzg_blob,
+            )
+        };
+        match status {
+            ctt_eth_kzg_status::cttEthKzg_Success => {
+                Ok(unsafe { (ManuallyDrop::into_inner(cells).assume_init(),
+                            ManuallyDrop::into_inner(proofs).assume_init()) })
+            }
+            _ => {
+                unsafe {
+                    ManuallyDrop::drop(&mut cells);
+                    ManuallyDrop::drop(&mut proofs);
+                }
+                Err(status)
+            }
+        }
+    }
+
+    pub fn verify_cell_kzg_proof_batch(
+        &self,
+        commitments: &[[u8; 48]],
+        cell_indices: &[u64],
+        cells: &[[u8; 2048]],
+        proofs: &[[u8; 48]],
+        secure_random_bytes: &[u8; 32],
+    ) -> Result<bool, ctt_eth_kzg_status> {
+        let n = commitments.len();
+        if n != cell_indices.len() || n != cells.len() || n != proofs.len() {
+            return Err(ctt_eth_kzg_status::cttEthKzg_InputsLengthsMismatch);
+        }
+        let status = unsafe {
+            ctt_eth_kzg_verify_cell_kzg_proof_batch(
+                self.ctx,
+                commitments.as_ptr() as *const ctt_eth_kzg_commitment,
+                cell_indices.as_ptr(),
+                cells.as_ptr() as *const ctt_eth_kzg_cell,
+                proofs.as_ptr() as *const ctt_eth_kzg_proof,
+                n,
+                secure_random_bytes.as_ptr(),
+            )
+        };
+        match status {
+            ctt_eth_kzg_status::cttEthKzg_Success => Ok(true),
+            ctt_eth_kzg_status::cttEthKzg_VerificationFailure => Ok(false),
+            _ => Err(status),
+        }
+    }
+
+    pub fn recover_cells_and_kzg_proofs(
+        &self,
+        cells: &[[u8; 2048]],
+        cell_indices: &[u64],
+    ) -> Result<(Box<[u8; 262_144]>, Box<[u8; 6_144]>), ctt_eth_kzg_status> {
+        if cells.len() != cell_indices.len() {
+            return Err(ctt_eth_kzg_status::cttEthKzg_InputsLengthsMismatch);
+        }
+        use std::mem::ManuallyDrop;
+        let mut recovered_cells = ManuallyDrop::new(Box::<[u8; 262_144]>::new_uninit());
+        let mut recovered_proofs = ManuallyDrop::new(Box::<[u8; 6_144]>::new_uninit());
+        let status = unsafe {
+            ctt_eth_kzg_recover_cells_and_kzg_proofs(
+                self.ctx,
+                recovered_cells.as_mut_ptr() as *mut ctt_eth_kzg_cell,
+                recovered_proofs.as_mut_ptr() as *mut ctt_eth_kzg_proof,
+                cell_indices.as_ptr(),
+                cells.as_ptr() as *const ctt_eth_kzg_cell,
+                cells.len(),
+            )
+        };
+        match status {
+            ctt_eth_kzg_status::cttEthKzg_Success => {
+                Ok(unsafe { (ManuallyDrop::into_inner(recovered_cells).assume_init(),
+                            ManuallyDrop::into_inner(recovered_proofs).assume_init()) })
+            }
+            _ => {
+                unsafe {
+                    ManuallyDrop::drop(&mut recovered_cells);
+                    ManuallyDrop::drop(&mut recovered_proofs);
+                }
+                Err(status)
+            }
+        }
+    }
+
+}

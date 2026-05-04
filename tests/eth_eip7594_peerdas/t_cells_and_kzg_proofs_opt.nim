@@ -268,9 +268,9 @@ proc main() =
         blob[].fromHex(blobHex)
 
         var cells_opt: array[CELLS_PER_EXT_BLOB, Cell]
-        var proofs_opt: array[CELLS_PER_EXT_BLOB, KZGProof]
+        var proofs_opt: array[CELLS_PER_EXT_BLOB, KZGProofBytes]
 
-        let status_opt = compute_cells_and_kzg_proofs(ctx, cells_opt, proofs_opt, blob[])
+        let status_opt = compute_cells_and_kzg_proofs(ctx, cells_opt.asUnchecked(), proofs_opt.asUnchecked(), blob[])
 
         if status_opt != cttEthKzg_Success:
           echo "❌ compute_cells_and_kzg_proofs failed: " & $status_opt & " [" & testCaseName & "]"
@@ -283,7 +283,19 @@ proc main() =
           let expectedProofs = parseProofs(output[1])
 
           let (cellsPass, _) = testCellsMatch(cells_opt, expectedCells, testCaseName, "opt")
-          let (proofsPass, _) = testProofsMatch(proofs_opt, expectedProofs, testCaseName, "opt")
+          # proofs_opt is already KZGProofBytes, compare directly against expectedProofs
+          var proofsPass = true
+          if expectedProofs.len != CELLS_PER_EXT_BLOB:
+            echo "❌ **opt**: Expected " & $CELLS_PER_EXT_BLOB & " proofs but got " & $expectedProofs.len
+            proofsPass = false
+          else:
+            for i in 0 ..< CELLS_PER_EXT_BLOB:
+              if proofs_opt[i] != expectedProofs[i]:
+                echo "❌ **opt**: Proof " & $i & " mismatch [" & testCaseName & "]"
+                proofsPass = false
+                break
+            if proofsPass:
+              echo "✅ **opt**: proofs match test vector [" & testCaseName & "]"
           testPassed = cellsPass and proofsPass
 
         check testPassed
@@ -297,10 +309,11 @@ proc main() =
         blob[].fromHex(blobHex)
 
         var cells_naive, cells_opt: array[CELLS_PER_EXT_BLOB, Cell]
-        var proofs_naive, proofs_opt: array[CELLS_PER_EXT_BLOB, KZGProof]
+        var proofs_naive: array[CELLS_PER_EXT_BLOB, KZGProof]
+        var proofs_opt: array[CELLS_PER_EXT_BLOB, KZGProofBytes]
 
         let status_naive = compute_cells_and_kzg_proofs_naive(ctx, cells_naive, proofs_naive, blob[])
-        let status_opt = compute_cells_and_kzg_proofs(ctx, cells_opt, proofs_opt, blob[])
+        let status_opt = compute_cells_and_kzg_proofs(ctx, cells_opt.asUnchecked(), proofs_opt.asUnchecked(), blob[])
 
         if status_naive != cttEthKzg_Success:
           echo "❌ naive failed: " & $status_naive
@@ -316,7 +329,13 @@ proc main() =
           if cells_naive[i] != cells_opt[i]:
             echo "❌ Cells mismatch at " & $i
             mismatch = true
-          if proofs_naive[i] != proofs_opt[i]:
+          if cells_naive[i] != cells_opt[i]:
+            echo "❌ Cells mismatch at " & $i
+            mismatch = true
+          # proofs_naive is KZGProof, proofs_opt is KZGProofBytes - serialize proofs_naive for comparison
+          var proof_naive_bytes: array[BYTES_PER_PROOF, byte]
+          let serialize_status = proof_naive_bytes.serialize_g1_compressed(EC_ShortW_Aff[Fp[BLS12_381], G1](proofs_naive[i]))
+          if serialize_status != cttCodecEcc_Success or proof_naive_bytes != proofs_opt[i]:
             echo "❌ Proofs mismatch at " & $i
             mismatch = true
 

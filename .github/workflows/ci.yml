@@ -399,7 +399,6 @@ jobs:
       - name: Run Constantine as Rust library tests (with Assembly)
         if: matrix.target.ctt_backend == 'ASM' && matrix.target.cpu != 'i386'
         shell: bash
-        # We need to deactivate the assembly (used by default for benches)
         run: |
           cd constantine
           cargo test -- --nocapture

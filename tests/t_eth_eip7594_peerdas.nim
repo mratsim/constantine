@@ -12,7 +12,7 @@ import
   # 3rd party
   pkg/yaml,
   # Internals
-  constantine/eth_eip7594_peerdas,
+  constantine/eth_eip7594_peerdas {.all.},
   constantine/ethereum_eip4844_kzg,
   constantine/serialization/[codecs, codecs_bls12_381],
   constantine/math/[arithmetic, ec_shortweierstrass],
@@ -25,12 +25,6 @@ import
 const
   TestVectorsDir =
     currentSourcePath.rsplit(DirSep, 1)[0] / "protocol_ethereum_eip7594_fulu_peerdas"
-
-proc toProofBytes[N: static int](a: array[N, KZGProof]): seq[array[BYTES_PER_PROOF, byte]] =
-  type EC = EC_ShortW_Aff[Fp[BLS12_381], G1]
-  result.setLen(N)
-  for i in 0 ..< N:
-    doAssert result[i].serialize_g1_compressed(EC(a[i])) == cttCodecEcc_Success
 
 TestVectorsDir.testGen(compute_cells, "kzg-mainnet", testVector):
   parseAssign(testVector, blob, BYTES_PER_BLOB, testVector["input"]["blob"].content)
@@ -52,42 +46,45 @@ TestVectorsDir.testGen(compute_cells_and_kzg_proofs, "kzg-mainnet", testVector):
   parseAssign(testVector, blob, BYTES_PER_BLOB, testVector["input"]["blob"].content)
 
   var cells: array[CELLS_PER_EXT_BLOB, Cell]
-  var proofs: array[CELLS_PER_EXT_BLOB, KZGProof]
+  var proofs: array[CELLS_PER_EXT_BLOB, KZGProofBytes]
 
-  let status = compute_cells_and_kzg_proofs(ctx, cells, proofs, blob[])
+  let status = compute_cells_and_kzg_proofs(ctx, cells.asUnchecked(), proofs.asUnchecked(), blob[])
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:
     parseAssignList(testVector, expectedCells, BYTES_PER_CELL, testVector["output"][0])
     parseAssignList(testVector, expectedProofs, BYTES_PER_PROOF, testVector["output"][1])
     doAssert @cells == expectedCells
-    doAssert proofs.toProofBytes() == expectedProofs
+    doAssert @proofs == expectedProofs
+
   else:
     doAssert testVector["output"].content == "null"
 
 TestVectorsDir.testGen(recover_cells_and_kzg_proofs, "kzg-mainnet", testVector):
-  # Skip tests without cell data
-  if testVector["input"]["cell_indices"].len == 0 or testVector["input"]["cells"].len == 0:
-    stdout.write "[Skipped - no cell data]\n"
-    return
-
   var cellIndices: seq[CellIndex] = @[]
   for idx in testVector["input"]["cell_indices"]:
     cellIndices.add(CellIndex(parseInt(idx.content)))
 
   parseAssignList(testVector, cells, BYTES_PER_CELL, testVector["input"]["cells"])
 
-  var recoveredCells: array[CELLS_PER_EXT_BLOB, Cell]
-  var recoveredProofs: array[CELLS_PER_EXT_BLOB, KZGProof]
+  # Input length mismatch (cells vs cell_indices) = invalid input
+  if cellIndices.len != cells.len:
+    stdout.write "[ cttEthKzg_InputsLengthsMismatch]\n"
+    doAssert testVector["output"].content == "null",
+      "Expected null output for length mismatch"
+    return
 
-  let status = recover_cells_and_kzg_proofs(ctx, recoveredProofs, recoveredCells, cells, cellIndices)
+  var recoveredCells: array[CELLS_PER_EXT_BLOB, Cell]
+  var recoveredProofs: array[CELLS_PER_EXT_BLOB, KZGProofBytes]
+
+  let status = recover_cells_and_kzg_proofs(ctx, recoveredCells.asUnchecked(), recoveredProofs.asUnchecked(), cellIndices.asUnchecked(), cells.asUnchecked(), cellIndices.len)
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:
     parseAssignList(testVector, expectedCells, BYTES_PER_CELL, testVector["output"][0])
     parseAssignList(testVector, expectedProofs, BYTES_PER_PROOF, testVector["output"][1])
     doAssert @recoveredCells == expectedCells
-    doAssert recoveredProofs.toProofBytes() == expectedProofs
+    doAssert @recoveredProofs == expectedProofs
   else:
     doAssert testVector["output"].content == "null"
 
@@ -102,21 +99,32 @@ TestVectorsDir.testGen(verify_cell_kzg_proof_batch, "kzg-mainnet", testVector):
   parseAssignList(testVector, cells, BYTES_PER_CELL, testVector["input"]["cells"])
   parseAssignList(testVector, proofsBytes, BYTES_PER_PROOF, testVector["input"]["proofs"])
 
+  # Input length mismatch = invalid input
+  # Library receives ptr UncheckedArray and cannot know multiple array lengths
+  if commitmentsBytes.len != cellIndices.len or
+     commitmentsBytes.len != cells.len or
+     commitmentsBytes.len != proofsBytes.len:
+    stdout.write "[ cttEthKzg_InputsLengthsMismatch]\n"
+    doAssert testVector["output"].content == "null",
+      "\nTest case: " & file &
+      "\nExpected: invalid input error (output=\"null\")" &
+      "\nActual: length mismatch detected in test harness\n"
+    return
+
   # Generate secure random bytes for batch verification
   var secureRandomBytes: array[32, byte]
   for i in 0..31:
     secureRandomBytes[i] = byte(i + 1)  # Deterministic for testing
 
-  # Call verify_cell_kzg_proof_batch
   let status = verify_cell_kzg_proof_batch(
     ctx,
-    commitmentsBytes,
-    cellIndices,
-    cells,
-    proofsBytes,
+    commitmentsBytes.asUnchecked(),
+    cellIndices.asUnchecked(),
+    cells.asUnchecked(),
+    proofsBytes.asUnchecked(),
+    cells.len,
     secureRandomBytes
   )
-
   stdout.write "[" & $status & "]\n"
 
   # Check output - tri-state: "true" (success), "false" (verification failure), "null" (invalid input)
@@ -191,91 +199,114 @@ suite "deduplicateCommitments":
     result[0] = seed
     for i in 1 ..< BYTES_PER_COMMITMENT:
       result[i] = byte((seed + uint8(i)) * 31)  # Simple mixing
-  
+
   test "Empty input":
     var commitmentIdx: array[0, int]
+    var firstOccurrence: array[0, int]
     var commitments: array[0, array[BYTES_PER_COMMITMENT, byte]]
-    check deduplicateCommitments(commitmentIdx, commitments) == 0
+    check deduplicateCommitments(commitmentIdx, commitments, firstOccurrence) == 0
 
   test "Single commitment":
     var commitmentIdx: array[1, int]
+    var firstOccurrence: array[1, int]
     var commitments = [makeTestCommitment(1)]
-    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments, firstOccurrence)
     check numUnique == 1
     check commitmentIdx[0] == 0
+    check firstOccurrence[0] == 0
 
   test "All identical commitments":
     var commitmentIdx: array[4, int]
+    var firstOccurrence: array[4, int]
     var commitments = [
       makeTestCommitment(1),
       makeTestCommitment(1),
       makeTestCommitment(1),
       makeTestCommitment(1)
     ]
-    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments, firstOccurrence)
     check numUnique == 1
     check commitmentIdx == [0, 0, 0, 0]
+    check firstOccurrence[0] == 0
 
   test "All unique commitments":
     var commitmentIdx: array[4, int]
+    var firstOccurrence: array[4, int]
     var commitments = [
       makeTestCommitment(1),
       makeTestCommitment(2),
       makeTestCommitment(3),
       makeTestCommitment(4)
     ]
-    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments, firstOccurrence)
     check numUnique == 4
     check commitmentIdx == [0, 1, 2, 3]
+    check firstOccurrence == [0, 1, 2, 3]
 
   test "Non-consecutive duplicates":
     # Input: [A, A, B, B] should produce unique=[A, B], indices=[0, 0, 1, 1]
     var commitmentIdx: array[4, int]
+    var firstOccurrence: array[4, int]
     let A = makeTestCommitment(1)
     let B = makeTestCommitment(2)
     var commitments = [A, A, B, B]
-    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments, firstOccurrence)
     check numUnique == 2
     check commitmentIdx == [0, 0, 1, 1]
+    check firstOccurrence[0] == 0
+    check firstOccurrence[1] == 2
 
   test "Interleaved duplicates":
     # Input: [A, B, A, B, C, A] should produce unique=[A, B, C], indices=[0, 1, 0, 1, 2, 0]
     var commitmentIdx: array[6, int]
+    var firstOccurrence: array[6, int]
     let A = makeTestCommitment(1)
     let B = makeTestCommitment(2)
     let C = makeTestCommitment(3)
     var commitments = [A, B, A, B, C, A]
-    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments, firstOccurrence)
     check numUnique == 3
     check commitmentIdx == [0, 1, 0, 1, 2, 0]
+    check firstOccurrence[0] == 0
+    check firstOccurrence[1] == 1
+    check firstOccurrence[2] == 4
 
   test "Duplicates at end":
     # Input: [A, B, C, A, A] should produce unique=[A, B, C], indices=[0, 1, 2, 0, 0]
     var commitmentIdx: array[5, int]
+    var firstOccurrence: array[5, int]
     let A = makeTestCommitment(1)
     let B = makeTestCommitment(2)
     let C = makeTestCommitment(3)
     var commitments = [A, B, C, A, A]
-    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments, firstOccurrence)
     check numUnique == 3
     check commitmentIdx == [0, 1, 2, 0, 0]
+    check firstOccurrence[0] == 0
+    check firstOccurrence[1] == 1
+    check firstOccurrence[2] == 2
 
   test "Large input with many duplicates":
     # Simulate realistic PeerDAS scenario: 32 cells, 8 unique commitments
     const N = 32
     const M = 8
     var commitmentIdx: array[N, int]
+    var firstOccurrence: array[N, int]
     var commitments: array[N, array[BYTES_PER_COMMITMENT, byte]]
-    
+
     # Create pattern: each commitment repeated 4 times
     for i in 0 ..< N:
       commitments[i] = makeTestCommitment(uint8(i mod M))
-    let numUnique = deduplicateCommitments(commitmentIdx, commitments)
+    let numUnique = deduplicateCommitments(commitmentIdx, commitments, firstOccurrence)
     check numUnique == M
 
     # Verify indices are correct
     for i in 0 ..< N:
       check commitmentIdx[i] == (i mod M)
+
+    # Verify first occurrence indices
+    for j in 0 ..< M:
+      check firstOccurrence[j] == j
 
 
 block:
