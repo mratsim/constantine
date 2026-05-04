@@ -27,11 +27,11 @@ when defined(windows):
     # Static libraries don't run initialization automatically
     # This is problematic on Windows where initialization is needed
     # for LoadLibraryA to load dlls.
-    proc check_lib_dependency_loaded() =
+    proc check_lib_dependency_loader() =
       ## This prevents the linker from deleting our constructor function
       ## that enforces calling ctt_init_NimMain() that will call LoadLibraryA.
       ## We only need to have any symbol in the translation unit being used.
-      doAssert ctt_loader_addr() != nil, "Constantine: Dynlib autoloader failed"
+      doAssert ctt_autoloader_addr() != nil, "Constantine: Dynlib autoloader failed"
   else:
     template check_lib_dependency_loader() =
       discard
