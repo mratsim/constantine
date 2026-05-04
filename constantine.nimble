@@ -147,6 +147,7 @@ func compilerFlags(): string =
 
   " -d:danger " &
   # " --opt:size " &
+  " --passL:-Wl,-z,stack-size=1048576 " &
   " --panics:on -d:noSignalHandler " &
   " --mm:arc -d:useMalloc " &
   " --verbosity:0 --hints:off --warnings:off " &

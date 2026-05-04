@@ -73,26 +73,24 @@ func (dst *EthBlsTestOutput) UnmarshalText(input []byte) error {
 
 // To be removed. This is the C example ported
 func TestExampleCBlsSig(t *testing.T) {
-	fmt.Println("Running BLS signature example test")
+	t.Log("Running BLS signature example test")
 	str := "Security pb becomes key mgmt pb!"
 	var rawSecKey [32]byte
 	copy(rawSecKey[:], str)
 	secKey, err := DeserializeSecKey(rawSecKey)
-	fmt.Println("deserialized: err = ", err)
+	require.NoError(t, err)
 
 	// Derive the matching public key
 	pubKey := DerivePubKey(secKey)
 
 	// Sign a message
 	message := sha256.Hash([]byte("Mr F was here"), false)
-
-	fmt.Println("message: ", message)
 	sig := Sign(secKey, message[:])
-	fmt.Println("signed:  err = ", err)
 
 	// Verify that a signature is valid for a message under the provided public key
 	status, err := pubKey.Verify(message[:], sig)
-	fmt.Println("verified: status", status, " err = ", err)
+	require.NoError(t, err)
+	require.True(t, status)
 
 	// try to use batch verify; We just reuse the data from above 3 times
 	pkeys := []EthBlsPubKey{pubKey, pubKey, pubKey}
@@ -100,7 +98,8 @@ func TestExampleCBlsSig(t *testing.T) {
 	sigs := []EthBlsSignature{sig, sig, sig}
 	var srb [32]byte // leave zero
 	status, err = BatchVerifySoA(pkeys, msgs, sigs, srb)
-	fmt.Println("batchverified: Status ", status, " err = ", err)
+	require.NoError(t, err)
+	require.True(t, status)
 }
 
 func TestDeserializeG1(t *testing.T) {
@@ -357,11 +356,7 @@ func TestVerify(t *testing.T) {
 				return
 			}
 			status, err = pk.Verify(msg[:], sig)
-
-			if err != nil { // expected this verification fails?
-				require.Equal(t, status, test.Output)
-				return
-			}
+			require.NoError(t, err)
 			if status != test.Output {
 				fmt.Println("Verification differs from expected \n",
 					"   valid sig? ", status, "\n",
@@ -456,9 +451,10 @@ func TestFastAggregateVerify(t *testing.T) {
 					return
 				}
 				status, err = FastAggregateVerify(pks, msg[:], sig)
+				require.NoError(t, err)
 			}
-		require.Equal(t, test.Output, status,
-			"Verification differs: valid sig? %v", status)
+			require.Equal(t, test.Output, status,
+				"Verification differs: valid sig? %v", status)
 		})
 	}
 }

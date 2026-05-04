@@ -312,7 +312,7 @@ proc main() =
         var proofs_naive: array[CELLS_PER_EXT_BLOB, KZGProof]
         var proofs_opt: array[CELLS_PER_EXT_BLOB, KZGProofBytes]
 
-        let status_naive = compute_cells_and_kzg_proofs_naive(ctx, cells_naive.asUnchecked(), proofs_naive.asUnchecked(), blob[])
+        let status_naive = compute_cells_and_kzg_proofs_naive(ctx, cells_naive, proofs_naive, blob[])
         let status_opt = compute_cells_and_kzg_proofs(ctx, cells_opt.asUnchecked(), proofs_opt.asUnchecked(), blob[])
 
         if status_naive != cttEthKzg_Success:
