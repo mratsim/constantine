@@ -16,7 +16,7 @@ import
   # Internals
   constantine/eth_eip7594_peerdas {.all.},
   constantine/commitments/kzg_multiproofs,
-  constantine/commitments_setups/ethereum_kzg_srs,
+  constantine/commitments_setups/ethereum_kzg_srs {.all.},
   constantine/ethereum_eip4844_kzg_parallel,
   constantine/named/algebras,
   constantine/math/[ec_shortweierstrass, io/io_fields, elliptic/ec_multi_scalar_mul_precomp],
@@ -170,12 +170,12 @@ proc benchComputeCells(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## - rust-eth-kzg: Not directly exposed (always computes with proofs)
   ## - rust-kzg: bench_das_extension (lower-level FFT operation)
 
+  var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
+  new(cells)
   bench("compute_cells (half-FFT optimization)", iters):
-    var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-    new(cells)
     doAssert cttEthKzg_Success == ctx.compute_cells(cells[], b.blobs[0])
 
-proc benchComputeCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
+proc benchComputeCellsAndKZGProofsNoPrecomp(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## Compute cells and proofs together using FK20 algorithm
   ## Corresponds to:
   ## - go-eth-kzg: ComputeCellsAndKZGProofs benchmark
@@ -185,50 +185,43 @@ proc benchComputeCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, ite
   type EC_Aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
   type EC_Jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
 
-  # No precompute baseline
-  proc runNoPrecomp() =
-    ctx.polyphaseSpectrumBank.kind = kNoPrecompute
-    bench("compute_cells_and_kzg_proofs (no precompute, 1.8 MiB)", iters):
-      var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-      var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
-      new(cells)
-      new(proofs)
-      doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
-        cells[].asUnchecked(),
-        proofs[].asUnchecked(),
-        b.blobs[0])
+  ctx.setupPolyphaseSpectrumBank(0, 0)
+  var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
+  var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
+  new(cells)
+  new(proofs)
 
-  # Precompute with given (t, b) config
-  proc runPrecomp(t, bitWidth: int) =
-    for pos in 0 ..< CELLS_PER_EXT_BLOB:
-      ctx.polyphaseSpectrumBank.precompPoints[pos].init(ctx.polyphaseSpectrumBank.rawPoints[pos], t = t, b = bitWidth)
-    ctx.polyphaseSpectrumBank.kind = kPrecompute
+  bench("compute_cells_and_kzg_proofs (no precompute, 1.8 MiB)", iters):
+    doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
+      cells[].asUnchecked(),
+      proofs[].asUnchecked(),
+      b.blobs[0])
 
-    let memMiB = float64(msmPrecompSize(EC_Jac, FIELD_ELEMENTS_PER_CELL, t, bitWidth) *
-                          CELLS_PER_EXT_BLOB * sizeof(EC_Aff)) / (1024.0 * 1024.0)
+proc benchComputeCellsAndKZGProofsWithPrecomp(b: BenchSet, ctx: ptr EthereumKZGContext, t, bitWidth, iters: int) =
+  ## Compute cells and proofs together using FK20 algorithm
+  ## Corresponds to:
+  ## - go-eth-kzg: ComputeCellsAndKZGProofs benchmark
+  ## - rust-eth-kzg: "computing cells_and_kzg_proofs" benchmark
+  ## - rust-kzg: compute_cells_and_kzg_proofs benchmark
 
-    bench(fmt"compute_cells_and_kzg_proofs (t={t:>3}, b={bitWidth:>2}, ~{memMiB:>7.1f} MiB)", iters):
-      var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-      var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
-      new(cells)
-      new(proofs)
-      doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
-        cells[].asUnchecked(),
-        proofs[].asUnchecked(),
-        b.blobs[0])
+  type EC_Aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+  type EC_Jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
 
-  # Run benchmarks
-  runNoPrecomp()
+  ctx.setupPolyphaseSpectrumBank(t, bitWidth)
 
-  # Parametric precompute configurations
-  const PrecompConfigs: array[12, tuple[t, b: int]] = [
-    (64, 6), (64, 8), (64, 10), (64, 12),
-    (128, 6), (128, 8), (128, 10), (128, 12),
-    (256, 6), (256, 8), (256, 10), (256, 12),
-  ]
+  let memMiB = float64(msmPrecompSize(EC_Jac, FIELD_ELEMENTS_PER_CELL, t, bitWidth) *
+                        CELLS_PER_EXT_BLOB * sizeof(EC_Aff)) / (1024.0 * 1024.0)
 
-  for cfg in PrecompConfigs:
-    runPrecomp(cfg.t, cfg.b)
+  var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
+  var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
+  new(cells)
+  new(proofs)
+
+  bench(fmt"compute_cells_and_kzg_proofs (t={t:>3}, b={bitWidth:>2}, ~{memMiB:>7.1f} MiB)", iters):
+    doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
+      cells[].asUnchecked(),
+      proofs[].asUnchecked(),
+      b.blobs[0])
 
 proc benchVerifyCellKZGProofBatch_SingleBlob(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## Verify cells from a single blob with varying batch sizes
@@ -242,22 +235,22 @@ proc benchVerifyCellKZGProofBatch_SingleBlob(b: BenchSet, ctx: ptr EthereumKZGCo
 
   # Test with different batch sizes - use fixed max size for ref array
   const MaxCount = 128
-  for count in [1, 8, 32, 64, 128]:
-    var commitments_bytes: ref array[MaxCount, array[48, byte]]
-    var cell_indices: ref array[MaxCount, CellIndex]
-    var cells_array: ref array[MaxCount, Cell]
-    var proofs_bytes: ref array[MaxCount, KZGProofBytes]
-    new(commitments_bytes)
-    new(cell_indices)
-    new(cells_array)
-    new(proofs_bytes)
-    bench(&"verify_cell_kzg_proof_batch (count={count}, 1 blob)", iters):
-      for i in 0 ..< count:
-        commitments_bytes[i] = b.commitments[0]
-        cell_indices[i] = CellIndex(i)
-        cells_array[i] = b.cells[0][i]
-        proofs_bytes[i] = b.proofs[0][i]
 
+  var commitments_bytes: ref array[MaxCount, array[48, byte]]
+  var cell_indices: ref array[MaxCount, CellIndex]
+  var cells_array: ref array[MaxCount, Cell]
+  var proofs_bytes: ref array[MaxCount, KZGProofBytes]
+  new(commitments_bytes)
+  new(cell_indices)
+  new(cells_array)
+  new(proofs_bytes)
+  for count in [1, 8, 32, 64, 128]:
+    for i in 0 ..< count:
+      commitments_bytes[i] = b.commitments[0]
+      cell_indices[i] = CellIndex(i)
+      cells_array[i] = b.cells[0][i]
+      proofs_bytes[i] = b.proofs[0][i]
+    bench(&"verify_cell_kzg_proof_batch (count={count}, 1 blob)", iters):
       discard verify_cell_kzg_proof_batch(
         ctx,
         commitments_bytes[].asUnchecked(),
@@ -289,15 +282,15 @@ proc benchVerifyCellKZGProofBatch_MultiBlob(b: BenchSet, ctx: ptr EthereumKZGCon
     new(cell_indices)
     new(cells_array)
     new(proofs_bytes)
+    var idx = 0
+    for blobIdx in 0 ..< i:
+      for cellIdx in 0 ..< CELLS_PER_EXT_BLOB:
+        commitments_bytes[idx] = b.commitments[blobIdx]
+        cell_indices[idx] = CellIndex(cellIdx)
+        cells_array[idx] = b.cells[blobIdx][cellIdx]
+        proofs_bytes[idx] = b.proofs[blobIdx][cellIdx]
+        inc idx
     bench(&"verify_cell_kzg_proof_batch (128 cells, {i} blobs)", iters):
-      var idx = 0
-      for blobIdx in 0 ..< i:
-        for cellIdx in 0 ..< CELLS_PER_EXT_BLOB:
-          commitments_bytes[idx] = b.commitments[blobIdx]
-          cell_indices[idx] = CellIndex(cellIdx)
-          cells_array[idx] = b.cells[blobIdx][cellIdx]
-          proofs_bytes[idx] = b.proofs[blobIdx][cellIdx]
-          inc idx
       discard verify_cell_kzg_proof_batch(
         ctx,
         commitments_bytes[].asUnchecked(),
@@ -316,11 +309,12 @@ proc benchRecoverCellsAndKZGProofs_WorstCase(b: BenchSet, ctx: ptr EthereumKZGCo
   ## - rust-eth-kzg: "worse-case recover_cells_and_kzg_proofs" benchmark
   ## - rust-kzg: recover_cells_and_kzg_proofs (% missing) benchmark
 
+  var recovered_cells: ref array[CELLS_PER_EXT_BLOB, Cell]
+  var recovered_proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
+  new(recovered_cells)
+  new(recovered_proofs)
+
   bench("recover_cells_and_kzg_proofs (50% cells)", iters):
-    var recovered_cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-    var recovered_proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
-    new(recovered_cells)
-    new(recovered_proofs)
     doAssert cttEthKzg_Success == recover_cells_and_kzg_proofs(
       ctx,
       recovered_cells[].asUnchecked(),
@@ -340,19 +334,20 @@ proc benchRecoverCellsAndKZGProofs_VaryingAvailability(b: BenchSet, ctx: ptr Eth
   for availability in [50, 75, 87]:
     let numCells = (CELLS_PER_EXT_BLOB * availability) div 100
 
+    var cell_indices: seq[CellIndex] = @[]
+    var cells: seq[Cell] = @[]
+
+    for i in 0 ..< numCells:
+      cell_indices.add(CellIndex(i))
+      cells.add(b.cells[0][i])
+
+    var recovered_cells: ref array[CELLS_PER_EXT_BLOB, Cell]
+    var recovered_proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
+    new(recovered_cells)
+    new(recovered_proofs)
+
     bench(&"recover_cells_and_kzg_proofs ({availability}% availability, {numCells} cells)", iters):
       # Take first numCells cells (seq is fine for variable-size input)
-      var cell_indices: seq[CellIndex] = @[]
-      var cells: seq[Cell] = @[]
-
-      for i in 0 ..< numCells:
-        cell_indices.add(CellIndex(i))
-        cells.add(b.cells[0][i])
-
-      var recovered_cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-      var recovered_proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
-      new(recovered_cells)
-      new(recovered_proofs)
       doAssert cttEthKzg_Success == recover_cells_and_kzg_proofs(
         ctx,
         recovered_cells[].asUnchecked(),
@@ -433,7 +428,16 @@ proc main() =
   separator()
   benchComputeCells(b, ctx, Iters)
   echo ""
-  benchComputeCellsAndKZGProofs(b, ctx, Iters)
+  benchComputeCellsAndKZGProofsNoPrecomp(b, ctx, Iters)
+
+  const PrecompConfigs: array[12, tuple[t, b: int]] = [
+    (64, 6), (64, 8), (64, 10), (64, 12),
+    (128, 6), (128, 8), (128, 10), (128, 12),
+    (256, 6), (256, 8), (256, 10), (256, 12),
+  ]
+
+  for cfg in PrecompConfigs:
+    benchComputeCellsAndKZGProofsWithPrecomp(b, ctx, cfg.t, cfg.b, Iters)
   echo ""
 
   separator()
@@ -449,6 +453,15 @@ proc main() =
   separator()
   echo "Recovery Benchmarks"
   separator()
+
+  # Recovery without precompute
+  benchRecoverCellsAndKZGProofs_WorstCase(b, ctx, Iters)
+  echo ""
+  benchRecoverCellsAndKZGProofs_VaryingAvailability(b, ctx, Iters)
+  echo ""
+
+  # Recovery with precompute (t=256, b=8)
+  ctx.setupPolyphaseSpectrumBank(t = 256, b = 8)
   benchRecoverCellsAndKZGProofs_WorstCase(b, ctx, Iters)
   echo ""
   benchRecoverCellsAndKZGProofs_VaryingAvailability(b, ctx, Iters)

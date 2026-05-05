@@ -239,7 +239,7 @@ type
   TrustedSetupFormat* = enum
     kReferenceCKzg4844
 
-proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File, t: int = 64, b: int = 12): TrustedSetupStatus =
+proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
   ## Read a trusted setup in the reference library c-kzg-4844 format
   # Format is the following (c-kzg-4844 with Monomial G1 for FK20):
   # <nG1: number of G1 points>
@@ -345,42 +345,38 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File, t: int = 64, b: int = 1
         c_printf("[Constantine Trusted Setup] Invalid G1 Monomial point on line %d: CttCodecEccStatus code %d\n", cint(2+FIELD_ELEMENTS_PER_BLOB+KZG_SETUP_G2_LENGTH+i), status)
         return tsInvalidFile
 
-  block:
-    # Initialize FFT descriptors
-    ctx.ecfft_desc_ext = ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]].new(
-      order = FIELD_ELEMENTS_PER_EXT_BLOB,
-      generatorRootOfUnity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_EXT_BLOB)
-    )
+  return tsSuccess
 
-    # Domain: FIELD_ELEMENTS_PER_EXT_BLOB (8192) roots of unity
-    ctx.fft_desc_ext = FrFFT_Descriptor[Fr[BLS12_381]].new(
-      order = FIELD_ELEMENTS_PER_EXT_BLOB,
-      generatorRootOfUnity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_EXT_BLOB)
-    )
+proc setupPolyphaseSpectrumBank(ctx: ptr EthereumKZGContext, t: int = 0, b: int = 0) =
+  ## Build the polyphase spectrum bank from the SRS monomial points.
+  ## Use when the bank has been mutated in-place (e.g., benchmarking different
+  ## precompute configs) and you need to restore it without reloading the full context.
+  ## `srs_monomial_g1` is never mutated, so this is safe.
 
-  block:
-    # Compute polyphase decomposition (offset-major) as affine points.
-    type BLS12_381_G1_Aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
-    let tmp = allocHeapAligned(array[FIELD_ELEMENTS_PER_CELL, array[CELLS_PER_EXT_BLOB, BLS12_381_G1_Aff]], 64)
-    defer: freeHeapAligned(tmp)
-    computePolyphaseDecompositionFourier(tmp[], ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
+  # Destroy any existing precompute tables
+  `=destroy`(ctx.polyphaseSpectrumBank)
 
-    if t > 0 and b > 0:
-      # Build PrecomputedMSM tables if t > 0 and b > 0.
-      ctx.polyphaseSpectrumBank.kind = kPrecompute
-      for pos in 0 ..< CELLS_PER_EXT_BLOB:
-        var points {.noInit.}: array[FIELD_ELEMENTS_PER_CELL, BLS12_381_G1_Aff]
-        for offset in 0 ..< FIELD_ELEMENTS_PER_CELL:
-          points[offset] = tmp[offset][pos]
-        ctx.polyphaseSpectrumBank.precompPoints[pos].init(points, t = t, b = b)
+  type BLS12_381_G1_Aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
 
-    else:
-      # Build raw affine points for kNoPrecompute variant (position-major).
-      ctx.polyphaseSpectrumBank.kind = kNoPrecompute
-      for pos in 0 ..< CELLS_PER_EXT_BLOB:
-        for offset in 0 ..< FIELD_ELEMENTS_PER_CELL:
-          ctx.polyphaseSpectrumBank.rawPoints[pos][offset] = tmp[offset][pos]
+  # Recompute polyphase decomposition
+  let tmp = allocHeapAligned(array[FIELD_ELEMENTS_PER_CELL, array[CELLS_PER_EXT_BLOB, BLS12_381_G1_Aff]], 64)
+  defer: freeHeapAligned(tmp)
+  computePolyphaseDecompositionFourier(tmp[], ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
 
+  if t > 0 and b > 0:
+    ctx.polyphaseSpectrumBank.kind = kPrecompute
+    for pos in 0 ..< CELLS_PER_EXT_BLOB:
+      var points {.noInit.}: array[FIELD_ELEMENTS_PER_CELL, BLS12_381_G1_Aff]
+      for offset in 0 ..< FIELD_ELEMENTS_PER_CELL:
+        points[offset] = tmp[offset][pos]
+      ctx.polyphaseSpectrumBank.precompPoints[pos].init(points, t = t, b = b)
+  else:
+    ctx.polyphaseSpectrumBank.kind = kNoPrecompute
+    for pos in 0 ..< CELLS_PER_EXT_BLOB:
+      for offset in 0 ..< FIELD_ELEMENTS_PER_CELL:
+        ctx.polyphaseSpectrumBank.rawPoints[pos][offset] = tmp[offset][pos]
+
+proc setupKzg4844ProtoDanksharding(ctx: ptr EthereumKZGContext) =
   block:
     # Powers of tau: [G, [τ]G, [τ²]G, ... [τ⁴⁰⁹⁶]G]
 
@@ -397,8 +393,20 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File, t: int = 64, b: int = 1
     ctx.domain_brp.invMaxDegree.fromUint(ctx.domain_brp.rootsOfUnity.len.uint64)
     ctx.domain_brp.invMaxDegree.inv_vartime()
 
-  return tsSuccess
+proc setupKzg7594PeerDAS(ctx: ptr EthereumKZGContext, t, b: int) =
+  # Initialize FFT descriptors
+  ctx.ecfft_desc_ext = ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]].new(
+    order = FIELD_ELEMENTS_PER_EXT_BLOB,
+    generatorRootOfUnity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_EXT_BLOB)
+  )
 
+  # Domain: FIELD_ELEMENTS_PER_EXT_BLOB (8192) roots of unity
+  ctx.fft_desc_ext = FrFFT_Descriptor[Fr[BLS12_381]].new(
+    order = FIELD_ELEMENTS_PER_EXT_BLOB,
+    generatorRootOfUnity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_EXT_BLOB)
+  )
+
+  ctx.setupPolyphaseSpectrumBank(t, b)
 
 proc load_from_file(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat, t = 64, b = 12): TrustedSetupStatus =
   ## Load from a trusted setup file.
@@ -410,13 +418,15 @@ proc load_from_file(ctx: var ptr EthereumKZGContext, filepath: cstring, format: 
 
   ctx = alloc0HeapAligned(EthereumKZGContext, alignment = 64)
 
-  let status = ctx.load_ckzg4844(f, int(t), int(b))
+  let status = ctx.load_ckzg4844(f)
   fileio.close(f)
   return status
 
-
 proc new*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat): TrustedSetupStatus {.exportc: "ctt_eth_kzg_context_new".} =
-  return ctx.load_from_file(filepath, format, t = 0, b = 0)
+  result = ctx.load_from_file(filepath, format)
+  if result == tsSuccess:
+    ctx.setupKzg4844ProtoDanksharding()
+    ctx.setupKzg7594PeerDAS(t=0, b=0)
 
 proc new_with_precompute*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat, t, b: cint): TrustedSetupStatus {.exportc: "ctt_eth_kzg_context_new_with_precompute".} =
   ## Create a KZG context with precomputed MSM tables for FK20 proofs (PeerDAS).
@@ -443,9 +453,15 @@ proc new_with_precompute*(ctx: var ptr EthereumKZGContext, filepath: cstring, fo
   ## Larger b = faster per MSM but exponentially more memory (2^b entries).
   ## Larger t = fewer doublings but more precomputed layers.
   ## Recommended (t=256, b=8): ~98 ms/blob proving, ~24 MiB total memory.
-  return ctx.load_from_file(filepath, format, t = int(t), b = int(b))
+  result = ctx.load_from_file(filepath, format)
+  if result == tsSuccess:
+    ctx.setupKzg4844ProtoDanksharding()
+    ctx.setupKzg7594PeerDAS(t, b)
 
 proc delete*(ctx: ptr EthereumKZGContext) {.exportc: "ctt_eth_kzg_context_delete".} =
+  # Not why but `=destroy`(ctx.polyphaseSpectrumBank)
+  # can apparently raise
+  # but destroying the individual precomp MSM field cannot
   if not ctx.isNil:
     case ctx.polyphaseSpectrumBank.kind
     of kNoPrecompute: discard
