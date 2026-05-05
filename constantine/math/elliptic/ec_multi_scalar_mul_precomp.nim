@@ -159,8 +159,7 @@ func init*[EC; N](
   ## silently produces meaningless tables. This is safe in practice because
   ## callers that parse external data (e.g. SRS files) validate during parsing,
   ## and hardcoded/test bases are known-correct.
-  ##
-  ## If `ctx.table` is already allocated, it is freed before the new table is built.
+
   doAssert basis.len == N
 
   # (0, 0) means no precompute
@@ -168,11 +167,6 @@ func init*[EC; N](
     ctx.t = 0
     ctx.b = 0
     return
-
-  if ctx.table != nil:
-    freeHeapAligned(ctx.table)
-    ctx.table = nil
-    ctx.tableLen = 0
 
   ctx.t = t
   ctx.b = b
