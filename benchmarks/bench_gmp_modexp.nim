@@ -92,7 +92,7 @@ for i in 0 ..< 5:
     rr.mpz_powm(aa, ee, mm)
     let stop = getMonotime()
 
-    elapsedGMP = inNanoSeconds(stop-start)
+    elapsedGMP = inNanoseconds(stop-start)
 
     var r: BigInt[bits]
     var rWritten: csize_t

@@ -106,7 +106,7 @@ proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int]): BenchMsmC
   result.tp.shutdown()
 
   let stop = getMonotime()
-  stdout.write &"in {float64(inNanoSeconds(stop-start)) / 1e6:6.3f} ms\n"
+  stdout.write &"in {float64(inNanoseconds(stop-start)) / 1e6:6.3f} ms\n"
 
 proc msmParallelBench*[EC](ctx: var BenchMsmContext[EC], numInputs: int, iters: int): MsmParallelBenchResult =
   const bits = EC.getScalarField().bits()

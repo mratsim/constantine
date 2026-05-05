@@ -396,7 +396,7 @@ proc new*[EC; N: static int](
   let start = getMonotime()
   ctx.precomp.init(ctx.basis, t, b)
   let stop = getMonotime()
-  ctx.precompTimeMs = float64(inNanoSeconds(stop-start)) / 1e6
+  ctx.precompTimeMs = float64(inNanoseconds(stop-start)) / 1e6
   ctx.precompMemMiB = float64(msmPrecompSize(EC, N, t, b) * sizeof(affine(EC))) / (1024.0 * 1024.0)
 
 
