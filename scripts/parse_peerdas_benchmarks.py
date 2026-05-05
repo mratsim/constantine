@@ -220,7 +220,7 @@ def generate_report(const_eip4844, const_peerdas, ckzg_eip4844, ckzg_peerdas, ou
     ckzg_pre0 = None
     ckzg_other_rows = []
     for label, mem, ns_val in ckzg_rows:
-        if 'precompute=0' in label:
+        if 'precomp=0' in label:
             ckzg_pre0 = (mem, ns_val)
         else:
             ckzg_other_rows.append((label, mem, ns_val))
@@ -241,7 +241,7 @@ def generate_report(const_eip4844, const_peerdas, ckzg_eip4844, ckzg_peerdas, ou
         const_str = f"{ns_to_ms(ctt_ns):.3f} ms"
         pct = calc_pct_diff(ckzg_ns, ctt_ns)
         pct_str = f"{pct:+.1f}%"
-        lines.append(f"| compute_cells_and_kzg_proofs | no precompute ({ctt_mem}) | {ckzg_str:>19} | {const_str:>20} | {pct_str:>8} |")
+        lines.append(f"| compute_cells_and_kzg_proofs   | no precomp           | {ckzg_str:>19} | {const_str:>20} | {pct_str:>8} |")
 
     # ckzg-only rows
     for label, mem, ns_val in ckzg_other_rows:
@@ -258,8 +258,12 @@ def generate_report(const_eip4844, const_peerdas, ckzg_eip4844, ckzg_peerdas, ou
     const_val = const_peerdas.get('recover_cells_and_kzg_proofs')
     ckzg_str = f"{ns_to_ms(ckzg_val):.3f} ms" if ckzg_val else EM
     const_str = f"{ns_to_ms(const_val):.3f} ms" if const_val else EM
-    lines.append(f"| recover_cells_and_kzg_proofs\u00b9 | ckzg: precomp=8 | {ckzg_str:>19} | {EM:>20} | {EM:>8} |")
-    lines.append(f"|                                  | ctt: none       | {EM:>19} | {const_str:>20} | {EM:>8} |")
+    if ckzg_val and const_val:
+        pct = calc_pct_diff(ckzg_val, const_val)
+        pct_str = f"{pct:+.1f}%"
+    else:
+        pct_str = EM
+    lines.append(f"| recover_cells_and_kzg_proofs¹ | see ¹                | {ckzg_str:>19} | {const_str:>20} | {pct_str:>8} |")
 
     # verify_cell_kzg_proof_batch (128 cells, 64 blobs)
     ckzg_val = ckzg_peerdas.get('verify_cell_kzg_proof_batch_serial')
@@ -272,7 +276,7 @@ def generate_report(const_eip4844, const_peerdas, ckzg_eip4844, ckzg_peerdas, ou
 
     lines.append("")
     lines.append("**Notes:**")
-    lines.append("- \u00b9 Recovery: c-kzg-4844 uses precompute=8 (96 MiB); constantine has no precompute")
+    lines.append("- \u00b9 Recovery: c-kzg-4844 uses precompute=8 (96 MiB); constantine uses t=256, b=8 (24 MiB)")
     lines.append("- \u00b2 c-kzg-4844 verifies 8192 cells (64 blobs); constantine matches this config")
     lines.append("- \u0394% shows constantine relative to c-kzg-4844 (negative = faster)")
     lines.append("- c-kzg-4844 precompute levels and constantine (t, b) configs are not directly comparable")
