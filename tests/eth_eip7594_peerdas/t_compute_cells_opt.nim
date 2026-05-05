@@ -187,4 +187,4 @@ suite "EIP-7594 PeerDAS - compute_cells [" & test_case & "]":
 
     echo "  ✅ compute_cells (half-FFT) matches test vector"
 
-  ctx.trusted_setup_delete()
+  ctx.delete()

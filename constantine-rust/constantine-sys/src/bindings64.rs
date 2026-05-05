@@ -4760,16 +4760,27 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     #[must_use]
-    #[doc = " Load trusted setup from path\n  Currently the only format supported `cttEthTSFormat_ckzg4844`\n  is from the reference implementation c-kzg-4844 text file"]
-    pub fn ctt_eth_trusted_setup_load(
+    #[doc = " Create a new KZG context from trusted setup file.\n  Loads SRS, computes polyphase decomposition as raw affine points,\n  and sets the context to kNoPrecompute mode (~1.8 MiB)."]
+    pub fn ctt_eth_kzg_context_new(
         ctx: *mut *mut ctt_eth_kzg_context,
         filepath: *const ::core::ffi::c_char,
         format: ctt_eth_trusted_setup_format,
     ) -> ctt_eth_trusted_setup_status;
 }
 unsafe extern "C" {
-    #[doc = " Destroy a trusted setup"]
-    pub fn ctt_eth_trusted_setup_delete(ctx: *mut ctt_eth_kzg_context);
+    #[must_use]
+    #[doc = " Create a new KZG context with precomputed MSM tables.\n  Same as ctt_eth_kzg_context_new but also builds PrecomputedMSM lookup\n  tables for FK20 proofs (PeerDAS).\n\n  @param t  base groups (stride between precomputed layers)\n  @param b  bits per window (window size = 2^b)\n\n  SPEED / MEMORY TRADEOFF (Intel i7-265K, FK20 proofs = 128 MSMs per blob):\n  - no precompute: ~145 ms/blob, ~1.8 MiB\n  - t=64,b=8:     ~109 ms/blob, ~101 MiB per MSM (~12.8 GiB total)\n  - t=64,b=12:     ~89 ms/blob, ~8.7 MiB per MSM (~1.1 GiB total)\n  - t=128,b=8:     ~105 ms/blob, ~50 MiB per MSM (~6.4 GiB total)\n  - t=128,b=12:    ~92 ms/blob, ~4.3 MiB per MSM (~0.6 GiB total)\n  - t=256,b=8:     ~105 ms/blob, ~25 MiB per MSM (~3.2 GiB total)\n\n  Larger b = faster per MSM but exponentially more memory (2^b entries).\n  Larger t = fewer doublings but more precomputed layers.\n  Default (t=64, b=12): ~89 ms/blob proving, ~1.1 GiB total memory."]
+    pub fn ctt_eth_kzg_context_new_with_precompute(
+        ctx: *mut *mut ctt_eth_kzg_context,
+        filepath: *const ::core::ffi::c_char,
+        format: ctt_eth_trusted_setup_format,
+        t: ::core::ffi::c_int,
+        b: ::core::ffi::c_int,
+    ) -> ctt_eth_trusted_setup_status;
+}
+unsafe extern "C" {
+    #[doc = " Destroy a KZG context"]
+    pub fn ctt_eth_kzg_context_delete(ctx: *mut ctt_eth_kzg_context);
 }
 unsafe extern "C" {
     #[must_use]
@@ -4865,7 +4876,7 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     #[must_use]
-    #[doc = " Recover all cells and KZG proofs from a subset of available cells.\n\n  Requires at least 64 out of 128 cells (≥50% of the extended blob).\n\n  @param ctx              KZG context (trusted setup)\n  @param recovered_proofs Output: array of 128 recovered KZG proofs (caller-allocated)\n  @param recovered_cells  Output: array of 128 recovered cells (caller-allocated)\n  @param cell_indices     Array of indices for the provided cells (sorted, unique)\n  @param cells            Array of available cells\n  @param num_cells        Number of available cells (must be in [64, 128])\n  @note Precondition: The caller must ensure that `cells` and `cell_indices`\n        arrays are allocated with at least `num_cells` elements, and that\n        `recovered_proofs` and `recovered_cells` are allocated with exactly\n        CELLS_PER_EXT_BLOB (128) elements each.\n        The `cell_indices` array must be sorted in strictly ascending order\n        with values in [0, CELLS_PER_EXT_BLOB).\n  @return                 cttEthKzg_Success on success, error status otherwise"]
+    #[doc = " Recover all cells and KZG proofs from a subset of available cells.\n\n  Requires at least 64 out of 128 cells (≥50% of the extended blob).\n\n  @param ctx              KZG context (trusted setup)\n  @param recovered_cells  Output: array of 128 recovered cells (caller-allocated)\n  @param recovered_proofs Output: array of 128 recovered KZG proofs (caller-allocated)\n  @param cell_indices     Array of indices for the provided cells (sorted, unique)\n  @param cells            Array of available cells\n  @param num_cells        Number of available cells (must be in [64, 128])\n  @note Precondition: The caller must ensure that `cells` and `cell_indices`\n        arrays are allocated with at least `num_cells` elements, and that\n        `recovered_proofs` and `recovered_cells` are allocated with exactly\n        CELLS_PER_EXT_BLOB (128) elements each.\n        The `cell_indices` array must be sorted in strictly ascending order\n        with values in [0, CELLS_PER_EXT_BLOB).\n  @return                 cttEthKzg_Success on success, error status otherwise"]
     pub fn ctt_eth_kzg_recover_cells_and_kzg_proofs(
         ctx: *const ctt_eth_kzg_context,
         recovered_cells: *mut ctt_eth_kzg_cell,

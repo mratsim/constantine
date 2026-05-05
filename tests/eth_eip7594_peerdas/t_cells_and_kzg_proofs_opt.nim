@@ -126,7 +126,7 @@ const
 
 proc trusted_setup(): ptr EthereumKZGContext =
   var ctx: ptr EthereumKZGContext
-  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  let tsStatus = ctx.new(TrustedSetupMainnet, kReferenceCKzg4844)
   doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
   return ctx
 
@@ -344,7 +344,7 @@ proc main() =
 
         check not mismatch
 
-    ctx.trusted_setup_delete()
+    ctx.delete()
 
 when isMainModule:
   main()

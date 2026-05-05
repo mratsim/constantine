@@ -189,23 +189,57 @@ ctt_eth_kzg_status ctt_eth_kzg_verify_blob_kzg_proof_batch(
 ) __attribute__((__warn_unused_result__));
 
 
-// EIP4844 KZG Trusted setup
+// Ethereum EIP-4844 KZG context management
 // ------------------------------------------------------------------------------------------------
 
-/** Load trusted setup from path
- *  Currently the only format supported `cttEthTSFormat_ckzg4844`
- *  is from the reference implementation c-kzg-4844 text file
+/** Create a new KZG context from trusted setup file.
+ *  Loads SRS, computes polyphase decomposition as raw affine points,
+ *  and sets the context to kNoPrecompute mode (~1.8 MiB).
  */
-ctt_eth_trusted_setup_status ctt_eth_trusted_setup_load(
+ctt_eth_trusted_setup_status ctt_eth_kzg_context_new(
     ctt_eth_kzg_context** ctx,
     const char* filepath,
     ctt_eth_trusted_setup_format format
-) __attribute__((__warn_unused_result__));
+    ) __attribute__((__warn_unused_result__));
 
-/** Destroy a trusted setup
+/** Create a new KZG context with precomputed MSM tables.
+ *  Same as ctt_eth_kzg_context_new but also builds PrecomputedMSM lookup
+ *  tables for FK20 proofs (PeerDAS).
+ *
+ *  @param t  base groups (stride between precomputed layers)
+ *  @param b  bits per window (window size = 2^b)
+ *
+ *  SPEED / MEMORY TRADEOFF (PeerDAS, compute_cells_and_kzg_proofs = 128 MSMs per blob):
+ *  - no precompute, 1.8 MiB total:        7.083 ops/s   ~141 ms/blob
+ *  - t= 64, b= 6, ~   32.2 MiB total:     8.724 ops/s   ~115 ms/blob
+ *  - t= 64, b= 8, ~   96.0 MiB total:     9.518 ops/s   ~105 ms/blob
+ *  - t= 64, b=10, ~  312.0 MiB total:    10.547 ops/s    ~95 ms/blob
+ *  - t= 64, b=12, ~ 1056.0 MiB total:    11.629 ops/s    ~86 ms/blob
+ *  - t=128, b= 6, ~   16.5 MiB total:     8.783 ops/s   ~114 ms/blob
+ *  - t=128, b= 8, ~   48.0 MiB total:     9.965 ops/s   ~100 ms/blob
+ *  - t=128, b=10, ~  156.0 MiB total:    10.561 ops/s    ~95 ms/blob
+ *  - t=128, b=12, ~  528.0 MiB total:    11.505 ops/s    ~87 ms/blob
+ *  - t=256, b= 6, ~    8.2 MiB total:     8.641 ops/s   ~116 ms/blob
+ *  - t=256, b= 8, ~   24.0 MiB total:    10.244 ops/s    ~98 ms/blob
+ *  - t=256, b=10, ~   84.0 MiB total:    10.281 ops/s    ~97 ms/blob
+ *  - t=256, b=12, ~  288.0 MiB total:    10.868 ops/s    ~92 ms/blob
+ *
+ *  CPU: Intel i7-265K
+ *  Larger b = faster per MSM but exponentially more memory (2^b entries).
+ *  Larger t = fewer doublings but more precomputed layers.
+ *  Recommended (t=256, b=8): ~98 ms/blob proving, ~24 MiB total memory.
  */
-void ctt_eth_trusted_setup_delete(ctt_eth_kzg_context* ctx);
+ctt_eth_trusted_setup_status ctt_eth_kzg_context_new_with_precompute(
+    ctt_eth_kzg_context** ctx,
+    const char* filepath,
+    ctt_eth_trusted_setup_format format,
+    int t,
+    int b
+    ) __attribute__((__warn_unused_result__));
 
+/** Destroy a KZG context
+ */
+void ctt_eth_kzg_context_delete(ctt_eth_kzg_context* ctx);
 
 #ifdef __cplusplus
 }

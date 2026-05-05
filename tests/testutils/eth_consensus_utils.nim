@@ -16,8 +16,7 @@ import
 
 export yaml
 
-const
-  TrustedSetupMainnet =
+const TrustedSetupMainnet* =
     currentSourcePath.rsplit(DirSep, 1)[0] /
     ".." / ".." / "constantine" /
     "commitments_setups" /
@@ -26,7 +25,7 @@ const
 proc getTrustedSetup*(): ptr EthereumKZGContext =
   ## This is a convenience function for the Ethereum mainnet testing trusted setups.
   var ctx: ptr EthereumKZGContext
-  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  let tsStatus = ctx.new(TrustedSetupMainnet, kReferenceCKzg4844)
   doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
   echo "Trusted Setup loaded successfully"
   return ctx

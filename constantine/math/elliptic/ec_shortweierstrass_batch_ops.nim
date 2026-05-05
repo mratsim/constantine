@@ -89,10 +89,11 @@ func batchAffine*[F, G](
     affs[0].x.prod(projs[0].x, accInv)
     affs[0].y.prod(projs[0].y, accInv)
 
-func batchAffine*[N: static int, F, G](
-       affs: var array[N, EC_ShortW_Aff[F, G]],
-       projs: array[N, EC_ShortW_Prj[F, G]]) {.inline.} =
-  batchAffine(affs.asUnchecked(), projs.asUnchecked(), N)
+func batchAffine*[F, G](
+       affs: var openArray[EC_ShortW_Aff[F, G]],
+       projs: openArray[EC_ShortW_Prj[F, G]]) {.inline.} =
+  doAssert affs.len == projs.len, "[ctt] Internal error: batchAffine length mismatch"
+  batchAffine(affs.asUnchecked(), projs.asUnchecked(), affs.len)
 
 func batchAffine*[F, G](
        affs: ptr UncheckedArray[EC_ShortW_Aff[F, G]],
@@ -164,10 +165,11 @@ func batchAffine*[F, G](
     accInv.prod(accInv, invi2, lazyReduce = true)
     affs[0].y.prod(jacs[0].y, accInv)
 
-func batchAffine*[N: static int, F, G](
-       affs: var array[N, EC_ShortW_Aff[F, G]],
-       jacs: array[N, EC_ShortW_Jac[F, G]]) {.inline.} =
-  batchAffine(affs.asUnchecked(), jacs.asUnchecked(), N)
+func batchAffine*[F, G](
+       affs: var openArray[EC_ShortW_Aff[F, G]],
+       jacs: openArray[EC_ShortW_Jac[F, G]]) {.inline.} =
+  doAssert affs.len == jacs.len, "[ctt] Internal error: batchAffine length mismatch"
+  batchAffine(affs.asUnchecked(), jacs.asUnchecked(), affs.len)
 
 func batchAffine*[M, N: static int, F, G](
        affs: var array[M, array[N, EC_ShortW_Aff[F, G]]],
@@ -249,10 +251,11 @@ func batchAffine_vartime*[F, G](
       affs[0].x.prod(projs[0].x, accInv)
       affs[0].y.prod(projs[0].y, accInv)
 
-func batchAffine_vartime*[N: static int, F, G](
-       affs: var array[N, EC_ShortW_Aff[F, G]],
-       projs: array[N, EC_ShortW_Prj[F, G]]) {.inline.} =
-  batchAffine_vartime(affs.asUnchecked(), projs.asUnchecked(), N)
+func batchAffine_vartime*[F, G](
+       affs: var openArray[EC_ShortW_Aff[F, G]],
+       projs: openArray[EC_ShortW_Prj[F, G]]) {.inline.} =
+  doAssert affs.len == projs.len, "[CTT] Internal error: batchAffine_vartime length differ"
+  batchAffine_vartime(affs.asUnchecked(), projs.asUnchecked(), affs.len)
 
 func batchAffine_vartime*[M, N: static int, F, G](
        affs: var array[M, array[N, EC_ShortW_Aff[F, G]]],
@@ -333,10 +336,11 @@ func batchAffine_vartime*[F, G](
       accInv.prod(accInv, invi2, lazyReduce = true)
       affs[0].y.prod(jacs[0].y, accInv)
 
-func batchAffine_vartime*[N: static int, F, G](
-       affs: var array[N, EC_ShortW_Aff[F, G]],
-       jacs: array[N, EC_ShortW_Jac[F, G]]) {.inline.} =
-  batchAffine_vartime(affs.asUnchecked(), jacs.asUnchecked(), N)
+func batchAffine_vartime*[F, G](
+       affs: var openArray[EC_ShortW_Aff[F, G]],
+       jacs: openArray[EC_ShortW_Jac[F, G]]) {.inline.} =
+  doAssert affs.len == jacs.len, "[CTT] Internal error: batchAffine_vartime length differ"
+  batchAffine_vartime(affs.asUnchecked(), jacs.asUnchecked(), affs.len)
 
 func batchAffine_vartime*[M, N: static int, F, G](
        affs: var array[M, array[N, EC_ShortW_Aff[F, G]]],

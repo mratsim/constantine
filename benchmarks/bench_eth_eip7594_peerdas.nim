@@ -16,18 +16,22 @@ import
   # Internals
   constantine/eth_eip7594_peerdas {.all.},
   constantine/commitments/kzg_multiproofs,
+  constantine/commitments_setups/ethereum_kzg_srs,
   constantine/ethereum_eip4844_kzg_parallel,
   constantine/named/algebras,
-  constantine/math/[ec_shortweierstrass, io/io_fields],
+  constantine/math/[ec_shortweierstrass, io/io_fields, elliptic/ec_multi_scalar_mul_precomp],
   constantine/serialization/codecs_bls12_381,
   constantine/csprngs/sysrand,
   constantine/platforms/primitives,
   constantine/threadpool/threadpool,
+  std/importutils,
   # Helpers
   helpers/prng_unsafe,
   ./bench_blueprint,
   # Standard library
   std/[os, strutils, sequtils, monotimes]
+
+importutils.privateAccess(ec_multi_scalar_mul_precomp.PrecomputedMSM)
 
 const NumBlobs* = 64  # Number of blobs for benchmarks (matches c-kzg-4844 config)
                       # Parallel initialization uses all available threads (~20 on modern CPUs)
@@ -39,9 +43,9 @@ proc report(op: string, startTime, stopTime: MonoTime, startClk, stopClk: int64,
   let ns = inNanoseconds((stopTime-startTime) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<60} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo fmt"{op:<72} {throughput:>15.3f} ops/s {ns:>16} ns/op {(stopClk - startClk) div iters:>14} CPU cycles (approx)"
   else:
-    echo &"{op:<60} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo fmt"{op:<72} {throughput:>15.3f} ops/s {ns:>16} ns/op"
 
 template bench(op: string, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
@@ -178,15 +182,53 @@ proc benchComputeCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, ite
   ## - rust-eth-kzg: "computing cells_and_kzg_proofs" benchmark
   ## - rust-kzg: compute_cells_and_kzg_proofs benchmark
 
-  bench("compute_cells_and_kzg_proofs (FK20)", iters):
-    var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-    var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
-    new(cells)
-    new(proofs)
-    doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
-      cells[].asUnchecked(),
-      proofs[].asUnchecked(),
-      b.blobs[0])
+  type EC_Aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+  type EC_Jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
+
+  # No precompute baseline
+  proc runNoPrecomp() =
+    ctx.polyphaseSpectrumBank.kind = kNoPrecompute
+    bench("compute_cells_and_kzg_proofs (no precompute, 1.8 MiB)", iters):
+      var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
+      var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
+      new(cells)
+      new(proofs)
+      doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
+        cells[].asUnchecked(),
+        proofs[].asUnchecked(),
+        b.blobs[0])
+
+  # Precompute with given (t, b) config
+  proc runPrecomp(t, bitWidth: int) =
+    for pos in 0 ..< CELLS_PER_EXT_BLOB:
+      ctx.polyphaseSpectrumBank.precompPoints[pos].init(ctx.polyphaseSpectrumBank.rawPoints[pos], t = t, b = bitWidth)
+    ctx.polyphaseSpectrumBank.kind = kPrecompute
+
+    let memMiB = float64(msmPrecompSize(EC_Jac, FIELD_ELEMENTS_PER_CELL, t, bitWidth) *
+                          CELLS_PER_EXT_BLOB * sizeof(EC_Aff)) / (1024.0 * 1024.0)
+
+    bench(fmt"compute_cells_and_kzg_proofs (t={t:>3}, b={bitWidth:>2}, ~{memMiB:>7.1f} MiB)", iters):
+      var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
+      var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
+      new(cells)
+      new(proofs)
+      doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
+        cells[].asUnchecked(),
+        proofs[].asUnchecked(),
+        b.blobs[0])
+
+  # Run benchmarks
+  runNoPrecomp()
+
+  # Parametric precompute configurations
+  const PrecompConfigs: array[12, tuple[t, b: int]] = [
+    (64, 6), (64, 8), (64, 10), (64, 12),
+    (128, 6), (128, 8), (128, 10), (128, 12),
+    (256, 6), (256, 8), (256, 10), (256, 12),
+  ]
+
+  for cfg in PrecompConfigs:
+    runPrecomp(cfg.t, cfg.b)
 
 proc benchVerifyCellKZGProofBatch_SingleBlob(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## Verify cells from a single blob with varying batch sizes
@@ -319,25 +361,6 @@ proc benchRecoverCellsAndKZGProofs_VaryingAvailability(b: BenchSet, ctx: ptr Eth
         cells.asUnchecked(),
         numCells)
 
-proc benchFK20_Proving(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
-  ## FK20 multi-proof computation (internal component)
-  ## Corresponds to:
-  ## - go-eth-kzg: Internal to ComputeCellsAndKZGProofs
-  ## - rust-eth-kzg: "computing proofs with fk20" benchmark
-  ## - rust-kzg: bench_fk_multi_da benchmark
-
-  bench("fk20_multi_prove (4096 coeffs, 64 points/proof, 128 proofs)", iters):
-    # This is already tested via compute_cells_and_kzg_proofs
-    # but we can measure it separately if needed
-    var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-    var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
-    new(cells)
-    new(proofs)
-    doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
-      cells[].asUnchecked(),
-      proofs[].asUnchecked(),
-      b.blobs[0])
-
 proc benchBatchVerification_ChallengeComputation(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## Fiat-Shamir challenge computation for batch verification
   ## Corresponds to:
@@ -391,7 +414,7 @@ proc trusted_setup*(): ptr EthereumKZGContext =
   ## It is insecure and will be replaced once the KZG ceremony is done.
 
   var ctx: ptr EthereumKZGContext
-  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  let tsStatus = ctx.new(TrustedSetupMainnet, kReferenceCKzg4844)
   doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
   echo "Trusted Setup loaded successfully"
   return ctx
@@ -431,13 +454,7 @@ proc main() =
   benchRecoverCellsAndKZGProofs_VaryingAvailability(b, ctx, Iters)
   echo ""
 
-  separator()
-  echo "Internal Component Benchmarks"
-  separator()
-  benchFK20_Proving(b, ctx, Iters)
-  separator()
-
-  ctx.trusted_setup_delete()
+  ctx.delete()
 
 when isMainModule:
   main()

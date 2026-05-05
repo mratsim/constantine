@@ -96,12 +96,12 @@ func checkValidModulus(M: BigNum) =
   let expectedMsb = M.bits-1 - wordBitwidth * (M.limbs.len.uint32 - 1)
   let msb = log2_vartime(M.limbs[M.limbs.len-1])
 
-  doAssert msb == expectedMsb, "Internal Error: the modulus must use all declared bits and only those:\n" &
+  doAssert msb == expectedMsb, "[ctt] Internal error: the modulus must use all declared bits and only those:\n" &
     "    Modulus '0x" & M.toHexLlvm() & "' is declared with " & $M.bits &
     " bits but uses " & $(msb + wordBitwidth * uint32(M.limbs.len - 1)) & " bits."
 
 func checkOdd[T](a: T) =
-  doAssert bool(a and 1), "Internal Error: the modulus must be odd to use the Montgomery representation."
+  doAssert bool(a and 1), "[ctt] Internal error: the modulus must be odd to use the Montgomery representation."
 
 func checkOdd(M: BigNum) =
   checkOdd(M.limbs[0])

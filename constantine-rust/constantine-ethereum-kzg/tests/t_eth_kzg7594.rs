@@ -78,73 +78,89 @@ fn t_compute_cells_and_kzg_proofs() {
         output: Option<(Vec<OptBytes<2048>>, Vec<OptBytes<48>>)>,
     }
 
-    let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
-        .expect("Trusted setup should be loaded without error.");
-
     let test_files: Vec<PathBuf> = glob(COMPUTE_CELLS_AND_KZG_PROOFS_TESTS)
         .unwrap()
         .map(Result::unwrap)
         .collect();
     assert!(!test_files.is_empty());
 
-    for test_file in test_files {
-        let test_name = test_file
-            .parent()
-            .unwrap()
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap();
-        let tv = format!("    Test vector: {:<88}", test_name);
-        let unparsed = fs::read_to_string(&test_file).unwrap();
-        let test: Test = serde_yaml::from_str(&unparsed).expect(&format!(
-            "Formatting should be consistent for file \"{}\"",
-            &test_name
-        ));
+    // Run with both no-precompute and precompute (t=256, b=8) contexts
+    // to exercise both kNoPrecompute and kPrecompute code paths in polyphaseSpectrumBank.
+    for (label, ctx) in [
+        (
+            "no-precompute",
+            EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
+                .expect("Trusted setup should be loaded without error."),
+        ),
+        (
+            "precompute (t=256, b=8)",
+            EthKzgContext::builder()
+                .load_trusted_setup_with_precompute(Path::new(SRS_PATH), 256, 8)
+                .expect("Trusted setup with precompute should be loaded without error.")
+                .build()
+                .expect("Builder should succeed"),
+        ),
+    ] {
+        println!("\n  Mode: {label}");
+        for test_file in &test_files {
+            let test_name = test_file
+                .parent()
+                .unwrap()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap();
+            let tv = format!("    Test vector: {:<88}", test_name);
+            let unparsed = fs::read_to_string(test_file).unwrap();
+            let test: Test = serde_yaml::from_str(&unparsed).expect(&format!(
+                "Formatting should be consistent for file \"{}\"",
+                &test_name
+            ));
 
-        let Some(input) = test.input else {
-            assert!(test.output.is_none());
-            println!("{}=> SUCCESS - expected missing input", tv);
-            continue;
-        };
-
-        let Some(blob) = input.blob.opt_bytes.0 else {
-            assert!(test.output.is_none());
-            println!("{}=> SUCCESS - expected deserialization failure", tv);
-            continue;
-        };
-
-        match ctx.compute_cells_and_kzg_proofs(&*blob) {
-            Ok((cells_bytes, proofs_bytes)) => {
-                let (expected_cells, expected_proofs) = test.output.unwrap();
-                assert_eq!(expected_cells.len(), 128);
-                assert_eq!(expected_proofs.len(), 128);
-
-                for i in 0..128 {
-                    let exp_cell = expected_cells[i].opt_bytes.0.as_ref().unwrap();
-                    let exp_proof = expected_proofs[i].opt_bytes.0.as_ref().unwrap();
-                    let cell_start = i * 2048;
-                    let proof_start = i * 48;
-                    assert_eq!(
-                        &cells_bytes[cell_start..cell_start + 2048],
-                        &exp_cell[..],
-                        "cell {} mismatch for {}",
-                        i,
-                        test_name
-                    );
-                    assert_eq!(
-                        &proofs_bytes[proof_start..proof_start + 48],
-                        &exp_proof[..],
-                        "proof {} mismatch for {}",
-                        i,
-                        test_name
-                    );
-                }
-                println!("{}=> SUCCESS", tv);
-            }
-            Err(status) => {
+            let Some(input) = test.input else {
                 assert!(test.output.is_none());
-                println!("{}=> SUCCESS - expected failure {:?}", tv, status);
+                println!("{tv}=> SUCCESS - expected missing input");
+                continue;
+            };
+
+            let Some(blob) = input.blob.opt_bytes.0 else {
+                assert!(test.output.is_none());
+                println!("{tv}=> SUCCESS - expected deserialization failure");
+                continue;
+            };
+
+            match ctx.compute_cells_and_kzg_proofs(&*blob) {
+                Ok((cells_bytes, proofs_bytes)) => {
+                    let (expected_cells, expected_proofs) = test.output.unwrap();
+                    assert_eq!(expected_cells.len(), 128);
+                    assert_eq!(expected_proofs.len(), 128);
+
+                    for i in 0..128 {
+                        let exp_cell = expected_cells[i].opt_bytes.0.as_ref().unwrap();
+                        let exp_proof = expected_proofs[i].opt_bytes.0.as_ref().unwrap();
+                        let cell_start = i * 2048;
+                        let proof_start = i * 48;
+                        assert_eq!(
+                            &cells_bytes[cell_start..cell_start + 2048],
+                            &exp_cell[..],
+                            "cell {} mismatch for {}",
+                            i,
+                            test_name
+                        );
+                        assert_eq!(
+                            &proofs_bytes[proof_start..proof_start + 48],
+                            &exp_proof[..],
+                            "proof {} mismatch for {}",
+                            i,
+                            test_name
+                        );
+                    }
+                    println!("{tv}=> SUCCESS");
+                }
+                Err(status) => {
+                    assert!(test.output.is_none());
+                    println!("{tv}=> SUCCESS - expected failure {:?}", status);
+                }
             }
         }
     }
@@ -202,7 +218,7 @@ fn t_verify_cell_kzg_proof_batch() {
         // Handle input: null test vectors
         let Some(input) = test.input else {
             assert!(test.output.is_none());
-            println!("{}=> SUCCESS - expected missing input", tv);
+            println!("{tv}=> SUCCESS - expected missing input");
             continue;
         };
 
@@ -239,7 +255,7 @@ fn t_verify_cell_kzg_proof_batch() {
             || proofs_raw.len() != proofs_orig_len
         {
             assert!(test.output.is_none());
-            println!("{}=> SUCCESS - expected parse failure", tv);
+            println!("{tv}=> SUCCESS - expected parse failure");
             continue;
         }
 
@@ -248,7 +264,7 @@ fn t_verify_cell_kzg_proof_batch() {
             || commitments_raw.len() != cell_indices.len()
         {
             assert!(test.output.is_none());
-            println!("{}=> SUCCESS - expected input length mismatch", tv);
+            println!("{tv}=> SUCCESS - expected input length mismatch");
             continue;
         }
 
@@ -262,14 +278,14 @@ fn t_verify_cell_kzg_proof_batch() {
             Ok(valid) => {
                 assert_eq!(valid, test.output.unwrap());
                 if valid {
-                    println!("{}=> SUCCESS - successfully verified valid proof", tv);
+                    println!("{tv}=> SUCCESS - successfully verified valid proof");
                 } else {
-                    println!("{}=> SUCCESS - successfully rejected invalid proof", tv);
+                    println!("{tv}=> SUCCESS - successfully rejected invalid proof");
                 }
             }
             Err(status) => {
                 assert!(test.output.is_none());
-                println!("{}=> SUCCESS - expected failure {:?}", tv, status);
+                println!("{tv}=> SUCCESS - expected failure {:?}", status);
             }
         }
     }
@@ -294,94 +310,110 @@ fn t_recover_cells_and_kzg_proofs() {
         output: Option<(Vec<OptBytes<2048>>, Vec<OptBytes<48>>)>,
     }
 
-    let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
-        .expect("Trusted setup should be loaded without error.");
-
     let test_files: Vec<PathBuf> = glob(RECOVER_CELLS_AND_KZG_PROOFS_TESTS)
         .unwrap()
         .map(Result::unwrap)
         .collect();
     assert!(!test_files.is_empty());
 
-    for test_file in test_files {
-        let test_name = test_file
-            .parent()
-            .unwrap()
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap();
-        let tv = format!("    Test vector: {:<88}", test_name);
-        let unparsed = fs::read_to_string(&test_file).unwrap();
-        let test: Test = serde_yaml::from_str(&unparsed).expect(&format!(
-            "Formatting should be consistent for file \"{}\"",
-            &test_name
-        ));
+    // Run with both no-precompute and precompute (t=256, b=8) contexts
+    // to exercise both kNoPrecompute and kPrecompute code paths in polyphaseSpectrumBank.
+    for (label, ctx) in [
+        (
+            "no-precompute",
+            EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
+                .expect("Trusted setup should be loaded without error."),
+        ),
+        (
+            "precompute (t=256, b=8)",
+            EthKzgContext::builder()
+                .load_trusted_setup_with_precompute(Path::new(SRS_PATH), 256, 8)
+                .expect("Trusted setup with precompute should be loaded without error.")
+                .build()
+                .expect("Builder should succeed"),
+        ),
+    ] {
+        println!("\n  Mode: {label}");
+        for test_file in &test_files {
+            let test_name = test_file
+                .parent()
+                .unwrap()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap();
+            let tv = format!("    Test vector: {:<88}", test_name);
+            let unparsed = fs::read_to_string(test_file).unwrap();
+            let test: Test = serde_yaml::from_str(&unparsed).expect(&format!(
+                "Formatting should be consistent for file \"{}\"",
+                &test_name
+            ));
 
-        // Handle input: null test vectors
-        let Some(input) = test.input else {
-            assert!(test.output.is_none());
-            println!("{}=> SUCCESS - expected missing input", tv);
-            continue;
-        };
-
-        // Capture original length before into_iter() consumes it.
-        let cells_orig_len = input.cells.len();
-        let cell_indices = input.cell_indices;
-
-        // Collect only valid cells
-        let cells_raw: Vec<_> = input
-            .cells
-            .into_iter()
-            .filter_map(|v| v.opt_bytes.0)
-            .map(|v| *v)
-            .collect();
-
-        // If any cells had unparseable entries, the entire test case is invalid input.
-        if cells_raw.len() != cells_orig_len {
-            assert!(test.output.is_none());
-            println!("{}=> SUCCESS - expected parse failure", tv);
-            continue;
-        }
-
-        // Length mismatch means invalid input
-        if cells_raw.len() != cell_indices.len() {
-            assert!(test.output.is_none());
-            println!("{}=> SUCCESS - expected input length mismatch", tv);
-            continue;
-        }
-
-        match ctx.recover_cells_and_kzg_proofs(&cells_raw, &cell_indices) {
-            Ok((cells_bytes, proofs_bytes)) => {
-                let (expected_cells, expected_proofs) = test.output.unwrap();
-                assert_eq!(expected_cells.len(), 128);
-                assert_eq!(expected_proofs.len(), 128);
-
-                for i in 0..128 {
-                    let exp_cell = expected_cells[i].opt_bytes.0.as_ref().unwrap();
-                    let exp_proof = expected_proofs[i].opt_bytes.0.as_ref().unwrap();
-                    let cell_start = i * 2048;
-                    let proof_start = i * 48;
-                    assert_eq!(
-                        &cells_bytes[cell_start..cell_start + 2048],
-                        &exp_cell[..],
-                        "recovered cell {} mismatch for {}",
-                        i,
-                        test_name
-                    );
-                    assert_eq!(
-                        &proofs_bytes[proof_start..proof_start + 48],
-                        &exp_proof[..],
-                        "recovered proof {} mismatch for {}",
-                        i,
-                        test_name
-                    );
-                }
-                println!("{}=> SUCCESS", tv);
-            }
-            Err(status) => {
+            // Handle input: null test vectors
+            let Some(input) = test.input else {
                 assert!(test.output.is_none());
-                println!("{}=> SUCCESS - expected failure {:?}", tv, status);
+                println!("{tv}=> SUCCESS - expected missing input");
+                continue;
+            };
+
+            // Capture original length before into_iter() consumes it.
+            let cells_orig_len = input.cells.len();
+            let cell_indices = input.cell_indices;
+
+            // Collect only valid cells
+            let cells_raw: Vec<_> = input
+                .cells
+                .into_iter()
+                .filter_map(|v| v.opt_bytes.0)
+                .map(|v| *v)
+                .collect();
+
+            // If any cells had unparseable entries, the entire test case is invalid input.
+            if cells_raw.len() != cells_orig_len {
+                assert!(test.output.is_none());
+                println!("{tv}=> SUCCESS - expected parse failure");
+                continue;
+            }
+
+            // Length mismatch means invalid input
+            if cells_raw.len() != cell_indices.len() {
+                assert!(test.output.is_none());
+                println!("{tv}=> SUCCESS - expected input length mismatch");
+                continue;
+            }
+
+            match ctx.recover_cells_and_kzg_proofs(&cells_raw, &cell_indices) {
+                Ok((cells_bytes, proofs_bytes)) => {
+                    let (expected_cells, expected_proofs) = test.output.unwrap();
+                    assert_eq!(expected_cells.len(), 128);
+                    assert_eq!(expected_proofs.len(), 128);
+
+                    for i in 0..128 {
+                        let exp_cell = expected_cells[i].opt_bytes.0.as_ref().unwrap();
+                        let exp_proof = expected_proofs[i].opt_bytes.0.as_ref().unwrap();
+                        let cell_start = i * 2048;
+                        let proof_start = i * 48;
+                        assert_eq!(
+                            &cells_bytes[cell_start..cell_start + 2048],
+                            &exp_cell[..],
+                            "recovered cell {} mismatch for {}",
+                            i,
+                            test_name
+                        );
+                        assert_eq!(
+                            &proofs_bytes[proof_start..proof_start + 48],
+                            &exp_proof[..],
+                            "recovered proof {} mismatch for {}",
+                            i,
+                            test_name
+                        );
+                    }
+                    println!("{tv}=> SUCCESS");
+                }
+                Err(status) => {
+                    assert!(test.output.is_none());
+                    println!("{tv}=> SUCCESS - expected failure {:?}", status);
+                }
             }
         }
     }
@@ -454,4 +486,3 @@ fn t_recover_cells_and_kzg_proofs_cell_indices_not_ascending() {
         Err(ctt_eth_kzg_status::cttEthKzg_CellIndicesNotAscending)
     );
 }
-

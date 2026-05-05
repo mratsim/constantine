@@ -319,9 +319,15 @@ func compute_cells_and_kzg_proofs*(
   let proofsAff = allocHeapAligned(array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]], 64)
   defer: freeHeapAligned(proofsAff)
 
-  kzg_coset_prove(
-    proofsAff[], poly_monomial[].coefs.toOpenArray(0, N-1),
-    ctx.fft_desc_ext, ctx.ecfft_desc_ext, ctx.polyphaseSpectrumBank)
+  case ctx.polyphaseSpectrumBank.kind:
+  of kNoPrecompute:
+    kzg_coset_prove(
+      proofsAff[], poly_monomial[].coefs.toOpenArray(0, N-1),
+      ctx.fft_desc_ext, ctx.ecfft_desc_ext, ctx.polyphaseSpectrumBank.rawPoints)
+  of kPrecompute:
+    kzg_coset_prove(
+      proofsAff[], poly_monomial[].coefs.toOpenArray(0, N-1),
+      ctx.fft_desc_ext, ctx.ecfft_desc_ext, ctx.polyphaseSpectrumBank.precompPoints)
 
   # Bit-reverse permutation on proofs (Ethereum PeerDAS convention)
   proofsAff[].bit_reversal_permutation()
@@ -689,12 +695,21 @@ func recover_cells_and_kzg_proofs*(
   let proofsAff = allocHeapAligned(array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]], 64)
   defer: freeHeapAligned(proofsAff)
 
-  kzg_coset_prove(
-    proofsAff[],
-    poly_coeff.coefs.toOpenArray(0, N-1),
-    ctx.fft_desc_ext,
-    ctx.ecfft_desc_ext,
-    ctx.polyphaseSpectrumBank)
+  case ctx.polyphaseSpectrumBank.kind:
+  of kNoPrecompute:
+    kzg_coset_prove(
+      proofsAff[],
+      poly_coeff.coefs.toOpenArray(0, N-1),
+      ctx.fft_desc_ext,
+      ctx.ecfft_desc_ext,
+      ctx.polyphaseSpectrumBank.rawPoints)
+  of kPrecompute:
+    kzg_coset_prove(
+      proofsAff[],
+      poly_coeff.coefs.toOpenArray(0, N-1),
+      ctx.fft_desc_ext,
+      ctx.ecfft_desc_ext,
+      ctx.polyphaseSpectrumBank.precompPoints)
 
   # Bit-reverse permutation on proofs
   proofsAff[].bit_reversal_permutation()

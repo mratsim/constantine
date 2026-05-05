@@ -13,6 +13,7 @@ import
   constantine/named/algebras,
   constantine/named/zoo_generators,
   constantine/math/[ec_shortweierstrass, arithmetic, extension_fields],
+  constantine/math/elliptic/ec_multi_scalar_mul_precomp,
   constantine/math/elliptic/ec_multi_scalar_mul,
   constantine/math/polynomials/[polynomials, fft_fields, fft_ec],
   constantine/math/matrix/toeplitz,
@@ -291,7 +292,7 @@ func computePolyphaseDecompositionFourierOffset[N, CDS: static int, Name: static
     j -= L
   # j is always < 0 here: CDS*L == 2*N (invariant at line 353), so CDSdiv2*L = N.
   # After the loop: j = start - (CDSdiv2-1)*L = N - CDSdiv2*L - 1 - offset = -1 - offset < 0.
-  doAssert j < 0, "Internal error: polyphase extraction index should be negative at CDSdiv2-1 (CDS*L must equal 2*N)"
+  doAssert j < 0, "[ctt] Internal error: polyphase extraction index should be negative at CDSdiv2-1 (CDS*L must equal 2*N)"
   polyphaseSpectrum[CDSdiv2 - 1].setNeutral()
   for j in CDSdiv2 ..< CDS:
     polyphaseSpectrum[j].setNeutral()
@@ -357,7 +358,7 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
 
   for offset in 0 ..< L:
     let status = computePolyphaseDecompositionFourierOffset(polyphaseSpectrumBankJac[offset], powers_of_tau, ecfft_desc, offset)
-    doAssert status == FFT_Success, "Internal error: Polyphase decomposition FFT failed at offset " & $offset
+    doAssert status == FFT_Success, "[ctt] Internal error: Polyphase decomposition FFT failed at offset " & $offset
 
   # Half the points are points at infinity. A vartime batch inversion
   # saves a lot of compute, 3*L*CDS
@@ -369,13 +370,12 @@ func computePolyphaseDecompositionFourier*[N, L, CDS: static int, Name: static A
 
   freeHeapAligned(polyphaseSpectrumBankJac)
 
-func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
-       proofs: var array[CDS, EC_ShortW_Aff[Fp[Name], G1]],
-       poly: openArray[Fr[Name]],
-       fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
-       ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
-       polyphaseSpectrumBank: array[L, array[CDS, EC_ShortW_Aff[Fp[Name], G1]]]
-      ): void {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
+template kzg_coset_prove_impl[L, CDS: static int, Name: static Algebra](
+  proofs: var array[CDS, EC_ShortW_Aff[Fp[Name], G1]],
+  poly: openArray[Fr[Name]],
+  fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
+  ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
+  polyphaseSpectrumBank: typed) =
   ## Compute KZG multi-proofs for EIP-7594 cell proofs using FK20 algorithm.
   ##
   ## This implements the FK20 amortized KZG proofs from c-kzg-4844.
@@ -417,46 +417,52 @@ func kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
   const N = L * CDSdiv2
   doAssert poly.len == N
 
-  static:
-    doAssert CDS.isPowerOf2_vartime(), "CDS must be a power of two"
+  static: doAssert CDS.isPowerOf2_vartime(), "CDS must be a power of two"
   doAssert fr_fft_desc.order >= CDS, "Fr FFT descriptor order must be >= CDS"
   doAssert ec_fft_desc.order >= CDS, "EC FFT descriptor order must be >= CDS"
 
-  # Use Toeplitz accumulator with MSM for FK20
   var accum: ToeplitzAccumulator[EC_ShortW_Jac[Fp[Name], G1], EC_ShortW_Aff[Fp[Name], G1], Fr[Name]]
   let status = accum.init(fr_fft_desc, ec_fft_desc, CDS, L)
-  doAssert status == Toeplitz_Success, "Internal error: Toeplitz accumulator init failed: " & $status
+  doAssert status == Toeplitz_Success, "[ctt] Internal error: Toeplitz accumulator init failed: " & $status
 
   let circulant = allocHeapArrayAligned(Fr[Name], CDS, alignment = 64)
-
   for offset in 0 ..< L:
     makeCirculantMatrix(circulant.toOpenArray(CDS), poly, offset, L)
-
-    # Accumulate FFT of circulant coefficients with affine points (already affine from setup)
-    # Offset is tracked automatically inside accumulator
-    let status = accum.accumulate(
-      circulant.toOpenArray(CDS),
-      polyphaseSpectrumBank[offset]
-    )
-    doAssert status == Toeplitz_Success, "Internal error: Toeplitz accumulator failed at offset " & $offset & ": " & $status
+    let status = accum.accumulate(circulant.toOpenArray(CDS))
+    doAssert status == Toeplitz_Success, "[ctt] Internal error: Toeplitz accumulator failed at offset " & $offset & ": " & $status
 
   freeHeapAligned(circulant)
 
   # MSM per position + one amortized IFFT at the end
   let u = allocHeapArrayAligned(EC_ShortW_Jac[Fp[Name], G1], CDS, alignment = 64)
-  let status2 = accum.finish(u.toOpenArray(CDS))
-  doAssert status2 == Toeplitz_Success, "Internal error: Toeplitz accumulator finish failed: " & $status2
+  let status2 = accum.finish(u.toOpenArray(CDS), polyphaseSpectrumBank)
+  doAssert status2 == Toeplitz_Success, "[ctt] Internal error: Toeplitz accumulator finish failed: " & $status2
 
   # Zero upper half, degree is CDS/2 - 1
   for i in CDSdiv2 ..< CDS:
     u[i].setNeutral()
 
-  # FFT in-place to get proofs — reuse u buffer
   let status3 = ec_fft_desc.ec_fft_nn(u.toOpenArray(CDS), u.toOpenArray(CDS))
-  doAssert status3 == FFT_Success, "Internal error: EC FFT failed: " & $status3
+  doAssert status3 == FFT_Success, "[ctt] Internal error: EC FFT failed: " & $status3
 
   proofs.asUnchecked().batchAffine_vartime(u, proofs.len)
   freeHeapAligned(u)
+
+proc kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
+      proofs: var array[CDS, EC_ShortW_Aff[Fp[Name], G1]],
+      poly: openArray[Fr[Name]],
+      fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
+      ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
+      polyphaseSpectrumBank: array[CDS, array[L, EC_ShortW_Aff[Fp[Name], G1]]]) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
+  kzg_coset_prove_impl[L, CDS, Name](proofs, poly, fr_fft_desc, ec_fft_desc, polyphaseSpectrumBank)
+
+proc kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
+      proofs: var array[CDS, EC_ShortW_Aff[Fp[Name], G1]],
+      poly: openArray[Fr[Name]],
+      fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
+      ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
+      polyphaseSpectrumBank: array[CDS, PrecomputedMSM[EC_ShortW_Jac[Fp[Name], G1], L]]) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
+  kzg_coset_prove_impl[L, CDS, Name](proofs, poly, fr_fft_desc, ec_fft_desc, polyphaseSpectrumBank)
 
 # ############################################################
 #
@@ -525,13 +531,13 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
     doAssert linearIndepRandNumbers.len >= evalsCols.len
 
   # Runtime validation: prevent out-of-bounds indexing of agg_cols heap allocation
-  doAssert evals.len == evalsCols.len, "Internal error: evals and evalsCols must have same length"
-  doAssert linearIndepRandNumbers.len >= evalsCols.len, "Internal error: linearIndepRandNumbers must cover all evals"
+  doAssert evals.len == evalsCols.len, "[ctt] Internal error: evals and evalsCols must have same length"
+  doAssert linearIndepRandNumbers.len >= evalsCols.len, "[ctt] Internal error: linearIndepRandNumbers must cover all evals"
 
   const NumCols = N div L
   for k in 0 ..< evalsCols.len:
     let c = evalsCols[k]
-    doAssert c >= 0 and c < NumCols, "Internal error: Column index out of bounds: " & $c
+    doAssert c >= 0 and c < NumCols, "[ctt] Internal error: Column index out of bounds: " & $c
 
   const logNumCols = log2_vartime(uint32(NumCols))
 
@@ -569,7 +575,7 @@ func computeAggRandScaledInterpoly[Name: static Algebra, L: static int](
 
     # agg_cols[c] is in bit-reversed order
     let status = domain.coset_ifft_rn(agg_cols[c], agg_cols[c], hk)
-    doAssert status == FFT_Success, "Internal error: coset_ifft_rn failed: " & $status
+    doAssert status == FFT_Success, "[ctt] Internal error: coset_ifft_rn failed: " & $status
 
     # Accumulate directly from agg_cols[c] (now in coefficient form)
     for i in 0 ..< L:

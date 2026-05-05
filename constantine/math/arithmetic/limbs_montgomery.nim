@@ -661,7 +661,7 @@ func getMont*(r: var Limbs, a, M, r2modM: Limbs,
 template checkPowScratchSpaceLen(len: int) =
   ## Checks that there is a minimum of scratchspace to hold the temporaries
   debug:
-    assert len >= 2, "Internal Error: the scratchspace for powmod should be equal or greater than 2"
+    assert len >= 2, "[ctt] Internal error: the scratchspace for powmod should be equal or greater than 2"
 
 func getWindowLen(bufLen: int): uint =
   ## Compute the maximum window size that fits in the scratchspace buffer

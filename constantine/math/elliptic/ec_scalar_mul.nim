@@ -66,7 +66,7 @@ import
 template checkScalarMulScratchspaceLen(len: int) =
   ## CHeck that there is a minimum of scratchspace to hold the temporaries
   debug:
-    assert len >= 2, "Internal Error: the scratchspace for scalar multiplication should be equal or greater than 2"
+    assert len >= 2, "[ctt] Internal error: the scratchspace for scalar multiplication should be equal or greater than 2"
 
 func getWindowLen(bufLen: int): uint =
   ## Compute the maximum window size that fits in the scratchspace buffer

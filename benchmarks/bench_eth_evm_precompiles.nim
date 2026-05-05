@@ -355,7 +355,7 @@ proc benchKzgPointEvaluation(iters: int) =
   var output = newSeq[byte](64)
 
   var ctx: ptr EthereumKZGContext
-  let status = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  let status = ctx.new(TrustedSetupMainnet, kReferenceCKzg4844)
   doAssert status == tsSuccess, "\n[Trusted Setup Error] " & $status
 
   let opName = "KZG_POINT_EVALUATION"

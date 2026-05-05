@@ -28,7 +28,7 @@ const TrustedSetupMainnet =
 
 proc trusted_setup*(): ptr EthereumKZGContext =
   var ctx: ptr EthereumKZGContext
-  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  let tsStatus = ctx.new(TrustedSetupMainnet, kReferenceCKzg4844)
   doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
   echo "Trusted Setup loaded successfully"
   return ctx
@@ -132,7 +132,7 @@ proc main() =
   let outputFile = outputDir / "benchset.dat"
   b.serialize(outputFile)
 
-  ctx.trusted_setup_delete()
+  ctx.delete()
 
   echo "\nBenchSet saved to: " & outputFile
   echo "Use this file with perf_* benchmarks for fast loading."

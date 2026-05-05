@@ -284,23 +284,36 @@ func scalarMul_jy00_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].}  
   ##   P <- [k] P
   ##
   ## This uses an online recoding with minimum Hamming Weight
-  ## bassed on Joye, Yen, 2000 recoding.
+  ## based on Joye, Yen, 2000 recoding.
   ##
   ## ⚠️ While the recoding is constant-time,
   ##   usage of this recoding is intended vartime
   ##   This MUST NOT be used with secret data.
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks
-  var Paff {.noinit.}: affine(EC)
-  Paff.affine(P)
+  var paff {.noinit.}: affine(EC)
+  paff.affine(P)
+
+  var npaff {.noinit.}: affine(EC)
+  npaff.neg(paff)
 
   P.setNeutral()
+  var init = false
   for bit in recoding_l2r_signed_vartime(scalar):
-    P.double()
+    if init:
+      P.double()
     if bit == 1:
-      P ~+= Paff
+      if not init:
+        P.fromAffine(paff)
+        init = true
+      else:
+        P ~+= paff
     elif bit == -1:
-      P ~-= Paff
+      if not init:
+        P.fromAffine(npaff)
+        init = true
+      else:
+        P ~+= npaff
 
 # Non-Adjacent Form (NAF) recoding
 # ------------------------------------------------------------
