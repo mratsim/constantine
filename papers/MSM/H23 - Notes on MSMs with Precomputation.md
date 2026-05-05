@@ -28,7 +28,7 @@ Due to the fact that the $P_1,\ldots,P_{256}$ are fixed, we may store large pre-
 
 A somewhat naive way is to binary decompose each $a_i$ into bits $a_i = \sum_i a_{i,j} 2^j$ with $a_{i,j}\in\{0,1\}$. This means we decompose the exponents into a matrix of bits.
 
-![](./images/H23%20-%20Notes%20on%20MSMs%20with%20Precomputation/H23%20-%20Fig%201%20-%20Naive%20algorithm%20binary%20decomposition.png)
+![Figure 1: Naive algorithm binary decomposition](./images/H23%20-%20Notes%20on%20MSMs%20with%20Precomputation/H23%20-%20Fig%201%20-%20Naive%20algorithm%20binary%20decomposition.png)
 
 The columns of this matrix correspond to the (binary decomposition of) $a_i$'s and are what gets multiplied by $P_i$. The rows correspond to powers of 2.
 
@@ -41,7 +41,7 @@ If we precompute all $256\cdot 253$ values of the form $2^jP_i$, we can compute 
 
 A better algorithm with more memory usage is the one currently being implemented:
 
-![](./images/H23%20-%20Notes%20on%20MSMs%20with%20Precomputation/H23%20-%20Fig%202%20-%20Vertical%20blocks.png)
+![Figure 2: Vertical blocks decomposition](./images/H23%20-%20Notes%20on%20MSMs%20with%20Precomputation/H23%20-%20Fig%202%20-%20Vertical%20blocks.png)
 
 Notably, we fix some block size $b$ (with $b=8$ in the figure).
 We subdivide the input matrix into vertical blocks, as depicted in the figure.
@@ -64,14 +64,14 @@ Obtaining the actually needed summands corresponds to decomposing each input $a_
 
 Observe that the strategy above actually does not need that the blocks are vertical. It works with *any* decomposition of the $256\cdot 253$ bit matrix into blocks of size $b$.
 
-![](./images/H23%20-%20Notes%20on%20MSMs%20with%20Precomputation/H23%20-%20Fig%203%20-%20Arbitrary%20blocks.png)
+![Figure 3: Arbitrary blocks decomposition](./images/H23%20-%20Notes%20on%20MSMs%20with%20Precomputation/H23%20-%20Fig%203%20-%20Arbitrary%20blocks.png)
 
 We just pre-compute any of the $2^b-1$ potential non-zero sums per block. The blocks may have any shape and need not even be connected. The figure shows 2 such blocks. Of course, the decomposition into blocks has then to be applied to any given input bit-matrix and doing something weird makes this (needlessly) complicated. Still, the complexity in terms of precomputation size and number of group operations is independent from the block decomposition strategy; it only depends on $b$ (and whether there is some loss from non-full blocks).
 However, as we shall see, horizontal blocks are typically better than vertical ones.
 
 ## Horizontal blocks
 
-![](./images/H23%20-%20Notes%20on%20MSMs%20with%20Precomputation/H23%20-%20Fig%204%20-%20Horizontal%20blocks.png)
+![Figure 4: Horizontal blocks decomposition](./images/H23%20-%20Notes%20on%20MSMs%20with%20Precomputation/H23%20-%20Fig%204%20-%20Horizontal%20blocks.png)
 
 
 Pre-computing horizontal blocks with block size $b$ means that we precompute (parts of) rows. I.e. we precompute sums of the form
@@ -97,7 +97,7 @@ Using this saved factor to, e.g. increase $b$ (to compensate for the extra doubl
 To alleviate the cost of the 252 doublings, we can use a more elaborate strategy:
 Instead of precomputing blocks in every row or in only the bottom row, we can precompute in every $t$'th row, so we precompute in $s=\lceil\frac{253}{t}\rceil$ many rows.
 
-![](./images/H23%20-%20Notes%20on%20MSMs%20with%20Precomputation/H23%20-%20Fig%205%20-%20Pippenger%20precomputation.png)
+![Figure 5: Pippenger precomputation](./images/H23%20-%20Notes%20on%20MSMs%20with%20Precomputation/H23%20-%20Fig%205%20-%20Pippenger%20precomputation.png)
 
 The image shows an example where the blocksize is $b=12$ and we perform precomputations in every $t=5$'th row. As usual, the blue areas are the blocks for which we perform precomputation. Note that, if the number of points (256 for us) is not divisible by $b$, they can wrap into the next precomputed row, so we don't waste too much due to rounding.
 
@@ -130,9 +130,9 @@ However, some back-of-the-envelope computations show that this rarely helps. The
 
 ## Horizontal variant
 
-There is a variant of the above using verical blocks as well. However, these blocks are no longer contiguous, but rather only have a contribution in every $t$'th row.
+There is a variant of the above using vertical blocks as well. However, these blocks are no longer contiguous, but rather only have a contribution in every $t$'th row.
 
-![](./images/H23%20-%20Notes%20on%20MSMs%20with%20Precomputation/H23%20-%20Fig%206%20-%20Horizontal%20variant%20vertical%20blocks.png)
+![Figure 6: Horizontal variant with vertical blocks](./images/H23%20-%20Notes%20on%20MSMs%20with%20Precomputation/H23%20-%20Fig%206%20-%20Horizontal%20variant%20vertical%20blocks.png)
 
 Note that these disjoint blocks can wrap into the next column.
 This is the same as the Pippenger algorithm above: We perform a $2^t$-ary decomposition of each basis element, but now instead of viewing it as multi-exponentiation with basis
@@ -148,7 +148,7 @@ It has the same performance and looks a bit more complicated (in the figure, in 
 
 A little trick that can be used with the vertical decomposition is that each $a_i$ is only defined modulo $q$, where $q$ is the group order, which has $253$ bits. We may represent each $a_i$ by a signed number of $252$-bit absolute value and use *signed* $2^b$-ary decomposition. The result of this is that our precomputed tables contain pairs of the form $\{P, -P\}$, of which we only need to store 1 (since negation is essentially for free in elliptic curves). This reduces the precomputation cost by $\frac12$ for essentially free.
 
-It turns our that we can actually save this factor $\frac12$ for **any** of our algorithms.
+It turns out that we can actually save this factor $\frac12$ for **any** of our algorithms.
 The trick is to use $\{\pm 1\}$-valued bits instead of $\{0,1\}$-valued bits.
 Notably, we have
 
@@ -166,22 +166,22 @@ Note that this trick means that we cannot easily skip blocks that originally wou
 
 If we suspect that only the first $r$ of the original $a_i$ are non-zero, then a certain set of the blocks (with 0/1-coefficients in the original setting) would be all-zero. We can just precompute their total contribution in the $+1/-1$-setting for each $r$.
 
-If we suspect that a lot of the original $a_i$ are zero, but the non-zero positions may be spread out, we should consider the verical Pippenger variant anyway.
-In this case, we can (in addition to the above trick) precompute, for each indivudial $i$, the sum of contributions of each block that only involves bits coming from $a_i$ if $a_i$ is zero.
+If we suspect that a lot of the original $a_i$ are zero, but the non-zero positions may be spread out, we should consider the vertical Pippenger variant anyway.
+In this case, we can (in addition to the above trick) precompute, for each individual $i$, the sum of contributions of each block that only involves bits coming from $a_i$ if $a_i$ is zero.
 (This whole thing is a bit complicated by the fact that blocks may involve contributions from multiple $a_i$'s. Even in the vertical variant, a block may have contributions from $a_i$ and $a_{i+1}$ due to wraparound)
 
 
 ## The endomorphism seems useless?
 
-In principle, Bandersnatch was chosen to contain an efficiently computable endomorphis $\psi$, where for points $P$ of the relevant subgroup, we have $\psi(P) = \alpha P$ where $\alpha$ is some number satisfying $\alpha^2 = -2 \bmod q$. This can be used to perform what's called a GLV decomposition to transform the problem into one with twice the basis elements and half the exponent bitlength by finding $c_i,d_i$ such that $a_iP_i = c_iP_i + \psi(d_iP_i)$ where $c_i, d_i$ have only $\approx 127$ bits (thereby halving the cost each)
+In principle, Bandersnatch was chosen to contain an efficiently computable endomorphism $\psi$, where for points $P$ of the relevant subgroup, we have $\psi(P) = \alpha P$ where $\alpha$ is some number satisfying $\alpha^2 = -2 \bmod q$. This can be used to perform what's called a GLV decomposition to transform the problem into one with twice the basis elements and half the exponent bitlength by finding $c_i,d_i$ such that $a_iP_i = c_iP_i + \psi(d_iP_i)$ where $c_i, d_i$ have only $\approx 127$ bits (thereby halving the cost each)
 If we do things right, we only need to compute $\psi$ a total of 1 time (amortizing it like our doublings).
 The thing here is, that we can also just as well decompose $a_iP_i$ into
 $a_iP_i = c'_iP_i + 2\cdot(d'_iP_i)$ where $c'_i, d'_i$ only have 1's in even bit-positions (thereby halving the cost each when using precomputations).
-Essentially, it seems that in the precompuation settings, the endomorphism is kind-of useless (or rather, the exact same gains can be achieved by using the *doubling* endomorphism instead). When trying to combine doublings and $\psi$, I got the same as just using doublings.
+Essentially, it seems that in the precomputation settings, the endomorphism is kind-of useless (or rather, the exact same gains can be achieved by using the *doubling* endomorphism instead). When trying to combine doublings and $\psi$, I got the same as just using doublings.
 
 ## Point representation
 
-The benefit of precompuation decays rather fast as we increase the table size. The reason is that each block requires $\approx 2^b$ precompuation and we save a total factor of $\approx \frac{1}{b}$. A consequence is that storing a redundant representation of individual points is actually a better use of space. Notably, we can use so-called extended coordinate (recall that Bandersnatch is an incomplete twisted Edwards curve) for the precomputed points, which just means we additionally store $x\cdot y$ for the $x$- and $y$-coordinates of each precomputed point. This can be used to save 1 field multiplication per point addition by using a better formula: since we already have the value of $x\cdot y$, we don't have to compute it during point addition, giving about a 10% saving at the expense of 50% larger tables. A back-of-the-envelope computation shows that this is actually worth it starting from $b=3$ or so.
+The benefit of precomputation decays rather fast as we increase the table size. The reason is that each block requires $\approx 2^b$ precomputation and we save a total factor of $\approx \frac{1}{b}$. A consequence is that storing a redundant representation of individual points is actually a better use of space. Notably, we can use so-called extended coordinate (recall that Bandersnatch is an incomplete twisted Edwards curve) for the precomputed points, which just means we additionally store $x\cdot y$ for the $x$- and $y$-coordinates of each precomputed point. This can be used to save 1 field multiplication per point addition by using a better formula: since we already have the value of $x\cdot y$, we don't have to compute it during point addition, giving about a 10% saving at the expense of 50% larger tables. A back-of-the-envelope computation shows that this is actually worth it starting from $b=3$ or so.
 
 ## Choosing $b$ and $s$
 

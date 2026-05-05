@@ -41,12 +41,23 @@ proc main() =
     staticFor j, 0, testNumPoints.len:
       const numPoints = testNumPoints[j]
       let batchIters = max(1, Iters div numPoints)
-      ctx.msmParallelBench(numPoints, batchIters)
-      separator()
+      let perf = ctx.msmParallelBench(numPoints, batchIters)
+
       # Precomputed MSM for small sizes (t == batch length, b=12)
+      var hasPrecomp = false
+      var precompResult: PrecompBenchResult
       when numPoints <= 256:
-        benchPrecompMSMInline[EC_ShortW_Jac[Fp[curve], G1], numPoints, numPoints, 12](ctx, batchIters * 10)
-    separator()
+        precompResult = benchPrecompMSMInline[EC_ShortW_Jac[Fp[curve], G1], numPoints, numPoints, 12](ctx, batchIters * 10)
+        hasPrecomp = true
+
+      # Speedup ratios
+      reportMSMParallel(perf, numPoints)
+
+      # Precomp speedup over optimized
+      if hasPrecomp:
+        reportPrecompSpeedup(precompResult.nsOp, perf.perfMSMOpt)
+
+      separator()
 
 main()
 notes()

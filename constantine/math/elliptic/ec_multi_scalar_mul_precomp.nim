@@ -48,6 +48,7 @@ proc `=destroy`*[EC; N](ctx: var PrecomputedMSM[EC, N]) {.raises: [].} =
   ctx.t = 0
   ctx.b = 0
 
+proc `=copy`*[EC; N: static int](dst: var PrecomputedMSM[EC, N], src: PrecomputedMSM[EC, N]) {.error: "PrecomputedMSM cannot be copied".}
 
 # Metadata
 # --------------------------------------------------------------------------------------
@@ -92,12 +93,37 @@ func precomputeWindow[ECaff, EC](
   ## Build one window's lookup table using binary-tree precomputation.
   ## For each basis element, doubles the number of reachable group elements
   ## by accumulating partial sums, then converts to affine in one batch.
+  ##
+  ## **Partial window edge case (last window):**
+  ##   When `expandedBasisLen` is not a multiple of `b`, the final window
+  ##   receives `basisSlice.len < b` basis points. The binary-tree precomputation
+  ##   then initializes only `2^basisSlice.len` entries of `scratchspace` (indices
+  ##   `0 ..< 2^basisSlice.len`); the rest (`2^basisSlice.len ..< 2^b`) remain
+  ##   uninitialized.
+  ##
+  ##   The `scratchspace` buffer is allocated via `allocHeapArrayAligned` which
+  ##   does **not** zero memory (only `alloc0HeapArrayAligned` does). If any
+  ##   uninitialized entry happens to have a non-zero z-coordinate, the
+  ##   `batchAffine_vartime` Montgomery inversion chain would process it as a
+  ##   valid point and produce garbage affine coordinates in the table.
+  ##
+  ##   Although the MSM reader (`msm_vartime`) never indexes beyond
+  ##   `2^basisSlice.len - 1` for the last window (the scalar window bits
+  ##   are bounded by `basisSlice.len`), writing garbage to the table is
+  ##   still incorrect: it wastes work in the batch inversion product tree
+  ##   and violates the invariant that every table entry is a valid affine
+  ##   point.
+  ##
+  ##   **Fix:** restrict `batchAffine_vartime` to the initialized prefix
+  ##   of both buffers.
+
   static: doAssert ECaff is affine(EC)
   doAssert basisSlice.len <= b
   doAssert tableSlice.len == (1 shl b)
   doAssert tableSlice.len == scratchspace.len
 
   let windowSize = 1 shl b
+  let numPoints = 1 shl basisSlice.len
   scratchspace[0].setNeutral()
 
   var currentSize = 1
@@ -108,7 +134,10 @@ func precomputeWindow[ECaff, EC](
       if (s + prevSize) < windowSize:
         scratchspace[s + prevSize].sum_vartime(scratchspace[s], basisSlice[basisIdx])
 
-  tableSlice.batchAffine_vartime(scratchspace)
+  # Only convert the initialized prefix; the rest of scratchspace is garbage.
+  tableSlice.toOpenArray(0, numPoints - 1).batchAffine_vartime(
+    scratchspace.toOpenArray(0, numPoints - 1)
+  )
 
 func init*[EC; N](
     ctx: var PrecomputedMSM[EC, N],

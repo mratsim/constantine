@@ -80,17 +80,25 @@ impl<'tp> EthKzgContextBuilder<'tp> {
     /// `t` = base groups (stride between precomputed layers)
     /// `b` = bits per window (window size = 2^b)
     ///
-    /// SPEED / MEMORY TRADEOFF (Intel i7-265K, FK20 proofs = 128 MSMs per blob):
-    /// - no precompute: ~145 ms/blob, ~1.8 MiB
-    /// - t=64,b=8:     ~109 ms/blob, ~101 MiB per MSM (~12.8 GiB total)
-    /// - t=64,b=12:     ~89 ms/blob, ~8.7 MiB per MSM (~1.1 GiB total)
-    /// - t=128,b=8:     ~105 ms/blob, ~50 MiB per MSM (~6.4 GiB total)
-    /// - t=128,b=12:    ~92 ms/blob, ~4.3 MiB per MSM (~0.6 GiB total)
-    /// - t=256,b=8:     ~105 ms/blob, ~25 MiB per MSM (~3.2 GiB total)
+    /// SPEED / MEMORY TRADEOFF (PeerDAS, compute_cells_and_kzg_proofs = 128 MSMs per blob):
+    /// - no precompute, 1.8 MiB total:        7.083 ops/s   ~141 ms/blob
+    /// - t= 64, b= 6, ~   32.2 MiB total:     8.724 ops/s   ~115 ms/blob
+    /// - t= 64, b= 8, ~   96.0 MiB total:     9.518 ops/s   ~105 ms/blob
+    /// - t= 64, b=10, ~  312.0 MiB total:    10.547 ops/s    ~95 ms/blob
+    /// - t= 64, b=12, ~ 1056.0 MiB total:    11.629 ops/s    ~86 ms/blob
+    /// - t=128, b= 6, ~   16.5 MiB total:     8.783 ops/s   ~114 ms/blob
+    /// - t=128, b= 8, ~   48.0 MiB total:     9.965 ops/s   ~100 ms/blob
+    /// - t=128, b=10, ~  156.0 MiB total:    10.561 ops/s    ~95 ms/blob
+    /// - t=128, b=12, ~  528.0 MiB total:    11.505 ops/s    ~87 ms/blob
+    /// - t=256, b= 6, ~    8.2 MiB total:     8.641 ops/s   ~116 ms/blob
+    /// - t=256, b= 8, ~   24.0 MiB total:    10.244 ops/s    ~98 ms/blob
+    /// - t=256, b=10, ~   84.0 MiB total:    10.281 ops/s    ~97 ms/blob
+    /// - t=256, b=12, ~  288.0 MiB total:    10.868 ops/s    ~92 ms/blob
     ///
+    /// CPU: Intel i7-265K
     /// Larger b = faster per MSM but exponentially more memory (2^b entries).
     /// Larger t = fewer doublings but more precomputed layers.
-    /// Default (t=64, b=12): ~89 ms/blob proving, ~1.1 GiB total memory.
+    /// Recommended (t=256, b=8): ~98 ms/blob proving, ~24 MiB total memory.
     pub fn load_trusted_setup_with_precompute(self, file_path: &Path, t: i32, b: i32) -> Result<Self, ctt_eth_trusted_setup_status> {
         #[cfg(unix)]
         let raw_path = {

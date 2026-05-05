@@ -19,6 +19,7 @@ import
   constantine/math/io/io_fields,
   constantine/math/io/io_bigints,
   constantine/named/algebras,
+  constantine/commitments_setups/ethereum_kzg_srs,
   # Test utilities
   ./testutils/eth_consensus_utils
 
@@ -310,22 +311,34 @@ suite "deduplicateCommitments":
 
 
 block:
-  suite "Ethereum Fulu Hardfork / EIP-7594 / PeerDAS / Data Availability Sampling":
-    let ctx = getTrustedSetup()
-
-    test "compute_cells":
-      ctx.test_compute_cells()
-
-    test "compute_cells_and_kzg_proofs":
-      ctx.test_compute_cells_and_kzg_proofs()
-
-    test "recover_cells_and_kzg_proofs":
-      ctx.test_recover_cells_and_kzg_proofs()
-
-    test "verify_cell_kzg_proof_batch":
-      ctx.test_verify_cell_kzg_proof_batch()
-
-    test "compute_verify_cell_kzg_proof_batch_challenge":
-      ctx.test_compute_verify_cell_kzg_proof_batch_challenge()
-
-    ctx.delete()
+  # Run tests with both no-precompute and precompute (t=256, b=8) contexts
+  # to exercise both kNoPrecompute and kPrecompute code paths in polyphaseSpectrumBank.
+  for (label, ctx) in [
+    ("no-precompute", block:
+      var c: ptr EthereumKZGContext
+      let st = c.new(TrustedSetupMainnet, kReferenceCKzg4844)
+      doAssert st == tsSuccess
+      c),
+    ("precompute (t=256, b=8)", block:
+      var c: ptr EthereumKZGContext
+      let st = c.new_with_precompute(TrustedSetupMainnet, kReferenceCKzg4844, 256, 8)
+      doAssert st == tsSuccess
+      c)
+  ]:
+    suite "Ethereum Fulu Hardfork / EIP-7594 / PeerDAS / " & label:
+      defer: ctx.delete()
+    
+      test "compute_cells":
+        ctx.test_compute_cells()
+    
+      test "compute_cells_and_kzg_proofs":
+        ctx.test_compute_cells_and_kzg_proofs()
+    
+      test "recover_cells_and_kzg_proofs":
+        ctx.test_recover_cells_and_kzg_proofs()
+    
+      test "verify_cell_kzg_proof_batch":
+        ctx.test_verify_cell_kzg_proof_batch()
+    
+      test "compute_verify_cell_kzg_proof_batch_challenge":
+        ctx.test_compute_verify_cell_kzg_proof_batch_challenge()

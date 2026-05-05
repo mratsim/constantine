@@ -126,10 +126,9 @@ type
 
 type
   PolyphaseSpectrumBank* = object
-    rawPoints* {.align: 64.}: array[CELLS_PER_EXT_BLOB, array[FIELD_ELEMENTS_PER_CELL, EC_ShortW_Aff[Fp[BLS12_381], G1]]]
     case kind*: PolyphaseKind
     of kNoPrecompute:
-      discard
+      rawPoints* {.align: 64.}: array[CELLS_PER_EXT_BLOB, array[FIELD_ELEMENTS_PER_CELL, EC_ShortW_Aff[Fp[BLS12_381], G1]]]
     of kPrecompute:
       precompPoints* {.align: 64.}: array[CELLS_PER_EXT_BLOB, PrecomputedMSM[EC_ShortW_Jac[Fp[BLS12_381], G1], FIELD_ELEMENTS_PER_CELL]]
 
@@ -366,21 +365,22 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File, t: int = 64, b: int = 1
     defer: freeHeapAligned(tmp)
     computePolyphaseDecompositionFourier(tmp[], ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
 
-    # Build raw affine points for kNoPrecompute variant (position-major).
-    for pos in 0 ..< CELLS_PER_EXT_BLOB:
-      for offset in 0 ..< FIELD_ELEMENTS_PER_CELL:
-        ctx.polyphaseSpectrumBank.rawPoints[pos][offset] = tmp[offset][pos]
-
-    # Build PrecomputedMSM tables if t > 0 and b > 0.
     if t > 0 and b > 0:
+      # Build PrecomputedMSM tables if t > 0 and b > 0.
       ctx.polyphaseSpectrumBank.kind = kPrecompute
       for pos in 0 ..< CELLS_PER_EXT_BLOB:
         var points {.noInit.}: array[FIELD_ELEMENTS_PER_CELL, BLS12_381_G1_Aff]
         for offset in 0 ..< FIELD_ELEMENTS_PER_CELL:
           points[offset] = tmp[offset][pos]
         ctx.polyphaseSpectrumBank.precompPoints[pos].init(points, t = t, b = b)
+
     else:
+      # Build raw affine points for kNoPrecompute variant (position-major).
       ctx.polyphaseSpectrumBank.kind = kNoPrecompute
+      for pos in 0 ..< CELLS_PER_EXT_BLOB:
+        for offset in 0 ..< FIELD_ELEMENTS_PER_CELL:
+          ctx.polyphaseSpectrumBank.rawPoints[pos][offset] = tmp[offset][pos]
+
   block:
     # Powers of tau: [G, [τ]G, [τ²]G, ... [τ⁴⁰⁹⁶]G]
 
@@ -400,19 +400,17 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File, t: int = 64, b: int = 1
   return tsSuccess
 
 
-proc load_from_file(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat, t: int = 64, b: int = 12): TrustedSetupStatus =
+proc load_from_file(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat, t = 64, b = 12): TrustedSetupStatus =
   ## Load from a trusted setup file.
-
-  ctx = alloc0HeapAligned(EthereumKZGContext, alignment = 64)
 
   var f: File
   let ok = f.open(filepath, kRead)
   if not ok:
     return tsMissingOrInaccessibleFile
 
-  assert format == kReferenceCKzg4844, "Only c-kzg-4844 .txt format is supported"
+  ctx = alloc0HeapAligned(EthereumKZGContext, alignment = 64)
 
-  let status = ctx.load_ckzg4844(f, t, b)
+  let status = ctx.load_ckzg4844(f, int(t), int(b))
   fileio.close(f)
   return status
 
@@ -420,8 +418,32 @@ proc load_from_file(ctx: var ptr EthereumKZGContext, filepath: cstring, format: 
 proc new*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat): TrustedSetupStatus {.exportc: "ctt_eth_kzg_context_new".} =
   return ctx.load_from_file(filepath, format, t = 0, b = 0)
 
-proc new_with_precompute*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat, t, b: int): TrustedSetupStatus {.exportc: "ctt_eth_kzg_context_new_with_precompute".} =
-  return ctx.load_from_file(filepath, format, t = t, b = b)
+proc new_with_precompute*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat, t, b: cint): TrustedSetupStatus {.exportc: "ctt_eth_kzg_context_new_with_precompute".} =
+  ## Create a KZG context with precomputed MSM tables for FK20 proofs (PeerDAS).
+  ##
+  ## `t` = base groups (stride between precomputed layers)
+  ## `b` = bits per window (window size = 2^b)
+  ##
+  ## SPEED / MEMORY TRADEOFF (PeerDAS, compute_cells_and_kzg_proofs = 128 MSMs of 64 points per blob):
+  ## - no precompute, 1.8 MiB total:        7.083 ops/s   ~141 ms/blob
+  ## - t= 64, b= 6, ~   32.2 MiB total:     8.724 ops/s   ~115 ms/blob
+  ## - t= 64, b= 8, ~   96.0 MiB total:     9.518 ops/s   ~105 ms/blob
+  ## - t= 64, b=10, ~  312.0 MiB total:    10.547 ops/s    ~95 ms/blob
+  ## - t= 64, b=12, ~ 1056.0 MiB total:    11.629 ops/s    ~86 ms/blob
+  ## - t=128, b= 6, ~   16.5 MiB total:     8.783 ops/s   ~114 ms/blob
+  ## - t=128, b= 8, ~   48.0 MiB total:     9.965 ops/s   ~100 ms/blob
+  ## - t=128, b=10, ~  156.0 MiB total:    10.561 ops/s    ~95 ms/blob
+  ## - t=128, b=12, ~  528.0 MiB total:    11.505 ops/s    ~87 ms/blob
+  ## - t=256, b= 6, ~    8.2 MiB total:     8.641 ops/s   ~116 ms/blob
+  ## - t=256, b= 8, ~   24.0 MiB total:    10.244 ops/s    ~98 ms/blob
+  ## - t=256, b=10, ~   84.0 MiB total:    10.281 ops/s    ~97 ms/blob
+  ## - t=256, b=12, ~  288.0 MiB total:    10.868 ops/s    ~92 ms/blob
+  ##
+  ## CPU: Intel i7-265K
+  ## Larger b = faster per MSM but exponentially more memory (2^b entries).
+  ## Larger t = fewer doublings but more precomputed layers.
+  ## Recommended (t=256, b=8): ~98 ms/blob proving, ~24 MiB total memory.
+  return ctx.load_from_file(filepath, format, t = int(t), b = int(b))
 
 proc delete*(ctx: ptr EthereumKZGContext) {.exportc: "ctt_eth_kzg_context_delete".} =
   if not ctx.isNil:

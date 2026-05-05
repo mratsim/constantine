@@ -30,6 +30,7 @@ import
   ./bench_blueprint,
   # Standard library
   std/[os, strutils, sequtils, monotimes]
+
 importutils.privateAccess(ec_multi_scalar_mul_precomp.PrecomputedMSM)
 
 const NumBlobs* = 64  # Number of blobs for benchmarks (matches c-kzg-4844 config)
@@ -42,9 +43,9 @@ proc report(op: string, startTime, stopTime: MonoTime, startClk, stopClk: int64,
   let ns = inNanoseconds((stopTime-startTime) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<60} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo fmt"{op:<72} {throughput:>15.3f} ops/s {ns:>16} ns/op {(stopClk - startClk) div iters:>14} CPU cycles (approx)"
   else:
-    echo &"{op:<60} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo fmt"{op:<72} {throughput:>15.3f} ops/s {ns:>16} ns/op"
 
 template bench(op: string, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
@@ -181,6 +182,10 @@ proc benchComputeCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, ite
   ## - rust-eth-kzg: "computing cells_and_kzg_proofs" benchmark
   ## - rust-kzg: compute_cells_and_kzg_proofs benchmark
 
+  type EC_Aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+  type EC_Jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
+
+  # No precompute baseline
   proc runNoPrecomp() =
     ctx.polyphaseSpectrumBank.kind = kNoPrecompute
     bench("compute_cells_and_kzg_proofs (no precompute, 1.8 MiB)", iters):
@@ -193,9 +198,16 @@ proc benchComputeCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, ite
         proofs[].asUnchecked(),
         b.blobs[0])
 
-  proc runPrecomp() =
+  # Precompute with given (t, b) config
+  proc runPrecomp(t, bitWidth: int) =
+    for pos in 0 ..< CELLS_PER_EXT_BLOB:
+      ctx.polyphaseSpectrumBank.precompPoints[pos].init(ctx.polyphaseSpectrumBank.rawPoints[pos], t = t, b = bitWidth)
     ctx.polyphaseSpectrumBank.kind = kPrecompute
-    bench("compute_cells_and_kzg_proofs (precompute t=64, b=12, ~500 MiB)", iters):
+
+    let memMiB = float64(msmPrecompSize(EC_Jac, FIELD_ELEMENTS_PER_CELL, t, bitWidth) *
+                          CELLS_PER_EXT_BLOB * sizeof(EC_Aff)) / (1024.0 * 1024.0)
+
+    bench(fmt"compute_cells_and_kzg_proofs (t={t:>3}, b={bitWidth:>2}, ~{memMiB:>7.1f} MiB)", iters):
       var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
       var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
       new(cells)
@@ -205,7 +217,18 @@ proc benchComputeCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, ite
         proofs[].asUnchecked(),
         b.blobs[0])
 
+  # Run benchmarks
   runNoPrecomp()
+
+  # Parametric precompute configurations
+  const PrecompConfigs: array[12, tuple[t, b: int]] = [
+    (64, 6), (64, 8), (64, 10), (64, 12),
+    (128, 6), (128, 8), (128, 10), (128, 12),
+    (256, 6), (256, 8), (256, 10), (256, 12),
+  ]
+
+  for cfg in PrecompConfigs:
+    runPrecomp(cfg.t, cfg.b)
 
 proc benchVerifyCellKZGProofBatch_SingleBlob(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## Verify cells from a single blob with varying batch sizes
@@ -338,98 +361,6 @@ proc benchRecoverCellsAndKZGProofs_VaryingAvailability(b: BenchSet, ctx: ptr Eth
         cells.asUnchecked(),
         numCells)
 
-proc benchFK20_Proving(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
-  ## FK20 multi-proof computation (internal component)
-  ## Corresponds to:
-  ## - go-eth-kzg: Internal to ComputeCellsAndKZGProofs
-  ## - rust-eth-kzg: "computing proofs with fk20" benchmark
-  ## - rust-kzg: bench_fk_multi_da benchmark
-
-  bench("fk20_multi_prove (4096 coeffs, 64 points/proof, 128 proofs)", iters):
-    # This is already tested via compute_cells_and_kzg_proofs
-    # but we can measure it separately if needed
-    var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-    var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
-    new(cells)
-    new(proofs)
-    doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
-      cells[].asUnchecked(),
-      proofs[].asUnchecked(),
-      b.blobs[0])
-
-proc benchFK20_Proofs_Precomp(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
-  ## FK20 proofs with various precompute configurations
-  ## Reports: no precompute baseline, then (t, b) grid
-
-  type EC_Aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
-  type EC_Jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
-
-  # Helper: run FK20 proofs with given (t, b) config
-  # Builds tables in-place; no copy/restore needed.
-  proc runConfig(t, bits: int, label: string) =
-    # Build new precompute tables directly into ctx
-    for pos in 0 ..< CELLS_PER_EXT_BLOB:
-      ctx.polyphaseSpectrumBank.precompPoints[pos].init(ctx.polyphaseSpectrumBank.rawPoints[pos], t = t, b = bits)
-
-    # Ensure kind is set for dispatch
-    ctx.polyphaseSpectrumBank.kind = kPrecompute
-
-    # Calculate memory size
-    let memMiB = float64(msmPrecompSize(EC_Jac, FIELD_ELEMENTS_PER_CELL, t, bits) *
-                        CELLS_PER_EXT_BLOB * sizeof(EC_Aff)) / 1e6
-
-    let fullLabel = label & fmt" (~{memMiB:.1f} MiB)"
-
-    bench(fullLabel, iters):
-      var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-      var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
-      new(cells)
-      new(proofs)
-      doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
-        cells[].asUnchecked(),
-        proofs[].asUnchecked(),
-        b.blobs[0])
-
-  # No precompute baseline (nested proc to avoid bench macro scope clash)
-  proc runBaseline() =
-    ctx.polyphaseSpectrumBank.kind = kNoPrecompute
-    bench("FK20 proofs (no precompute, baseline)", iters):
-      var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-      var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
-      new(cells)
-      new(proofs)
-      doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
-        cells[].asUnchecked(),
-        proofs[].asUnchecked(),
-        b.blobs[0])
-
-  ctx.polyphaseSpectrumBank.kind = kPrecompute
-
-  echo ""
-  echo "FK20 Proofs - Precompute Configurations (t=base groups, b=bits per window):"
-  separator(180)
-
-  runBaseline()
-
-  # t=1, b=2..8
-  for bit in 2..8:
-    runConfig(1, bit, fmt"t=1, b={bit}")
-
-  echo ""
-  # t=64, b=8..12
-  for bit in 8..12:
-    runConfig(64, bit, fmt"t=64, b={bit}")
-
-  echo ""
-  # t=128, b=8..12
-  for bit in 8..12:
-    runConfig(128, bit, fmt"t=128, b={bit}")
-
-  echo ""
-  # t=256, b=8..12
-  for bit in 8..12:
-    runConfig(256, bit, fmt"t=256, b={bit}")
-
 proc benchBatchVerification_ChallengeComputation(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## Fiat-Shamir challenge computation for batch verification
   ## Corresponds to:
@@ -522,14 +453,6 @@ proc main() =
   echo ""
   benchRecoverCellsAndKZGProofs_VaryingAvailability(b, ctx, Iters)
   echo ""
-
-  separator()
-  echo "Internal Component Benchmarks"
-  separator()
-  benchFK20_Proving(b, ctx, Iters)
-  separator()
-  benchFK20_Proofs_Precomp(b, ctx, Iters)
-  separator()
 
   ctx.delete()
 

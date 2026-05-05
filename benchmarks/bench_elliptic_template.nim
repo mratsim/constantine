@@ -42,7 +42,7 @@ export arithmetic # generic sandwich with square from zoo_subgroups
 
 proc separator*() = separator(179)
 
-macro fixEllipticDisplay(EC: typedesc): untyped =
+macro fixEllipticDisplay*(EC: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
   # we get the Curve ID instead of the curve name.
   let instantiated = EC.getTypeInst()
@@ -58,7 +58,7 @@ macro fixEllipticDisplay(EC: typedesc): untyped =
       "]"
   result = newLit name
 
-proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
+proc report*(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
@@ -397,7 +397,7 @@ proc new*[EC; N: static int](
   ctx.precomp.init(ctx.basis, t, b)
   let stop = getMonotime()
   ctx.precompTimeMs = float64(inNanoSeconds(stop-start)) / 1e6
-  ctx.precompMemMiB = float64(msmPrecompSize(EC, N, t, b) * sizeof(affine(EC))) / 1e6
+  ctx.precompMemMiB = float64(msmPrecompSize(EC, N, t, b) * sizeof(affine(EC))) / (1024.0 * 1024.0)
 
 
 proc benchPrecompMSM[EC; N: static int](
@@ -425,7 +425,8 @@ proc benchPrecompMSM[EC; N: static int](
 
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
-  let cycles = (stopClk - startClk) div iters
+  when SupportsGetTicks:
+    let cycles = (stopClk - startClk) div iters
 
   # Average ops per iteration
   let avgDbl = totalOps.dbl div iters
