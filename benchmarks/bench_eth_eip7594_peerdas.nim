@@ -16,18 +16,21 @@ import
   # Internals
   constantine/eth_eip7594_peerdas {.all.},
   constantine/commitments/kzg_multiproofs,
+  constantine/commitments_setups/ethereum_kzg_srs,
   constantine/ethereum_eip4844_kzg_parallel,
   constantine/named/algebras,
-  constantine/math/[ec_shortweierstrass, io/io_fields],
+  constantine/math/[ec_shortweierstrass, io/io_fields, elliptic/ec_multi_scalar_mul_precomp],
   constantine/serialization/codecs_bls12_381,
   constantine/csprngs/sysrand,
   constantine/platforms/primitives,
   constantine/threadpool/threadpool,
+  std/importutils,
   # Helpers
   helpers/prng_unsafe,
   ./bench_blueprint,
   # Standard library
   std/[os, strutils, sequtils, monotimes]
+importutils.privateAccess(ec_multi_scalar_mul_precomp.PrecomputedMSM)
 
 const NumBlobs* = 64  # Number of blobs for benchmarks (matches c-kzg-4844 config)
                       # Parallel initialization uses all available threads (~20 on modern CPUs)
@@ -178,15 +181,31 @@ proc benchComputeCellsAndKZGProofs(b: BenchSet, ctx: ptr EthereumKZGContext, ite
   ## - rust-eth-kzg: "computing cells_and_kzg_proofs" benchmark
   ## - rust-kzg: compute_cells_and_kzg_proofs benchmark
 
-  bench("compute_cells_and_kzg_proofs (FK20)", iters):
-    var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
-    var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
-    new(cells)
-    new(proofs)
-    doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
-      cells[].asUnchecked(),
-      proofs[].asUnchecked(),
-      b.blobs[0])
+  proc runNoPrecomp() =
+    ctx.polyphaseSpectrumBank.kind = kNoPrecompute
+    bench("compute_cells_and_kzg_proofs (no precompute, 1.8 MiB)", iters):
+      var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
+      var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
+      new(cells)
+      new(proofs)
+      doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
+        cells[].asUnchecked(),
+        proofs[].asUnchecked(),
+        b.blobs[0])
+
+  proc runPrecomp() =
+    ctx.polyphaseSpectrumBank.kind = kPrecompute
+    bench("compute_cells_and_kzg_proofs (precompute t=64, b=12, ~500 MiB)", iters):
+      var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
+      var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
+      new(cells)
+      new(proofs)
+      doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
+        cells[].asUnchecked(),
+        proofs[].asUnchecked(),
+        b.blobs[0])
+
+  runNoPrecomp()
 
 proc benchVerifyCellKZGProofBatch_SingleBlob(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## Verify cells from a single blob with varying batch sizes
@@ -338,6 +357,79 @@ proc benchFK20_Proving(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
       proofs[].asUnchecked(),
       b.blobs[0])
 
+proc benchFK20_Proofs_Precomp(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
+  ## FK20 proofs with various precompute configurations
+  ## Reports: no precompute baseline, then (t, b) grid
+
+  type EC_Aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+  type EC_Jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
+
+  # Helper: run FK20 proofs with given (t, b) config
+  # Builds tables in-place; no copy/restore needed.
+  proc runConfig(t, bits: int, label: string) =
+    # Build new precompute tables directly into ctx
+    for pos in 0 ..< CELLS_PER_EXT_BLOB:
+      ctx.polyphaseSpectrumBank.precompPoints[pos].init(ctx.polyphaseSpectrumBank.rawPoints[pos], t = t, b = bits)
+
+    # Ensure kind is set for dispatch
+    ctx.polyphaseSpectrumBank.kind = kPrecompute
+
+    # Calculate memory size
+    let memMiB = float64(msmPrecompSize(EC_Jac, FIELD_ELEMENTS_PER_CELL, t, bits) *
+                        CELLS_PER_EXT_BLOB * sizeof(EC_Aff)) / 1e6
+
+    let fullLabel = label & fmt" (~{memMiB:.1f} MiB)"
+
+    bench(fullLabel, iters):
+      var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
+      var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
+      new(cells)
+      new(proofs)
+      doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
+        cells[].asUnchecked(),
+        proofs[].asUnchecked(),
+        b.blobs[0])
+
+  # No precompute baseline (nested proc to avoid bench macro scope clash)
+  proc runBaseline() =
+    ctx.polyphaseSpectrumBank.kind = kNoPrecompute
+    bench("FK20 proofs (no precompute, baseline)", iters):
+      var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
+      var proofs: ref array[CELLS_PER_EXT_BLOB, KZGProofBytes]
+      new(cells)
+      new(proofs)
+      doAssert cttEthKzg_Success == ctx.compute_cells_and_kzg_proofs(
+        cells[].asUnchecked(),
+        proofs[].asUnchecked(),
+        b.blobs[0])
+
+  ctx.polyphaseSpectrumBank.kind = kPrecompute
+
+  echo ""
+  echo "FK20 Proofs - Precompute Configurations (t=base groups, b=bits per window):"
+  separator(180)
+
+  runBaseline()
+
+  # t=1, b=2..8
+  for bit in 2..8:
+    runConfig(1, bit, fmt"t=1, b={bit}")
+
+  echo ""
+  # t=64, b=8..12
+  for bit in 8..12:
+    runConfig(64, bit, fmt"t=64, b={bit}")
+
+  echo ""
+  # t=128, b=8..12
+  for bit in 8..12:
+    runConfig(128, bit, fmt"t=128, b={bit}")
+
+  echo ""
+  # t=256, b=8..12
+  for bit in 8..12:
+    runConfig(256, bit, fmt"t=256, b={bit}")
+
 proc benchBatchVerification_ChallengeComputation(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## Fiat-Shamir challenge computation for batch verification
   ## Corresponds to:
@@ -391,7 +483,7 @@ proc trusted_setup*(): ptr EthereumKZGContext =
   ## It is insecure and will be replaced once the KZG ceremony is done.
 
   var ctx: ptr EthereumKZGContext
-  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  let tsStatus = ctx.new(TrustedSetupMainnet, kReferenceCKzg4844)
   doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
   echo "Trusted Setup loaded successfully"
   return ctx
@@ -436,8 +528,10 @@ proc main() =
   separator()
   benchFK20_Proving(b, ctx, Iters)
   separator()
+  benchFK20_Proofs_Precomp(b, ctx, Iters)
+  separator()
 
-  ctx.trusted_setup_delete()
+  ctx.delete()
 
 when isMainModule:
   main()

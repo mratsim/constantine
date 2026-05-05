@@ -29,7 +29,7 @@ pub struct EthKzgContextBuilder<'tp> {
 impl<'tp> Drop for EthKzgContext<'tp> {
     #[inline(always)]
     fn drop(&mut self) {
-        unsafe { ctt_eth_trusted_setup_delete(self.ctx as *mut ctt_eth_kzg_context) }
+        unsafe { ctt_eth_kzg_context_delete(self.ctx as *mut ctt_eth_kzg_context) }
     }
 }
 
@@ -63,10 +63,62 @@ impl<'tp> EthKzgContextBuilder<'tp> {
         let mut ctx: *mut ctt_eth_kzg_context = std::ptr::null_mut();
         let ctx_ptr: *mut *mut ctt_eth_kzg_context = &mut ctx;
         let status = unsafe {
-            ctt_eth_trusted_setup_load(
+            ctt_eth_kzg_context_new(
                 ctx_ptr,
                 c_path.as_ptr(),
                 ctt_eth_trusted_setup_format::cttEthTSFormat_ckzg4844,
+            )
+        };
+        match status {
+            ctt_eth_trusted_setup_status::cttEthTS_Success => Ok(Self { ctx: Some(ctx), threadpool: self.threadpool }),
+            _ => Err(status),
+        }
+    }
+
+    /// Create a KZG context with precomputed MSM tables for FK20 proofs (PeerDAS).
+    ///
+    /// `t` = base groups (stride between precomputed layers)
+    /// `b` = bits per window (window size = 2^b)
+    ///
+    /// SPEED / MEMORY TRADEOFF (Intel i7-265K, FK20 proofs = 128 MSMs per blob):
+    /// - no precompute: ~145 ms/blob, ~1.8 MiB
+    /// - t=64,b=8:     ~109 ms/blob, ~101 MiB per MSM (~12.8 GiB total)
+    /// - t=64,b=12:     ~89 ms/blob, ~8.7 MiB per MSM (~1.1 GiB total)
+    /// - t=128,b=8:     ~105 ms/blob, ~50 MiB per MSM (~6.4 GiB total)
+    /// - t=128,b=12:    ~92 ms/blob, ~4.3 MiB per MSM (~0.6 GiB total)
+    /// - t=256,b=8:     ~105 ms/blob, ~25 MiB per MSM (~3.2 GiB total)
+    ///
+    /// Larger b = faster per MSM but exponentially more memory (2^b entries).
+    /// Larger t = fewer doublings but more precomputed layers.
+    /// Default (t=64, b=12): ~89 ms/blob proving, ~1.1 GiB total memory.
+    pub fn load_trusted_setup_with_precompute(self, file_path: &Path, t: i32, b: i32) -> Result<Self, ctt_eth_trusted_setup_status> {
+        #[cfg(unix)]
+        let raw_path = {
+            use std::os::unix::prelude::OsStrExt;
+            file_path.as_os_str().as_bytes()
+        };
+
+        #[cfg(windows)]
+        let raw_path = {
+            file_path
+                .as_os_str()
+                .to_str()
+                .ok_or(ctt_eth_trusted_setup_status::cttEthTS_MissingOrInaccessibleFile)?
+                .as_bytes()
+        };
+
+        let c_path = CString::new(raw_path)
+            .map_err(|_| ctt_eth_trusted_setup_status::cttEthTS_MissingOrInaccessibleFile)?;
+
+        let mut ctx: *mut ctt_eth_kzg_context = std::ptr::null_mut();
+        let ctx_ptr: *mut *mut ctt_eth_kzg_context = &mut ctx;
+        let status = unsafe {
+            ctt_eth_kzg_context_new_with_precompute(
+                ctx_ptr,
+                c_path.as_ptr(),
+                ctt_eth_trusted_setup_format::cttEthTSFormat_ckzg4844,
+                t,
+                b,
             )
         };
         match status {

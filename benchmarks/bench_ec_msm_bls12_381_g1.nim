@@ -23,7 +23,6 @@ import
 #
 # ############################################################
 
-
 const Iters = 10_000
 const AvailableCurves = [
   BLS12_381,
@@ -39,10 +38,14 @@ proc main() =
     const curve = AvailableCurves[i]
     var ctx = createBenchMsmContext(EC_ShortW_Jac[Fp[curve], G1], testNumPoints)
     separator()
-    for numPoints in testNumPoints:
+    staticFor j, 0, testNumPoints.len:
+      const numPoints = testNumPoints[j]
       let batchIters = max(1, Iters div numPoints)
       ctx.msmParallelBench(numPoints, batchIters)
       separator()
+      # Precomputed MSM for small sizes (t == batch length, b=12)
+      when numPoints <= 256:
+        benchPrecompMSMInline[EC_ShortW_Jac[Fp[curve], G1], numPoints, numPoints, 12](ctx, batchIters * 10)
     separator()
 
 main()

@@ -64,7 +64,7 @@ proc generateTestPoly(): PolynomialCoef[N, Fr[BLS12_381]] =
 proc loadTrustedSetup(): ptr EthereumKZGContext =
   ## Load trusted setup from file
   var ctx: ptr EthereumKZGContext
-  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  let tsStatus = ctx.new(TrustedSetupMainnet, kReferenceCKzg4844)
   doAssert tsStatus == tsSuccess, "Failed to load trusted setup: " & $tsStatus
   return ctx
 
@@ -120,7 +120,11 @@ proc benchFK20_Phase1_Full(ctx: ptr EthereumKZGContext,
     for offset in 0 ..< L:
       makeCirculantMatrix(circulant, poly.coefs, offset, L)
       doAssert accum.accumulate(circulant) == Toeplitz_Success
-    doAssert accum.finish(u, ctx.polyphaseSpectrumBank) == Toeplitz_Success
+    case ctx.polyphaseSpectrumBank.kind:
+    of kNoPrecompute:
+      doAssert accum.finish(u, ctx.polyphaseSpectrumBank.rawPoints) == Toeplitz_Success
+    of kPrecompute:
+      doAssert accum.finish(u, ctx.polyphaseSpectrumBank.precompPoints) == Toeplitz_Success
 
 proc benchFK20_Phase2(u: var array[CDS, EC_ShortW_Jac[Fp[BLS12_381], G1]],
                       ecfft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]],
@@ -142,13 +146,15 @@ proc benchKZGCosetProve_FK20(ctx: ptr EthereumKZGContext,
   var proofs: array[CDS, EC_ShortW_Aff[Fp[BLS12_381], G1]]
 
   bench("kzg_coset_prove_fk20", CDS, iters):
-    kzg_coset_prove(
-      proofs,
-      poly.coefs,
-      ctx.fft_desc_ext,
-      ctx.ecfft_desc_ext,
-      ctx.polyphaseSpectrumBank
-    )
+    case ctx.polyphaseSpectrumBank.kind:
+    of kNoPrecompute:
+      kzg_coset_prove(
+        proofs, poly.coefs, ctx.fft_desc_ext, ctx.ecfft_desc_ext,
+        ctx.polyphaseSpectrumBank.rawPoints)
+    of kPrecompute:
+      kzg_coset_prove(
+        proofs, poly.coefs, ctx.fft_desc_ext, ctx.ecfft_desc_ext,
+        ctx.polyphaseSpectrumBank.precompPoints)
 
 proc benchKZGCosetProve_Naive(ctx: ptr EthereumKZGContext,
                               poly: PolynomialCoef[N, Fr[BLS12_381]],
@@ -224,7 +230,7 @@ proc main() =
   echo "FK20 vs Naive speedup: O(n log n) vs O(n²)"
   echo "Note: Polyphase precomputation is a one-time cost, excluded from FK20 timing"
 
-  ctx.trusted_setup_delete()
+  ctx.delete()
 
 when isMainModule:
   main()

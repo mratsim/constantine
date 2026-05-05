@@ -189,23 +189,49 @@ ctt_eth_kzg_status ctt_eth_kzg_verify_blob_kzg_proof_batch(
 ) __attribute__((__warn_unused_result__));
 
 
-// EIP4844 KZG Trusted setup
+// Ethereum EIP-4844 KZG context management
 // ------------------------------------------------------------------------------------------------
 
-/** Load trusted setup from path
- *  Currently the only format supported `cttEthTSFormat_ckzg4844`
- *  is from the reference implementation c-kzg-4844 text file
+/** Create a new KZG context from trusted setup file.
+ *  Loads SRS, computes polyphase decomposition as raw affine points,
+ *  and sets the context to kNoPrecompute mode (~1.8 MiB).
  */
-ctt_eth_trusted_setup_status ctt_eth_trusted_setup_load(
+ctt_eth_trusted_setup_status ctt_eth_kzg_context_new(
     ctt_eth_kzg_context** ctx,
     const char* filepath,
     ctt_eth_trusted_setup_format format
-) __attribute__((__warn_unused_result__));
+    ) __attribute__((__warn_unused_result__));
 
-/** Destroy a trusted setup
+/** Create a new KZG context with precomputed MSM tables.
+ *  Same as ctt_eth_kzg_context_new but also builds PrecomputedMSM lookup
+ *  tables for FK20 proofs (PeerDAS).
+ *
+ *  @param t  base groups (stride between precomputed layers)
+ *  @param b  bits per window (window size = 2^b)
+ *
+ *  SPEED / MEMORY TRADEOFF (Intel i7-265K, FK20 proofs = 128 MSMs per blob):
+ *  - no precompute: ~145 ms/blob, ~1.8 MiB
+ *  - t=64,b=8:     ~109 ms/blob, ~101 MiB per MSM (~12.8 GiB total)
+ *  - t=64,b=12:     ~89 ms/blob, ~8.7 MiB per MSM (~1.1 GiB total)
+ *  - t=128,b=8:     ~105 ms/blob, ~50 MiB per MSM (~6.4 GiB total)
+ *  - t=128,b=12:    ~92 ms/blob, ~4.3 MiB per MSM (~0.6 GiB total)
+ *  - t=256,b=8:     ~105 ms/blob, ~25 MiB per MSM (~3.2 GiB total)
+ *
+ *  Larger b = faster per MSM but exponentially more memory (2^b entries).
+ *  Larger t = fewer doublings but more precomputed layers.
+ *  Default (t=64, b=12): ~89 ms/blob proving, ~1.1 GiB total memory.
  */
-void ctt_eth_trusted_setup_delete(ctt_eth_kzg_context* ctx);
+ctt_eth_trusted_setup_status ctt_eth_kzg_context_new_with_precompute(
+    ctt_eth_kzg_context** ctx,
+    const char* filepath,
+    ctt_eth_trusted_setup_format format,
+    int t,
+    int b
+    ) __attribute__((__warn_unused_result__));
 
+/** Destroy a KZG context
+ */
+void ctt_eth_kzg_context_delete(ctt_eth_kzg_context* ctx);
 
 #ifdef __cplusplus
 }

@@ -341,10 +341,10 @@ proc finish*[EC, ECaff, F; L: static int](
   checkReturn ec_ifft_nn(ctx.ecFftDesc, output, output)
   return Toeplitz_Success
 
-proc finish*[EC, ECaff, F; N, t, b: static int](
+proc finish*[EC, ECaff, F; N: static int](
   ctx: var ToeplitzAccumulator[EC, ECaff, F],
   output: var openArray[EC],
-  polyphaseSpectrumBank: openArray[PrecomputedMSM[EC, N, t, b]]
+  polyphaseSpectrumBank: openArray[PrecomputedMSM[EC, N]]
 ): ToeplitzStatus {.raises: [], meter.} =
   ## Finalize using precomputed MSM tables (one per output position).
   ## For each output position `i`, extracts the `L` scalars from `coeffs`

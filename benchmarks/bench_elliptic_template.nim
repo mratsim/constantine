@@ -24,6 +24,7 @@ import
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_batch_ops,
+    ec_multi_scalar_mul,
     ec_multi_scalar_mul_precomp,
     ec_scalar_mul],
     constantine/named/zoo_subgroups,
@@ -358,18 +359,49 @@ proc msmBench*(EC: typedesc, numPoints: int, iters: int) {.noinline.} =
 
 
 type
-  PrecompBenchContext[EC; N, t, b: static int] = ref object
-    precomp: PrecomputedMSM[EC, N, t, b]
-    basisJac: seq[EC]
-    basis: seq[EC.affine]
-    scalars: seq[BigInt[EC.getScalarField().bits()]]
-    rng: RngState
-    precompTimeMs: float64
-    precompMemMiB: float64
+  PrecompBenchContext*[EC; N: static int] = ref object
+    precomp*: PrecomputedMSM[EC, N]
+    basisJac*: seq[EC]
+    basis*: seq[EC.affine]
+    scalars*: seq[BigInt[EC.getScalarField().bits()]]
+    rng*: RngState
+    precompTimeMs*: float64
+    precompMemMiB*: float64
+    t, b*: int
 
 
-proc benchPrecompMSM[EC; N, t, b: static int](
-      ctx: PrecompBenchContext[EC, N, t, b],
+proc new*[EC; N: static int](
+        _: typedesc[PrecompBenchContext[EC, N]],
+        seed: uint64, t, b: int): PrecompBenchContext[EC, N] =
+  const bits = EC.getScalarField().bits()
+  new(result)
+  template ctx: untyped = result
+  ctx.rng.seed(seed)
+  ctx.basisJac = newSeq[EC](N)
+  ctx.basis = newSeq[EC.affine()](N)
+  ctx.scalars = newSeq[BigInt[bits]](N)
+  ctx.t = t
+  ctx.b = b
+
+  for i in 0..<N:
+    ctx.scalars[i] = ctx.rng.random_unsafe(BigInt[bits])
+
+  for i in 0..<N:
+    ctx.basisJac[i] = ctx.rng.random_unsafe(EC)
+    ctx.basisJac[i].clearCofactor()
+
+  ctx.basis.asUnchecked().batchAffine_vartime(ctx.basisJac.asUnchecked(), N)
+
+  # Precomputation timing
+  let start = getMonotime()
+  ctx.precomp.init(ctx.basis, t, b)
+  let stop = getMonotime()
+  ctx.precompTimeMs = float64(inNanoSeconds(stop-start)) / 1e6
+  ctx.precompMemMiB = float64(msmPrecompSize(EC, N, t, b) * sizeof(affine(EC))) / 1e6
+
+
+proc benchPrecompMSM[EC; N: static int](
+      ctx: PrecompBenchContext[EC, N],
       iters: int) {.noinline.}=
   const bits = EC.getScalarField().bits()
   var result: EC
@@ -400,9 +432,9 @@ proc benchPrecompMSM[EC; N, t, b: static int](
   let avgAdd = totalOps.add div iters
 
   # Estimated ops for comparison
-  let (estAdd, estDbl) = msmPrecompEstimateOps(EC, N, t, b)
+  let (estAdd, estDbl) = msmPrecompEstimateOps(EC, N, ctx.t, ctx.b)
 
-  let configStr = fmt"t={t:>3}, b={b:>2}"
+  let configStr = fmt"t={ctx.t:>3}, b={ctx.b:>2}"
   let c1 = (align(fmt"{ctx.precompTimeMs:7.3f} ms", 12), "  ",
     align(fmt"{ctx.precompMemMiB:6.2f} MiB", 10), "  ",
     align(fmt"{throughput:10.3f}", 12), "  ",
@@ -441,7 +473,7 @@ proc benchPrecompMSMTable[EC](
 
   proc doBench(_: typedesc[EC], N, t, b: static int, iters: int) {.noInline.} =
     # Wrap in a proc to ensure destruction of the large context
-    let ctx = new(PrecompBenchContext[EC, N, t, b], seed = 42'u64)
+    let ctx = new(PrecompBenchContext[EC, N], seed = 42'u64, t = t, b = b)
     ctx.benchPrecompMSM(iters div max(1, N div 10))
 
   staticFor cfgIdx, 0, precompConfigs.len:
@@ -465,19 +497,73 @@ proc benchPrecompMSMTable[EC](
   for i in 0 ..< N:
     scalars2[i] = rng2.random_unsafe(BigInt[bits])
 
-  var refResult: EC
-  let start2 = getMonotime()
-  for _ in 0 ..< iters div max(1, N div 10):
-    refResult.multiScalarMul_vartime(scalars2, basis2)
-  let stop2 = getMonotime()
+  let benchIters = iters div max(1, N div 10)
 
-  let ns2 = inNanoseconds((stop2-start2) div (iters div max(1, N div 10)))
-  let throughput2 = 1e9 / float64(ns2)
-  echo align("Reference MSM", 20), "  ",
+  # Scalar mul (constant-time)
+  var refResultSm: EC
+  let startSm = getMonotime()
+  for _ in 0 ..< benchIters:
+    refResultSm.setNeutral()
+    var tmp: EC
+    for i in 0 ..< basis2.len:
+      tmp.fromAffine(basis2[i])
+      tmp.scalarMul(scalars2[i])
+      refResultSm += tmp
+  let stopSm = getMonotime()
+  let nsSm = inNanoseconds((stopSm-startSm) div benchIters)
+  let throughputSm = 1e9 / float64(nsSm)
+  echo align("  ScalarMul (naive)", 20), "  ",
        align("-", 12), "  ",
        align("-", 10), "  ",
-       align(fmt"{throughput2:10.3f}", 12), "  ",
-       align(fmt"{ns2:10}", 12)
+       align(fmt"{throughputSm:10.3f}", 12), "  ",
+       align(fmt"{nsSm:10}", 12)
+
+  # Scalar mul vartime (DoubleAdd)
+  var refResultSmV: EC
+  let startSmV = getMonotime()
+  for _ in 0 ..< benchIters:
+    refResultSmV.setNeutral()
+    var tmp: EC
+    for i in 0 ..< basis2.len:
+      tmp.fromAffine(basis2[i])
+      tmp.scalarMul_doubleAdd_vartime(scalars2[i])
+      refResultSmV += tmp
+  let stopSmV = getMonotime()
+  let nsSmV = inNanoseconds((stopSmV-startSmV) div benchIters)
+  let throughputSmV = 1e9 / float64(nsSmV)
+  echo align("  ScalarMul (vartime)", 20), "  ",
+       align("-", 12), "  ",
+       align("-", 10), "  ",
+       align(fmt"{throughputSmV:10.3f}", 12), "  ",
+       align(fmt"{nsSmV:10}", 12)
+
+  # MSM baseline (naive Pippenger)
+  var refResultBaseline: EC
+  let startBaseline = getMonotime()
+  for _ in 0 ..< benchIters:
+    refResultBaseline.multiScalarMul_reference_vartime(scalars2, basis2)
+  let stopBaseline = getMonotime()
+  let nsBaseline = inNanoseconds((stopBaseline-startBaseline) div benchIters)
+  let throughputBaseline = 1e9 / float64(nsBaseline)
+  echo align("  MSM baseline", 20), "  ",
+       align("-", 12), "  ",
+       align("-", 10), "  ",
+       align(fmt"{throughputBaseline:10.3f}", 12), "  ",
+       align(fmt"{nsBaseline:10}", 12)
+
+  # MSM optimized (bucket-based Pippenger)
+  var refResultOpt: EC
+  let startOpt = getMonotime()
+  for _ in 0 ..< benchIters:
+    refResultOpt.multiScalarMul_vartime(scalars2, basis2)
+  let stopOpt = getMonotime()
+  let nsOpt = inNanoseconds((stopOpt-startOpt) div benchIters)
+  let throughputOpt = 1e9 / float64(nsOpt)
+  echo align("  MSM optimized", 20), "  ",
+       align("-", 12), "  ",
+       align("-", 10), "  ",
+       align(fmt"{throughputOpt:10.3f}", 12), "  ",
+       align(fmt"{nsOpt:10}", 12)
   echo ""
 
 

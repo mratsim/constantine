@@ -26,7 +26,7 @@ const
 proc getTrustedSetup*(): ptr EthereumKZGContext =
   ## This is a convenience function for the Ethereum mainnet testing trusted setups.
   var ctx: ptr EthereumKZGContext
-  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  let tsStatus = ctx.new_with_precompute(TrustedSetupMainnet, kReferenceCKzg4844, 256, 8)
   doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
   echo "Trusted Setup loaded successfully"
   return ctx

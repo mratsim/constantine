@@ -189,4 +189,4 @@ block:
       test_verify_blob_kzg_proof_batch(ctx, tp)
 
     tp.shutdown()
-    ctx.trusted_setup_delete()
+    ctx.delete()

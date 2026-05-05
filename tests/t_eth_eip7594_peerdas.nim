@@ -328,4 +328,4 @@ block:
     test "compute_verify_cell_kzg_proof_batch_challenge":
       ctx.test_compute_verify_cell_kzg_proof_batch_challenge()
 
-    ctx.trusted_setup_delete()
+    ctx.delete()

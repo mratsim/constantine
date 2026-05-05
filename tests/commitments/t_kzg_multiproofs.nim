@@ -857,9 +857,9 @@ proc testFK20PrecompMSM() =
   kzg_coset_prove(affineProofs, setup.testPoly.coefs, fr_fft_desc, ecfft_desc, polyphaseBasis)
 
   # 2. Build PrecomputedMSM bank from the same data
-  var precompBank: array[CDS, PrecomputedMSM[BLS12_381_G1_Jac, L, t, b]]
+  var precompBank: array[CDS, PrecomputedMSM[BLS12_381_G1_Jac, L]]
   for pos in 0 ..< CDS:
-    precompBank[pos].init(polyphaseBasis[pos])
+    precompBank[pos].init(polyphaseBasis[pos], t = t, b = b)
 
   # 3. Compute proofs with PrecomputedMSM overload
   var precompProofs: array[CDS, BLS12_381_G1_Aff]

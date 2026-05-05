@@ -456,12 +456,12 @@ proc kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
       polyphaseSpectrumBank: array[CDS, array[L, EC_ShortW_Aff[Fp[Name], G1]]]) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
   kzg_coset_prove_impl[L, CDS, Name](proofs, poly, fr_fft_desc, ec_fft_desc, polyphaseSpectrumBank)
 
-proc kzg_coset_prove*[L, CDS, t, b: static int, Name: static Algebra](
+proc kzg_coset_prove*[L, CDS: static int, Name: static Algebra](
       proofs: var array[CDS, EC_ShortW_Aff[Fp[Name], G1]],
       poly: openArray[Fr[Name]],
       fr_fft_desc: FrFFT_Descriptor[Fr[Name]],
       ec_fft_desc: ECFFT_Descriptor[EC_ShortW_Jac[Fp[Name], G1]],
-      polyphaseSpectrumBank: array[CDS, PrecomputedMSM[EC_ShortW_Jac[Fp[Name], G1], L, t, b]]) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
+      polyphaseSpectrumBank: array[CDS, PrecomputedMSM[EC_ShortW_Jac[Fp[Name], G1], L]]) {.tags:[Alloca, HeapAlloc, Vartime], meter.} =
   kzg_coset_prove_impl[L, CDS, Name](proofs, poly, fr_fft_desc, ec_fft_desc, polyphaseSpectrumBank)
 
 # ############################################################

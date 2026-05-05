@@ -16,9 +16,11 @@ import
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_batch_ops_parallel,
+    ec_shortweierstrass_batch_ops,
     ec_multi_scalar_mul,
     ec_scalar_mul, ec_scalar_mul_vartime,
-    ec_multi_scalar_mul_parallel],
+    ec_multi_scalar_mul_parallel,
+    ec_multi_scalar_mul_precomp],
   constantine/named/zoo_subgroups,
   # Threadpool
   constantine/threadpool/[threadpool, partitioners],
@@ -175,3 +177,33 @@ proc msmParallelBench*[EC](ctx: var BenchMsmContext[EC], numInputs: int, iters: 
 
   let speedupParaOpt = float(perfMSMopt) / float(perfMSMpara)
   echo &"Speedup ratio parallel over optimized linear combination: {speedupParaOpt:>6.3f}x"
+
+# Precomputed MSM inline benchmark (for small sizes)
+# ---------------------------------------------------
+
+proc benchPrecompMSMInline*[EC; N, t, b: static int](
+        ctx: BenchMsmContext[EC], iters: int) {.noinline.} =
+  const bits = EC.getScalarField().bits()
+
+  let benchCtx = new(PrecompBenchContext[EC, N], seed = 42'u64, t = t, b = b)
+
+  # Manual timing
+  var result: EC
+  result.setNeutral()
+  let start = getMonotime()
+  when SupportsGetTicks:
+    let startClk = getTicks()
+  for _ in 0 ..< iters:
+    discard benchCtx.precomp.msm_vartime(result, benchCtx.scalars)
+  let stop = getMonotime()
+  when SupportsGetTicks:
+    let stopClk = getTicks()
+
+  let ns = inNanoseconds((stop - start) div iters)
+  let throughput = 1e9 / float64(ns)
+  let configStr = fmt"Precomp MSM (t={t}, b={b}) [{benchCtx.precompMemMiB:6.2f} MiB, {benchCtx.precompTimeMs:6.2f} ms]"
+
+  when SupportsGetTicks:
+    echo fmt"    {configStr}  {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles"
+  else:
+    echo fmt"    {configStr}  {throughput:>15.3f} ops/s     {ns:>9} ns/op"

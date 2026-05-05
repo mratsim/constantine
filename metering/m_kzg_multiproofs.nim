@@ -51,7 +51,7 @@ proc randomPoly(rng: var RngState): PolynomialCoef[N, Fr[BLS12_381]] =
 
 proc loadTrustedSetup(): ptr EthereumKZGContext =
   var ctx: ptr EthereumKZGContext
-  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  let tsStatus = ctx.new(TrustedSetupMainnet, kReferenceCKzg4844)
   doAssert tsStatus == tsSuccess, "Failed to load trusted setup: " & $tsStatus
   return ctx
 
@@ -91,7 +91,7 @@ proc main() =
   const flags = if UseASM_X86_64 or UseASM_X86_32: "UseAssembly" else: "NoAssembly"
   reportCli(Metrics, flags)
 
-  ctx.trusted_setup_delete()
+  ctx.delete()
 
 when isMainModule:
   main()

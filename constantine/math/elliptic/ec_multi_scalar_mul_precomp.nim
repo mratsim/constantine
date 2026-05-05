@@ -16,15 +16,19 @@ import
 {.push raises: [], checks: off.}
 
 type
-  PrecomputedMSM*[EC; N, t, b: static int] = object
+  PrecomputedMSM*[EC; N: static int] = object
     ## Herold-Hagopian Precomputed MSM
     ##
     ## **EC** — Projective coordinate type (e.g. EC_ShortW_Jac, EC_TwEdw_Prj).
     ##          `affine(EC)` is deduced from `EC` internally.
     ## **N** — Number of basis points (MSM width).
-    ## **t** — Stride (bits between precomputed layers). Larger `t` reduces
+    ##
+    ## **t** and **b** are stored as runtime fields:
+    ##   **t** — Stride (bits between precomputed layers). Larger `t` reduces
     ##        table size but adds doublings during MSM.
-    ## **b** — Window size in bits. Each lookup table has `2^b` entries.
+    ##   **b** — Window size in bits. Each lookup table has `2^b` entries.
+    ##
+    ## When `t == 0` or `b == 0`, the table is not built (kNoPrecompute mode).
     ##
     ## - Notes on MSMs with Precomputation
     ##   Herold, 2023
@@ -34,8 +38,21 @@ type
     ##   https://hackmd.io/@jsign/vkt-another-iteration-of-vkt-msms
     table: ptr UncheckedArray[affine(EC)]
     tableLen: int
+    t, b: int
 
-func msmPrecompEstimateOps*[EC](_: typedesc[EC]; N, t, b: static int): tuple[add, dbl: int] =
+proc `=destroy`*[EC; N](ctx: var PrecomputedMSM[EC, N]) {.raises: [].} =
+  if ctx.table != nil:
+    freeHeapAligned(cast[pointer](ctx.table))
+    ctx.table = nil
+  ctx.tableLen = 0
+  ctx.t = 0
+  ctx.b = 0
+
+
+# Metadata
+# --------------------------------------------------------------------------------------
+
+func msmPrecompEstimateOps*[EC](_: typedesc[EC]; N, t, b: int): tuple[add, dbl: int] =
   ## Returns (additions, doublings) for one MSM execution
   const bits = EC.getScalarField().bits()
 
@@ -52,46 +69,26 @@ func msmPrecompEstimateOps*[EC](_: typedesc[EC]; N, t, b: static int): tuple[add
 
   (add, dbl)
 
-proc new[EC; N, t, b: static int](
-        _: typedesc[PrecompBenchContext[EC, N, t, b]],
-        seed: uint64): PrecompBenchContext[EC, N, t, b] =
-  const bits = EC.getScalarField().bits()
-  new(result)
-  template ctx: untyped = result
-  ctx.rng.seed(seed)
-  ctx.basisJac = newSeq[EC](N)
-  ctx.basis = newSeq[EC.affine()](N)
-  ctx.scalars = newSeq[BigInt[bits]](N)
+func msmPrecompSize*[EC](_: typedesc[EC]; N, t, b: int): int =
+  ## Returns the number of elements (table entries) in the precomputed lookup table.
+  ## Returns 0 if t == 0 or b == 0 (no precompute).
+  if t == 0 or b == 0:
+    return 0
+  const FrBits = EC.getScalarField().bits()
+  let pointsPerColumn = (FrBits + t - 1) div t
+  let expandedBasisLen = N * pointsPerColumn
+  let numWindows = (expandedBasisLen + b - 1) div b
+  let windowSize = 1 shl b
+  numWindows * windowSize
 
-  for i in 0..<N:
-    ctx.scalars[i] = ctx.rng.random_unsafe(BigInt[bits])
-
-  for i in 0..<N:
-    ctx.basisJac[i] = ctx.rng.random_unsafe(EC)
-    ctx.basisJac[i].clearCofactor()
-
-  ctx.basis.asUnchecked().batchAffine_vartime(ctx.basisJac.asUnchecked(), N)
-
-  # Precomputation timing
-  let start = getMonotime()
-  ctx.precomp.init(ctx.basis)
-  let stop = getMonotime()
-  ctx.precompTimeMs = float64(inNanoSeconds(stop-start)) / 1e6
-  ctx.precompMemMiB = float64(ctx.precomp.tableLen * sizeof(affine(EC))) / 1e6
-
-proc `=destroy`*[EC; N, t, b](ctx: var PrecomputedMSM[EC, N, t, b]) {.raises: [].} =
-  if ctx.table != nil:
-    freeHeapAligned(cast[pointer](ctx.table))
-    ctx.table = nil
-    ctx.tableLen = 0
-
-func `=copy`*[EC; N, t, b](dst: var PrecomputedMSM[EC, N, t, b], src: PrecomputedMSM[EC, N, t, b]) {.error.}
+# Logic
+# --------------------------------------------------------------------------------------
 
 func precomputeWindow[ECaff, EC](
       tableSlice: var openArray[ECaff],
       basisSlice: openArray[EC],
       scratchspace: var openArray[EC],
-      b: static int) =
+      b: int) =
   ## Build one window's lookup table using binary-tree precomputation.
   ## For each basis element, doubles the number of reachable group elements
   ## by accumulating partial sums, then converts to affine in one batch.
@@ -113,14 +110,16 @@ func precomputeWindow[ECaff, EC](
 
   tableSlice.batchAffine_vartime(scratchspace)
 
-func init*[EC; N, t, b](
-    ctx: var PrecomputedMSM[EC, N, t, b],
-    basis: openArray[affine(EC)]) =
+func init*[EC; N](
+    ctx: var PrecomputedMSM[EC, N],
+    basis: openArray[affine(EC)],
+    t, b: int) =
   ## Build the precomputed lookup table for `basis` points.
   ##
   ## **Preconditions**
   ## - `basis.len == N` (checked at runtime via `doAssert`)
-  ## - `t >= 1` (checked at compile time via `static: doAssert`)
+  ## - `t >= 1` and `b >= 1` (checked at runtime via `doAssert`)
+  ## - Passing `(0, 0)` skips table construction (kNoPrecompute mode).
   ##
   ## **Important:** `init` assumes the caller provides *well-formed* basis points:
   ## - Each point MUST lie on the curve
@@ -133,12 +132,21 @@ func init*[EC; N, t, b](
   ## and hardcoded/test bases are known-correct.
   ##
   ## If `ctx.table` is already allocated, it is freed before the new table is built.
-  static: doAssert t >= 1
   doAssert basis.len == N
+
+  # (0, 0) means no precompute
+  if t == 0 or b == 0:
+    ctx.t = 0
+    ctx.b = 0
+    return
 
   if ctx.table != nil:
     freeHeapAligned(ctx.table)
     ctx.table = nil
+    ctx.tableLen = 0
+
+  ctx.t = t
+  ctx.b = b
 
   const FrBits = EC.getScalarField().bits()
   let pointsPerColumn = (FrBits + t - 1) div t
@@ -159,7 +167,7 @@ func init*[EC; N, t, b](
 
   let numWindows = (expandedBasisLen + b - 1) div b
   let windowSize = 1 shl b
-  let totalTableSize = numWindows * windowSize
+  let totalTableSize = msmPrecompSize(EC, N, t, b)
 
   ctx.table = allocHeapArrayAligned(affine(EC), totalTableSize, alignment = 64)
   ctx.tableLen = totalTableSize
@@ -180,8 +188,8 @@ func init*[EC; N, t, b](
   freeHeapAligned(scratchspace)
   freeHeapAligned(expandedBasis)
 
-func msm_vartime*[EC; N, t, b](
-  ctx: PrecomputedMSM[EC, N, t, b],
+func msm_vartime*[EC; N](
+  ctx: PrecomputedMSM[EC, N],
   r: var EC,
   scalars: openArray[BigInt]
 ): tuple[add, dbl: int] {.tags:[VarTime], discardable.} =
@@ -192,15 +200,17 @@ func msm_vartime*[EC; N, t, b](
   ## ⚠️ **VARIABLE-TIME** — execution depends on scalar bit patterns.
   ##   This MUST NOT be used with secret scalars.
 
+  doAssert ctx.t > 0 and ctx.b > 0, "[ctt] Internal error: t|b parameter must be > 0"
+
   r.setNeutral()
 
   type ECaff = affine(EC)
   const FrBits = ECaff.getScalarField().bits()
-  let windowSize = 1 shl b
+  let windowSize = 1 shl ctx.b
 
   result = (add: 0, dbl: 0)
 
-  for t_i in 0 ..< t:
+  for t_i in 0 ..< ctx.t:
     if t_i > 0:
       r.double()
       inc result.dbl
@@ -212,13 +222,13 @@ func msm_vartime*[EC; N, t, b](
     for scalarIdx in 0..<N:
       var k = 0
       while k < FrBits:
-        let scalarBitPos = k + t - t_i - 1
+        let scalarBitPos = k + ctx.t - t_i - 1
         if scalarBitPos < FrBits:
           let bit = int(scalars[scalarIdx].bit(scalarBitPos))
           windowScalar = windowScalar or (bit shl windowBitPos)
         windowBitPos += 1
 
-        if windowBitPos == b:
+        if windowBitPos == ctx.b:
           if windowScalar > 0:
             r.mixedSum_vartime(r, ctx.table[currWindow * windowSize + windowScalar])
             inc result.add
@@ -226,7 +236,7 @@ func msm_vartime*[EC; N, t, b](
           windowScalar = 0
           windowBitPos = 0
 
-        k += t
+        k += ctx.t
 
     # Final partial window for this t_i iteration
     if windowScalar > 0:

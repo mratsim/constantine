@@ -63,10 +63,46 @@ type EthKzgContext struct {
 func EthKzgContextNew(trustedSetupFile string) (ctx EthKzgContext, err error) {
 	cFile := C.CString(trustedSetupFile)
 	defer C.free(unsafe.Pointer(cFile))
-	status := C.ctt_eth_trusted_setup_load(
+	status := C.ctt_eth_kzg_context_new(
 		&ctx.cCtx,
 		cFile,
 		C.cttEthTSFormat_ckzg4844,
+	)
+	if status != C.cttEthTS_Success {
+		err = errors.New(
+			C.GoString(C.ctt_eth_trusted_setup_status_to_string(status)),
+		)
+	}
+	ctx.threadpool.ctx = nil
+	return ctx, err
+}
+
+// EthKzgContextNewWithPrecompute creates a KZG context with precomputed MSM tables
+// for FK20 proofs (PeerDAS).
+//
+// t = base groups (stride between precomputed layers)
+// b = bits per window (window size = 2^b)
+//
+// SPEED / MEMORY TRADEOFF (Intel i7-265K, FK20 proofs = 128 MSMs per blob):
+// - no precompute: ~145 ms/blob, ~1.8 MiB
+// - t=64,b=8:     ~109 ms/blob, ~101 MiB per MSM (~12.8 GiB total)
+// - t=64,b=12:     ~89 ms/blob, ~8.7 MiB per MSM (~1.1 GiB total)
+// - t=128,b=8:     ~105 ms/blob, ~50 MiB per MSM (~6.4 GiB total)
+// - t=128,b=12:    ~92 ms/blob, ~4.3 MiB per MSM (~0.6 GiB total)
+// - t=256,b=8:     ~105 ms/blob, ~25 MiB per MSM (~3.2 GiB total)
+//
+// Larger b = faster per MSM but exponentially more memory (2^b entries).
+// Larger t = fewer doublings but more precomputed layers.
+// Default (t=64, b=12): ~89 ms/blob proving, ~1.1 GiB total memory.
+func EthKzgContextNewWithPrecompute(trustedSetupFile string, t, b int) (ctx EthKzgContext, err error) {
+	cFile := C.CString(trustedSetupFile)
+	defer C.free(unsafe.Pointer(cFile))
+	status := C.ctt_eth_kzg_context_new_with_precompute(
+		&ctx.cCtx,
+		cFile,
+		C.cttEthTSFormat_ckzg4844,
+		C.int(t),
+		C.int(b),
 	)
 	if status != C.cttEthTS_Success {
 		err = errors.New(
@@ -82,7 +118,7 @@ func (ctx *EthKzgContext) SetThreadpool(tp Threadpool) {
 }
 
 func (ctx EthKzgContext) Delete() {
-	C.ctt_eth_trusted_setup_delete(ctx.cCtx)
+	C.ctt_eth_kzg_context_delete(ctx.cCtx)
 }
 
 func (ctx EthKzgContext) BlobToKzgCommitment(blob EthBlob) (commitment EthKzgCommitment, err error) {
