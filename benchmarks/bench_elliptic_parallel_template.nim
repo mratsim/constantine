@@ -16,9 +16,11 @@ import
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_batch_ops_parallel,
+    ec_shortweierstrass_batch_ops,
     ec_multi_scalar_mul,
     ec_scalar_mul, ec_scalar_mul_vartime,
-    ec_multi_scalar_mul_parallel],
+    ec_multi_scalar_mul_parallel,
+    ec_multi_scalar_mul_precomp],
   constantine/named/zoo_subgroups,
   # Threadpool
   constantine/threadpool/[threadpool, partitioners],
@@ -58,6 +60,9 @@ type BenchMsmContext*[EC] = object
   numInputs: int
   coefs: seq[getBigInt(EC.getName(), kScalarField)]
   points: seq[affine(EC)]
+
+type MsmParallelBenchResult* = object
+  perfNaive*, perfMSMbaseline*, perfMSMopt*, perfMSMpara*: float64
 
 proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int]): BenchMsmContext[EC] {.noinline.} =
   result.tp = Threadpool.new()
@@ -101,11 +106,11 @@ proc createBenchMsmContext*(EC: typedesc, inputSizes: openArray[int]): BenchMsmC
   result.tp.shutdown()
 
   let stop = getMonotime()
-  stdout.write &"in {float64(inNanoSeconds(stop-start)) / 1e6:6.3f} ms\n"
+  stdout.write &"in {float64(inNanoseconds(stop-start)) / 1e6:6.3f} ms\n"
 
-proc msmParallelBench*[EC](ctx: var BenchMsmContext[EC], numInputs: int, iters: int) =
+proc msmParallelBench*[EC](ctx: var BenchMsmContext[EC], numInputs: int, iters: int): MsmParallelBenchResult =
   const bits = EC.getScalarField().bits()
-  type ECaff = affine(EC)
+
 
   template coefs: untyped = ctx.coefs.toOpenArray(0, numInputs-1)
   template points: untyped = ctx.points.toOpenArray(0, numInputs-1)
@@ -158,20 +163,81 @@ proc msmParallelBench*[EC](ctx: var BenchMsmContext[EC], numInputs: int, iters: 
 
     ctx.tp.shutdown()
 
-  let perfNaive = inNanoseconds((stopNaive-startNaive) div iters)
-  let perfMSMbaseline = inNanoseconds((stopMSMbaseline-startMSMbaseline) div iters)
-  let perfMSMopt = inNanoseconds((stopMSMopt-startMSMopt) div iters)
-  let perfMSMpara = inNanoseconds((stopMSMpara-startMSMpara) div iters)
-
   if numInputs <= 100000:
-    let speedupBaseline = float(perfNaive) / float(perfMSMbaseline)
-    echo &"Speedup ratio baseline over naive linear combination: {speedupBaseline:>6.3f}x"
+    result.perfNaive = float64(inNanoseconds((stopNaive-startNaive) div iters))
+    result.perfMSMbaseline = float64(inNanoseconds((stopMSMbaseline-startMSMbaseline) div iters))
+  else:
+    result.perfNaive = 0
+    result.perfMSMbaseline = 0
+  result.perfMSMopt = float64(inNanoseconds((stopMSMopt-startMSMopt) div iters))
+  result.perfMSMpara = float64(inNanoseconds((stopMSMpara-startMSMpara) div iters))
 
-    let speedupOpt = float(perfNaive) / float(perfMSMopt)
-    echo &"Speedup ratio optimized over naive linear combination: {speedupOpt:>6.3f}x"
 
-    let speedupOptBaseline = float(perfMSMbaseline) / float(perfMSMopt)
-    echo &"Speedup ratio optimized over baseline linear combination: {speedupOptBaseline:>6.3f}x"
+proc reportMSMParallel*(perf: MsmParallelBenchResult, numInputs: int) =
+  ## Print speedup ratios for MSM benchmarks
+  if numInputs <= 100000:
+    let speedupBaseline = perf.perfNaive / perf.perfMSMbaseline
+    echo &"Speedup ratio baseline  over naive     linear combination: {speedupBaseline:>6.3f}x"
 
-  let speedupParaOpt = float(perfMSMopt) / float(perfMSMpara)
-  echo &"Speedup ratio parallel over optimized linear combination: {speedupParaOpt:>6.3f}x"
+    let speedupOpt = perf.perfNaive / perf.perfMSMopt
+    echo &"Speedup ratio optimized over naive     linear combination: {speedupOpt:>6.3f}x"
+
+    let speedupOptBaseline = perf.perfMSMbaseline / perf.perfMSMopt
+    echo &"Speedup ratio optimized over baseline  linear combination: {speedupOptBaseline:>6.3f}x"
+
+  let speedupParaOpt = perf.perfMSMopt / perf.perfMSMpara
+  echo &"Speedup ratio parallel  over optimized linear combination: {speedupParaOpt:>6.3f}x"
+
+
+# Precomputed MSM inline benchmark (for small sizes)
+# ---------------------------------------------------
+
+type PrecompBenchResult* = object
+  nsOp*, throughput*, cycles*: float64
+
+proc benchPrecompMSMInline*[EC; N, t, b: static int](
+        ctx: BenchMsmContext[EC], iters: int): PrecompBenchResult {.noinline.} =
+
+  const bits = EC.getScalarField().bits()
+  type ECaff = affine(EC)
+
+  template basis: untyped = ctx.points.toOpenArray(0, N-1)
+  var precomp: PrecomputedMSM[EC, N]
+  precomp.init(basis, t = t, b = b)
+
+  template scalars: untyped = ctx.coefs.toOpenArray(0, N-1)
+
+  # Manual timing
+  var resultEC: EC
+  resultEC.setNeutral()
+  let start = getMonotime()
+  when SupportsGetTicks:
+    let startClk = getTicks()
+  for _ in 0 ..< iters:
+    discard precomp.msm_vartime(resultEC, scalars)
+  let stop = getMonotime()
+  when SupportsGetTicks:
+    let stopClk = getTicks()
+
+  let ns = inNanoseconds((stop - start) div iters)
+  let throughput = 1e9 / float64(ns)
+  let precompMemMiB = float64(msmPrecompSize(EC, N, t, b) * sizeof(ECaff)) / (1024.0 * 1024.0)
+  let label = "Precomp MSM"
+  let config = fmt"(t={t}, b={b})"
+  let setupInfo = fmt"[mem: {precompMemMiB:6.2f} MiB]"
+
+  when SupportsGetTicks:
+    let cyc = (stopClk - startClk) div iters
+    echo fmt"{label:<36}   {config:<30}{setupInfo}        {throughput:>16.3f} ops/s {ns:>16} ns/op{cyc:>14} CPU cycles (approx)"
+    result.cycles = float64(cyc)
+  else:
+    echo fmt"{label:<36}   {config:<30}{setupInfo}        {throughput:>16.3f} ops/s {ns:>16} ns/op"
+
+  result.nsOp = float64(ns)
+  result.throughput = throughput
+
+proc reportPrecompSpeedup*(precompNsOp: float64, perfMSMOpt: float64) =
+  ## Print speedup ratio of precomp over optimized MSM
+  if perfMSMOpt > 0 and precompNsOp > 0:
+    let speedupPrecompOpt = perfMSMOpt / precompNsOp
+    echo fmt"Speedup ratio precomp   over optimized linear combination: {speedupPrecompOpt:>6.3f}x"

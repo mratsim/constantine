@@ -48,7 +48,7 @@ proc loadVectors(TestType: typedesc, filename: string): TestType =
 proc trusted_setup*(): ptr EthereumKZGContext =
 
   var ctx: ptr EthereumKZGContext
-  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  let tsStatus = ctx.new(TrustedSetupMainnet, kReferenceCKzg4844)
   doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
   echo "Trusted Setup loaded successfully"
   return ctx
@@ -99,7 +99,7 @@ template runPrecompileTests(filename: string, funcname: untyped, outsize: int, n
         stdout.write "Success\n"
 
       when needKzgCtx:
-        ctx.trusted_setup_delete()
+        ctx.delete()
 
     `PrecompileTestrunner _ funcname`()
 

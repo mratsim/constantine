@@ -580,6 +580,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_msm.nim", false),
   ("tests/math_elliptic_curves/t_ec_twedw_prj_msm.nim", false),
   ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_msm_bug_366.nim", false),
+  ("tests/math_elliptic_curves/t_ec_multi_scalar_mul_precomp.nim", false),
 
   # Subgroups and cofactors
   # ----------------------------------------------------------
@@ -722,8 +723,10 @@ const benchDesc = [
   "bench_ec_g1_scalar_mul_vartime",
   "bench_ec_g1_batch",
   "bench_ec_msm_bandersnatch",
+  "bench_ec_msm_precomp_bandersnatch",
   "bench_ec_msm_bn254_snarks_g1",
   "bench_ec_msm_bls12_381_g1",
+  "bench_ec_msm_precomp_bls12_381_g1",
   "bench_ec_msm_bls12_381_g2",
   "bench_ec_msm_pasta",
   "bench_ec_g2",
@@ -1109,12 +1112,17 @@ task bench_ec_msm_bn254_snarks_g1, "Run benchmark: Multi-Scalar-Mul for BN254-Sn
 task bench_ec_msm_bls12_381_g1, "Run benchmark: Multi-Scalar-Mul for BLS12-381 𝔾1 - CC compiler":
   runBench("bench_ec_msm_bls12_381_g1")
 
+task bench_ec_msm_precomp_bls12_381_g1, "Run benchmark: Precomp Multi-Scalar-Mul for BLS12-381 𝔾1 - CC compiler":
+  runBench("bench_ec_msm_precomp_bls12_381_g1")
+
 task bench_ec_msm_bls12_381_g2, "Run benchmark: Multi-Scalar-Mul for BLS12-381 𝔾2 - CC compiler":
   runBench("bench_ec_msm_bls12_381_g2")
 
 task bench_ec_msm_bandersnatch, "Run benchmark: Multi-Scalar-Mul for Bandersnatch - CC compiler":
   runBench("bench_ec_msm_bandersnatch")
 
+task bench_ec_msm_precomp_bandersnatch, "Run benchmark: Precomp Multi-Scalar-Mul for Bandersnatch - CC compiler":
+  runBench("bench_ec_msm_precomp_bandersnatch")
 
 # Elliptic curve 𝔾₂
 # ------------------------------------------

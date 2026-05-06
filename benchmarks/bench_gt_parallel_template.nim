@@ -115,7 +115,7 @@ proc createBenchMultiExpContext*(GT: typedesc, inputSizes: openArray[int]): Benc
   result.tp.shutdown()
 
   let stop = getMonotime()
-  stdout.write &"in {float64(inNanoSeconds(stop-start)) / 1e6:6.3f} ms\n"
+  stdout.write &"in {float64(inNanoseconds(stop-start)) / 1e6:6.3f} ms\n"
 
 proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: int, iters: int) =
   const bits = Fr[GT.Name].bits()
@@ -210,7 +210,7 @@ proc multiExpParallelBench*[GT](ctx: var BenchMultiExpContext[GT], numInputs: in
   when GT is QuadraticExt:
     let perfMultiExpBaselineTorus = inNanoseconds((stopMultiExpBaselineTorus-startMultiExpBaselineTorus) div iters)
     let perfMultiExpOptTorus = inNanoseconds((stopMultiExpOptTorus-startMultiExpOptTorus) div iters)
-    let perfMultiExpParaTorus = inNanoSeconds((stopMultiExpParaTorus-startMultiExpParaTorus) div iters)
+    let perfMultiExpParaTorus = inNanoseconds((stopMultiExpParaTorus-startMultiExpParaTorus) div iters)
 
   if numInputs <= 100000:
     let speedupBaseline = float(perfNaive) / float(perfMultiExpBaseline)

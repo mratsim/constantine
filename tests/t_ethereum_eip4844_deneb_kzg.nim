@@ -181,4 +181,4 @@ block:
     test "verify_blob_kzg_proof_batch(blobs: ptr UncheckedArray[array[4096, byte]], commitments: ptr UncheckedArray[array[BYTES_PER_COMMITMENT, byte]], proofs: ptr UncheckedArray[array[BYTES_PER_PROOF, byte]], n: int, secureRandomBytes: array[32, byte])":
       ctx.test_verify_blob_kzg_proof_batch()
 
-    ctx.trusted_setup_delete()
+    ctx.delete()

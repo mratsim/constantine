@@ -230,7 +230,7 @@ func shiftRight*(a: var BigInt, k: int) =
 # ############################################################
 
 func checkOdd(a: BaseType) =
-  doAssert bool(a and 1), "Internal Error: the modulus must be odd to use the Montgomery representation."
+  doAssert bool(a and 1), "[ctt] Internal error: the modulus must be odd to use the Montgomery representation."
 
 func checkOdd(M: BigInt) =
   checkOdd(BaseType M.limbs[0])
@@ -241,7 +241,7 @@ func checkValidModulus(M: BigInt) =
 
   # This is important for the constant-time explicit modulo operation
   # "reduce" and bigint division.
-  doAssert msb == expectedMsb, "Internal Error: the modulus must use all declared bits and only those:\n" &
+  doAssert msb == expectedMsb, "[ctt] Internal error: the modulus must use all declared bits and only those:\n" &
     "    Modulus '" & M.toHex() & "' is declared with " & $M.bits &
     " bits but uses " & $(msb + WordBitWidth * (M.limbs.len - 1)) & " bits."
 

@@ -241,7 +241,7 @@ proc trusted_setup*(): ptr EthereumKZGContext =
   ## It is insecure and will be replaced once the KZG ceremony is done.
 
   var ctx: ptr EthereumKZGContext
-  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  let tsStatus = ctx.new(TrustedSetupMainnet, kReferenceCKzg4844)
   doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
   echo "Trusted Setup loaded successfully"
   return ctx
@@ -263,7 +263,7 @@ proc main() =
   echo ""
   benchVerifyBlobKzgProofBatch(b, ctx, Iters)
   separator()
-  ctx.trusted_setup_delete()
+  ctx.delete()
 
 when isMainModule:
   main()

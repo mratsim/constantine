@@ -190,7 +190,7 @@ func getMont_vartime*(r: var openArray[SecretWord], a, M: openArray[SecretWord])
 template checkPowScratchSpaceLen(bufLen, wordLen: int) =
   ## Checks that there is a minimum of scratchspace to hold the temporaries
   debug:
-    assert bufLen >= 2*wordLen, "Internal Error: the scratchspace for powmod should be equal or greater than 2"
+    assert bufLen >= 2*wordLen, "[ctt] Internal error: the scratchspace for powmod should be equal or greater than 2"
 
 func getWindowLen(bufLen, wordLen: int): uint =
   ## Compute the maximum window size that fits in the scratchspace buffer

@@ -22,7 +22,8 @@ import
   ./commitments_setups/ethereum_kzg_srs
 
 export
-  trusted_setup_load, trusted_setup_delete, TrustedSetupFormat, TrustedSetupStatus, EthereumKZGContext,
+  new, new_with_precompute, delete,
+  TrustedSetupFormat, TrustedSetupStatus, EthereumKZGContext,
   FIELD_ELEMENTS_PER_BLOB
 
 ## ############################################################

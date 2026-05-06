@@ -59,7 +59,7 @@ proc main() =
     "trusted_setup_ethereum_kzg4844_reference.dat"
 
   var ctx: ptr EthereumKZGContext
-  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  let tsStatus = ctx.new(TrustedSetupMainnet, kReferenceCKzg4844)
   doAssert tsStatus == tsSuccess
 
   let b = BenchSet.load(benchsetFile)
@@ -70,7 +70,7 @@ proc main() =
   const Iters = 10
   benchRecoverCellsAndKZGProofs(b, ctx, Iters)
 
-  ctx.trusted_setup_delete()
+  ctx.delete()
 
 when isMainModule:
   main()

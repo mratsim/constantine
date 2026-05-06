@@ -9,10 +9,10 @@
 import
   constantine/named/algebras,
   constantine/math/[arithmetic, extension_fields],
-  constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_batch_ops],
+  constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_batch_ops, ec_multi_scalar_mul_precomp],
   constantine/math/polynomials/[polynomials, fft_fields, fft_ec],
   constantine/math/io/io_fields,
-  constantine/platforms/[allocs, bithacks, fileio, views],
+  constantine/platforms/[allocs, bithacks, fileio, views, abstractions],
   constantine/serialization/[codecs, codecs_status_codes, codecs_bls12_381],
   constantine/commitments/kzg_multiproofs
 
@@ -119,6 +119,19 @@ const CELLS_PER_BLOB* = FIELD_ELEMENTS_PER_BLOB div FIELD_ELEMENTS_PER_CELL
 const CELLS_PER_EXT_BLOB* = FIELD_ELEMENTS_PER_EXT_BLOB div FIELD_ELEMENTS_PER_CELL
 const BYTES_PER_CELL* = FIELD_ELEMENTS_PER_CELL * 32
 
+type
+  PolyphaseKind* = enum
+    kNoPrecompute
+    kPrecompute
+
+type
+  PolyphaseSpectrumBank* = object
+    case kind*: PolyphaseKind
+    of kNoPrecompute:
+      rawPoints* {.align: 64.}: array[CELLS_PER_EXT_BLOB, array[FIELD_ELEMENTS_PER_CELL, EC_ShortW_Aff[Fp[BLS12_381], G1]]]
+    of kPrecompute:
+      precompPoints* {.align: 64.}: array[CELLS_PER_EXT_BLOB, PrecomputedMSM[EC_ShortW_Jac[Fp[BLS12_381], G1], FIELD_ELEMENTS_PER_CELL]]
+
 # On the number of 𝔾2 points:
 #   - In the Deneb specs, https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/deneb/polynomial-commitments.md
 #     only KZG_SETUP_G2[1] is used.
@@ -203,19 +216,20 @@ type
     # The extended domain roots are stored in fft_desc_ext.rootsOfUnity
     # and can be accessed when needed (e.g., in recover functions).
 
-    polyphaseSpectrumBank*{.align: 64.}: array[FIELD_ELEMENTS_PER_CELL, array[CELLS_PER_EXT_BLOB, EC_ShortW_Aff[Fp[BLS12_381], G1]]]
-    # Precomputed polyphase decomposition of the SRS in the Fourier domain (affine form).
+    polyphaseSpectrumBank*{.align: 64.}: PolyphaseSpectrumBank
+    # Precomputed data for FK20 KZG multiproofs.
+    # kPrecompute variant holds PrecomputedMSM tables (one per output position),
+    # each table for MSM of size 64 (FIELD_ELEMENTS_PER_CELL).
+    # Default: t=64, b=12.
+    # Size: ~8.25 MiB per table × 128 tables ≈ 1056 MB total
     #
-    # This is computed once during trusted setup and reused for all KZG multiproofs.
-    # Size: L × CDS = 64 × 128 = 8192 EC points in affine form
-    #
-    # References:
-    #   - FK23 Paper (Feist-Khovratovich 2023), Proposition 4: https://eprint.iacr.org/2023/033
-    #   - DSP: the SRS is seen as an input signal that undergoes multirate DSP
-
-    # ⚠️ WARNING: This field is ~1.18 MB (64 × 128 × 144 bytes).
-    # - MUST use alloc0HeapAligned for EthereumKZGContext (never stack allocate)
-    # - Language bindings (C/Rust): always use ptr semantics, avoid by-value moves/copies
+    # This combines
+    # - FK23: https://eprint.iacr.org/2023/033
+    #   for the base algorithm for KZG multiproofs via coset proofs
+    # - Herold-Hagopian precomputed MSMs
+    #   initially designed for Verkle Tries
+    #   - https://hackmd.io/WfIjm0icSmSoqy2cfqenhQ
+    #   - https://hackmd.io/@jsign/vkt-another-iteration-of-vkt-msms
 
   TrustedSetupStatus* = enum
     tsSuccess
@@ -331,22 +345,38 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
         c_printf("[Constantine Trusted Setup] Invalid G1 Monomial point on line %d: CttCodecEccStatus code %d\n", cint(2+FIELD_ELEMENTS_PER_BLOB+KZG_SETUP_G2_LENGTH+i), status)
         return tsInvalidFile
 
-  block:
-    # Initialize FFT descriptors
-    ctx.ecfft_desc_ext = ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]].new(
-      order = FIELD_ELEMENTS_PER_EXT_BLOB,
-      generatorRootOfUnity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_EXT_BLOB)
-    )
+  return tsSuccess
 
-    # Domain: FIELD_ELEMENTS_PER_EXT_BLOB (8192) roots of unity
-    ctx.fft_desc_ext = FrFFT_Descriptor[Fr[BLS12_381]].new(
-      order = FIELD_ELEMENTS_PER_EXT_BLOB,
-      generatorRootOfUnity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_EXT_BLOB)
-    )
+proc setupPolyphaseSpectrumBank(ctx: ptr EthereumKZGContext, t: int = 0, b: int = 0) =
+  ## Build the polyphase spectrum bank from the SRS monomial points.
+  ## Use when the bank has been mutated in-place (e.g., benchmarking different
+  ## precompute configs) and you need to restore it without reloading the full context.
+  ## `srs_monomial_g1` is never mutated, so this is safe.
 
-  block:
-    computePolyphaseDecompositionFourier(ctx.polyphaseSpectrumBank, ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
+  # Destroy any existing precompute tables
+  `=destroy`(ctx.polyphaseSpectrumBank)
 
+  type BLS12_381_G1_Aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
+
+  # Recompute polyphase decomposition
+  let tmp = allocHeapAligned(array[FIELD_ELEMENTS_PER_CELL, array[CELLS_PER_EXT_BLOB, BLS12_381_G1_Aff]], 64)
+  defer: freeHeapAligned(tmp)
+  computePolyphaseDecompositionFourier(tmp[], ctx.srs_monomial_g1, ctx.ecfft_desc_ext)
+
+  if t > 0 and b > 0:
+    ctx.polyphaseSpectrumBank.kind = kPrecompute
+    for pos in 0 ..< CELLS_PER_EXT_BLOB:
+      var points {.noInit.}: array[FIELD_ELEMENTS_PER_CELL, BLS12_381_G1_Aff]
+      for offset in 0 ..< FIELD_ELEMENTS_PER_CELL:
+        points[offset] = tmp[offset][pos]
+      ctx.polyphaseSpectrumBank.precompPoints[pos].init(points, t = t, b = b)
+  else:
+    ctx.polyphaseSpectrumBank.kind = kNoPrecompute
+    for pos in 0 ..< CELLS_PER_EXT_BLOB:
+      for offset in 0 ..< FIELD_ELEMENTS_PER_CELL:
+        ctx.polyphaseSpectrumBank.rawPoints[pos][offset] = tmp[offset][pos]
+
+proc setupKzg4844ProtoDanksharding(ctx: ptr EthereumKZGContext) =
   block:
     # Powers of tau: [G, [τ]G, [τ²]G, ... [τ⁴⁰⁹⁶]G]
 
@@ -363,33 +393,86 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
     ctx.domain_brp.invMaxDegree.fromUint(ctx.domain_brp.rootsOfUnity.len.uint64)
     ctx.domain_brp.invMaxDegree.inv_vartime()
 
-  return tsSuccess
+proc setupKzg7594PeerDAS(ctx: ptr EthereumKZGContext, t, b: int) =
+  # Initialize FFT descriptors
+  ctx.ecfft_desc_ext = ECFFT_Descriptor[EC_ShortW_Jac[Fp[BLS12_381], G1]].new(
+    order = FIELD_ELEMENTS_PER_EXT_BLOB,
+    generatorRootOfUnity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_EXT_BLOB)
+  )
 
-proc trusted_setup_load*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat): TrustedSetupStatus {.libPrefix: "ctt_eth_".} =
-  ## Load trusted setup from path
-  ## Currently the only format supported
-  ## is from the reference implementation c-kzg-4844 text file
+  # Domain: FIELD_ELEMENTS_PER_EXT_BLOB (8192) roots of unity
+  ctx.fft_desc_ext = FrFFT_Descriptor[Fr[BLS12_381]].new(
+    order = FIELD_ELEMENTS_PER_EXT_BLOB,
+    generatorRootOfUnity = getRootOfUnityForSize(FIELD_ELEMENTS_PER_EXT_BLOB)
+  )
 
-  # Use alloc0HeapAligned to zero-initialize memory
-  # This is critical for ARC with custom =destroy procs (e.g., ECFFT_Descriptor, FrFFT_Descriptor)
-  # that free memory - uninitialized garbage pointers would cause double-free crashes
-  ctx = alloc0HeapAligned(EthereumKZGContext, alignment = 64)
+  ctx.setupPolyphaseSpectrumBank(t, b)
+
+proc load_from_file(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat, t = 64, b = 12): TrustedSetupStatus =
+  ## Load from a trusted setup file.
 
   var f: File
   let ok = f.open(filepath, kRead)
   if not ok:
     return tsMissingOrInaccessibleFile
 
-  assert format == kReferenceCKzg4844, "Only c-kzg-4844 .txt format is supported"
+  ctx = alloc0HeapAligned(EthereumKZGContext, alignment = 64)
+
+  defer:
+    fileio.close(f)
 
   let status = ctx.load_ckzg4844(f)
-  fileio.close(f)
+  if status != tsSuccess:
+    freeHeapAligned(ctx)
+    ctx = nil
   return status
 
-proc trusted_setup_delete*(ctx: ptr EthereumKZGContext) {.libPrefix: "ctt_eth_".} =
-  # This is intended for non-nim code.
-  # Nim code would automatically insert destructors
+proc new*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat): TrustedSetupStatus {.exportc: "ctt_eth_kzg_context_new".} =
+  result = ctx.load_from_file(filepath, format)
+  if result == tsSuccess:
+    ctx.setupKzg4844ProtoDanksharding()
+    ctx.setupKzg7594PeerDAS(t=0, b=0)
+
+proc new_with_precompute*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat, t, b: cint): TrustedSetupStatus {.exportc: "ctt_eth_kzg_context_new_with_precompute".} =
+  ## Create a KZG context with precomputed MSM tables for FK20 proofs (PeerDAS).
+  ##
+  ## `t` = base groups (stride between precomputed layers)
+  ## `b` = bits per window (window size = 2^b)
+  ##
+  ## SPEED / MEMORY TRADEOFF (PeerDAS, compute_cells_and_kzg_proofs = 128 MSMs of 64 points per blob):
+  ## - no precompute, 1.8 MiB total:        7.083 ops/s   ~141 ms/blob
+  ## - t= 64, b= 6, ~   32.2 MiB total:     8.724 ops/s   ~115 ms/blob
+  ## - t= 64, b= 8, ~   96.0 MiB total:     9.518 ops/s   ~105 ms/blob
+  ## - t= 64, b=10, ~  312.0 MiB total:    10.547 ops/s    ~95 ms/blob
+  ## - t= 64, b=12, ~ 1056.0 MiB total:    11.629 ops/s    ~86 ms/blob
+  ## - t=128, b= 6, ~   16.5 MiB total:     8.783 ops/s   ~114 ms/blob
+  ## - t=128, b= 8, ~   48.0 MiB total:     9.965 ops/s   ~100 ms/blob
+  ## - t=128, b=10, ~  156.0 MiB total:    10.561 ops/s    ~95 ms/blob
+  ## - t=128, b=12, ~  528.0 MiB total:    11.505 ops/s    ~87 ms/blob
+  ## - t=256, b= 6, ~    8.2 MiB total:     8.641 ops/s   ~116 ms/blob
+  ## - t=256, b= 8, ~   24.0 MiB total:    10.244 ops/s    ~98 ms/blob
+  ## - t=256, b=10, ~   84.0 MiB total:    10.281 ops/s    ~97 ms/blob
+  ## - t=256, b=12, ~  288.0 MiB total:    10.868 ops/s    ~92 ms/blob
+  ##
+  ## CPU: Intel i7-265K
+  ## Larger b = faster per MSM but exponentially more memory (2^b entries).
+  ## Larger t = fewer doublings but more precomputed layers.
+  ## Recommended (t=256, b=8): ~98 ms/blob proving, ~24 MiB total memory.
+  result = ctx.load_from_file(filepath, format)
+  if result == tsSuccess:
+    ctx.setupKzg4844ProtoDanksharding()
+    ctx.setupKzg7594PeerDAS(t, b)
+
+proc delete*(ctx: ptr EthereumKZGContext) {.exportc: "ctt_eth_kzg_context_delete".} =
+  # Not why but `=destroy`(ctx.polyphaseSpectrumBank)
+  # can apparently raise
+  # but destroying the individual precomp MSM field cannot
   if not ctx.isNil:
+    case ctx.polyphaseSpectrumBank.kind
+    of kNoPrecompute: discard
+    of kPrecompute:
+      for i in 0 ..< CELLS_PER_EXT_BLOB:
+        `=destroy`(ctx.polyphaseSpectrumBank.precompPoints[i])
     `=destroy`(ctx.ecfft_desc_ext)
     `=destroy`(ctx.fft_desc_ext)
     freeHeapAligned(ctx)

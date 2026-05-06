@@ -33,6 +33,7 @@ import
   constantine/named/zoo_generators,
   constantine/math/[arithmetic, ec_shortweierstrass],
   constantine/math/io/io_fields,
+  constantine/platforms/views,
   # Standard library
   std/[os, strutils, monotimes, importutils]
 
@@ -41,18 +42,18 @@ const
   N = 4096
   L = 64
   CDS = 128
-  
+
   # Test sizes for scaling analysis
   TestSizes = [64, 128, 256]
-  
+
   # Iterations
   ItersSmall = 100   # For fast component ops
   ItersLarge = 10    # For full Toeplitz operations
   ItersScaling = 3   # For scaling analysis
-  
+
   # Random seed
   RngSeed = 42
-  
+
 
 
 
@@ -64,7 +65,7 @@ proc generateTestPoly(size: int): seq[F] =
   ## Generate random polynomial of given size
   var rng: RngState
   rng.seed(RngSeed + uint32(size))  # Different seed per size
-  
+
   result.setLen(size)
   rng.random_unsafe(result)
 
@@ -72,11 +73,11 @@ proc createFFTDescriptors(size: int): tuple[frDesc: FrFFT_Descriptor[F], ecDesc:
   ## Create FFT descriptors for given size
   let scale = log2_vartime(uint32 size)
   let omega = ctt_eth_kzg4844_fr_pow2_roots_of_unity[scale]
-  
+
   result.frDesc = FrFFT_Descriptor[F].new(order = size, generatorRootOfUnity = omega)
   result.ecDesc = ECFFT_Descriptor[EC_G1].new(order = size, generatorRootOfUnity = omega)
 
-proc report(op: string, size: int, startTime, stopTime: MonoTime, 
+proc report(op: string, size: int, startTime, stopTime: MonoTime,
             startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stopTime-startTime) div iters)
   let throughput = 1e9 / float64(ns)
@@ -92,29 +93,29 @@ template bench(op: string, size: int, iters: int, body: untyped): untyped =
 proc benchMakeCirculantMatrix_PeerDAS(poly: openArray[F], iters: int) =
   ## Build circulant matrices for all 64 offsets (PeerDAS size)
   ## Total time / 64 = per-offset cost
-  
+
   var coeffs: array[CDS, F]
   let stride = L  # 64
-  
+
   bench("makeCirculantMatrix_peerDAS", CDS, iters):
     for offset in 0 ..< L:
       makeCirculantMatrix(coeffs.toOpenArray(0, CDS-1), poly, offset, stride)
 
-proc benchMakeCirculantMatrix_VaryingOffset(poly: openArray[F], 
-                                            offsets: openArray[int], 
+proc benchMakeCirculantMatrix_VaryingOffset(poly: openArray[F],
+                                            offsets: openArray[int],
                                             iters: int) =
   ## Test circulant construction for specific offsets
-  
+
   var coeffs: array[CDS, F]
-  
+
   for offset in offsets:
     bench(&"makeCirculantMatrix_offset{offset}", CDS, iters):
       makeCirculantMatrix(coeffs.toOpenArray(0, CDS-1), poly, offset, L)
 
-proc benchToeplitzMatVecMul_Size128(circulant: openArray[F], 
-                                    v: openArray[EC_G1], 
-                                    frDesc: FrFFT_Descriptor[F], 
-                                    ecDesc: ECFFT_Descriptor[EC_G1], 
+proc benchToeplitzMatVecMul_Size128(circulant: openArray[F],
+                                    v: openArray[EC_G1],
+                                    frDesc: FrFFT_Descriptor[F],
+                                    ecDesc: ECFFT_Descriptor[EC_G1],
                                     iters: int) =
   ## Core FK20 multiplication: size 128
   ## Uses toeplitzMatVecMul which handles FFT internally
@@ -123,7 +124,7 @@ proc benchToeplitzMatVecMul_Size128(circulant: openArray[F],
 
   bench("toeplitzMatVecMul_size128", CDS, iters):
     let status = toeplitzMatVecMul(
-      output.toOpenArray(0, CDS-1),
+      output,
       circulant,
       v,
       frDesc,
@@ -140,25 +141,17 @@ proc benchToeplitzAccumulator_64Accumulates(poly: openArray[F], iters: int) =
   ## 2. Stores result in transposed layout
   ##
   ## After 64 accumulates, finish() performs MSM + IFFT
-  
+
   const size = CDS  # 128
   const L = 64
-  
+
   # Type aliases matching ToeplitzAccumulator (following bench_kzg_multiproofs.nim pattern)
   type BLS12_381_G1_aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
   type BLS12_381_G1_jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
-  
+
   # Setup FFT descriptors
   let descs = createFFTDescriptors(2 * size)
-  
-  # Generate random input vectors for each accumulate (affine coordinates)
-  var vFftList: array[L, seq[BLS12_381_G1_aff]]
-  for i in 0 ..< L:
-    vFftList[i].setLen(size)
-    var rng: RngState
-    rng.seed(RngSeed + uint32(i))
-    rng.random_unsafe(vFftList[i])
-  
+
   # Generate random circulants for each accumulate
   var circulantList: array[L, seq[F]]
   for i in 0 ..< L:
@@ -166,7 +159,13 @@ proc benchToeplitzAccumulator_64Accumulates(poly: openArray[F], iters: int) =
     var rng: RngState
     rng.seed(RngSeed + uint32(i) + 1000)
     rng.random_unsafe(circulantList[i])
-  
+
+  # Generate basis in position-major layout for finish()
+  let basis = allocHeapArrayAligned(array[L, BLS12_381_G1_aff], size, 64)
+  var rng: RngState
+  rng.seed(RngSeed + 2000)
+  rng.random_unsafe(basis.toOpenArray(0, size * L - 1))
+
   # Allow direct access to private 'offset' field for benchmark reuse
   privateAccess(toeplitz.ToeplitzAccumulator)
 
@@ -182,40 +181,37 @@ proc benchToeplitzAccumulator_64Accumulates(poly: openArray[F], iters: int) =
 
     # 64 accumulate calls
     for i in 0 ..< L:
-      let status = acc.accumulate(
-        circulantList[i].toOpenArray(0, size-1),
-        vFftList[i].toOpenArray(0, size-1)
-      )
+      let status = acc.accumulate(circulantList[i])
       doAssert status == Toeplitz_Success
 
     # Finish with MSM + IFFT
     var output: array[size, EC_G1]
-    let statusFinish = acc.finish(output.toOpenArray(0, size-1))
+    let statusFinish = acc.finish(output, basis.toOpenArray(size))
     doAssert statusFinish == Toeplitz_Success
 
 proc benchToeplitz_Scaling(sizes: openArray[int], iters: int) =
   ## Scaling analysis for different Toeplitz sizes
-  
+
   for size in sizes:
     let poly = generateTestPoly(size)
     var coeffs = newSeq[F](2 * size)
-    
-    makeCirculantMatrix(coeffs.toOpenArray(0, 2*size-1), poly, 0, 1)
-    
+
+    makeCirculantMatrix(coeffs, poly, 0, 1)
+
     let descs = createFFTDescriptors(2 * size)
-    
+
     var input = newSeq[EC_G1](size)
     input[0].setGenerator()
     for i in 1 ..< size:
       input[i].mixedSum(input[i-1], BLS12_381.getGenerator("G1"))
-    
+
     var output = newSeq[EC_G1](size)
-    
+
     bench(&"toeplitzMatVecMul_size{size}", size, iters):
       let status = toeplitzMatVecMul(
-        output.toOpenArray(0, size-1),
-        coeffs.toOpenArray(0, 2*size-1),
-        input.toOpenArray(0, size-1),
+        output,
+        coeffs,
+        input,
         descs.frDesc,
         descs.ecDesc
       )
@@ -225,51 +221,51 @@ proc main() =
   echo "Toeplitz Matrix-Vector Multiplication Benchmarks (FK20)"
   echo "Random polynomial with seed=", RngSeed
   echo ""
-  
+
   separator(145)
   echo "Circulant Matrix Construction"
   separator(145)
-  
+
   let polyFull = generateTestPoly(N)  # Use full N=4096 poly for PeerDAS circulant
   echo ""
-  
-  benchMakeCirculantMatrix_PeerDAS(polyFull.toOpenArray(0, N-1), ItersLarge)
+
+  benchMakeCirculantMatrix_PeerDAS(polyFull, ItersLarge)
   echo ""
-  
+
   let offsets = [0, 1, 32, 63]
-  benchMakeCirculantMatrix_VaryingOffset(polyFull.toOpenArray(0, N-1), offsets, ItersLarge)
+  benchMakeCirculantMatrix_VaryingOffset(polyFull, offsets, ItersLarge)
   echo ""
-  
+
   separator(145)
   echo "Toeplitz MatVecMul (PeerDAS Size)"
   separator(145)
-  
+
   # Setup for size 128 benchmarks
   # toeplitzMatVecMul needs circulant of size 2*n and FFT descriptors of order >= 2*n
   let descs128 = createFFTDescriptors(2 * CDS)
   var circulant128 = newSeq[F](2 * CDS)
-  makeCirculantMatrix(circulant128.toOpenArray(0, 2*CDS-1), polyFull.toOpenArray(0, N-1), 0, 1)
+  makeCirculantMatrix(circulant128, polyFull, 0, 1)
 
   var v128 = newSeq[EC_G1](CDS)
   v128[0].setGenerator()
   for i in 1 ..< CDS:
     v128[i].mixedSum(v128[i-1], BLS12_381.getGenerator("G1"))
 
-  benchToeplitzMatVecMul_Size128(circulant128.toOpenArray(0, 2*CDS-1), v128.toOpenArray(0, CDS-1), descs128.frDesc, descs128.ecDesc, ItersLarge)
-  
+  benchToeplitzMatVecMul_Size128(circulant128, v128, descs128.frDesc, descs128.ecDesc, ItersLarge)
+
   separator(145)
   echo "Toeplitz Accumulator (64 Accumulates)"
   separator(145)
-  
-  benchToeplitzAccumulator_64Accumulates(polyFull.toOpenArray(0, N-1), ItersLarge)
+
+  benchToeplitzAccumulator_64Accumulates(polyFull, ItersLarge)
   echo ""
-  
+
   separator(145)
   echo "Scaling Analysis"
   separator(145)
   benchToeplitz_Scaling(TestSizes, ItersScaling)
   echo ""
-  
+
   separator(145)
   echo "Notes"
   separator(145)

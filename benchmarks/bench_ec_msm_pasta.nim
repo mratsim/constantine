@@ -41,7 +41,8 @@ proc main() =
     separator()
     for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
-      ctx.msmParallelBench(numPoints, batchIters)
+      let perf = ctx.msmParallelBench(numPoints, batchIters)
+      reportMSMParallel(perf, numPoints)
       separator()
     separator()
 

@@ -327,7 +327,7 @@ proc createBenchMsmContext*(rng: var RngState, EC: typedesc, maxNumInputs: int):
   tp.shutdown()
 
   let stop = getMonotime()
-  stdout.write &"in {float64(inNanoSeconds(stop-start)) / 1e6:6.3f} ms\n"
+  stdout.write &"in {float64(inNanoseconds(stop-start)) / 1e6:6.3f} ms\n"
 
 proc benchEcMsm[EC](ctx: BenchMsmContext[EC]): ZkalcBenchDetails =
   const G =
@@ -488,7 +488,7 @@ proc benchMultiPairing*(rng: var RngState, curve: static Algebra, maxNumInputs: 
     Qs[i] = rng.random_point(typeof(Qs[0]))
 
   let stop = getMonotime()
-  stdout.write &"in {float64(inNanoSeconds(stop-start)) / 1e6:6.3f} ms\n"
+  stdout.write &"in {float64(inNanoseconds(stop-start)) / 1e6:6.3f} ms\n"
   separator()
 
   var size = 2

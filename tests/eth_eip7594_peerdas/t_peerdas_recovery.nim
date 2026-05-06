@@ -23,7 +23,7 @@ const TrustedSetupMainnet =
 
 proc trusted_setup*(): ptr EthereumKZGContext =
   var ctx: ptr EthereumKZGContext
-  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  let tsStatus = ctx.new(TrustedSetupMainnet, kReferenceCKzg4844)
   doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
   echo "Trusted Setup loaded successfully"
   return ctx
@@ -267,7 +267,7 @@ when isMainModule:
   test_duplicate_indices_error(ctx)
   echo ""
 
-  ctx.trusted_setup_delete()
+  ctx.delete()
 
   echo "\n========================================"
   echo "    All PeerDAS Recovery Tests PASSED ✓"

@@ -1,6 +1,6 @@
 /** Constantine
  *  Copyright (c) 2018-2019    Status Research & Development GmbH
- *  Copyright (c) 2020-Present Mamy Andr&eacute;-Ratsimbazafy
+ *  Copyright (c) 2020-Present Mamy André-Ratsimbazafy
  *  Licensed and distributed under either of
  *    * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
  *    * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
@@ -47,11 +47,7 @@ type computeTest struct {
 	Output *[][]string       `yaml:"output"` // [[cells...], [proofs...]]
 }
 
-func TestComputeCellsAndKzgProofs(t *testing.T) {
-	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
-	require.NoError(t, tsErr)
-	defer ctx.Delete()
-
+func runComputeCellsTest(t *testing.T, ctx EthKzgContext) {
 	tests, err := filepath.Glob(computeCellsAndProofsTests)
 	require.NoError(t, err)
 	require.NotEmpty(t, tests)
@@ -76,7 +72,7 @@ func TestComputeCellsAndKzgProofs(t *testing.T) {
 			continue
 		}
 
-        cells, proofs, err := ctx.ComputeCellsAndKzgProofs(&blob)
+		cells, proofs, err := ctx.ComputeCellsAndKzgProofs(&blob)
 		if err != nil {
 			require.Nil(t, test.Output, "expected failure for %s", testName)
 			continue
@@ -98,6 +94,23 @@ func TestComputeCellsAndKzgProofs(t *testing.T) {
 			require.Equal(t, expProof, proofs[i][:], "proof %d mismatch in %s", i, testName)
 		}
 	}
+}
+
+func TestComputeCellsAndKzgProofs(t *testing.T) {
+	// Exercise both kNoPrecompute and kPrecompute code paths in polyphaseSpectrumBank.
+	// t=256, b=8 is the recommended precompute setting (~98 ms/blob, ~24 MiB).
+	t.Run("no-precompute", func(t *testing.T) {
+		ctx, tsErr := EthKzgContextNew(trustedSetupFile)
+		require.NoError(t, tsErr)
+		defer ctx.Delete()
+		runComputeCellsTest(t, ctx)
+	})
+	t.Run("precompute (t=256, b=8)", func(t *testing.T) {
+		ctx, tsErr := EthKzgContextNewWithPrecompute(trustedSetupFile, 256, 8)
+		require.NoError(t, tsErr)
+		defer ctx.Delete()
+		runComputeCellsTest(t, ctx)
+	})
 }
 
 // ---- verify_cell_kzg_proof_batch ----
@@ -233,11 +246,7 @@ type recoverTest struct {
 	Output *[][]string      `yaml:"output"` // [[cells...], [proofs...]]
 }
 
-func TestRecoverCellsAndKzgProofs(t *testing.T) {
-	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
-	require.NoError(t, tsErr)
-	defer ctx.Delete()
-
+func runRecoverCellsTest(t *testing.T, ctx EthKzgContext) {
 	tests, err := filepath.Glob(recoverCellsAndProofsTests)
 	require.NoError(t, err)
 	require.NotEmpty(t, tests)
@@ -276,9 +285,9 @@ func TestRecoverCellsAndKzgProofs(t *testing.T) {
 			continue
 		}
 
-        recoveredCells, recoveredProofs, err := ctx.RecoverCellsAndKzgProofs(
-            cellsDec, test.Input.CellIndices,
-        )
+		recoveredCells, recoveredProofs, err := ctx.RecoverCellsAndKzgProofs(
+			cellsDec, test.Input.CellIndices,
+		)
 
 		if err != nil {
 			require.Nil(t, test.Output, "expected failure for %s: %v", testName, err)
@@ -301,6 +310,23 @@ func TestRecoverCellsAndKzgProofs(t *testing.T) {
 			require.Equal(t, expProof, recoveredProofs[i][:], "recovered proof %d mismatch in %s", i, testName)
 		}
 	}
+}
+
+func TestRecoverCellsAndKzgProofs(t *testing.T) {
+	// Exercise both kNoPrecompute and kPrecompute code paths in polyphaseSpectrumBank.
+	// t=256, b=8 is the recommended precompute setting (~98 ms/blob, ~24 MiB).
+	t.Run("no-precompute", func(t *testing.T) {
+		ctx, tsErr := EthKzgContextNew(trustedSetupFile)
+		require.NoError(t, tsErr)
+		defer ctx.Delete()
+		runRecoverCellsTest(t, ctx)
+	})
+	t.Run("precompute (t=256, b=8)", func(t *testing.T) {
+		ctx, tsErr := EthKzgContextNewWithPrecompute(trustedSetupFile, 256, 8)
+		require.NoError(t, tsErr)
+		defer ctx.Delete()
+		runRecoverCellsTest(t, ctx)
+	})
 }
 
 // ---- Unit tests for error paths (not covered by test vectors) ----
