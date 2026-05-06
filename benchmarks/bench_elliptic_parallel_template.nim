@@ -201,11 +201,11 @@ proc benchPrecompMSMInline*[EC; N, t, b: static int](
   const bits = EC.getScalarField().bits()
   type ECaff = affine(EC)
 
-  let basis = ctx.points.toOpenArray(0, N-1)
+  template basis: untyped = ctx.points.toOpenArray(0, N-1)
   var precomp: PrecomputedMSM[EC, N]
   precomp.init(basis, t = t, b = b)
 
-  let scalars = ctx.coefs.toOpenArray(0, N-1)
+  template scalars: untyped = ctx.coefs.toOpenArray(0, N-1)
 
   # Manual timing
   var resultEC: EC
