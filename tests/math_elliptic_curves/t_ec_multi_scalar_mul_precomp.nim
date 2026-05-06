@@ -1,7 +1,7 @@
 import
   # Internals
   constantine/platforms/abstractions,
-  constantine/named/[algebras, zoo_subgroups],
+  constantine/named/[algebras, zoo_subgroups, zoo_generators],
   constantine/math/[arithmetic, extension_fields],
   constantine/math/elliptic/[
     ec_shortweierstrass_affine,
@@ -58,4 +58,20 @@ when isMainModule:
   testConfig[4](t = 4, b = 3, "N=4, t=4, b=3", samples = 10, seed = 42)
   testConfig[256](t = 32, b = 12, "N=256, t=32, b=12 (Verkle)", samples = 5, seed = 42)
   testConfig[128](t = 128, b = 12, "N=128, t=128, b=12 (FK20-like)", samples = 3, seed = 42)
+
+  # Anti-regression: Internal review — t=1 with small scalar=25 (11001₂)
+  # The report claimed the algorithm produces 4P instead of 25P for this case.
+  echo "Test: N=1, t=1, b=2, scalar=25"
+  var precomp1: PrecomputedMSM[BLS12_381_G1_Jac, 1]
+  precomp1.init([BLS12_381.getGenerator("G1")], t = 1, b = 2)
+  let scalar25 = BigInt[255].fromUInt(25'u64)
+  var resultPrecomp, resultRef: BLS12_381_G1_Jac
+  precomp1.msm_vartime(resultPrecomp, [scalar25])
+  resultRef.multiScalarMul_vartime([scalar25], [BLS12_381.getGenerator("G1")])
+  doAssert bool(resultPrecomp == resultRef)
+  echo "  PASSED (25P == 25P, not 4P as the bug report claimed)"
+
+  # Generic t=1 regression with random scalars
+  testConfig[2](t = 1, b = 2, "N=2, t=1, b=2 (t=1 regression)", samples = 10, seed = 42)
+
   echo "\nAll tests passed!"
