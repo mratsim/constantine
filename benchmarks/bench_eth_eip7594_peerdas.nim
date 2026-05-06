@@ -302,7 +302,7 @@ proc benchVerifyCellKZGProofBatch_MultiBlob(b: BenchSet, ctx: ptr EthereumKZGCon
 
     i *= 2
 
-proc benchRecoverCellsAndKZGProofs_WorstCase(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
+proc benchRecoverCellsAndKZGProofs_WorstCase(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int, labelSuffix = "") =
   ## Recover from exactly 50% of cells (worst case)
   ## Corresponds to:
   ## - go-eth-kzg: RecoverCellsAndComputeKZGProofs benchmark
@@ -314,7 +314,7 @@ proc benchRecoverCellsAndKZGProofs_WorstCase(b: BenchSet, ctx: ptr EthereumKZGCo
   new(recovered_cells)
   new(recovered_proofs)
 
-  bench("recover_cells_and_kzg_proofs (50% cells)", iters):
+  bench(&"recover_cells_and_kzg_proofs (50% cells) {labelSuffix}", iters):
     doAssert cttEthKzg_Success == recover_cells_and_kzg_proofs(
       ctx,
       recovered_cells[].asUnchecked(),
@@ -323,7 +323,7 @@ proc benchRecoverCellsAndKZGProofs_WorstCase(b: BenchSet, ctx: ptr EthereumKZGCo
       b.halfCells[0].asUnchecked(),
       b.halfCells[0].len)
 
-proc benchRecoverCellsAndKZGProofs_VaryingAvailability(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
+proc benchRecoverCellsAndKZGProofs_VaryingAvailability(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int, labelSuffix = "") =
   ## Recover with varying cell availability (50%, 75%, 87.5%)
   ## Corresponds to:
   ## - go-eth-kzg: Not tested (only 50%)
@@ -346,7 +346,7 @@ proc benchRecoverCellsAndKZGProofs_VaryingAvailability(b: BenchSet, ctx: ptr Eth
     new(recovered_cells)
     new(recovered_proofs)
 
-    bench(&"recover_cells_and_kzg_proofs ({availability}% availability, {numCells} cells)", iters):
+    bench(&"recover_cells_and_kzg_proofs ({availability}% availability, {numCells} cells) {labelSuffix}", iters):
       # Take first numCells cells (seq is fine for variable-size input)
       doAssert cttEthKzg_Success == recover_cells_and_kzg_proofs(
         ctx,
@@ -455,16 +455,16 @@ proc main() =
   separator()
 
   # Recovery without precompute
-  benchRecoverCellsAndKZGProofs_WorstCase(b, ctx, Iters)
+  benchRecoverCellsAndKZGProofs_WorstCase(b, ctx, Iters, "[no precompute]")
   echo ""
-  benchRecoverCellsAndKZGProofs_VaryingAvailability(b, ctx, Iters)
+  benchRecoverCellsAndKZGProofs_VaryingAvailability(b, ctx, Iters, "[no precompute]")
   echo ""
 
   # Recovery with precompute (t=256, b=8)
   ctx.setupPolyphaseSpectrumBank(t = 256, b = 8)
-  benchRecoverCellsAndKZGProofs_WorstCase(b, ctx, Iters)
+  benchRecoverCellsAndKZGProofs_WorstCase(b, ctx, Iters, "[precompute t=256, b=8]")
   echo ""
-  benchRecoverCellsAndKZGProofs_VaryingAvailability(b, ctx, Iters)
+  benchRecoverCellsAndKZGProofs_VaryingAvailability(b, ctx, Iters, "[precompute t=256, b=8]")
   echo ""
 
   ctx.delete()

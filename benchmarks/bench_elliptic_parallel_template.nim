@@ -163,8 +163,12 @@ proc msmParallelBench*[EC](ctx: var BenchMsmContext[EC], numInputs: int, iters: 
 
     ctx.tp.shutdown()
 
-  result.perfNaive = float64(inNanoseconds((stopNaive-startNaive) div iters))
-  result.perfMSMbaseline = float64(inNanoseconds((stopMSMbaseline-startMSMbaseline) div iters))
+  if numInputs <= 100000:
+    result.perfNaive = float64(inNanoseconds((stopNaive-startNaive) div iters))
+    result.perfMSMbaseline = float64(inNanoseconds((stopMSMbaseline-startMSMbaseline) div iters))
+  else:
+    result.perfNaive = 0
+    result.perfMSMbaseline = 0
   result.perfMSMopt = float64(inNanoseconds((stopMSMopt-startMSMopt) div iters))
   result.perfMSMpara = float64(inNanoseconds((stopMSMpara-startMSMpara) div iters))
 
@@ -194,8 +198,14 @@ type PrecompBenchResult* = object
 proc benchPrecompMSMInline*[EC; N, t, b: static int](
         ctx: BenchMsmContext[EC], iters: int): PrecompBenchResult {.noinline.} =
 
+  const bits = EC.getScalarField().bits()
+  type ECaff = affine(EC)
 
-  let benchCtx = new(PrecompBenchContext[EC, N], seed = 42'u64, t = t, b = b)
+  let basis = ctx.points.toOpenArray(0, N-1)
+  var precomp: PrecomputedMSM[EC, N]
+  precomp.init(basis, t = t, b = b)
+
+  let scalars = ctx.coefs.toOpenArray(0, N-1)
 
   # Manual timing
   var resultEC: EC
@@ -204,17 +214,17 @@ proc benchPrecompMSMInline*[EC; N, t, b: static int](
   when SupportsGetTicks:
     let startClk = getTicks()
   for _ in 0 ..< iters:
-    discard benchCtx.precomp.msm_vartime(resultEC, benchCtx.scalars)
+    discard precomp.msm_vartime(resultEC, scalars)
   let stop = getMonotime()
   when SupportsGetTicks:
     let stopClk = getTicks()
 
   let ns = inNanoseconds((stop - start) div iters)
-  # Print Precomp MSM line (no EC label column)
   let throughput = 1e9 / float64(ns)
+  let precompMemMiB = float64(msmPrecompSize(EC, N, t, b) * sizeof(ECaff)) / (1024.0 * 1024.0)
   let label = "Precomp MSM"
   let config = fmt"(t={t}, b={b})"
-  let setupInfo = fmt"[setup: {benchCtx.precompTimeMs:5.2f}ms, {benchCtx.precompMemMiB:6.2f} MiB]"
+  let setupInfo = fmt"[mem: {precompMemMiB:6.2f} MiB]"
 
   when SupportsGetTicks:
     let cyc = (stopClk - startClk) div iters

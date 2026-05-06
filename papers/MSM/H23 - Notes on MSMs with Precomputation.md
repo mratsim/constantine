@@ -17,7 +17,7 @@ $P_1, P_2, \ldots, P_{256}$. Those points are fixed once and forever.
 The main computation we need to perform is, given a vector $(a_1,\ldots,a_{256})$ of scalars, to compute
 $a_1P_1 + \ldots + a_{256}P_{256}$.
 In our case, the elliptic curve under consideration is Bandersnatch[^Bandersnatch] (an incomplete twisted Edwards curve with an efficient endomorphism). We work in a 253-bit subgroup,
-so we can view $a_i$'s as have this many bits.
+so we can view $a_i$'s as having this many bits.
 
 [^Bandersnatch]: "Bandersnatch: a fast elliptic curve built over the
 BLS12-381 scalar field" by Simon Masson, Antonio Sanso and Zhenfei Zhang https://eprint.iacr.org/2021/1152.pdf
@@ -110,7 +110,7 @@ a'_1P_1 + \ldots + a'_{256}P_{256} +\\
 a'_{257}2^tP_1 + \ldots + a'_{512}2^tP_{256}+\\
 a'_{513}2^{2t}P_1 + \ldots + a'_{768}2^{2t}P_{256}$,
 
-where $a_1 = a'_1 + a'_{257}2^t + a'_{513}2^{2t} + \ldots$ is the decomposition of $a_1$,$a_2 = a'_2 + a'_{258}2^t + a'_{514}2^{2t} + \ldots$ is the decomposition of $a_2$ etc.
+where $a_1 = a'_1 + a'_{257}2^t + a'_{513}2^{2t} + \ldots$ is the decomposition of $a_1$, $a_2 = a'_2 + a'_{258}2^t + a'_{514}2^{2t} + \ldots$ is the decomposition of $a_2$ etc.
 This can be viewed as a multi-exponentiation with new basis $P_1,\ldots,P_{256},2^tP_1,\ldots, 2^tP_{256}, \ldots$,
 consisting of $s\cdot 256$ elements and exponents of size at most $t$ bits each.
 We can then just use the "only precompute bottom row" strategy on this transformed problem.
@@ -185,11 +185,11 @@ The benefit of precomputation decays rather fast as we increase the table size. 
 
 ## Choosing $b$ and $s$
 
-The algorithm has two parameter, namely the blocksize $b$ and the number of rows $s$ where we perform precomputation. Of course, we want to minimize the time for a fixed amount of memory (or vice versa). For a basis size of 256 and 253-bit exponents, it turns out that using $s=1$ (i.e. only pre-compute the bottom row) is actually a good (and also simple) choice for $b\leq 16$.
+The algorithm has two parameters, namely the blocksize $b$ and the number of rows $s$ where we perform precomputation.
 The reason is that increasing $t$ only helps to reduce the total number of doublings. However, we effectively have only 1 doubling per row and until $b\approx 16$ (and actually even beyond, but rounding is an issue), increasing $b$ by 1 (which has about the same cost as increasing $t$ from 1 to 2) reduces the number of additions per round by at least 1.
 
 In the Verkle setting, it turns out that many MSMs actually only have the first five $a_i$'s non-zero. So we additionally want to look at MSMs for only five basis elements.
-Here, the situation is somewhat different, as 252 doublings would be very significant relative to the total cost. For this part of of the MSMs, we can use a much larger $s$, e.g. $s=64$ or $s=128$ (giving $t=4$ or $t=2$, which means 3 or 1 doublings).
+Here, the situation is somewhat different, as 252 doublings would be very significant relative to the total cost. For this part of the MSMs, we can use a much larger $s$, e.g. $s=64$ or $s=128$ (giving $t=4$ or $t=2$, which means 3 or 1 doublings).
 
 Note that the vertical Pippenger variant actually allows setting a different $t$ for each column. The number of doublings is then $t_{max}-1$, where $t_{max}$ is the maximum $t$ among those columns that were actually used.
 

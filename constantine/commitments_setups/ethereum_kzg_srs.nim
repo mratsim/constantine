@@ -221,7 +221,7 @@ type
     # kPrecompute variant holds PrecomputedMSM tables (one per output position),
     # each table for MSM of size 64 (FIELD_ELEMENTS_PER_CELL).
     # Default: t=64, b=12.
-    # Size: ~4.33 MiB per table × 128 tables ≈ 554 MB total
+    # Size: ~8.25 MiB per table × 128 tables ≈ 1056 MB total
     #
     # This combines
     # - FK23: https://eprint.iacr.org/2023/033
@@ -418,8 +418,13 @@ proc load_from_file(ctx: var ptr EthereumKZGContext, filepath: cstring, format: 
 
   ctx = alloc0HeapAligned(EthereumKZGContext, alignment = 64)
 
+  defer:
+    fileio.close(f)
+
   let status = ctx.load_ckzg4844(f)
-  fileio.close(f)
+  if status != tsSuccess:
+    freeHeapAligned(ctx)
+    ctx = nil
   return status
 
 proc new*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat): TrustedSetupStatus {.exportc: "ctt_eth_kzg_context_new".} =

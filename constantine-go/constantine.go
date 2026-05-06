@@ -125,8 +125,12 @@ func (ctx *EthKzgContext) SetThreadpool(tp Threadpool) {
 	ctx.threadpool = tp
 }
 
-func (ctx EthKzgContext) Delete() {
-	C.ctt_eth_kzg_context_delete(ctx.cCtx)
+func (ctx *EthKzgContext) Delete() {
+    if ctx == nil || ctx.cCtx == nil {
+        return
+    }
+    C.ctt_eth_kzg_context_delete(ctx.cCtx)
+    ctx.cCtx = nil
 }
 
 func (ctx EthKzgContext) BlobToKzgCommitment(blob EthBlob) (commitment EthKzgCommitment, err error) {

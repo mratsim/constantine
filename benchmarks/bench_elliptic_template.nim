@@ -475,7 +475,7 @@ proc benchPrecompMSMTable[EC](
   proc doBench(_: typedesc[EC], N, t, b: static int, iters: int) {.noInline.} =
     # Wrap in a proc to ensure destruction of the large context
     let ctx = new(PrecompBenchContext[EC, N], seed = 42'u64, t = t, b = b)
-    ctx.benchPrecompMSM(iters div max(1, N div 10))
+    ctx.benchPrecompMSM(max(1, iters div max(1, N div 10)))
 
   staticFor cfgIdx, 0, precompConfigs.len:
     const (t, b) = precompConfigs[cfgIdx]
@@ -490,15 +490,15 @@ proc benchPrecompMSMTable[EC](
   var scalars2 = newSeq[BigInt[bits]](N)
 
   for i in 0 ..< N:
+    scalars2[i] = rng2.random_unsafe(BigInt[bits])
+
+  for i in 0 ..< N:
     basisJac2[i] = rng2.random_unsafe(EC)
     basisJac2[i].clearCofactor()
 
   basis2.asUnchecked().batchAffine_vartime(basisJac2.asUnchecked(), N)
 
-  for i in 0 ..< N:
-    scalars2[i] = rng2.random_unsafe(BigInt[bits])
-
-  let benchIters = iters div max(1, N div 10)
+  let benchIters = max(1, iters div max(1, N div 10))
 
   # Scalar mul (constant-time)
   var refResultSm: EC
