@@ -182,8 +182,6 @@ proc benchComputeCellsAndKZGProofsNoPrecomp(b: BenchSet, ctx: ptr EthereumKZGCon
   ## - rust-eth-kzg: "computing cells_and_kzg_proofs" benchmark
   ## - rust-kzg: compute_cells_and_kzg_proofs benchmark
 
-  type EC_Aff = EC_ShortW_Aff[Fp[BLS12_381], G1]
-  type EC_Jac = EC_ShortW_Jac[Fp[BLS12_381], G1]
 
   ctx.setupPolyphaseSpectrumBank(0, 0)
   var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
