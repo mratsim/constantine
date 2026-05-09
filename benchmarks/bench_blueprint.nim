@@ -41,7 +41,7 @@ proc warmup*() =
   let stop = cpuTime()
   echo &"Warmup: {stop - start:>4.4f} s, result {foo} (displayed to avoid compiler optimizing warmup away)\n"
 
-warmup()
+# warmup()
 
 when defined(gcc):
   echo "\nCompiled with GCC"
