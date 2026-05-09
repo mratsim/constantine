@@ -81,6 +81,8 @@ proc mainSanity() =
   suite "Modular squaring is consistent with multiplication on special elements" & " [" & $WordBitWidth & "-bit words]":
     sanity Fake101
     sanity Mersenne61
+    sanity BabyBear
+    sanity KoalaBear
     sanity Mersenne127
     sanity P224         # P224 uses the fast-path with 64-bit words and the slow path with 32-bit words
     sanity P256

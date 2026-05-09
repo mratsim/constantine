@@ -46,6 +46,96 @@ proc main() =
         marshal(r_bytes, f, littleEndian)
         check: x_bytes == r_bytes
 
+      # BabyBear ---------------------------------
+      block:
+        # "Little-endian" - 0
+        let x = 0'u64
+        let x_bytes = cast[array[8, byte]](x)
+        var f: Fp[BabyBear]
+        f.fromUint(x)
+
+        var r_bytes: array[8, byte]
+        marshal(r_bytes, f, littleEndian)
+        check: x_bytes == r_bytes
+
+      block:
+        # "Little-endian" - 1
+        let x = 1'u64
+        let x_bytes = cast[array[8, byte]](x)
+        var f: Fp[BabyBear]
+        f.fromUint(x)
+
+        var r_bytes: array[8, byte]
+        marshal(r_bytes, f, littleEndian)
+        check: x_bytes == r_bytes
+
+      block:
+        # "Little-endian" - 2^15
+        let x = 1'u64 shl 15
+        let x_bytes = cast[array[8, byte]](x)
+        var f: Fp[BabyBear]
+        f.fromUint(x)
+
+        var r_bytes: array[8, byte]
+        marshal(r_bytes, f, littleEndian)
+        check: x_bytes == r_bytes
+
+      block:
+        # "Little-endian" - p-1
+        let x = 2013265921'u64 - 1
+        let x_bytes = cast[array[8, byte]](x)
+        var f: Fp[BabyBear]
+        f.fromUint(x)
+
+        var r_bytes: array[8, byte]
+        marshal(r_bytes, f, littleEndian)
+        check: x_bytes == r_bytes
+
+      # KoalaBear ---------------------------------
+      block:
+        # "Little-endian" - 0
+        let x = 0'u64
+        let x_bytes = cast[array[8, byte]](x)
+        var f: Fp[KoalaBear]
+        f.fromUint(x)
+
+        var r_bytes: array[8, byte]
+        marshal(r_bytes, f, littleEndian)
+        check: x_bytes == r_bytes
+
+      block:
+        # "Little-endian" - 1
+        let x = 1'u64
+        let x_bytes = cast[array[8, byte]](x)
+        var f: Fp[KoalaBear]
+        f.fromUint(x)
+
+        var r_bytes: array[8, byte]
+        marshal(r_bytes, f, littleEndian)
+        check: x_bytes == r_bytes
+
+      block:
+        # "Little-endian" - 2^15
+        let x = 1'u64 shl 15
+        let x_bytes = cast[array[8, byte]](x)
+        var f: Fp[KoalaBear]
+        f.fromUint(x)
+
+        var r_bytes: array[8, byte]
+        marshal(r_bytes, f, littleEndian)
+        check: x_bytes == r_bytes
+
+      block:
+        # "Little-endian" - p-1
+        let x = 2130706433'u64 - 1
+        let x_bytes = cast[array[8, byte]](x)
+        var f: Fp[KoalaBear]
+        f.fromUint(x)
+
+        var r_bytes: array[8, byte]
+        marshal(r_bytes, f, littleEndian)
+        check: x_bytes == r_bytes
+
       # Mersenne 61 ---------------------------------
       block:
         # "Little-endian" - 0
