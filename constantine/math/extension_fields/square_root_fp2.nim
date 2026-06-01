@@ -233,11 +233,13 @@ func sqrt_if_square_generic(a: var Fp2): SecretBool =
   # Use candidateB iff candidateA was not a QR but candidateB is.
   fbC1.ccopy(candB, (not candAOk) and candBOk)
 
-  # Override the output with the fallback iff the input was purely-real.
-  a.c0.ccopy(fbC0, a1_isZero)
-  a.c1.ccopy(fbC1, a1_isZero)
-  # The result flag is already correct: for (a0, 0) with a0 ≠ 0 the norm
-  # a0² is a square in Fp, so `result = true` was already set above.
+  # Override the output with the fallback iff the input was purely-real and
+  # is a square. The `and result` guard upholds the "a unmodified on failure"
+  # contract; for (a0, 0) with a0 ≠ 0 the norm a0² is a square in Fp so
+  # `result` is always true here, but the guard makes that explicit.
+  let useFallback = a1_isZero and result
+  a.c0.ccopy(fbC0, useFallback)
+  a.c1.ccopy(fbC1, useFallback)
 
 func sqrt_if_square*(a: var Fp2): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a``
