@@ -215,18 +215,21 @@ func sqrt_if_square_generic(a: var Fp2): SecretBool =
   let candAOk = candA.sqrt_if_square()       # candA = sqrt(a0) iff a0 ∈ QR(Fp)
   fbC0.ccopy(candA, candAOk)
 
-  var candB = a0_orig
+  var candB{.noInit.}: typeof(a.c0)
+  var candBOk{.noInit.}: SecretBool
   when a.fromComplexExtension():
     # β = −1, so a0/β = −a0. Compute candidateB = (0, sqrt(−a0)).
+    candB = a0_orig
     candB.neg()
+    candBOk = candB.sqrt_if_square()
   else:
-    # General case: compute 1/β via the NonResidue marker.
-    var betaInv{.noInit.}: typeof(a.c0)
-    betaInv.setOne()
-    betaInv *= NonResidue                     # = β
-    betaInv.inv()                             # = 1/β
-    candB *= betaInv                          # = a0/β
-  let candBOk = candB.sqrt_if_square()       # candB = sqrt(a0/β) iff QR
+    # General case: use sqrt_ratio_if_square to compute √(a0/β) without an
+    # explicit field inversion of β (the fused routine handles the ratio
+    # via a single invsqrt, saving ~70-100 Fp muls per call).
+    var beta{.noInit.}: typeof(a.c0)
+    beta.setOne()
+    beta *= NonResidue                        # beta = β
+    candBOk = candB.sqrt_ratio_if_square(a0_orig, beta)
   # Use candidateB iff candidateA was not a QR but candidateB is.
   fbC1.ccopy(candB, (not candAOk) and candBOk)
 
