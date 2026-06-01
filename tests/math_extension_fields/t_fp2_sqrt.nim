@@ -84,6 +84,7 @@ proc purelyRealNonResidueSqrtCheck(Name: static Algebra) =
   ## (sqrt_if_square_opt with rotation extension) handles it correctly via
   ## the alignment step, but BLS12_377 cannot use it (sqrt of QNR is not in
   ## Fp²) and was therefore vulnerable on this input shape.
+  var tested = 0
   for v in 2'u32 ..< 20'u32:
     var x: Fp2[Name]
     x.fromUint(v)            # (v, 0)
@@ -101,11 +102,9 @@ proc purelyRealNonResidueSqrtCheck(Name: static Algebra) =
     sq.square()
     check: bool(sq == x)
     check: not bool(root.isZero())
-    return
+    inc tested
 
-  # If we reach here, the search range exhausted without finding a non-QR,
-  # which is statistically impossible for any reasonable p.
-  doAssert false, "no small non-residue found in Fp[" & $Name & "]"
+  doAssert tested > 0, "no small non-residue found in Fp[" & $Name & "]"
 
 proc main() =
   suite "Modular square root" & " [" & $WordBitWidth & "-bit words]":
