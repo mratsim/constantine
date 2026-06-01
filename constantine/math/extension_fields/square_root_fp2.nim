@@ -157,7 +157,21 @@ func sqrt_if_square_generic(a: var Fp2): SecretBool =
   # Gora Adj, Francisco Rodríguez-Henríquez, 2012,
   # https://eprint.iacr.org/2012/685
   # Made constant-time and optimized to fuse sqrt and inverse sqrt
+  #
+  # Note on the purely-real-input edge case:
+  # Adj-Rodríguez Algorithm 8 (and Scott §6.3) has an unstated precondition
+  # that a.c1 ≠ 0. For input (a0, 0) with a0 a non-residue in Fp, the
+  # algorithm silently picks t2 = 0 below, sqrt_invsqrt(0) = (0, 0), and the
+  # function reports `result = true` with `a` rewritten to (0, 0). But
+  # (a0, 0) is *always* a square in Fp² (a0^((p²−1)/2) = (a0^(p−1))^((p+1)/2)
+  # = 1), and the correct sqrt is (0, sqrt(a0 / β)) where β = u² is the
+  # quadratic non-residue defining Fp². We compute that fallback
+  # unconditionally in constant time and ccopy it in iff a.c1 was zero.
   var t1{.noInit.}, t2{.noInit.}, t3{.noInit.}: typeof(a.c0)
+
+  # Save what we need for the purely-real-input fallback before mutating a.
+  let a0_orig = a.c0
+  let a1_isZero = a.c1.isZero()
 
   t1.square(a.c0) #     a0²
   t2.square(a.c1) # - β a1² with β = 𝑖² in a complex extension field
@@ -184,6 +198,43 @@ func sqrt_if_square_generic(a: var Fp2): SecretBool =
   t3.div2()
   t3 *= a.c1
   a.c1.ccopy(t3, result)
+
+  # Purely-real-input fallback (see the comment at the top of this function).
+  # Compute the two candidate purely-real roots of (a0_orig, 0):
+  #   - candidateA = (sqrt_fp(a0), 0)            valid iff a0 is a QR in Fp
+  #   - candidateB = (0, sqrt_fp(a0 / β))        valid iff a0/β is a QR in Fp
+  # For any nonzero a0 in Fp, at least one of {a0, a0/β} is a QR (since β
+  # itself is a non-residue: QR × non-QR = non-QR, non-QR × non-QR = QR).
+  # We always run both candidate computations for constant time, then
+  # constant-time-select.
+  var fbC0{.noInit.}, fbC1{.noInit.}: typeof(a.c0)
+  fbC0.setZero()
+  fbC1.setZero()
+
+  var candA = a0_orig
+  let candAOk = candA.sqrt_if_square()       # candA = sqrt(a0) iff a0 ∈ QR(Fp)
+  fbC0.ccopy(candA, candAOk)
+
+  var candB = a0_orig
+  when a.fromComplexExtension():
+    # β = −1, so a0/β = −a0. Compute candidateB = (0, sqrt(−a0)).
+    candB.neg()
+  else:
+    # General case: compute 1/β via the NonResidue marker.
+    var betaInv{.noInit.}: typeof(a.c0)
+    betaInv.setOne()
+    betaInv *= NonResidue                     # = β
+    betaInv.inv()                             # = 1/β
+    candB *= betaInv                          # = a0/β
+  let candBOk = candB.sqrt_if_square()       # candB = sqrt(a0/β) iff QR
+  # Use candidateB iff candidateA was not a QR but candidateB is.
+  fbC1.ccopy(candB, (not candAOk) and candBOk)
+
+  # Override the output with the fallback iff the input was purely-real.
+  a.c0.ccopy(fbC0, a1_isZero)
+  a.c1.ccopy(fbC1, a1_isZero)
+  # The result flag is already correct: for (a0, 0) with a0 ≠ 0 the norm
+  # a0² is a square in Fp, so `result = true` was already set above.
 
 func sqrt_if_square*(a: var Fp2): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a``

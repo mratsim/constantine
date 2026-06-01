@@ -69,6 +69,44 @@ proc randomSqrtCheck(Name: static Algebra, gen: RandomGen) =
       # bool(r == s)
       bool(s == a or s == na)
 
+proc purelyRealNonResidueSqrtCheck(Name: static Algebra) =
+  ## Regression test for the silent-failure bug in sqrt_if_square on
+  ## purely-real inputs whose Fp coordinate is a non-residue.
+  ##
+  ## For any nonzero a0 ∈ Fp, the element (a0, 0) is always a square in Fp²
+  ## (Euler's criterion: a0^((p²−1)/2) = (a0^(p−1))^((p+1)/2) = 1). When a0 is
+  ## a non-residue in Fp, the actual square root lies in Fp² \ Fp and has the
+  ## shape (0, sqrt_fp(a0/β)) where β = u² is the QNR defining Fp².
+  ##
+  ## Adj-Rodríguez Algorithm 8 ("complex method", ePrint 2012/685) and Scott
+  ## §6.3 (ePrint 2020/1497) implicitly assume a.c1 ≠ 0 and silently return
+  ## (0, 0) on this stratum. The optimized path used by other curves
+  ## (sqrt_if_square_opt with rotation extension) handles it correctly via
+  ## the alignment step, but BLS12_377 cannot use it (sqrt of QNR is not in
+  ## Fp²) and was therefore vulnerable on this input shape.
+  for v in 2'u32 ..< 20'u32:
+    var x: Fp2[Name]
+    x.fromUint(v)            # (v, 0)
+    if bool(x.c0.isSquare()):
+      continue                # only test non-QR a0 values
+
+    # (non-QR, 0) is *always* a square in Fp²
+    check: bool x.isSquare()
+
+    var root = x
+    let ok = root.sqrt_if_square()
+    check: bool ok
+
+    var sq = root
+    sq.square()
+    check: bool(sq == x)
+    check: not bool(root.isZero())
+    return
+
+  # If we reach here, the search range exhausted without finding a non-QR,
+  # which is statistically impossible for any reasonable p.
+  doAssert false, "no small non-residue found in Fp[" & $Name & "]"
+
 proc main() =
   suite "Modular square root" & " [" & $WordBitWidth & "-bit words]":
     staticFor(curve, TestCurves):
@@ -76,6 +114,13 @@ proc main() =
         randomSqrtCheck(curve, gen = Uniform)
         randomSqrtCheck(curve, gen = HighHammingWeight)
         randomSqrtCheck(curve, gen = Long01Sequence)
+
+      test "[𝔽p2] (non-QR, 0) sqrt regression for " & $curve:
+        # Exercises the purely-real-input edge case that the Adj-Rodríguez
+        # Algorithm 8 complex method (used by BLS12_377) silently mishandled
+        # prior to the purely-real fallback added to sqrt_if_square_generic.
+        # Pre-fix behaviour on BLS12_377: returns (0, 0) with `ok = true`.
+        purelyRealNonResidueSqrtCheck(curve)
 
   suite "Modular square root - 32-bit bugs highlighted by property-based testing " & " [" & $WordBitWidth & "-bit words]":
     test "sqrt_if_square invalid square BLS12_381 - #64":
