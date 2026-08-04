@@ -87,7 +87,7 @@ func compute_cells_and_kzg_proofs_naive(
   poly_monomial.lagrangeInterpolate(poly_lagrange, ctx.fft_desc_ext)
 
   # Compute cells using the public API
-  let cells_status = compute_cells(ctx, cells, blob)
+  let cells_status = compute_cells(ctx, cells.asUnchecked(), blob)
   if cells_status != cttEthKzg_Success:
     return cells_status
 

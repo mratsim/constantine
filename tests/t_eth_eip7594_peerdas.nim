@@ -31,7 +31,7 @@ TestVectorsDir.testGen(compute_cells, "kzg-mainnet", testVector):
   parseAssign(testVector, blob, BYTES_PER_BLOB, testVector["input"]["blob"].content)
 
   var cells: array[CELLS_PER_EXT_BLOB, Cell]
-  let status = compute_cells(ctx, cells, blob[])
+  let status = compute_cells(ctx, cells.asUnchecked(), blob[])
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:

@@ -9,6 +9,7 @@
 import
   benchset_serialization,
   constantine/eth_eip7594_peerdas,
+  constantine/platforms/primitives,
   constantine/ethereum_eip4844_kzg_parallel,
   ../bench_blueprint,
   std/[os, strutils, monotimes]
@@ -29,7 +30,7 @@ proc benchComputeCells(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
   new(cells)
   bench("compute_cells", iters):
-    doAssert cttEthKzg_Success == ctx.compute_cells(cells[], b.blobs[0])
+    doAssert cttEthKzg_Success == ctx.compute_cells(cells[].asUnchecked(), b.blobs[0])
 
 proc main() =
   echo "PeerDAS (EIP-7594) - compute_cells Benchmark"

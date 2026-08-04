@@ -359,6 +359,27 @@ func (ctx EthKzgContext) VerifyBlobKzgProofBatchParallel(blobs []EthBlob, commit
 
 type EthKzgCell [2048]byte
 
+func (ctx EthKzgContext) ComputeCells(
+	blob *EthBlob,
+) (cells *[128]EthKzgCell, err error) {
+	if blob == nil {
+		return nil, errors.New("ComputeCells: blob is nil")
+	}
+	cells = new([128]EthKzgCell)
+	status := C.ctt_eth_kzg_compute_cells(
+		ctx.cCtx,
+		(*C.ctt_eth_kzg_cell)(unsafe.Pointer(cells)),
+		(*C.ctt_eth_kzg_blob)(unsafe.Pointer(blob)),
+	)
+	if status != C.cttEthKzg_Success {
+		err = errors.New(
+			C.GoString(C.ctt_eth_kzg_status_to_string(status)),
+		)
+		return nil, err
+	}
+	return cells, nil
+}
+
 func (ctx EthKzgContext) ComputeCellsAndKzgProofs(
 	blob *EthBlob,
 ) (cells *[128]EthKzgCell, proofs *[128]EthKzgProof, err error) {

@@ -173,7 +173,7 @@ proc benchComputeCells(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   var cells: ref array[CELLS_PER_EXT_BLOB, Cell]
   new(cells)
   bench("compute_cells (half-FFT optimization)", iters):
-    doAssert cttEthKzg_Success == ctx.compute_cells(cells[], b.blobs[0])
+    doAssert cttEthKzg_Success == ctx.compute_cells(cells[].asUnchecked(), b.blobs[0])
 
 proc benchComputeCellsAndKZGProofsNoPrecomp(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
   ## Compute cells and proofs together using FK20 algorithm

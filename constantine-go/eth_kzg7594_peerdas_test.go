@@ -27,6 +27,7 @@ import (
 
 var (
 	peerdasTestDir             = "../tests/protocol_ethereum_eip7594_fulu_peerdas"
+	computeCellsTests          = filepath.Join(peerdasTestDir, "compute_cells/kzg-mainnet/*/data.yaml")
 	computeCellsAndProofsTests = filepath.Join(peerdasTestDir, "compute_cells_and_kzg_proofs/kzg-mainnet/*/data.yaml")
 	verifyCellKzgProofTests    = filepath.Join(peerdasTestDir, "verify_cell_kzg_proof_batch/kzg-mainnet/*/data.yaml")
 	recoverCellsAndProofsTests = filepath.Join(peerdasTestDir, "recover_cells_and_kzg_proofs/kzg-mainnet/*/data.yaml")
@@ -34,6 +35,61 @@ var (
 
 func (dst *EthKzgCell) UnmarshalText(input []byte) error {
 	return fromHexImpl(dst[:], input)
+}
+
+// ---- compute_cells (cells only, no proofs) ----
+
+type computeCellsOnlyTest struct {
+	Input  *computeTestInput `yaml:"input"`
+	Output *[]string         `yaml:"output"` // [cells...]
+}
+
+func TestComputeCells(t *testing.T) {
+	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
+	require.NoError(t, tsErr)
+	defer ctx.Delete()
+
+	tests, err := filepath.Glob(computeCellsTests)
+	require.NoError(t, err)
+	require.NotEmpty(t, tests)
+
+	for _, tf := range tests {
+		testName := filepath.Base(filepath.Dir(tf))
+		raw, rErr := os.ReadFile(tf)
+		require.NoError(t, rErr)
+
+		var test computeCellsOnlyTest
+		require.NoError(t, yaml.Unmarshal(raw, &test))
+
+		// Invalid input -> no output
+		if test.Input == nil || test.Input.Blob == nil {
+			require.Nil(t, test.Output, "expected no output for missing input in %s", testName)
+			continue
+		}
+
+		var blob EthBlob
+		if err := fromHexImpl(blob[:], []byte(*test.Input.Blob)); err != nil {
+			require.Nil(t, test.Output, "expected no output for invalid blob in %s", testName)
+			continue
+		}
+
+		cells, err := ctx.ComputeCells(&blob)
+		if err != nil {
+			require.Nil(t, test.Output, "expected failure for %s", testName)
+			continue
+		}
+
+		require.NotNil(t, test.Output, "expected output for %s", testName)
+
+		expCells := *test.Output
+		require.Len(t, expCells, 128)
+
+		for i := 0; i < 128; i++ {
+			expCell, err := hex.DecodeString(expCells[i][2:])
+			require.NoError(t, err, "failed to decode expected cell %d in %s", i, testName)
+			require.Equal(t, expCell, cells[i][:], "cell %d mismatch in %s", i, testName)
+		}
+	}
 }
 
 // ---- compute_cells_and_kzg_proofs ----

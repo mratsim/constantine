@@ -206,8 +206,8 @@ func compute_cells_impl(
 
 func compute_cells*(
        ctx: ptr EthereumKZGContext,
-       cells: var array[CELLS_PER_EXT_BLOB, Cell],
-       blob: Blob): cttEthKzgStatus =
+       cells: ptr UncheckedArray[Cell],
+       blob: Blob): cttEthKzgStatus {.libPrefix: prefix_eth_kzg, raises: [].} =
   ## Compute all cells for an extended blob using the half-FFT optimization.
   ## This is the MOST efficient known method for computing cells.
   ##
@@ -251,6 +251,10 @@ func compute_cells*(
   ##    e. Bit-reverse to match cell ordering
   ## 4. Convert cells to bytes [Serialization]
 
+  # Validate FFI pointers before dereferencing
+  if ctx.isNil or cells.isNil:
+    return cttEthKzg_InputsLengthsMismatch
+
   const N = FIELD_ELEMENTS_PER_BLOB
 
   # Deserialize blob to polynomial (evaluation form, bit-reversed)
@@ -265,7 +269,7 @@ func compute_cells*(
   defer: freeHeapAligned(poly_coef_nat)
   poly_coef_nat[].lagrangeInterpolate(poly_eval_brp[], ctx.fft_desc_ext)
 
-  return compute_cells_impl(ctx, cells, poly_eval_brp[], poly_coef_nat[])
+  return compute_cells_impl(ctx, cast[ptr array[CELLS_PER_EXT_BLOB, Cell]](cells)[], poly_eval_brp[], poly_coef_nat[])
 
 func compute_cells_and_kzg_proofs*(
        ctx: ptr EthereumKZGContext,

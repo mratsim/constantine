@@ -31,6 +31,19 @@ typedef struct { byte raw[CTT_BYTES_PER_CELL]; } ctt_eth_kzg_cell;
 // Ethereum EIP-7594 PeerDAS Interface
 // ------------------------------------------------------------------------------------------------
 
+/** Compute all cells for an extended blob, without KZG proofs.
+ *
+ *  @param ctx        KZG context (trusted setup)
+ *  @param cells      Output: array of 128 cells (caller-allocated)
+ *  @param blob       Input: the blob to compute cells for
+ *  @return           cttEthKzg_Success on success, error status otherwise
+ */
+ctt_eth_kzg_status ctt_eth_kzg_compute_cells(
+        const ctt_eth_kzg_context* ctx,
+        ctt_eth_kzg_cell* cells,
+        const ctt_eth_kzg_blob* blob
+) __attribute__((warn_unused_result));
+
 /** Compute all cells and KZG proofs for an extended blob using the FK20 algorithm.
  *
  *  @param ctx        KZG context (trusted setup)

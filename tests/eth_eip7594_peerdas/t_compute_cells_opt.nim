@@ -23,7 +23,7 @@ import
   constantine/eth_eip7594_peerdas {.all.},
   constantine/ethereum_eip4844_kzg,
   constantine/serialization/codecs,
-  constantine/platforms/allocs,
+  constantine/platforms/[allocs, primitives],
   # Shared test utilities
   ../testutils/eth_consensus_utils
 
@@ -179,7 +179,7 @@ suite "EIP-7594 PeerDAS - compute_cells [" & test_case & "]":
 
     var cells_opt: array[CELLS_PER_EXT_BLOB, Cell]
 
-    let status = compute_cells(ctx, cells_opt, blob[])
+    let status = compute_cells(ctx, cells_opt.asUnchecked(), blob[])
 
     doAssert status == cttEthKzg_Success, "compute_cells failed: " & $status
     let expectedCells = testData["output"].parseCells()

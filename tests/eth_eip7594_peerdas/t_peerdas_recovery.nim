@@ -47,7 +47,7 @@ proc test_recover_from_64_cells*(ctx: ptr EthereumKZGContext) =
   echo "  Blob created"
 
   var cells: array[CELLS_PER_EXT_BLOB, Cell]
-  let status = ctx.compute_cells(cells, blob)
+  let status = ctx.compute_cells(cells.asUnchecked(), blob)
   echo "  compute_cells status: ", status
   doAssert status == cttEthKzg_Success
 
@@ -84,7 +84,7 @@ proc test_recover_from_65_cells*(ctx: ptr EthereumKZGContext) =
   let blob = build_test_blob()
 
   var cells: array[CELLS_PER_EXT_BLOB, Cell]
-  let status = ctx.compute_cells(cells, blob)
+  let status = ctx.compute_cells(cells.asUnchecked(), blob)
   doAssert status == cttEthKzg_Success
 
   var available_indices: seq[CellIndex]
@@ -120,7 +120,7 @@ proc test_recover_from_all_cells*(ctx: ptr EthereumKZGContext) =
   let blob = build_test_blob()
 
   var cells: array[CELLS_PER_EXT_BLOB, Cell]
-  let status = ctx.compute_cells(cells, blob)
+  let status = ctx.compute_cells(cells.asUnchecked(), blob)
   doAssert status == cttEthKzg_Success
 
   var available_indices: seq[CellIndex]
@@ -153,7 +153,7 @@ proc test_recover_alternate_indices*(ctx: ptr EthereumKZGContext) =
   let blob = build_test_blob()
 
   var cells: array[CELLS_PER_EXT_BLOB, Cell]
-  let status = ctx.compute_cells(cells, blob)
+  let status = ctx.compute_cells(cells.asUnchecked(), blob)
   doAssert status == cttEthKzg_Success
 
   var available_indices: seq[CellIndex]
@@ -187,7 +187,7 @@ proc test_too_few_cells_error*(ctx: ptr EthereumKZGContext) =
   let blob = build_test_blob()
 
   var cells: array[CELLS_PER_EXT_BLOB, Cell]
-  let status = ctx.compute_cells(cells, blob)
+  let status = ctx.compute_cells(cells.asUnchecked(), blob)
   doAssert status == cttEthKzg_Success
 
   var available_indices: seq[CellIndex]
@@ -216,7 +216,7 @@ proc test_duplicate_indices_error*(ctx: ptr EthereumKZGContext) =
   let blob = build_test_blob()
 
   var cells: array[CELLS_PER_EXT_BLOB, Cell]
-  let status = ctx.compute_cells(cells, blob)
+  let status = ctx.compute_cells(cells.asUnchecked(), blob)
   doAssert status == cttEthKzg_Success
 
   var available_indices: seq[CellIndex]
