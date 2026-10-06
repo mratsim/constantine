@@ -280,9 +280,7 @@ proc verifyImpl*[Name: static Algebra; Sig](
   var
     point1 {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
     point2 {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
-  # Generator of the curve
-  const G = publicKey.F.Name.getGenerator($publicKey.G)
-  point1.scalarMul(u1, G)
+  point1.scalarMulGenerator(u1)
   point2.scalarMul(u2, publicKey)
   var R {.noinit.}: EC_ShortW_Jac[Fp[Name], G1]
   R.sum(point1, point2)

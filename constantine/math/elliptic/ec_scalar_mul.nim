@@ -10,6 +10,8 @@ import
   constantine/platforms/abstractions,
   constantine/named/algebras,
   constantine/named/zoo_endomorphisms,
+  constantine/named/zoo_generators,
+  constantine/math/io/io_fields,
   constantine/math/arithmetic,
   constantine/math/extension_fields,
   constantine/math/io/io_bigints,
@@ -358,7 +360,39 @@ func buildEndoLookupTable_m2w2[EC, ECaff](
   # Step 2. Convert to affine coordinates to benefit from mixed-addition
   lut.batchAffine(tab)
 
-func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) {.meter.} =
+type SecpGeneratorPoint = EC_ShortW_Aff[Fp[Secp256k1], G1]
+
+template secpGeneratorPoint(xHex, yHex: static string): SecpGeneratorPoint =
+  SecpGeneratorPoint(x: Fp[Secp256k1].fromHex(xHex),
+                     y: Fp[Secp256k1].fromHex(yHex))
+
+# Affine tables for 3G + jφ(G), G + jφ(G), and G - φ(G), in GLV lookup order.
+# The second row uses -φ(G). Coordinates are canonical secp256k1 field values.
+const secp256k1GeneratorEndoTables = [
+  [
+    secpGeneratorPoint("0xf9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9", "0x388f7b0f632de8140fe337e62a37f3566500a99934c2231b6cb9fd7584b8e672"),
+    secpGeneratorPoint("0x213ac9c75608233a9b7752aa91dc05355faf26913c5ce5b580610a0b6dcdcc9b", "0xe2f2b16e9b1b736e2ef0ed95c84cadf3d2a4daa70efe4b15974e0dce288c3b8a"),
+    secpGeneratorPoint("0xb02af490073a228415c2b14a2f855393598c74f1f606a271a93d4f3eaf845cc8", "0xe69615e07a2ff39d9cf3701ed52814ec0275d8192bcbbd9915e366df3c3c40b6"),
+    secpGeneratorPoint("0xdf6edf03731f9b4b8dcd8dcf2a28fa2f8af1e022c6dc8e1cf7f0728c77206b2f", "0xc77084f09cd217ebf01cc819d5c80ca99aff5666cb3ddce4934602897b4715bd"),
+    secpGeneratorPoint("0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798", "0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"),
+    secpGeneratorPoint("0xfedacd78d93f2b0cb477bc17fb29266d4a06ae626d1aa9d48a8024c287137285", "0x21789ac4e8872c808816bfc96d426a90a2be64e49dacf635af8cf042fc8f98dd"),
+    secpGeneratorPoint("0x6d605c2bd9fc9d34ac5d3940e1b11f25d0f8017b397734388b112d8d3791fe29", "0x21789ac4e8872c808816bfc96d426a90a2be64e49dacf635af8cf042fc8f98dd"),
+    secpGeneratorPoint("0xbcace2e99da01887ab0102b696902325872844067f15e98da7bba04400b88fcb", "0xb7c52588d95c3b9aa25b0403f1eef75702e84bb7597aabe663b82f6f04ef2777")
+  ],
+  [
+    secpGeneratorPoint("0xf9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9", "0x388f7b0f632de8140fe337e62a37f3566500a99934c2231b6cb9fd7584b8e672"),
+    secpGeneratorPoint("0xf6bf841c27c5a68c1ac9927af99fc3e258e3aacb1adcf82d9425a1404ed19ddf", "0x36c941f5d2a46748edb341051dadcb852fea01131a18c8e150fbaa4eaae310d6"),
+    secpGeneratorPoint("0x39b93bfc41f56e0f95533676e1f910af8fd42ee4efacc8a84ba91ea267e799b1", "0xbe9e7f2bf8cef14ec28b71dea10f3741ef960ea76d3d9bbf67b7fb053424e59d"),
+    secpGeneratorPoint("0x318a7543dd88172b221ce1d84017add3815bfbb2b600bafd12087b1f81ff80c6", "0xd8000dd576b44e1a0d863149aef180a81bb7267876959ecf174ad1c49d72fa3e"),
+    secpGeneratorPoint("0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798", "0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"),
+    secpGeneratorPoint("0xbcace2e99da01887ab0102b696902325872844067f15e98da7bba04400b88fcb", "0xb7c52588d95c3b9aa25b0403f1eef75702e84bb7597aabe663b82f6f04ef2777"),
+    secpGeneratorPoint("0x06f9d996f44d56b0e438c54e4fc8aee0f461dda51b58f67f3e51b2cd75919a7e", "0x1d0d4e9164e48c91d10f126a37b3520c2d5b2558f101b4ea68b1f230d773c0a5"),
+    secpGeneratorPoint("0xfedacd78d93f2b0cb477bc17fb29266d4a06ae626d1aa9d48a8024c287137285", "0x21789ac4e8872c808816bfc96d426a90a2be64e49dacf635af8cf042fc8f98dd")
+  ]
+]
+
+func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits],
+                                     generator: static bool = false) {.meter.} =
   ## Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
@@ -393,13 +427,21 @@ func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) {.me
   #    Either negate the associated base and the scalar (in the `endomorphisms` array)
   #    Or use Algorithm 3 from Faz et al which can encode the sign
   #    in the GLV representation at the low low price of 1 bit
-  block:
+  var lut {.noInit.}: array[8, affine(EC)]
+  when generator:
+    static: doAssert EC is EC_ShortW_Jac[Fp[Secp256k1], G1]
+    # Negating both points negates every entry. Select the opposite sign for
+    # the endomorphism point first, then negate the selected table if needed.
+    for i in 0 ..< lut.len:
+      lut[i] = secp256k1GeneratorEndoTables[0][i]
+      lut[i].ccopy(secp256k1GeneratorEndoTables[1][i],
+                   negatePoints[0] xor negatePoints[1])
+      lut[i].cneg(negatePoints[0])
+    P0.cneg(negatePoints[0])
+  else:
     P0.cneg(negatePoints[0])
     P1.cneg(negatePoints[1])
-
-  # 4. Precompute lookup table
-  var lut {.noInit.}: array[8, affine(EC)]
-  lut.buildEndoLookupTable_m2w2(P0, P1)
+    lut.buildEndoLookupTable_m2w2(P0, P1)
 
   # 5. Recode the miniscalars
   #    we need the base miniscalar (that encodes the sign)
@@ -455,6 +497,16 @@ func scalarMul*[EC](P: var EC, scalar: BigInt) {.inline, meter.} =
       {.error: "Unreachable".}
   else:
     scalarMulGeneric(P, scalar)
+
+func scalarMulGenerator*[Name: static Algebra](P: var EC_ShortW_Jac[Fp[Name], G1],
+                                               scalar: Fr[Name]) {.inline.} =
+  ## Multiply the curve generator, using precomputed GLV tables for secp256k1.
+  const G = Name.getGenerator("G1")
+  when Name == Secp256k1:
+    P.fromAffine(G)
+    P.scalarMulGLV_m2w2(scalar.toBig(), generator = true)
+  else:
+    P.scalarMul(scalar, G)
 
 func scalarMul*[EC](P: var EC, scalar: Fr) {.inline.} =
   ## Elliptic Curve Scalar Multiplication
