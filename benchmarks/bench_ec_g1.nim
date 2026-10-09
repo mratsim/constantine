@@ -26,19 +26,19 @@ import
 # ############################################################
 
 
-const Iters = 10_000
+const Iters = 10_000_000
 const MulIters = 100
 const AvailableCurves = [
   # P224,
-  BN254_Nogami,
-  BN254_Snarks,
+  # BN254_Nogami,
+  # BN254_Snarks,
   # Edwards25519,
   # P256,
   Secp256k1,
-  Pallas,
-  Vesta,
-  BLS12_377,
-  BLS12_381,
+  # Pallas,
+  # Vesta,
+  # BLS12_377,
+  # BLS12_381,
 ]
 
 proc main() =
@@ -46,34 +46,34 @@ proc main() =
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
     addBench(EC_ShortW_Prj[Fp[curve], G1], Iters)
-    addBench(EC_ShortW_Jac[Fp[curve], G1], Iters)
-    addBench(EC_ShortW_JacExt[Fp[curve], G1], Iters)
-    mixedAddBench(EC_ShortW_Prj[Fp[curve], G1], Iters)
-    mixedAddBench(EC_ShortW_Jac[Fp[curve], G1], Iters)
-    mixedAddBench(EC_ShortW_JacExt[Fp[curve], G1], Iters)
-    doublingBench(EC_ShortW_Prj[Fp[curve], G1], Iters)
-    doublingBench(EC_ShortW_Jac[Fp[curve], G1], Iters)
-    doublingBench(EC_ShortW_JacExt[Fp[curve], G1], Iters)
-    separator()
-    affFromProjBench(EC_ShortW_Prj[Fp[curve], G1], MulIters)
-    affFromJacBench(EC_ShortW_Jac[Fp[curve], G1], MulIters)
-    separator()
-    for numPoints in [10, 100, 1000, 10000]:
-      let batchIters = max(1, Iters div numPoints)
-      affFromProjBatchBench(EC_ShortW_Prj[Fp[curve], G1], numPoints, useBatching = false, batchIters)
-    separator()
-    for numPoints in [10, 100, 1000, 10000]:
-      let batchIters = max(1, Iters div numPoints)
-      affFromProjBatchBench(EC_ShortW_Prj[Fp[curve], G1], numPoints, useBatching = true, batchIters)
-    separator()
-    for numPoints in [10, 100, 1000, 10000]:
-      let batchIters = max(1, Iters div numPoints)
-      affFromJacBatchBench(EC_ShortW_Jac[Fp[curve], G1], numPoints, useBatching = false, batchIters)
-    separator()
-    for numPoints in [10, 100, 1000, 10000]:
-      let batchIters = max(1, Iters div numPoints)
-      affFromJacBatchBench(EC_ShortW_Jac[Fp[curve], G1], numPoints, useBatching = true, batchIters)
-    separator()
+    # addBench(EC_ShortW_Jac[Fp[curve], G1], Iters)
+    # addBench(EC_ShortW_JacExt[Fp[curve], G1], Iters)
+    # mixedAddBench(EC_ShortW_Prj[Fp[curve], G1], Iters)
+    # mixedAddBench(EC_ShortW_Jac[Fp[curve], G1], Iters)
+    # mixedAddBench(EC_ShortW_JacExt[Fp[curve], G1], Iters)
+    # doublingBench(EC_ShortW_Prj[Fp[curve], G1], Iters)
+    # doublingBench(EC_ShortW_Jac[Fp[curve], G1], Iters)
+    # doublingBench(EC_ShortW_JacExt[Fp[curve], G1], Iters)
+    # separator()
+    # affFromProjBench(EC_ShortW_Prj[Fp[curve], G1], MulIters)
+    # affFromJacBench(EC_ShortW_Jac[Fp[curve], G1], MulIters)
+    # separator()
+    # for numPoints in [10, 100, 1000, 10000]:
+    #   let batchIters = max(1, Iters div numPoints)
+    #   affFromProjBatchBench(EC_ShortW_Prj[Fp[curve], G1], numPoints, useBatching = false, batchIters)
+    # separator()
+    # for numPoints in [10, 100, 1000, 10000]:
+    #   let batchIters = max(1, Iters div numPoints)
+    #   affFromProjBatchBench(EC_ShortW_Prj[Fp[curve], G1], numPoints, useBatching = true, batchIters)
+    # separator()
+    # for numPoints in [10, 100, 1000, 10000]:
+    #   let batchIters = max(1, Iters div numPoints)
+    #   affFromJacBatchBench(EC_ShortW_Jac[Fp[curve], G1], numPoints, useBatching = false, batchIters)
+    # separator()
+    # for numPoints in [10, 100, 1000, 10000]:
+    #   let batchIters = max(1, Iters div numPoints)
+    #   affFromJacBatchBench(EC_ShortW_Jac[Fp[curve], G1], numPoints, useBatching = true, batchIters)
+    # separator()
     separator()
 
 main()
