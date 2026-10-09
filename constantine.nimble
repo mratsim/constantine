@@ -701,6 +701,8 @@ const testDescThreadpool: seq[string] = @[
   "benchmarks-threadpool/histogram_2D/threadpool_histogram.nim",
   "benchmarks-threadpool/logsumexp/threadpool_logsumexp.nim",
   "tests/threadpool/t_257_threads.nim",
+  "tests/threadpool/t_backoff.nim",
+  "tests/threadpool/t_futexes.nim",
 ]
 
 const testDescMultithreadedCrypto: seq[string] = @[
