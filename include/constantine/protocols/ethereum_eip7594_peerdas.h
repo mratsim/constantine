@@ -15,6 +15,7 @@
 extern "C" {
 #endif
 
+#ifndef CTT_KZG_VERIFICATION_ONLY
 // Ethereum EIP-7594 PeerDAS constants
 // ------------------------------------------------------------------------------------------------
 
@@ -109,6 +110,7 @@ ctt_eth_kzg_status ctt_eth_kzg_recover_cells_and_kzg_proofs(
         const ctt_eth_kzg_cell* cells,
         size_t num_cells
 ) __attribute__((warn_unused_result));
+#endif
 
 #ifdef __cplusplus
 }

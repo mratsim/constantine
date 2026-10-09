@@ -17,6 +17,7 @@
 extern "C" {
 #endif
 
+#ifndef CTT_KZG_VERIFICATION_ONLY
 // Ethereum EIP-4844 KZG Interface
 // ------------------------------------------------------------------------------------------------
 
@@ -110,6 +111,7 @@ ctt_eth_kzg_status ctt_eth_kzg_verify_blob_kzg_proof_batch_parallel(
         size_t n,
         const byte secure_random_bytes[32]
 ) __attribute__((__warn_unused_result__));
+#endif
 
 #ifdef __cplusplus
 }

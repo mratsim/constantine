@@ -13,7 +13,10 @@ import
   pkg/jsony,
   # Internals
   constantine/serialization/codecs,
-  constantine/ethereum_evm_precompiles
+  constantine/ethereum_evm_precompiles,
+  constantine/math/arithmetic/bigints,
+  constantine/math/io/io_bigints,
+  constantine/platforms/abstractions
 
 # Test vector source:
 # - https://github.com/ethereum/go-ethereum/tree/release/1.14/core/vm/testdata/precompiles
@@ -157,7 +160,6 @@ proc testRipemd160() =
     "  " & "expected: " & expectedbytes.toHex() & '\n'
 
   stdout.write "Success\n"
-
 
 # ----------------------------------------------------------------------
 

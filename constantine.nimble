@@ -332,6 +332,60 @@ task make_lib_rust, "Build Constantine library (use within a Rust build.rs scrip
                  else: " --passC:-fPIC "
   genStaticLib(rustOutDir, rustOutDir/"nimcache", extflags)
 
+task make_lib_riscv64_freestanding, "Build Constantine static library for rv64im freestanding (no OS, no libc)":
+  ## Cross-compile to a bare-metal rv64im target: --os:standalone selects the
+  ## freestanding gates in the library (embedded KZG verifier point, no fileio/stdio), and the
+  ## clang driver shim supplies the target flags + declaration-only headers. The
+  ## freestanding stdio backing (stderr/fwrite/fflush/exit for the Nim runtime's OOM
+  ## path) is compiled alongside and added to the archive.
+  let wrapper = "constantine/platforms/clang-rv64-standalone.sh"
+  let outdir = if existsEnv"CTT_OUTDIR": getEnv"CTT_OUTDIR" else: "lib"
+  let nimcache = if existsEnv"CTT_NIMCACHE": getEnv"CTT_NIMCACHE" else: "nimcache/libconstantine_riscv64_freestanding"
+  exec "rm -rf " & nimcache
+  exec "mkdir -p " & outdir
+  let nim = if existsEnv"NIM": getEnv"NIM" else: "nim"
+  exec nim & " c " &
+       releaseBuildOptions(bmStaticLib) &
+       " --cc:clang " &
+       " --cpu:riscv64 --os:standalone -d:noSignalHandler -d:CTT_EMBEDDED_KZG -d:CTT_KZG_VERIFICATION_ONLY " &
+       " --clang.exe:" & wrapper & " --clang.linkerexe:" & wrapper &
+       " --threads:off " &
+       " --noMain --app:staticlib " &
+       " --nimMainPrefix:ctt_init_ " &
+       " --out:libconstantine.riscv64.a --outdir:" & outdir & " " &
+       " --nimcache:" & nimcache & " " &
+       " bindings/lib_constantine_riscv64_freestanding.nim"
+  exec wrapper & " -c constantine/platforms/standalone_stdio.c" &
+       " -o " & nimcache & "/standalone_stdio.riscv64.o"
+  # Nim ran the host ar/ranlib, which clobbers a foreign-arch archive's index; rebuild
+  # the archive from the fresh nimcache objects (+ the stdio object) with llvm-ar.
+  let ar = if existsEnv"LLVM_AR": getEnv"LLVM_AR"
+           elif fileExists"/opt/homebrew/opt/llvm/bin/llvm-ar": "/opt/homebrew/opt/llvm/bin/llvm-ar"
+           elif fileExists"/usr/local/opt/llvm/bin/llvm-ar": "/usr/local/opt/llvm/bin/llvm-ar"
+           else: "llvm-ar"
+  let archive = outdir / "libconstantine.riscv64.a"
+  exec "rm -f " & archive
+  exec ar & " rcs " & archive &
+       " " & nimcache & "/*.o"
+  let nm = if existsEnv"LLVM_NM": getEnv"LLVM_NM"
+           elif fileExists"/opt/homebrew/opt/llvm/bin/llvm-nm": "/opt/homebrew/opt/llvm/bin/llvm-nm"
+           elif fileExists"/usr/local/opt/llvm/bin/llvm-nm": "/usr/local/opt/llvm/bin/llvm-nm"
+           else: "llvm-nm"
+  exec "sh tests/check_riscv64_freestanding_archive.sh " & nm &
+       " " & archive
+
+task test_kzg_embedded_full, "Test the full embedded KZG profile":
+  exec "nim c -r -d:CTT_EMBEDDED_KZG " &
+       " --outdir:build/test_suite " &
+       " --nimcache:nimcache/tests/t_ethereum_kzg_embedded_full " &
+       " tests/t_ethereum_kzg_embedded_full.nim"
+
+task test_kzg_embedded_verification_only, "Test the verification-only embedded KZG profile":
+  exec "nim c -r -d:CTT_EMBEDDED_KZG -d:CTT_KZG_VERIFICATION_ONLY " &
+       " --outdir:build/test_suite " &
+       " --nimcache:nimcache/tests/t_ethereum_evm_kzg_embedded " &
+       " tests/t_ethereum_evm_kzg_embedded.nim"
+
 task make_zkalc, "Build a benchmark executable for zkalc (with Clang)":
   exec "nim c --cc:clang " &
        releaseBuildOptions(bmBinary) &
@@ -638,7 +692,9 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Protocols
   # ----------------------------------------------------------
   ("tests/t_ethereum_evm_modexp.nim", false),
+  ("tests/t_ethereum_evm_bn254_pairing.nim", false),
   ("tests/t_ethereum_evm_precompiles.nim", false),
+  ("tests/t_ethereum_zkvm_secp256k1.nim", false),
   ("tests/t_ethereum_bls_signatures.nim", false),
   ("tests/t_ethereum_eip2333_bls12381_key_derivation.nim", false),
   ("tests/t_ethereum_eip4844_deneb_kzg.nim", false),
@@ -892,6 +948,14 @@ proc addTestSet(cmdFile: var string, requireGMP: bool) =
 
       cmdFile.testBatch(flags, td.path)
 
+proc addEmbeddedKzgTests(cmdFile: var string) =
+  cmdFile.testBatch(
+    " -d:CTT_EMBEDDED_KZG ",
+    "tests/t_ethereum_kzg_embedded_full.nim")
+  cmdFile.testBatch(
+    " -d:CTT_EMBEDDED_KZG -d:CTT_KZG_VERIFICATION_ONLY ",
+    "tests/t_ethereum_evm_kzg_embedded.nim")
+
 proc addTestSetNvidia(cmdFile: var string) =
   if not dirExists "build":
     mkDir "build"
@@ -977,6 +1041,7 @@ task test_parallel, "Run all tests in parallel":
 
   var cmdFile: string
   cmdFile.addTestSet(requireGMP = true)
+  cmdFile.addEmbeddedKzgTests()
   cmdFile.addBenchSet()    # Build (but don't run) benches to ensure they stay relevant
   writeFile(buildParallel, cmdFile)
   exec "build/test_suite/pararun " & buildParallel
@@ -996,6 +1061,7 @@ task test_parallel_no_gmp, "Run in parallel tests that don't require GMP":
 
   var cmdFile: string
   cmdFile.addTestSet(requireGMP = false)
+  cmdFile.addEmbeddedKzgTests()
   cmdFile.addBenchSet()    # Build (but don't run) benches to ensure they stay relevant
   writeFile(buildParallel, cmdFile)
   exec "build/test_suite/pararun " & buildParallel

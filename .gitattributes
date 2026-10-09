@@ -1,0 +1,2 @@
+# The embedded KZG trusted setup uses fixed-width records with LF terminators.
+constantine/commitments_setups/trusted_setup_ethereum_kzg4844_reference.dat text eol=lf

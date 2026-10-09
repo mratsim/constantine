@@ -24,6 +24,7 @@ typedef enum __attribute__((__packed__)) {
     cttEVM_PointNotOnCurve,
     cttEVM_PointNotInSubgroup,
     cttEVM_VerificationFailure,
+    cttEVM_MalformedSignature,
 } ctt_evm_status;
 
 static const char* ctt_evm_status_to_string(ctt_evm_status status) {
@@ -35,6 +36,7 @@ static const char* ctt_evm_status_to_string(ctt_evm_status status) {
       "cttEVM_PointNotOnCurve",
       "cttEVM_PointNotInSubgroup",
       "cttEVM_VerificationFailure",
+      "cttEVM_MalformedSignature",
   };
   size_t length = sizeof statuses / sizeof *statuses;
   if (0 <= status && status < length) {
@@ -528,6 +530,65 @@ ctt_evm_status ctt_eth_evm_bls12381_map_fp2_to_g2(
   */
 ctt_evm_status ctt_eth_evm_kzg_point_evaluation(
     const ctt_eth_kzg_context* ctx,
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
+) __attribute__((warn_unused_result));
+
+/**
+ *  zkVM-accelerator raw primitive: ECDSA signature verification over secp256k1
+ *  against a given public key (the eth_zkvm family follows the zkvm-standards
+ *  accelerator ABI — raw primitives on a pre-hashed digest, no hash runs here).
+ *
+ *  Inputs:
+ *  - r: array with 1 byte of storage for the verification verdict
+ *  - r_len: length of `r`. Must be 1
+ *  - inputs: 160 bytes, big-endian concatenation of
+ *    - 32 bytes, message digest (the z scalar, reduced mod the curve order)
+ *    - 32 bytes, public key x coordinate
+ *    - 32 bytes, public key y coordinate
+ *    - 32 bytes, signature r scalar
+ *    - 32 bytes, signature s scalar
+ *  - inputs_len: length of the inputs array. Must be 160
+ *
+ *  Output:
+ *  - 1 byte, 1 if the signature is valid else 0
+ *  - Status code:
+ *    cttEVM_Success (the verification verdict is in `r`, success or not)
+ *    cttEVM_InvalidInputSize
+ *    cttEVM_InvalidOutputSize
+ *    cttEVM_IntLargerThanModulus / cttEVM_PointNotOnCurve (public key rejected)
+ *    cttEVM_MalformedSignature (a signature scalar is zero or >= the curve order)
+ */
+ctt_evm_status ctt_eth_zkvm_secp256k1_verify(
+    byte* r, size_t r_len,
+    const byte* inputs, size_t inputs_len
+) __attribute__((warn_unused_result));
+
+/**
+ *  zkVM-accelerator raw primitive: ECDSA public-key recovery over secp256k1.
+ *  Returns the recovered key's raw coordinates; deriving an Ethereum address
+ *  (Keccak of the key, truncated) is the caller's job.
+ *
+ *  Inputs:
+ *  - r: array with 64 bytes of storage for the recovered public key
+ *  - r_len: length of `r`. Must be 64
+ *  - inputs: 97 bytes, big-endian concatenation of
+ *    - 32 bytes, message digest (the z scalar, reduced mod the curve order)
+ *    - 1 byte, recovery id in {0, 1}
+ *    - 32 bytes, signature r scalar
+ *    - 32 bytes, signature s scalar
+ *  - inputs_len: length of the inputs array. Must be 97
+ *
+ *  Output:
+ *  - 64 bytes, the recovered public key x ‖ y, big-endian
+ *  - Status code:
+ *    cttEVM_Success (`r` holds the recovered public key)
+ *    cttEVM_InvalidInputSize
+ *    cttEVM_InvalidOutputSize
+ *    cttEVM_MalformedSignature (recovery id not in {0, 1}, a signature scalar
+ *    is zero or >= the curve order, or no valid key exists for the signature)
+ */
+ctt_evm_status ctt_eth_zkvm_secp256k1_ecrecover(
     byte* r, size_t r_len,
     const byte* inputs, size_t inputs_len
 ) __attribute__((warn_unused_result));

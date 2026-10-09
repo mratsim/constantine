@@ -24,10 +24,12 @@ import
   constantine/ethereum_bls_signatures_parallel,
   constantine/commitments_setups/ethereum_kzg_srs,
   constantine/ethereum_eip4844_kzg,
-  constantine/ethereum_eip4844_kzg_parallel,
-  constantine/eth_eip7594_peerdas,
-
   constantine/ethereum_evm_precompiles,
 
   # Ensure globals like proc from kernel32.dll are populated at library load time
   ./lib_autoload
+
+when not defined(CTT_KZG_VERIFICATION_ONLY):
+  import
+    constantine/ethereum_eip4844_kzg_parallel,
+    constantine/eth_eip7594_peerdas

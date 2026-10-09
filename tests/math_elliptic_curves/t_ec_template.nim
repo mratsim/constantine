@@ -1381,17 +1381,18 @@ proc run_EC_batch_add_impl*[N: static int](
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
+      let numPointsCopy = n
       test $ec & " sum reduction (N=" & $n & ")":
         proc test(EC: typedesc, gen: RandomGen) =
-          var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](n)
+          var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](numPointsCopy)
 
-          for i in 0 ..< n:
+          for i in 0 ..< numPointsCopy:
             points[i] = rng.random_point(EC_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
 
           var r_batch{.noinit.}, r_ref{.noInit.}: EC
 
           r_ref.setNeutral()
-          for i in 0 ..< n:
+          for i in 0 ..< numPointsCopy:
             r_ref += points[i]
 
           r_batch.sum_reduce_vartime(points)
@@ -1405,14 +1406,14 @@ proc run_EC_batch_add_impl*[N: static int](
 
       test "EC " & $ec.G & " sum reduction (N=" & $n & ") - special cases":
         proc test(EC: typedesc, gen: RandomGen) =
-          var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](n)
+          var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](numPointsCopy)
 
-          let halfN = n div 2
+          let halfN = numPointsCopy div 2
 
           for i in 0 ..< halfN:
             points[i] = rng.random_point(EC_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
 
-          for i in halfN ..< n:
+          for i in halfN ..< numPointsCopy:
             # The special cases test relies on internal knowledge that we sum(points[i], points[i+n/2]
             # It should be changed if scheduling change, for example if we sum(points[2*i], points[2*i+1])
             let c = rng.random_unsafe(3)
@@ -1426,7 +1427,7 @@ proc run_EC_batch_add_impl*[N: static int](
           var r_batch{.noinit.}, r_ref{.noInit.}: EC
 
           r_ref.setNeutral()
-          for i in 0 ..< n:
+          for i in 0 ..< numPointsCopy:
             r_ref += points[i]
 
           r_batch.sum_reduce_vartime(points)
@@ -1452,13 +1453,14 @@ proc run_EC_multi_scalar_mul_impl*[N: static int](
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
+      let numPointsCopy = n
       let bucketBits = bestBucketBitSize(n, ec.getScalarField().bits(), useSignedBuckets = false, useManualTuning = false)
       test $ec & " Multi-scalar-mul (N=" & $n & ", bucket bits: " & $bucketBits & ")":
         proc test(EC: typedesc, gen: RandomGen) =
-          var points = newSeq[affine(EC)](n)
-          var coefs = newSeq[BigInt[EC.getScalarField().bits()]](n)
+          var points = newSeq[affine(EC)](numPointsCopy)
+          var coefs = newSeq[BigInt[EC.getScalarField().bits()]](numPointsCopy)
 
-          for i in 0 ..< n:
+          for i in 0 ..< numPointsCopy:
             var tmp = rng.random_unsafe(EC)
             tmp.clearCofactor()
             points[i].affine(tmp)
@@ -1466,7 +1468,7 @@ proc run_EC_multi_scalar_mul_impl*[N: static int](
 
           var naive, naive_tmp: EC
           naive.setNeutral()
-          for i in 0 ..< n:
+          for i in 0 ..< numPointsCopy:
             naive_tmp.fromAffine(points[i])
             naive_tmp.scalarMul(coefs[i])
             naive += naive_tmp

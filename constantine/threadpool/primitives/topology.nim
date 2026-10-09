@@ -105,7 +105,6 @@ proc getNumCoresPhysical*(): cint =
 
   elif defined(linux):
     queryNumPhysicalCoresLinux()
-
   else:
     {.error: "Unsupported CPU/OS configuration: " & hostCPU & "/" & hostOS.}
 

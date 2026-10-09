@@ -96,3 +96,17 @@ proc recoverPubkeyFromDigest*(
   ## `verify` implementation, which already takes a scalar and thus
   ## requires no hash function there either.
   publicKey.raw.recoverPubkeyImpl_vartime(signature, msgHash, evenY)
+
+proc verifyFromDigest*(
+    publicKey: PublicKey,
+    msgHash: Fr[Secp256k1],
+    signature: Signature
+): bool {.libPrefix: prefix_ffi.} =
+  ## Verify `signature` using `publicKey` for the given message digest
+  ## given as a scalar in the field `Fr[Secp256k1]`.
+  ##
+  ## As this overload works directly with a message hash as a scalar,
+  ## it requires no hash function. The public key and signature MUST have
+  ## been validated (on-curve, correct subgroup, non-infinity) on
+  ## deserialization.
+  publicKey.raw.verifyImpl(signature, msgHash)

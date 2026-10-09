@@ -255,12 +255,16 @@ proc coreSign*[Sig, SecKey](
   # 2. sign
   signature.signImpl(secretKey, msgHash, H, nonceSampler)
 
-proc verifyImpl[Name: static Algebra; Sig](
+proc verifyImpl*[Name: static Algebra; Sig](
     publicKey: EC_ShortW_Aff[Fp[Name], G1],
     signature: Sig,
     msgHash: Fr[Name]
 ): bool =
   ## Verify a given `signature` for a `message` using the given `publicKey`.
+  ##
+  ## Caller contract: the public key is a validated on-curve point and the
+  ## signature scalars are canonical (nonzero, below the curve order); raw byte
+  ## input needs those checks before the scalars reach this procedure.
   # 1. Compute w = s⁻¹
   var w = signature.s
   w.inv() # w = s⁻¹

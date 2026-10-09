@@ -56,96 +56,99 @@ const
     kReadOverwrite: cstring("wb+" & childProcNoInherit)
   ]
 
-# Opening/Closing files
-# ------------------------------------------------------------
+# Freestanding targets have no stdio: only the types/consts above are compiled.
+when not defined(standalone):
 
-proc c_fopen(filepath, mode: cstring): File {.importc: "fopen", header: "<stdio.h>", sideeffect.}
-proc c_fclose(f: File): cint {.importc: "fclose", header: "<stdio.h>", sideeffect.}
-proc c_fflush*(f: File) {.importc: "fflush", header: "<stdio.h>", sideeffect, tags:[WriteIOEffect].}
+  # Opening/Closing files
+  # ------------------------------------------------------------
 
-when defined(windows):
-  proc c_fileno(f: File): cint {.importc: "_fileno", header: "<stdio.h>", sideeffect.}
-else:
-  type
-    Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
-    Stat {.importc: "struct stat", header: "<sys/stat.h>", final, pure.} = object
-      st_mode: Mode
-  proc is_dir(m: Mode): bool {.importc: "S_ISDIR", header: "<sys/stat.h>".}
-  proc c_fileno(f: File): cint {.importc: "fileno", header: "<fcntl.h>", sideeffect.}
-  proc c_fstat(a1: cint, a2: var Stat): cint {.importc: "fstat", header: "<sys/stat.h>", sideeffect.}
+  proc c_fopen(filepath, mode: cstring): File {.importc: "fopen", header: "<stdio.h>", sideeffect.}
+  proc c_fclose(f: File): cint {.importc: "fclose", header: "<stdio.h>", sideeffect.}
+  proc c_fflush*(f: File) {.importc: "fflush", header: "<stdio.h>", sideeffect, tags:[WriteIOEffect].}
 
-proc close*(f: File) {.inline.} =
-  if not f.isNil:
-    discard f.c_fclose()
+  when defined(windows):
+    proc c_fileno(f: File): cint {.importc: "_fileno", header: "<stdio.h>", sideeffect.}
+  else:
+    type
+      Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
+      Stat {.importc: "struct stat", header: "<sys/stat.h>", final, pure.} = object
+        st_mode: Mode
+    proc is_dir(m: Mode): bool {.importc: "S_ISDIR", header: "<sys/stat.h>".}
+    proc c_fileno(f: File): cint {.importc: "fileno", header: "<fcntl.h>", sideeffect.}
+    proc c_fstat(a1: cint, a2: var Stat): cint {.importc: "fstat", header: "<sys/stat.h>", sideeffect.}
 
-proc open*(f: var File, filepath: cstring, mode = kRead): bool =
-  f = c_fopen(filepath, MapFileMode[mode])
-  if f.isNil:
-    return false
+  proc close*(f: File) {.inline.} =
+    if not f.isNil:
+      discard f.c_fclose()
 
-  # Posix OSes can open directories, prevent that.
-  when defined(posix):
-    var stat {.noInit.}: Stat
-    if c_fstat(c_fileno(f), stat) >= 0 and stat.st_mode.is_dir:
-      f.close()
+  proc open*(f: var File, filepath: cstring, mode = kRead): bool =
+    f = c_fopen(filepath, MapFileMode[mode])
+    if f.isNil:
       return false
 
-  return true
+    # Posix OSes can open directories, prevent that.
+    when defined(posix):
+      var stat {.noInit.}: Stat
+      if c_fstat(c_fileno(f), stat) >= 0 and stat.st_mode.is_dir:
+        f.close()
+        return false
 
-proc open*(filepath: string, mode = kRead): File =
-  doAssert open(result, filepath.cstring, mode), "Failed to open file " & $filepath & " for " & $mode
+    return true
+
+  proc open*(filepath: string, mode = kRead): File =
+    doAssert open(result, filepath.cstring, mode), "Failed to open file " & $filepath & " for " & $mode
 
 
-# Navigating files
-# ------------------------------------------------------------
+  # Navigating files
+  # ------------------------------------------------------------
 
-when defined(windows):
-  proc getFilePosition*(f: File): int64 {.importc: "_ftelli64", header: "<stdio.h>", sideeffect.}
-  proc setFilePosition*(f: File, offset: int64, relative = kAbsolute): cint {.importc: "_fseeki64", header: "<stdio.h>", sideeffect.}
-else:
-  proc getFilePosition*(f: File): int64 {.importc: "ftello", header: "<stdio.h>", sideeffect.}
-  proc setFilePosition*(f: File, offset: int64, relative = kAbsolute): cint {.importc: "fseeko", header: "<stdio.h>", sideeffect.}
+  when defined(windows):
+    proc getFilePosition*(f: File): int64 {.importc: "_ftelli64", header: "<stdio.h>", sideeffect.}
+    proc setFilePosition*(f: File, offset: int64, relative = kAbsolute): cint {.importc: "_fseeki64", header: "<stdio.h>", sideeffect.}
+  else:
+    proc getFilePosition*(f: File): int64 {.importc: "ftello", header: "<stdio.h>", sideeffect.}
+    proc setFilePosition*(f: File, offset: int64, relative = kAbsolute): cint {.importc: "fseeko", header: "<stdio.h>", sideeffect.}
 
-# Reading files
-# ------------------------------------------------------------
+  # Reading files
+  # ------------------------------------------------------------
 
-proc c_fread(buffer: pointer, len, count: csize_t, f: File): csize_t {.importc: "fread", header: "<stdio.h>", sideeffect, tags:[ReadIOEffect].}
+  proc c_fread(buffer: pointer, len, count: csize_t, f: File): csize_t {.importc: "fread", header: "<stdio.h>", sideeffect, tags:[ReadIOEffect].}
 
-proc readInto*(f: File, buffer: pointer, len: int): int {.inline.} =
-  ## Read data into buffer, return the number of bytes read
-  cast[int](c_fread(buffer, 1, cast[csize_t](len), f))
+  proc readInto*(f: File, buffer: pointer, len: int): int {.inline.} =
+    ## Read data into buffer, return the number of bytes read
+    cast[int](c_fread(buffer, 1, cast[csize_t](len), f))
 
-proc readInto*[T: not seq](f: File, buf: var T): bool {.inline.} =
-  ## Read data into buffer,
-  ## return true if the number of bytes read
-  ## matches the output type size
-  return f.readInto(buf.addr, sizeof(buf)) == sizeof(T)
+  proc readInto*[T: not seq](f: File, buf: var T): bool {.inline.} =
+    ## Read data into buffer,
+    ## return true if the number of bytes read
+    ## matches the output type size
+    return f.readInto(buf.addr, sizeof(buf)) == sizeof(T)
 
-proc readInto*[T](f: File, buf: var openArray[T]): bool {.inline.} =
-  ## Read data into buffer,
-  ## return true if the number of bytes read
-  ## matches the output type size
-  return f.readInto(buf[0].addr, sizeof(T) * buf.len) == sizeof(T) * buf.len
+  proc readInto*[T](f: File, buf: var openArray[T]): bool {.inline.} =
+    ## Read data into buffer,
+    ## return true if the number of bytes read
+    ## matches the output type size
+    return f.readInto(buf[0].addr, sizeof(T) * buf.len) == sizeof(T) * buf.len
 
-proc read*(f: File, T: typedesc): T {.inline.} =
-  ## Interpret next bytes as type `T`
-  ## Panics if the number of bytes read does not match
-  ## the size of `T`
-  let ok = f.readInto(result)
-  doAssert ok, "Fatal error when reading '" & $T & "' from file."
+  proc read*(f: File, T: typedesc): T {.inline.} =
+    ## Interpret next bytes as type `T`
+    ## Panics if the number of bytes read does not match
+    ## the size of `T`
+    let ok = f.readInto(result)
+    doAssert ok, "Fatal error when reading '" & $T & "' from file."
 
-# Parsing files
-# ------------------------------------------------------------
+  # Parsing files
+  # ------------------------------------------------------------
 
-proc c_fscanf*(f: File, format: cstring): cint{.importc:"fscanf", header: "<stdio.h>", varargs, sideeffect, tags:[ReadIOEffect].}
-  ## Note: The "format" parameter and followup arguments MUST NOT be forgotten
-  ##       to not be exposed to the "format string attacks"
+  proc c_fscanf*(f: File, format: cstring): cint{.importc:"fscanf", header: "<stdio.h>", varargs, sideeffect, tags:[ReadIOEffect].}
+    ## Note: The "format" parameter and followup arguments MUST NOT be forgotten
+    ##       to not be exposed to the "format string attacks"
 
-# Formatted print
-# ------------------------------------------------------------
+  # Formatted print
+  # ------------------------------------------------------------
 
-proc c_printf*(fmt: cstring): cint {.sideeffect, importc: "printf", header: "<stdio.h>", varargs, discardable, tags:[WriteIOEffect].}
-func c_snprintf*(dst: cstring, maxLen: csize_t, format: cstring): cint {.importc:"snprintf", header: "<stdio.h>", varargs.}
-  ## dst is really a `var` parameter, but Nim var are lowered to pointer hence unsuitable here.
-  ## Note: The "format" parameter and followup arguments MUST NOT be forgotten
-  ##       to not be exposed to the "format string attacks"
+  proc c_printf*(fmt: cstring): cint {.sideeffect, importc: "printf", header: "<stdio.h>", varargs, discardable, tags:[WriteIOEffect].}
+  func c_snprintf*(dst: cstring, maxLen: csize_t, format: cstring): cint {.importc:"snprintf", header: "<stdio.h>", varargs.}
+    ## dst is really a `var` parameter, but Nim var are lowered to pointer hence unsuitable here.
+    ## Note: The "format" parameter and followup arguments MUST NOT be forgotten
+    ##       to not be exposed to the "format string attacks"

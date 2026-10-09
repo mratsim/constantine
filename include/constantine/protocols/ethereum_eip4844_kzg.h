@@ -85,7 +85,12 @@ typedef enum __attribute__((__packed__)) {
 
 // Ethereum EIP-4844 KZG Interface
 // ------------------------------------------------------------------------------------------------
+// Libraries built with CTT_EMBEDDED_KZG expose the full API using an embedded
+// trusted setup. Adding CTT_KZG_VERIFICATION_ONLY restricts availability to
+// ctt_eth_kzg_verify_kzg_proof, ctt_eth_evm_kzg_point_evaluation, and context
+// construction/destruction; other declarations below are not present in that library.
 
+#ifndef CTT_KZG_VERIFICATION_ONLY
 /** Compute a commitment to the `blob`.
  *  The commitment can be verified without needing the full `blob`
  *
@@ -130,6 +135,7 @@ ctt_eth_kzg_status ctt_eth_kzg_compute_kzg_proof(
         const ctt_eth_kzg_blob* blob,
         const ctt_eth_kzg_opening_challenge* z
 ) __attribute__((warn_unused_result));
+#endif
 
 /** Verify KZG proof
  *  that p(z) == y where
@@ -147,6 +153,7 @@ ctt_eth_kzg_status ctt_eth_kzg_verify_kzg_proof(
         const ctt_eth_kzg_proof* proof
 ) __attribute__((__warn_unused_result__));
 
+#ifndef CTT_KZG_VERIFICATION_ONLY
 /** Given a blob, return the KZG proof that is used to verify it against the commitment.
  *  This method does not verify that the commitment is correct with respect to `blob`.
  */
@@ -187,11 +194,13 @@ ctt_eth_kzg_status ctt_eth_kzg_verify_blob_kzg_proof_batch(
         size_t n,
         const byte secure_random_bytes[32]
 ) __attribute__((__warn_unused_result__));
+#endif
 
 
 // Ethereum EIP-4844 KZG context management
 // ------------------------------------------------------------------------------------------------
 
+#ifndef CTT_KZG_VERIFICATION_ONLY
 /** Create a new KZG context from trusted setup file.
  *  Loads SRS, computes polyphase decomposition as raw affine points,
  *  and sets the context to kNoPrecompute mode (~1.8 MiB).
@@ -235,6 +244,19 @@ ctt_eth_trusted_setup_status ctt_eth_kzg_context_new_with_precompute(
     ctt_eth_trusted_setup_format format,
     int t,
     int b
+    ) __attribute__((__warn_unused_result__));
+#endif
+
+/** Create a KZG context from the trusted setup embedded at compile time.
+ *
+ *  With CTT_EMBEDDED_KZG alone, the full setup and all KZG/PeerDAS APIs are
+ *  available. With CTT_KZG_VERIFICATION_ONLY, only the canonical [tau]G2 point
+ *  is embedded and this context supports ctt_eth_kzg_verify_kzg_proof and
+ *  ctt_eth_evm_kzg_point_evaluation. The symbol is present only in libraries
+ *  built with CTT_EMBEDDED_KZG.
+ */
+ctt_eth_trusted_setup_status ctt_eth_kzg_context_new_embedded(
+    ctt_eth_kzg_context** ctx
     ) __attribute__((__warn_unused_result__));
 
 /** Destroy a KZG context
