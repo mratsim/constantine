@@ -654,6 +654,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/eth_eip7594_peerdas/t_peerdas_recovery.nim", false),
 
   # Signatures
+  ("tests/ecdsa/t_ecdsa_recovery.nim", false),
   # NOTE: Requires OpenSSL version >=v3.3 for Keccak256 support
   # ("tests/ecdsa/t_ecdsa_verify_openssl.nim", false),
 
