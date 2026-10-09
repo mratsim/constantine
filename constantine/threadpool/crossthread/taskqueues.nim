@@ -141,7 +141,7 @@ proc teardown*(tq: var Taskqueue) =
   tq.garbageCollect()
   freeHeap(tq.buf.load(moRelaxed))
 
-proc push*(tq: var Taskqueue, item: ptr Task) =
+proc push*(tq: var Taskqueue, item: ptr Task, wasEmpty: var bool) =
   ## Enqueue an item at the back
   ## As the task queue takes ownership of it. The item must not be used afterwards.
   ## This is intended for the producer only.
@@ -162,6 +162,21 @@ proc push*(tq: var Taskqueue, item: ptr Task) =
   buf[][b] = item
   fence(moRelease)
   tq.back.store(b+1, moRelaxed)
+
+  wasEmpty =
+    if wasEmpty:
+      true
+    elif f == b:
+      true
+    else:
+      # Re-check whether the items seen at the initial `top` read
+      # have since been drained; if so we are the one making the deque non-empty.
+      fence(moSequentiallyConsistent)
+      tq.front.load(moRelaxed) >= b
+
+proc push*(tq: var Taskqueue, item: ptr Task) =
+  var wasEmpty = true
+  push(tq, item, wasEmpty)
 
 proc pop*(tq: var Taskqueue): ptr Task =
   ## Dequeue an item at the back. Takes ownership of the item
