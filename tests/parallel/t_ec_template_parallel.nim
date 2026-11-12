@@ -83,6 +83,7 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
   suite testSuiteDesc & " - " & $ec.G & " - [" & $WordBitWidth & "-bit mode]":
 
     for n in numPoints:
+      let n = n # copy: `lent int` from array `items` can't be captured by the nested `test` closure
       test $ec & " parallel sum reduction (N=" & $n & ")":
         proc test(EC: typedesc, gen: RandomGen) =
           let tp = Threadpool.new()
@@ -161,6 +162,7 @@ proc run_EC_multi_scalar_mul_parallel_impl*[N: static int](
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
+      let n = n # copy: `lent int` from array `items` can't be captured by the nested `test` closure
       let bucketBits = bestBucketBitSize(n, ec.getScalarField().bits(), useSignedBuckets = false, useManualTuning = false)
       test $ec & " Parallel Multi-scalar-mul (N=" & $n & ", bucket bits (default): " & $bucketBits & ")":
         proc test(EC: typedesc, gen: RandomGen) =

@@ -1381,6 +1381,7 @@ proc run_EC_batch_add_impl*[N: static int](
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
+      let n = n # copy: `lent int` from array `items` can't be captured by the nested `test` closure
       test $ec & " sum reduction (N=" & $n & ")":
         proc test(EC: typedesc, gen: RandomGen) =
           var points = newSeq[EC_ShortW_Aff[EC.F, EC.G]](n)
@@ -1452,6 +1453,7 @@ proc run_EC_multi_scalar_mul_impl*[N: static int](
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
+      let n = n # copy: `lent int` from array `items` can't be captured by the nested `test` closure
       let bucketBits = bestBucketBitSize(n, ec.getScalarField().bits(), useSignedBuckets = false, useManualTuning = false)
       test $ec & " Multi-scalar-mul (N=" & $n & ", bucket bits: " & $bucketBits & ")":
         proc test(EC: typedesc, gen: RandomGen) =
