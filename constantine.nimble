@@ -786,6 +786,15 @@ const useSanitizers = [
   "tests/t_ethereum_evm_modexp.nim",
   "tests/t_etherem_evm_precompiles.nim",
 ]
+# Tests that load YAML test vectors: NimYAML's DOM (YamlNode) may contain cycles
+# and is only available with ORC, but releaseBuildOptions() forces --mm:arc.
+const useOrc = [
+  "tests/t_ethereum_eip4844_deneb_kzg.nim",
+  "tests/t_ethereum_eip4844_deneb_kzg_parallel.nim",
+  "tests/t_eth_eip7594_peerdas.nim",
+  "tests/eth_eip7594_peerdas/t_cells_and_kzg_proofs_opt.nim",
+  "tests/eth_eip7594_peerdas/t_compute_cells_opt.nim",
+]
 
 when defined(windows):
   # UBSAN is not available on mingw
@@ -832,6 +841,7 @@ proc setupTestCommand(flags, path: string): string =
   return "nim c -r" &
     flags &
     releaseBuildOptions() &
+    (if path in useOrc: " --mm:orc " else: "") & # Must come after releaseBuildOptions() to override --mm:arc
     " --outdir:build/test_suite " &
     &" --nimcache:nimcache/{path} " &
     path
