@@ -198,3 +198,19 @@ runPrecompileTests("eip-2537/fail-map_fp2_to_G2_bls.json", eth_evm_bls12381_map_
 runPrecompileTests("eip-4844/pointEvaluation.json", eth_evm_kzg_point_evaluation, 64, true)
 
 runPrecompileTests("ecRecover.json", eth_evm_ecrecover, 32)
+
+# ecRecover regression: an invalid signature with `r ≥ p - n` whose `r` is not a valid
+# x-coordinate used to make pubkey recovery loop ~2¹²⁰ times.
+# Found by nimbus-eth1 with EEST: https://github.com/status-im/nimbus-eth1/pull/3587#issuecomment-3223844117
+# ----------------------------------------------------------------------
+
+proc testEcRecoverStall() =
+  stdout.write "Running ecRecover stall regression ... "
+  let input = "18c547e4f7b0f325ad1e56f57e26c745b09a3e503d86e00e5255ff7f715d3d1c000000000000000000000000000000000000000000000000000000000000001c00b1693892219d736caba55bdb67216e485557ea6b6af75f37096c9aa6a5a75feeb940b1d03b21e36b0e47e79769f095fe2ab855bd91e3a38756b7d75a9c4549"
+  var inputBytes = newSeq[byte](input.len div 2)
+  inputBytes.fromHex(input)
+  var r: array[32, byte]
+  discard eth_evm_ecrecover(r, inputBytes) # Must return instead of stalling
+  stdout.write "Success\n"
+
+testEcRecoverStall()
