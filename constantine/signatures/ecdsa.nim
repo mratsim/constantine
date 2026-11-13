@@ -326,6 +326,13 @@ proc recoverPubkeyImpl_vartime*[Name: static Algebra; Sig](
   ## pair.
   ##
   ## If the signature is invalid, `recovered` will be set to the neutral element.
+  ##
+  ## The `x` coordinate of `R` is taken to be `r` itself. During signing, `r = R.x mod n`,
+  ## so `R.x` could also be `r + n` when `R.x ≥ n`. We do not try that candidate:
+  ## for secp256k1 it happens with probability ~2⁻¹²⁸ (`p - n < 2¹²⁹`), and
+  ## libsecp256k1 with recovery ids 0/1 does not try it either.
+  ## Note: a previous implementation looped over `x = r + i·n (mod p)` with a wrap-around check
+  ## that never terminated in practice for invalid signatures with `r ≥ p - n`.
   type
     ECAff = EC_ShortW_Aff[Fp[Name], G1]
     ECJac = EC_ShortW_Jac[Fp[Name], G1]
@@ -333,53 +340,36 @@ proc recoverPubkeyImpl_vartime*[Name: static Algebra; Sig](
   recovered.setNeutral()
   const G = Name.getGenerator($G1)
 
-  let rInit = signature.r.toBig() # initial `r`
-  var x1 = Fp[Name].fromBig(signature.r.toBig()) # as coordinate in Fp
-  let M = Fp[Name].fromBig(Fr[Name].getModulus())
+  # 2. Get base `R` point from `R.x = r`
+  var R {.noinit.}: ECAff
+  let x = Fp[Name].fromBig(signature.r.toBig())
+  if not bool(R.trySetFromCoordX(x)):
+    return
 
-  # Due to the conversion of the `x` coordinate in `Fp` of the point `R` in the signing process
-  # to a scalar in `Fr`, we potentially reduce it modulo the curve order (if `x >= r` with
-  # `r` the curve order).
-  # As we don't know if this is the case, we need to loop until we either find a valid signature,
-  # adding `M` each iteration or until we roll over again, in which case the signature is invalid.
-  # NOTE: For secp256k1 this is _extremely_ unlikely, because prime of the curve `p` and subgroup
-  # order `r` are so close!
-  var validSig = false
-  while (not validSig) and bool(x1.toBig() <= rInit):
-    # 1. Get base `R` point
-    var R {.noinit.}: ECAff
-    let valid = R.trySetFromCoordX(x1) # from `r = x1`
-    if not bool(valid):
-      x1 += M # add modulus of `Fr`. As long as we don't overflow in `Fp` we try again
-      continue # try next `i` in `x1 = r + i·M`
+  # 3. only negate `y ↦ -y` if current and target even-ness disagree
+  let isEven = R.y.toBig().isEven()
+  R.y.cneg(isEven xor SecretBool evenY)
 
-    let isEven = R.y.toBig().isEven()
-    # 2. only negate `y ↦ -y` if current and target even-ness disagree
-    R.y.cneg(isEven xor SecretBool evenY)
+  # 4. perform recovery calculation, `Q = -m·r⁻¹ * G + s·r⁻¹ * R`
+  # Note: Calculate with `r⁻¹` included in each coefficient to avoid 3rd `scalarMul`.
+  var rInv = signature.r
+  rInv.inv() # `r⁻¹`
 
-    # 3. perform recovery calculation, `Q = -m·r⁻¹ * G + s·r⁻¹ * R`
-    # Note: Calculate with `r⁻¹` included in each coefficient to avoid 3rd `scalarMul`.
-    var rInv = signature.r
-    rInv.inv() # `r⁻¹`
+  var u1 {.noinit.}, u2 {.noinit.}: Fr[Name]
+  u1.prod(msgHash, rInv)     # `u₁ = m·r⁻¹`
+  u1.neg()                   # `u₁ = -m·r⁻¹`
+  u2.prod(signature.s, rInv) # `u₂ = s·r⁻¹`
 
-    var u1 {.noinit.}, u2 {.noinit.}: Fr[Name]
-    u1.prod(msgHash, rInv)     # `u₁ = m·r⁻¹`
-    u1.neg()                   # `u₁ = -m·r⁻¹`
-    u2.prod(signature.s, rInv) # `u₂ = s·r⁻¹`
+  var Q {.noinit.}: ECJac # the potential public key
+  var point1 {.noinit.}, point2 {.noinit.}: ECJac
+  point1.scalarMul(u1, G)    # `p₁ = u₁ * G`
+  point2.scalarMul(u2, R)    # `p₂ = u₂ * R`
+  Q.sum(point1, point2)      # `Q = p₁ + p₂`
 
-    var Q {.noinit.}: ECJac # the potential public key
-    var point1 {.noinit.}, point2 {.noinit.}: ECJac
-    point1.scalarMul(u1, G)    # `p₁ = u₁ * G`
-    point2.scalarMul(u2, R)    # `p₂ = u₂ * R`
-    Q.sum(point1, point2)      # `Q = p₁ + p₂`
-
-    # 4. Verify signature with this point
-    validSig = Q.getAffine().verifyImpl(signature, msgHash)
-
-    # 5. If valid copy to `recovered`, else keep neutral point
-    recovered.ccopy(Q.getAffine(), SecretBool validSig) # Copy `Q` if valid
-    # 6. try next `i` in `x1 = r + i·M`
-    x1 += M
+  # 5. Verify signature with this point; if valid copy to `recovered`, else keep neutral point
+  let QAff = Q.getAffine()
+  if QAff.verifyImpl(signature, msgHash):
+    recovered = QAff
 
 proc recoverPubkey*[Pubkey; Sig](
     recovered: var Pubkey,
