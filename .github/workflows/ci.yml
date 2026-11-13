@@ -378,11 +378,25 @@ jobs:
 
       - name: Run Constantine as Go library tests (with Assembly)
         # This reuses the static library built with `nimble make_lib`
-        if: matrix.target.ctt_backend == 'ASM' && matrix.target.cpu != 'i386'
+        if: matrix.target.ctt_backend == 'ASM' && matrix.target.cpu != 'i386' && runner.os != 'Windows'
         shell: bash
         run: |
           cd constantine/constantine-go
           go test -modfile=../go_test.mod
+
+      - name: Run Constantine as Go library tests (Windows with Assembly)
+        # The static library is built by `nimble make_lib` in the MSYS2 shell, with MSYS2's MinGW GCC.
+        # cgo must link it with the same toolchain: in the default `bash` shell (Git Bash),
+        # `gcc` resolves to the pinned winlibs GCC 11.1 / mingw-w64 9.0 from external/mingw-amd64,
+        # and linking the newer-GCC library with it crashes with 0xc0000005 (access violation).
+        if: runner.os == 'Windows' && matrix.target.ctt_backend == 'ASM'
+        shell: msys2 {0}
+        run: |
+          cd constantine/constantine-go
+          which gcc go
+          gcc --version
+          go env CC CGO_ENABLED
+          go test -v -modfile=../go_test.mod
 
       - name: Run Constantine as Rust library tests (with Assembly)
         if: matrix.target.ctt_backend == 'ASM' && matrix.target.cpu != 'i386'
