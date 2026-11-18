@@ -29,6 +29,7 @@ import
   constantine/hash_to_curve/hash_to_curve,
   # Helpers
   helpers/prng_unsafe,
+  ./bench_report,
   ./bench_blueprint
 
 export
@@ -45,9 +46,15 @@ proc report(op, domain: string, start, stop: MonoTime, startClk, stopClk: int64,
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<35} {domain:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    reportMarkdownTable(
+      ["Operation", "Domain", "Throughput", "Latency", "CPU cycles (approx)"],
+      [op, domain, &"{throughput:.3f} ops/s", &"{ns} ns/op", $((stopClk - startClk) div iters)]
+    )
   else:
-    echo &"{op:<35} {domain:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    reportMarkdownTable(
+      ["Operation", "Domain", "Throughput", "Latency"],
+      [op, domain, &"{throughput:.3f} ops/s", &"{ns} ns/op"]
+    )
 
 macro fixEllipticDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy

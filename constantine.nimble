@@ -410,6 +410,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # KDF
   # ----------------------------------------------------------
   ("tests/t_kdf_hkdf.nim", false),
+  ("tests/t_bench_report.nim", false),
 
   # Primitives
   # ----------------------------------------------------------
