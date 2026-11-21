@@ -166,6 +166,240 @@ proc main() =
           # Check equality when converting back to natural domain
           9'u64 == cast[uint64](r_bytes)
 
+    test "Addition mod 2^31 - 2^27 + 1":
+      block:
+        var x, y, z: Fp[BabyBear]
+
+        x.fromUint(80'u32)
+        y.fromUint(10'u32)
+        z.fromUint(90'u32)
+
+        x += y
+
+        var x_bytes: array[4, byte]
+        x_bytes.marshal(x, cpuEndian)
+        let new_x = cast[uint32](x_bytes)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == x)
+          # Check equality when converting back to natural domain
+          new_x == 90'u32
+
+      block:
+        var x, y, z: Fp[BabyBear]
+
+        x.fromUint(0x78000000'u32) # p-1
+        y.fromUint(1'u32)
+        z.fromUint(0'u32)
+
+        x += y
+
+        var x_bytes: array[4, byte]
+        x_bytes.marshal(x, cpuEndian)
+        let new_x = cast[uint32](x_bytes)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == x)
+          # Check equality when converting back to natural domain
+          new_x == 0'u32
+
+    test "Substraction mod 2^31 - 2^27 + 1":
+      block:
+        var x, y, z: Fp[BabyBear]
+
+        x.fromUint(80'u32)
+        y.fromUint(10'u32)
+        z.fromUint(70'u32)
+
+        x -= y
+
+        var x_bytes: array[4, byte]
+        x_bytes.marshal(x, cpuEndian)
+        let new_x = cast[uint32](x_bytes)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == x)
+          # Check equality when converting back to natural domain
+          new_x == 70'u32
+
+      block:
+        var x, y, z: Fp[BabyBear]
+
+        x.fromUint(0'u32)
+        y.fromUint(1'u32)
+        z.fromUint(0x78000000'u32) # p-1
+
+        x -= y
+
+        var x_bytes: array[4, byte]
+        x_bytes.marshal(x, cpuEndian)
+        let new_x = cast[uint32](x_bytes)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == x)
+          # Check equality when converting back to natural domain
+          new_x == 0x78000000'u32
+
+    test "Multiplication mod 2^31 - 2^27 + 1":
+      block:
+        var x, y, z, r: Fp[BabyBear]
+
+        x.fromUint(10'u32)
+        y.fromUint(10'u32)
+        z.fromUint(100'u32)
+
+        r.prod(x, y)
+
+        var r_bytes: array[4, byte]
+        r_bytes.marshal(r, cpuEndian)
+        let new_r = cast[uint32](r_bytes)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == r)
+          # Check equality when converting back to natural domain
+          new_r == 100'u32
+
+      block:
+        var x, y, z, r: Fp[BabyBear]
+
+        x.fromUint(0x10000'u32)
+        y.fromUint(0x10000'u32)
+        z.fromUint(uint32((0x10000'u64 * 0x10000'u64) mod 0x78000001'u64))
+
+        r.prod(x, y)
+
+        var r_bytes: array[4, byte]
+        r_bytes.marshal(r, cpuEndian)
+        let new_r = cast[uint32](r_bytes)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == r)
+          # Check equality when converting back to natural domain
+          new_r == uint32((0x10000'u64 * 0x10000'u64) mod 0x78000001'u64)
+
+    test "Addition mod 2^31 - 2^24 + 1":
+      block:
+        var x, y, z: Fp[KoalaBear]
+
+        x.fromUint(50'u32)
+        y.fromUint(20'u32)
+        z.fromUint(70'u32)
+
+        x += y
+
+        var x_bytes: array[4, byte]
+        x_bytes.marshal(x, cpuEndian)
+        let new_x = cast[uint32](x_bytes)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == x)
+          # Check equality when converting back to natural domain
+          new_x == 70'u32
+
+      block:
+        var x, y, z: Fp[KoalaBear]
+
+        x.fromUint(0x7f000000'u32) # p-1
+        y.fromUint(1'u32)
+        z.fromUint(0'u32)
+
+        x += y
+
+        var x_bytes: array[4, byte]
+        x_bytes.marshal(x, cpuEndian)
+        let new_x = cast[uint32](x_bytes)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == x)
+          # Check equality when converting back to natural domain
+          new_x == 0'u32
+
+    test "Substraction mod 2^31 - 2^24 + 1":
+      block:
+        var x, y, z: Fp[KoalaBear]
+
+        x.fromUint(70'u32)
+        y.fromUint(20'u32)
+        z.fromUint(50'u32)
+
+        x -= y
+
+        var x_bytes: array[4, byte]
+        x_bytes.marshal(x, cpuEndian)
+        let new_x = cast[uint32](x_bytes)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == x)
+          # Check equality when converting back to natural domain
+          new_x == 50'u32
+
+      block:
+        var x, y, z: Fp[KoalaBear]
+
+        x.fromUint(0'u32)
+        y.fromUint(1'u32)
+        z.fromUint(0x7f000000'u32) # p-1
+
+        x -= y
+
+        var x_bytes: array[4, byte]
+        x_bytes.marshal(x, cpuEndian)
+        let new_x = cast[uint32](x_bytes)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == x)
+          # Check equality when converting back to natural domain
+          new_x == 0x7f000000'u32
+
+    test "Multiplication mod 2^31 - 2^24 + 1":
+      block:
+        var x, y, z, r: Fp[KoalaBear]
+
+        x.fromUint(12'u32)
+        y.fromUint(12'u32)
+        z.fromUint(144'u32)
+
+        r.prod(x, y)
+
+        var r_bytes: array[4, byte]
+        r_bytes.marshal(r, cpuEndian)
+        let new_r = cast[uint32](r_bytes)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == r)
+          # Check equality when converting back to natural domain
+          new_r == 144'u32
+
+      block:
+        var x, y, z, r: Fp[KoalaBear]
+
+        x.fromUint(0x10000'u32)
+        y.fromUint(0x20000'u32)
+        z.fromUint(uint32((0x10000'u64 * 0x20000'u64) mod 0x7f000001'u64))
+
+        r.prod(x, y)
+
+        var r_bytes: array[4, byte]
+        r_bytes.marshal(r, cpuEndian)
+        let new_r = cast[uint32](r_bytes)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == r)
+          # Check equality when converting back to natural domain
+          new_r == uint32((0x10000'u64 * 0x20000'u64) mod 0x7f000001'u64)
+
     test "Addition mod 2^61 - 1":
       block:
         var x, y, z: Fp[Mersenne61]
@@ -301,7 +535,6 @@ proc main() =
           bool(z == r)
           # Check equality when converting back to natural domain
           new_r == 2'u64
-
 
 main()
 
