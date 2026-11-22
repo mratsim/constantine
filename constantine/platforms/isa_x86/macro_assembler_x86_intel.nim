@@ -788,6 +788,31 @@ func setc*(a: var Assembler_x86, dst: Register) =
   a.code &= "setc " & Reg8Low[dst] & '\n'
   # No flags affected
 
+func getPrefetchLoc(mem: Operand or OperandArray): string =
+  let mem = mem[0]
+  if mem.desc.rm in {Mem, MemOffsettable}:
+    return "BYTE ptr %" & mem.desc.asmId
+  elif mem.desc.rm == PointerInReg or
+      mem.desc.rm in SpecificRegisters or
+      (mem.desc.rm == ElemsInReg and mem.kind == kFromArray):
+    return "BYTE ptr [%" & mem.desc.asmId & "]"
+  elif mem.desc.rm == ClobberedReg:
+    return "BYTE ptr [" & mem.desc.asmId & "]"
+  else:
+    error("Unsupported memory operand type for prefetch: " & mem.repr)
+
+func prefetcht0*(a: var Assembler_x86, mem: Operand or OperandArray) =
+  ## Retrieve memory in all cache levels for reading
+  let loc = getPrefetchLoc(mem)
+  a.code &= "prefetcht0 " & loc & '\n'
+  # No flags affected
+
+func prefetchw*(a: var Assembler_x86, mem: Operand or OperandArray) =
+  ## Retrieve memory in all cache levels for writing
+  let loc = getPrefetchLoc(mem)
+  a.code &= "prefetchw " & loc & '\n'
+  # No flags affected
+
 func add*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst + src
   doAssert dst.isOutput()

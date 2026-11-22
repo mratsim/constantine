@@ -821,6 +821,18 @@ func setc*(a: var Assembler_x86, dst: Register) =
   a.code &= "setc " & Reg8Low[dst] & '\n'
   # No flags affected
 
+func prefetcht0*(a: var Assembler_x86, mem: Operand or OperandArray) =
+  ## Retrieve memory in all cache levels for reading
+  let loc = a.getStrOffset(mem[0])
+  a.code &= "prefetcht0 " & loc & '\n'
+  # No flags affected
+
+func prefetchw*(a: var Assembler_x86, mem: Operand or OperandArray) =
+  ## Retrieve memory in all cache levels for writing
+  let loc = a.getStrOffset(mem[0])
+  a.code &= "prefetchw " & loc & '\n'
+  # No flags affected
+
 func add*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst + src
   doAssert dst.isOutput()
