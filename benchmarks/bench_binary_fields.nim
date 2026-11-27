@@ -42,6 +42,16 @@ template bench(op, field: string, iters: int, body: untyped): untyped =
 const Iters = 10_000_000
 const N = 1024 # Array length for throughput
 
+func checksum(x: GF2_64): uint64 = x.raw
+func checksum(x: GF2_64x2): uint64 = x.c0.raw xor x.c1.raw
+
+proc observe[T: GF2_64 or GF2_64x2](a, b: T) =
+  ## Print values computed by the timed loops, after them,
+  ## so that the compiler cannot remove those computations as dead code.
+  ## Each benchmark below feeds its result into the next through `a` or `xs[0]`,
+  ## so observing their final values keeps every timed loop live.
+  echo &"  (checksum {checksum(a) xor checksum(b):016x}, keeps the timed results observable)"
+
 proc benchK() =
   var a = rng.random_unsafe(GF2_64)
   let b = rng.random_unsafe(GF2_64)
@@ -72,7 +82,7 @@ proc benchK() =
   # Report per term
   echo &"  (per term: divide ns/op above by {N})"
 
-  doAssert not bool(a.isZero()) or bool(a.isZero()) # keep `a` alive
+  observe(a, xs[0])
 
 proc benchE() =
   var a = rng.random_unsafe(GF2_64x2)
@@ -110,7 +120,7 @@ proc benchE() =
     r.sumprod(xs, ks)
     xs[0] = r
 
-  doAssert not bool(a.isZero()) or bool(a.isZero()) # keep `a` alive
+  observe(a, xs[0])
 
 proc main() =
   separator()
