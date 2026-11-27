@@ -19,7 +19,8 @@ import
     ec_twistededwards_affine,
     ec_twistededwards_projective],
   constantine/math/io/io_bigints,
-  constantine/math/extension_fields/towers
+  constantine/math/extension_fields/towers,
+  constantine/math/binary_fields/gf2_64
 
 # ############################################################
 #
@@ -189,6 +190,11 @@ func random_unsafe(rng: var RngState, a: var FF) =
   rng.random_unsafe(unreduced)
   a.mres.limbs.reduceViaMont(unreduced, FF)
 
+func random_unsafe(rng: var RngState, a: var GF2_64) =
+  ## Initialize a binary field element, every bit pattern is valid
+  ## Unsafe: for testing and benchmarking purposes only
+  a.raw = rng.next()
+
 func random_unsafe(rng: var RngState, a: var ExtensionField) =
   ## Recursively initialize an extension Field element
   ## Unsafe: for testing and benchmarking purposes only
@@ -223,6 +229,15 @@ func random_highHammingWeight(rng: var RngState, a: var FF) =
   var unreduced{.noinit.}: Limbs[2*a.mres.limbs.len]
   rng.random_highHammingWeight(unreduced)
   a.mres.limbs.reduceViaMont(unreduced, FF)
+
+func random_highHammingWeight(rng: var RngState, a: var GF2_64) =
+  ## Initialize a binary field element with high Hamming weight
+  ## to have a higher probability of triggering reduction spills
+  ## Unsafe: for testing and benchmarking purposes only
+  a.raw = high(uint64)
+  let numZeros = rng.random_unsafe(64 div 3)
+  for _ in 0 ..< numZeros:
+    a.raw = a.raw.clearBit(uint64 rng.random_unsafe(64))
 
 func random_highHammingWeight(rng: var RngState, a: var ExtensionField) =
   ## Recursively initialize an extension Field element
@@ -276,6 +291,16 @@ func random_long01Seq(rng: var RngState, a: var FF) =
   var unreduced{.noinit.}: Limbs[2*a.mres.limbs.len]
   rng.random_long01Seq(unreduced)
   a.mres.limbs.reduceViaMont(unreduced, FF)
+
+func random_long01Seq(rng: var RngState, a: var GF2_64) =
+  ## Initialize a binary field element
+  ## skewed towards long runs of 1111... and 0000...
+  ## Unsafe: for testing and benchmarking purposes only
+  var bytes {.noInit.}: array[8, byte]
+  rng.random_long01Seq(bytes)
+  a.raw = 0
+  for i in 0 ..< 8:
+    a.raw = a.raw or (uint64(bytes[i]) shl (8*i))
 
 func random_long01Seq(rng: var RngState, a: var ExtensionField) =
   ## Recursively initialize an extension Field element

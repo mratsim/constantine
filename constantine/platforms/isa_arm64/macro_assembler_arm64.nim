@@ -27,6 +27,10 @@ type
     PointerInReg   = "r" # Store an array pointer. ⚠️ for const arrays, this may generate incorrect code with LTO and constant folding.
     ElemsInReg     = "r" # Store each individual array element in reg
 
+    # SIMD registers
+    VecReg         = "w" # 128-bit Advanced SIMD (NEON) register v0-v31, for example for carry-less multiplication.
+                         # The Nim symbol should be a 128-bit vector type like `uint64x2_t`.
+
     # Specific registers
     XZR            = "zr"
 
@@ -132,6 +136,7 @@ type
     areFlagsClobbered: bool
     isStackClobbered: bool
     regClobbers: set[Register] # Unused. We don't use named registers on ARM64 as instructions are not register specific.
+    needsAesExtension: bool    # The code uses FEAT_PMULL (part of the AES extension), see `generate`
 
 const OutputReg = {asmOutputEarlyClobber, asmInputOutput, asmInputOutputEarlyClobber, asmOutputOverwrite, asmClobberedRegister}
 
@@ -397,9 +402,13 @@ func setOutputToFlag*(a: var Assembler_arm64, outputFlag: NimNode, carryOrBorrow
     desc.setConstraintDesc(nimSymbol)
     a.operands.incl(desc)
 
-func generate*(a: Assembler_arm64): NimNode =
+func generate*(a: Assembler_arm64, isVolatile = true): NimNode =
   ## Generate the inline assembly code from
   ## the desired instruction
+  ##
+  ## With `isVolatile = false`, the compiler may hoist the assembly out of loops,
+  ## merge identical blocks or remove one whose outputs are unused.
+  ## Only use it for pure register computations, whose outputs depend only on their inputs.
 
   var
     outOperands: seq[seq[NimNode]]
@@ -465,11 +474,19 @@ func generate*(a: Assembler_arm64): NimNode =
   #   newLit(asmStmt & params)
   # )
 
-  var asmStmt = "\"" & a.code.replace("\n", "\\n\"\n\"")
+  # Instructions from an optional extension are rejected by the assembler
+  # unless the C compiler targets a CPU that has them, for example GCC with -march=armv8-a
+  # or Clang with -mcpu=generic. Enabling the extension in the assembly block itself
+  # avoids requiring the flag on every file this inline code ends up in.
+  # Callers must still check at runtime that the CPU supports it.
+  let code = if a.needsAesExtension: ".arch_extension aes\n" & a.code
+             else: a.code
+
+  var asmStmt = "\"" & code.replace("\n", "\\n\"\n\"")
   asmStmt.setLen(asmStmt.len - 1) # drop the last quote
 
   var emitStmt = nnkBracket.newTree(
-        newLit("\nasm volatile(\n"),
+        newLit(if isVolatile: "\nasm volatile(\n" else: "\nasm(\n"),
         newLit(asmStmt),
   )
 
@@ -848,3 +865,57 @@ func `and`*(a: var Assembler_arm64, dst: Operand, lhs: Operand, rhs: OperandReus
 
 func mov*(a: var Assembler_arm64, dst: Operand, src: Register) =
   a.codeFragment("mov", dst, src)
+
+# Moves between general-purpose and SIMD registers
+# ------------------------------------------------------------------------------------------------------------
+
+func fmov*(a: var Assembler_arm64, dst, src: Operand) =
+  ## Move a 64-bit general-purpose register into the low lane of a SIMD register
+  ## and zero the high lane:
+  ##   dst <- [src, 0]
+  ##
+  ## When only the low lane is used, for example by `pmull`, this is cheaper than DUP:
+  ## about 2 cycles less latency on Apple M4.
+  doAssert dst.desc.rm == VecReg and dst.kind == kRegister, "The destination operand must be a SIMD register: " & $dst.repr
+  doAssert src.desc.rm in {Reg, ElemsInReg} and src.kind == kRegister, "The source operand must be a general-purpose register: " & $src.repr
+  doAssert dst.isOutput(), $dst.repr
+
+  # %d[x] prints the 64-bit scalar view of a SIMD register, d0-d31
+  a.code &= "fmov %d" & dst.desc.asmId & ", " & a.getStrOffset(src) & '\n'
+  a.operands.incl dst.desc
+  a.operands.incl src.desc
+  # No flags affected
+
+# Polynomial (carry-less) multiplication
+# ------------------------------------------------------------------------------------------------------------
+
+func codeFragmentPmull(a: var Assembler_arm64, instr, srcArrangement: string, dst, lhs, rhs: Operand) =
+  doAssert dst.desc.rm == VecReg, "The destination operand must be a SIMD register: " & $dst.repr
+  doAssert lhs.desc.rm == VecReg, "The left operand must be a SIMD register: " & $lhs.repr
+  doAssert rhs.desc.rm == VecReg, "The right operand must be a SIMD register: " & $rhs.repr
+  doAssert dst.isOutput(), $dst.repr
+
+  a.code &= instr & " " & a.getStrOffset(dst) & ".1q, " &
+                          a.getStrOffset(lhs) & srcArrangement & ", " &
+                          a.getStrOffset(rhs) & srcArrangement & '\n'
+  a.operands.incl dst.desc
+  a.operands.incl lhs.desc
+  a.operands.incl rhs.desc
+  a.needsAesExtension = true
+  # No flags affected
+
+func pmull*(a: var Assembler_arm64, dst, lhs, rhs: Operand) =
+  ## Polynomial multiply long of the low 64-bit lanes:
+  ##   dst <- lhs.d[0] ⊗ rhs.d[0]
+  ## The 128-bit carry-less product overwrites `dst`.
+  ##
+  ## Requires FEAT_PMULL (part of the AES extension), check with `hasPmull()`.
+  a.codeFragmentPmull("pmull", ".1d", dst, lhs, rhs)
+
+func pmull2*(a: var Assembler_arm64, dst, lhs, rhs: Operand) =
+  ## Polynomial multiply long of the high 64-bit lanes:
+  ##   dst <- lhs.d[1] ⊗ rhs.d[1]
+  ## The 128-bit carry-less product overwrites `dst`.
+  ##
+  ## Requires FEAT_PMULL (part of the AES extension), check with `hasPmull()`.
+  a.codeFragmentPmull("pmull2", ".2d", dst, lhs, rhs)

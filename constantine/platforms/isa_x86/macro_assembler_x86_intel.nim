@@ -28,6 +28,10 @@ type
     PointerInReg   = "r" # Store an array pointer. ⚠️ for const arrays, this may generate incorrect code with LTO and constant folding.
     ElemsInReg     = "r" # Store each individual array element in reg
 
+    # SIMD registers
+    XmmReg         = "x" # 128-bit SSE register, for example for carry-less multiplication.
+                         # The Nim symbol should be a 128-bit vector type like `m128i`.
+
     # Specific registers
     RCX            = "c"
     RDX            = "d"
@@ -1276,6 +1280,23 @@ func adox*(a: var Assembler_x86, dst: Operand|OperandReuse|Register, src: Operan
     doAssert dst.desc.rm in {Reg, ElemsInReg}+SpecificRegisters, "The destination operand must be a register: " & $dst.repr
   a.codeFragment("adox", dst, src)
   a.areFlagsClobbered = true
+
+func pclmulqdq*(a: var Assembler_x86, dst, src: Operand, imm: SomeInteger) =
+  ## Carry-less multiplication of a 64-bit lane of `dst` by a 64-bit lane of `src`:
+  ##   dst <- dst.qword[imm and 1] ⊗ src.qword[(imm shr 4) and 1]
+  ## The 128-bit product overwrites `dst`.
+  ##
+  ## Requires the PCLMULQDQ CPU extension, check with `hasCLMUL()`.
+  ## Being inline assembly, the compiler does not need `-mpclmul`.
+  doAssert dst.desc.rm == XmmReg, "The destination operand must be an XMM register: " & $dst.repr
+  doAssert src.desc.rm == XmmReg, "The source operand must be an XMM register: " & $src.repr
+  doAssert dst.isOutput(), $dst.repr
+  doAssert int(imm) in {0x00, 0x01, 0x10, 0x11}, "Invalid qword selector: " & $imm
+
+  a.code &= "pclmulqdq " & a.getStrOffset(dst) & ", " & a.getStrOffset(src) & ", " & $imm & '\n'
+  a.operands.incl src.desc
+  a.operands.incl dst.desc
+  # No flags affected
 
 func push*(a: var Assembler_x86, _: type Stack, reg: Operand) =
   ## Push the content of register on the stack

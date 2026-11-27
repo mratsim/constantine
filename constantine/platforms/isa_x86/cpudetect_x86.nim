@@ -131,6 +131,7 @@ proc detectCpuFeaturesX86() {.loadTime.} =
 
   # leaf 1, ecx
   hasSse3Impl             = leaf1.ecx.test(0)
+  hasClMulImpl            = leaf1.ecx.test(1)
   hasSsse3Impl            = leaf1.ecx.test(9)
   hasFma3Impl             = leaf1.ecx.test(12)
   hasCas16BImpl           = leaf1.ecx.test(13)
