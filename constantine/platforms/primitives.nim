@@ -43,8 +43,8 @@ when X86 and GCC_Compatible:
   export cpudetect_x86, macro_assembler_x86
 
 when ARM64 and GCC_Compatible:
-  import ./isa_arm64/macro_assembler_arm64
-  export macro_assembler_arm64
+  import ./isa_arm64/[cpudetect_arm64, macro_assembler_arm64]
+  export cpudetect_arm64, macro_assembler_arm64
 
 # No exceptions allowed in core cryptographic operations
 {.push raises: [].}

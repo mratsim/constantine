@@ -53,6 +53,51 @@ func vreinterpretq_u32_u8*(a: uint8x16_t): uint32x4_t {.neon.}
 func vaddq_u32*(a, b: uint32x4_t): uint32x4_t {.neon.}
   ## Vector addition
 
+# ############################################################
+#
+#                  64-bit lanes
+#
+# ############################################################
+#
+# Parameters named `n` or `lane` must be compile-time constants,
+# pass them as literals.
+
+type
+  uint64x2_t*{.importc, byCopy.} = object
+
+func vdupq_n_u64*(x: uint64): uint64x2_t {.neon.}
+  ## Broadcast x to both lanes: [x, x]
+
+func vld1q_u64*(data: pointer): uint64x2_t {.neon.}
+  ## Vector load
+
+func vst1q_u64*(dst: pointer, src: uint64x2_t) {.neon.}
+  ## Vector store
+
+func vgetq_lane_u64*(a: uint64x2_t, lane: cint): uint64 {.neon.}
+  ## Extract a lane
+
+func veorq_u64*(a, b: uint64x2_t): uint64x2_t {.neon.}
+  ## Bitwise xor
+
+func vorrq_u64*(a, b: uint64x2_t): uint64x2_t {.neon.}
+  ## Bitwise or
+
+func vshlq_n_u64*(a: uint64x2_t, n: cint): uint64x2_t {.neon.}
+  ## Shift each lane left by n bits
+
+func vshrq_n_u64*(a: uint64x2_t, n: cint): uint64x2_t {.neon.}
+  ## Shift each lane right by n bits
+
+func vextq_u64*(a, b: uint64x2_t, n: cint): uint64x2_t {.neon.}
+  ## Extract 2 consecutive lanes from the concatenation [a0, a1, b0, b1], starting at lane n
+
+func vzip1q_u64*(a, b: uint64x2_t): uint64x2_t {.neon.}
+  ## Interleave the low lanes: [a0, b0]
+
+func vzip2q_u64*(a, b: uint64x2_t): uint64x2_t {.neon.}
+  ## Interleave the high lanes: [a1, b1]
+
 
 # ############################################################
 #

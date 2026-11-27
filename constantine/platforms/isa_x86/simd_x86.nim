@@ -72,6 +72,21 @@ func mm_setr_epi32(e3, e2, e1, e0: int32 or uint32): m128i {.importc: "_mm_setr_
   ## in order [e3, e2, e1, e0]
 
 func mm_xor_si128(a, b: m128i): m128i {.importc: "_mm_xor_si128", x86.}
+func mm_or_si128(a, b: m128i): m128i {.importc: "_mm_or_si128", x86.}
+
+func mm_unpacklo_epi64(a, b: m128i): m128i {.importc: "_mm_unpacklo_epi64", x86.}
+  ## Interleave the low 64-bit lanes: [a0, b0]
+func mm_unpackhi_epi64(a, b: m128i): m128i {.importc: "_mm_unpackhi_epi64", x86.}
+  ## Interleave the high 64-bit lanes: [a1, b1]
+
+func mm_slli_si128(a: m128i, imm8: int32 or uint32): m128i {.importc: "_mm_slli_si128", x86.}
+  ## Shift the whole 128-bit register left by imm8 bytes, shifting in zeros
+
+when defined(amd64):
+  func mm_cvtsi64_si128(a: int64 or uint64): m128i {.importc: "_mm_cvtsi64_si128", x86.}
+    ## Move a 64-bit integer to the low lane, zeroing the high lane (MOVQ)
+  func mm_cvtsi128_si64(a: m128i): int64 {.importc: "_mm_cvtsi128_si64", x86.}
+    ## Move the low 64-bit lane to an integer register (MOVQ)
 
 func mm_add_epi8(a, b: m128i): m128i {.importc: "_mm_add_epi8", x86.}
 func mm_add_epi16(a, b: m128i): m128i {.importc: "_mm_add_epi16", x86.}
@@ -249,9 +264,35 @@ template loadu_u128*(data: pointer): m128i =
   mm_loadu_si128(cast[ptr m128i](data))
 template storea_u128*(mem_addr: pointer, a: m128i) =
   mm_store_si128(cast[ptr m128i](mem_addr), a)
+template storeu_u128*(mem_addr: pointer, a: m128i) =
+  mm_storeu_si128(cast[ptr m128i](mem_addr), a)
+template zero_u128*(): m128i =
+  mm_setzero_si128()
+
+when defined(amd64):
+  template movq_to_u128*(a: uint64): m128i =
+    ## [a, 0]
+    mm_cvtsi64_si128(a)
+  template movq_from_u128*(a: m128i): uint64 =
+    ## The low 64-bit lane
+    cast[uint64](mm_cvtsi128_si64(a))
 
 template xor_u128*(a, b: m128i): m128i =
   mm_xor_si128(a, b)
+template or_u128*(a, b: m128i): m128i =
+  mm_or_si128(a, b)
+
+template unpacklo_u64x2*(a, b: m128i): m128i =
+  ## [a0, b0]
+  mm_unpacklo_epi64(a, b)
+template unpackhi_u64x2*(a, b: m128i): m128i =
+  ## [a1, b1]
+  mm_unpackhi_epi64(a, b)
+template shl_u64x2*(a: m128i, imm8: int32 or uint32): m128i =
+  mm_slli_epi64(a, imm8)
+template shlBytes_u128*(a: m128i, numBytes: int32 or uint32): m128i =
+  ## Shift the whole register left by `numBytes` bytes
+  mm_slli_si128(a, numBytes)
 
 template add_u32x4*(a, b: m128i): m128i =
   mm_add_epi32(a, b)

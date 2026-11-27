@@ -446,6 +446,11 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   # ("tests/math_fields/t_finite_fields_double_precision.nim", false),
 
+  # Binary fields
+  # ----------------------------------------------------------
+  ("tests/math_binary_fields/t_gf2_64.nim", false),
+  ("tests/math_binary_fields/t_gf2_64x2.nim", false),
+
   # Towers of extension fields
   # ----------------------------------------------------------
   # ("tests/math_extension_fields/t_fp2.nim", false),
@@ -719,6 +724,7 @@ const benchDesc = [
   "bench_fp4",
   "bench_fp6",
   "bench_fp12",
+  "bench_binary_fields",
   "bench_ec_g1",
   "bench_ec_g1_scalar_mul",
   "bench_ec_g1_scalar_mul_vartime",
@@ -1061,6 +1067,12 @@ task bench_fpdbl, "Run benchmark 𝔽pDbl with your CC compiler":
 
 task bench_fp2, "Run benchmark 𝔽p2 with your CC compiler":
   runBench("bench_fp2")
+
+# Binary fields 𝔽₂⁶⁴ and 𝔽₂¹²⁸
+# ------------------------------------------
+
+task bench_binary_fields, "Run benchmark of binary fields 𝔽₂⁶⁴ and 𝔽₂¹²⁸ with your CC compiler":
+  runBench("bench_binary_fields")
 
 # Extension field 𝔽p4
 # ------------------------------------------

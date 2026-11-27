@@ -925,6 +925,10 @@ func batchInv*[F](
         N: int) {.noInline.} =
   ## Batch inversion
   ## If an element is 0, the inverse stored will be 0.
+  ##
+  ## Generic over any field providing the operations below,
+  ## for example binary fields.
+  mixin setOne, isZero, csetOne, csetZero, prod, inv, `*=`
   var zeros = allocStackArray(SecretBool, N)
   zeroMem(zeros, N)
 
@@ -961,6 +965,10 @@ func batchInv_vartime*[F](
         N: int) {.noInline.} =
   ## Batch inversion
   ## If an element is 0, the inverse stored will be 0.
+  ##
+  ## Generic over any field providing the operations below,
+  ## for example binary fields.
+  mixin setOne, setZero, isZero, prod, inv_vartime, `*=`
 
   if N == 0:
     return
