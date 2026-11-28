@@ -22,6 +22,11 @@ import ./keccak_generic
 func permute_x86_bmi1*(A: var KeccakState, NumRounds: static int) =
   permute_impl(A, NumRounds)
 
+func permute_x86_bmi1*(lanes: var array[5*5, uint64], NumRounds: static int) =
+  ## Keccak permutation of a state stored as 25 lanes, lane x + 5y holding A[x, y].
+  ## The lanes need no particular alignment.
+  permute_impl(lanes, NumRounds)
+
 func xorInPartial_x86_bmi1*(H: var KeccakState, hByteOffset: int, msg: openArray[byte]) =
   ## Add multiple bytes to the state
   ## The hByteOffset+length MUST be less than the state length.
