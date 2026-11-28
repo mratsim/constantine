@@ -218,10 +218,12 @@ template genSqueeze(isaFeatures: untyped) =
 
     if bytesLeft != 0:
       # Output the tail
-      ctx.H.`copyOutPartial _ isaFeatures`(hByteOffset = pos, digest.toOpenArray(cur, bytesLeft-1))
+      ctx.H.`copyOutPartial _ isaFeatures`(hByteOffset = pos, digest.toOpenArray(cur, cur+bytesLeft-1))
 
     # Epilogue
-    ctx.squeeze_offset = int32 bytesLeft
+    # The next squeeze continues after the tail.
+    # pos is 0 if this squeeze crossed a block boundary, and pos+bytesLeft < rate.
+    ctx.squeeze_offset = int32(pos+bytesLeft)
     # We don't signal absorb_offset to permute the state if called next
     # as per
     #   - original keccak spec that uses "absorb-permute-squeeze" protocol
