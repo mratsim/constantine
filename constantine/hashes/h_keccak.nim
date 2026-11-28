@@ -184,8 +184,8 @@ when UseASM_X86_32:
 
 template genSqueeze(isaFeatures: untyped) =
   func `squeeze _ isaFeatures`*(ctx: var KeccakContext, digest: var openArray[byte]) =
-    var pos = int ctx.squeeze_offset # offset in Keccak state
-    var cur = 0                      # offset in digest
+    var pos = ctx.squeeze_offset # offset in Keccak state
+    var cur = 0                  # offset in message
     var bytesLeft = digest.len
 
     if pos == ctx.rate():
