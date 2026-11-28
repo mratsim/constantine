@@ -405,8 +405,8 @@ proc schedule(ctx: var WorkerContext, task: ptr Task, forceWake = false) {.inlin
   # Instead of notifying every time a task is scheduled, we notify
   # only when the worker queue is empty. This is a good approximation
   # of starvation in work-stealing.
-  let wasEmpty = ctx.taskqueue[].peek() == 0
-  ctx.taskqueue[].push(task)
+  var wasEmpty = false
+  ctx.taskqueue[].push(task, wasEmpty)
 
   ctx.incCounter(tasksScheduled)
   ctx.incCounter(itersScheduled):
