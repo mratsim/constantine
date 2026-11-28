@@ -396,6 +396,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/t_hash_sha256_vs_openssl.nim", false),
   ("tests/t_hash_keccak_sha3_vs_openssl.nim", false),
+  ("tests/t_hash_keccak_squeeze.nim", false),
   ("tests/t_hash_ripemd160_vs_openssl.nim", false),
 
   # Ciphers
