@@ -52,6 +52,20 @@ proc benchKeccak256_constantine[T](msg: openarray[T], msgComment: string, iters:
   bench("Keccak256 - Constantine - " & msgComment, msg.len, iters):
     keccak256.hash(digest, msg)
 
+proc benchKeccakF1600_constantine(iters: int) =
+  ## Latency: each permutation consumes the previous one's output
+  var state: array[25, uint64]
+  for lane in state.mitems:
+    lane = rng.next()
+  bench("Keccak-f[1600] permutation - Constantine", sizeof(state), iters):
+    keccak_f1600(state)
+  # Print the final state after the timed loop,
+  # so that the compiler cannot remove the permutations as dead code
+  var checksum = 0'u64
+  for lane in state:
+    checksum = checksum xor lane
+  echo &"  (checksum {checksum:016x}, keeps the permutations observable)"
+
 when false:
   proc benchSHA3_256_openssl[T](msg: openarray[T], msgComment: string, iters: int) =
     var digest: array[32, byte]
@@ -68,6 +82,10 @@ when isMainModule:
 
     const target_cycles = 1_000_000_000'i64
     const worst_cycles_per_bytes = 25'i64
+
+    benchKeccakF1600_constantine(iters = 10_000_000)
+    echo "----"
+
     for s in sizes:
       let msg = rng.random_byte_seq(s)
       let iters = int(target_cycles div (s.int64 * worst_cycles_per_bytes))

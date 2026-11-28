@@ -287,3 +287,28 @@ func clear*(ctx: var KeccakContext) =
   ## Clear the context internal buffers
   # TODO: ensure compiler cannot optimize the code away
   ctx.reset()
+
+# Keccak-f[1600] permutation
+# ----------------------------------------------------------------
+#
+# For protocols that build their own sponge or duplex on the permutation
+# (Fiat-Shamir transcripts, proof-of-work, Keccak inside a virtual machine),
+# or interoperate with a state laid out by another implementation.
+
+func keccak_f1600*(state: var array[25, uint64]) =
+  ## The Keccak-f[1600] permutation, in place: 24 rounds of θ, ρ, π, χ and ι.
+  ##
+  ## Lane x + 5y holds the lane A[x, y] of the Keccak specification.
+  ## Bytes map to lanes in little-endian order: a sponge of rate r bytes
+  ## XORs input bytes 8i ..< 8i+8 into lane i, for i < r/8,
+  ## and Keccak-256 (rate 136) reads its digest from lanes 0 ..< 4.
+  ## This is the layout of the Keccak reference code and XKCP.
+  ##
+  ## `state` needs no particular alignment.
+  when UseASM_X86_32:
+    if ({.noSideEffect.}: hasBmi1()):
+      state.permute_x86_bmi1(NumRounds = 24)
+    else:
+      state.permute_generic(NumRounds = 24)
+  else:
+    state.permute_generic(NumRounds = 24)
