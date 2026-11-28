@@ -64,25 +64,21 @@ macro redc2xMont_gen[N: static int](
   let m0ninv = v[1]
   let m = v[2]
   var t0 = v[3]
-  var t1 = v[4]
+  # var t1 = v[4] # We might lose some cycles compared to perfect ILP but GCC limitation https://github.com/mratsim/constantine/issues/582
 
   template mulloadd_cio(ctx, dst, lhs, rhs, addend) {.dirty.} =
     ctx.mul t0, lhs, rhs
     ctx.adcs dst, addend, t0
-    swap(t0, t1)
 
   template mulhiadd_co(ctx, dst, lhs, rhs, addend) {.dirty.} =
     ctx.umulh t0, lhs, rhs
     ctx.adds dst, addend, t0
-    swap(t0, t1)
   template mulhiadd_cio(ctx, dst, lhs, rhs, addend) {.dirty.} =
     ctx.umulh t0, lhs, rhs
     ctx.adcs dst, addend, t0
-    swap(t0, t1)
   template mulhiadd_ci(ctx, dst, lhs, rhs, addend) {.dirty.} =
     ctx.umulh t0, lhs, rhs
     ctx.adc dst, addend, t0
-    swap(t0, t1)
 
   # Algorithm
   # ---------------------------------------------------------
@@ -108,7 +104,6 @@ macro redc2xMont_gen[N: static int](
     ctx.comment "---- Reduction " & $i
     ctx.mul t0, m, M[0]
     ctx.cmn u[0], t0
-    swap(t0, t1)
     ctx.mov u[N], xzr
 
     for j in 0 ..< N:
@@ -135,7 +130,6 @@ macro redc2xMont_gen[N: static int](
       ctx.adc u[i], u[i], t0
     else:
       ctx.adcs u[i], u[i], t0
-    swap(t0, t1)
 
   if spareBits >= 2 and lazyReduce:
     for i in 0 ..< N:
